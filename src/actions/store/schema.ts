@@ -1,0 +1,113 @@
+/**
+ * Schemas Zod para o domínio `store`.
+ */
+import { z } from "zod";
+
+import { isValidHexColor } from "@/lib/brand";
+import { NICHE_OPTIONS } from "@/lib/niche-categories";
+import { isReservedSlug, isValidSlugFormat } from "@/lib/slug";
+import { isValidWhatsAppBR } from "@/lib/whatsapp-format";
+
+const nicheValues = NICHE_OPTIONS.map((n) => n.value) as [string, ...string[]];
+
+export const storeSlugSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .refine(isValidSlugFormat, {
+    message:
+      "Use letras minúsculas, números e hífen. Mín 3, máx 40 caracteres.",
+  })
+  .refine((s) => !isReservedSlug(s), {
+    message: "Esse endereço é reservado. Escolha outro.",
+  });
+
+export const createStoreSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, "Nome muito curto")
+    .max(80, "Nome muito longo"),
+  slug: storeSlugSchema,
+  niche: z.enum(nicheValues),
+  whatsappNumber: z
+    .string()
+    .trim()
+    .refine(isValidWhatsAppBR, "Número de WhatsApp inválido."),
+  primaryColor: z
+    .string()
+    .trim()
+    .refine(isValidHexColor, "Cor inválida. Use formato #RRGGBB."),
+  addressCity: z.string().trim().max(80).optional().or(z.literal("")),
+  addressState: z
+    .string()
+    .trim()
+    .max(2, "Use 2 letras (ex: MA)")
+    .optional()
+    .or(z.literal("")),
+});
+export type CreateStoreInput = z.infer<typeof createStoreSchema>;
+
+export const checkSlugSchema = z.object({
+  slug: z.string().trim().toLowerCase(),
+});
+export type CheckSlugInput = z.infer<typeof checkSlugSchema>;
+
+/**
+ * Schema do form de configurações da loja. Edita TODOS os campos textuais
+ * de `storeTable` exceto `slug`, `ownerId`, `logoUrl`, `iconUrl` e
+ * timestamps. Slug é fixo (URL pública estável); logos têm upload separado.
+ */
+export const updateStoreSchema = z.object({
+  name: z.string().trim().min(2, "Nome muito curto.").max(80, "Nome muito longo."),
+  description: z
+    .string()
+    .trim()
+    .max(500, "Descrição muito longa (máx 500).")
+    .nullable(),
+  niche: z.enum(nicheValues),
+  whatsappNumber: z
+    .string()
+    .trim()
+    .refine(isValidWhatsAppBR, "Número de WhatsApp inválido."),
+  primaryColor: z
+    .string()
+    .trim()
+    .refine(isValidHexColor, "Cor inválida. Use formato #RRGGBB."),
+  addressStreet: z.string().trim().max(120).nullable(),
+  addressNumber: z.string().trim().max(20).nullable(),
+  addressNeighborhood: z.string().trim().max(80).nullable(),
+  addressCity: z.string().trim().max(80).nullable(),
+  addressState: z
+    .string()
+    .trim()
+    .max(2, "Use 2 letras (ex: MA).")
+    .nullable()
+    .refine((v) => v === null || v === "" || /^[A-Za-z]{2}$/.test(v), {
+      message: "Use 2 letras (ex: MA).",
+    }),
+  googleMapsUrl: z
+    .string()
+    .trim()
+    .nullable()
+    .refine(
+      (v) => v === null || v === "" || /^https?:\/\//i.test(v),
+      "Cole o link completo do Google Maps (deve começar com http).",
+    ),
+  instagramHandle: z
+    .string()
+    .trim()
+    .max(40, "Usuário muito longo (máx 40).")
+    .nullable(),
+});
+export type UpdateStoreInput = z.infer<typeof updateStoreSchema>;
+
+export const uploadStoreImageSchema = z.object({
+  kind: z.enum(["logo", "icon"]),
+});
+export type UploadStoreImageInput = z.infer<typeof uploadStoreImageSchema>;
+
+export const removeStoreImageSchema = z.object({
+  kind: z.enum(["logo", "icon"]),
+});
+export type RemoveStoreImageInput = z.infer<typeof removeStoreImageSchema>;

@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1778163266312,
+      "tag": "0000_living_thor",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1778185782123,
+      "tag": "0001_tan_famine",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778185819414,
+      "tag": "0002_nosy_toad",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778221171471,
+      "tag": "0003_demonic_vapor",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778307585909,
+      "tag": "0004_public_order_token_stock_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1778308709786,
+      "tag": "0005_safe_captain_universe",
+      "breakpoints": true
+    }
+  ]
+}
