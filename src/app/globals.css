@@ -18,8 +18,8 @@
  */
 
 :root {
-  /* — Brand fixa (Vitrê azul) — preservada para BrandProvider por loja */
-  --brand: oklch(0.45 0.18 250);                 /* Azul sofisticado */
+  /* — Brand fixa (Vitrê carvão) — preservada para BrandProvider por loja */
+  --brand: oklch(0.16 0.005 286);                /* Carvão (redesign canvas-v1) */
   --brand-foreground: oklch(0.99 0 0);
 
   /* — Paleta neutra — tinte violeta sutil */
