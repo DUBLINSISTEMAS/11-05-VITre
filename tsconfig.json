@@ -23,5 +23,5 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", "drizzle", "sistema original"]
+  "exclude": ["node_modules", "drizzle", "sistema original", "migration v2"]
 }
