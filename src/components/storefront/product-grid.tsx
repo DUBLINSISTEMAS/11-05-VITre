@@ -1,81 +1,98 @@
-"use client";
-
 /**
- * Grid responsivo de ProductCards com header de seção.
+ * ProductGrid — fiel ao canvas-referencia (canvas-v1).
  *
- * Features:
- * - 2 colunas mobile, 3 tablet, 4 desktop
- * - Header com título e link "Ver todos"
- * - Textos em PT-BR via i18n
- * - Hierarquia visual forte
+ * Header inline em uma linha:
+ *   - Título display em `text-sm font-semibold tracking-[-0.3]`
+ *   - Direita opcional: count mono OU link "Ver todos →" cor da loja
+ *
+ * Grid mobile-first canvas:
+ *   - 2 colunas
+ *   - Column gap 14px, row gap 18px
+ *
+ * Desktop scaling (não está no canvas, mas mantém consistência):
+ *   - 3 col tablet (sm) com gap maior, 4 col desktop (lg)
+ *
+ * Server-component-friendly (sem "use client").
  */
-import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 import { ProductCard } from "@/components/storefront/product-card";
 import type { ProductCardData } from "@/lib/storefront/_shared";
-import { t } from "@/lib/storefront/i18n";
+import { cn } from "@/lib/utils";
 
 export interface ProductGridProps {
   storeSlug: string;
   products: ProductCardData[];
-  /** Aplica `priority` no primeiro card (use no grid above-the-fold). */
-  priorityFirst?: boolean;
-  /** Quantos cards above-the-fold ganham `priority`. Default 1. */
-  priorityCount?: number;
-  /** Título da seção (ex: "Especial Para Você") */
+  /** Título display do header. */
   sectionTitle?: string;
-  /** Link "Ver todos" */
+  /** Link "Ver todos →" na cor da loja. */
   seeAllHref?: string;
-  /** Nome da categoria para exibir nos cards */
-  categoryName?: string;
-  /** Mostra o primeiro card em destaque (maior) */
-  showFeaturedFirst?: boolean;
+  /** Count mono à direita (alternativa a seeAllHref). Ex: "06". */
+  count?: string | number;
+  /** Aplica `priority` nos primeiros N cards (above-the-fold). */
+  priorityFirst?: boolean;
+  priorityCount?: number;
+  /** Layout dos cards. */
+  variant?: "overlay" | "card";
+  className?: string;
 }
 
 export function ProductGrid({
   storeSlug,
   products,
-  priorityFirst = false,
-  priorityCount = 1,
   sectionTitle,
   seeAllHref,
-  categoryName,
-  showFeaturedFirst = false,
+  count,
+  priorityFirst = false,
+  priorityCount = 1,
+  variant = "overlay",
+  className,
 }: ProductGridProps) {
   if (products.length === 0) return null;
 
+  const showHeader = sectionTitle || seeAllHref || count !== undefined;
+
   return (
-    <section className="space-y-4">
-      {/* Section header - hierarquia visual melhorada */}
-      {sectionTitle && (
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold text-foreground">
-            {sectionTitle}
-          </h2>
-          {seeAllHref && (
+    <section className={cn("space-y-3", className)}>
+      {showHeader && (
+        <header className="flex items-baseline justify-between gap-3">
+          {sectionTitle && (
+            <h2 className="text-sm font-semibold tracking-[-0.3px] text-foreground">
+              {sectionTitle}
+            </h2>
+          )}
+          {seeAllHref ? (
             <Link
               href={seeAllHref}
               prefetch={false}
-              className="flex items-center gap-1 text-sm font-semibold text-foreground hover:underline underline-offset-2 transition-colors"
+              className="shrink-0 text-[11px] font-medium text-brand-store outline-none focus-visible:underline"
             >
-              {t.nav.seeAll}
-              <ArrowRight className="size-4" />
+              Ver todos →
             </Link>
-          )}
-        </div>
+          ) : count !== undefined ? (
+            <span className="shrink-0 font-mono text-[9.5px] text-gray-500">
+              {count}
+            </span>
+          ) : null}
+        </header>
       )}
 
-      {/* Product grid */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      <div
+        className={cn(
+          // canvas mobile: 2 cols, gap-x 14, gap-y 18
+          "grid grid-cols-2 gap-x-[14px] gap-y-[18px]",
+          // desktop scaling
+          "sm:grid-cols-3 sm:gap-x-4 sm:gap-y-5",
+          "lg:grid-cols-4 lg:gap-x-5 lg:gap-y-6",
+        )}
+      >
         {products.map((product, idx) => (
           <ProductCard
             key={product.id}
             product={product}
             storeSlug={storeSlug}
             priority={priorityFirst && idx < priorityCount}
-            categoryName={categoryName}
-            variant={showFeaturedFirst && idx === 0 ? "featured" : "default"}
+            variant={variant}
           />
         ))}
       </div>

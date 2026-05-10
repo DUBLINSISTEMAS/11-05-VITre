@@ -97,7 +97,7 @@ export default async function ProductPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString }}
       />
-      <ProductDetailView product={product} storeSlug={store.slug} />
+      <ProductDetailView product={product} store={store} />
     </>
   );
 }

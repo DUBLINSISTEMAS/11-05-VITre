@@ -1,25 +1,30 @@
 /**
  * Página `/sucesso?code=A7K2` — confirmação pós-checkout.
  *
+ * Redesign canvas-v1 fiel a `_vitre-storefront.jsx:457-515`:
+ *  - Check 88×88 success-soft com SVG strokeWidth 2.4
+ *  - Heading 24px display + sub 13px gray-600
+ *  - Card resumo: kicker mono "PEDIDO" + #shortCode mono à direita +
+ *    3 linhas (itens/total, atendido por, status)
+ *  - Banner brand-tint inline com #shortCode mono
+ *  - 2 CTAs: WhatsApp (verde) + "Continuar comprando" (outline)
+ *  - Sem bottom-nav, sem header (controlados em shell-content.tsx)
+ *
  * Server Component:
  *  - Resolve order pelo shortCode (service_role).
  *  - Verifica que pertence à loja do path (defesa contra link cruzado).
- *  - Reconstrói whatsappUrl a partir do snapshot + loja.
- *  - Renderiza Lottie + copy honesto + CTAs (Abrir WhatsApp + Ver pedido).
+ *  - Reconstrói whatsappUrl a partir do snapshot + loja (cliente pode
+ *    voltar via histórico mesmo se a tab original foi fechada).
  *
  * Limpeza do carrinho acontece NO CLIENT (`SuccessClearCart`) — a
- * server action já criou o pedido; client só precisa apagar o
- * localStorage. Idempotência cobre se o cliente clicou 2× e gerou 2x.
+ * server action já criou o pedido; client só apaga o localStorage.
+ * Idempotência cobre se o cliente clicou 2× e gerou 2x.
  */
-import { ArrowRight } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { OrderLottie } from "@/components/storefront/order-lottie";
 import { SuccessClearCart } from "@/components/storefront/success-clear-cart";
-import { WhatsAppOpenButton } from "@/components/storefront/whatsapp-open-button";
-import { Button } from "@/components/ui/button";
+import { SuccessCtas } from "@/components/storefront/success-ctas";
 import { env } from "@/lib/env";
 import { formatBRL } from "@/lib/pricing";
 import { buildPublicOrderWhatsAppMessage } from "@/lib/public-order";
@@ -40,6 +45,16 @@ interface SearchParams {
   code?: string;
 }
 
+// Mapeamento status → label PT-BR (canvas usa "Aguardando contato"
+// pra awaiting_whatsapp; demais derivamos do enum).
+const STATUS_LABELS: Record<string, string> = {
+  awaiting_whatsapp: "Aguardando contato",
+  confirmed: "Confirmado",
+  fulfilled: "Concluído",
+  canceled: "Cancelado",
+  expired: "Expirado",
+};
+
 export default async function SuccessPage({
   params,
   searchParams,
@@ -59,8 +74,6 @@ export default async function SuccessPage({
   if (!store) notFound();
   if (!order || order.store.slug !== storeSlug) notFound();
 
-  // Reconstrói whatsappUrl pra que cliente possa reabrir mesmo se
-  // tab foi fechada e ele voltou via histórico.
   const baseUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
   const message = buildPublicOrderWhatsAppMessage({
     storeName: order.store.name,
@@ -76,48 +89,76 @@ export default async function SuccessPage({
   });
   const whatsappUrl = buildWhatsAppUrl(order.store.whatsappNumber, message);
 
+  const itemCount = order.items.reduce((sum, it) => sum + it.quantity, 0);
+  const itemsLabel = `${itemCount} ${itemCount === 1 ? "item" : "itens"}`;
+  const statusLabel = STATUS_LABELS[order.status] ?? order.status;
+
   return (
-    <div className="mx-auto max-w-md py-8 text-center">
+    <div className="mx-auto flex min-h-[calc(100dvh-3rem)] w-full max-w-md flex-col px-6 pb-6 pt-[90px]">
       <SuccessClearCart />
 
-      <OrderLottie />
+      {/* Check icon — 88×88 success-soft */}
+      <span
+        aria-hidden
+        className="mx-auto inline-flex size-[88px] items-center justify-center rounded-full bg-success-soft text-success"
+      >
+        <svg
+          width="44"
+          height="44"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M5 12.5l4.5 4.5L19 7" />
+        </svg>
+      </span>
 
-      <h1 className="text-foreground mt-4 text-2xl font-semibold tracking-tight">
-        Pedido enviado!
+      <h1 className="mt-[22px] text-center text-[24px] font-semibold leading-[1.15] tracking-[-0.5px] text-foreground">
+        Pedido enviado para o WhatsApp
       </h1>
-      <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-        Toque no botão abaixo para abrir uma conversa no WhatsApp com{" "}
-        {order.store.name}. Você recebe a confirmação por lá.
+      <p className="mt-2 text-center text-[13px] text-gray-600 [text-wrap:pretty]">
+        {order.store.name} já recebeu seu pedido. Continue a conversa pra combinar pagamento e entrega.
       </p>
 
-      <div className="bg-muted/40 mt-6 rounded-xl p-4 text-left">
-        <div className="text-muted-foreground flex items-baseline justify-between text-xs uppercase tracking-wide">
-          <span>Código do pedido</span>
-          <span>Total</span>
+      {/* Card resumo */}
+      <div className="mt-7 rounded-[14px] border border-border bg-background p-4">
+        <div className="mb-2.5 flex items-baseline justify-between">
+          <span className="font-mono text-[10px] uppercase tracking-[0.5px] text-gray-500">
+            PEDIDO
+          </span>
+          <span className="font-mono text-[12px] font-semibold tracking-[0.5px] text-foreground">
+            #{order.shortCode}
+          </span>
         </div>
-        <div className="text-foreground mt-1 flex items-baseline justify-between text-lg font-semibold tabular-nums">
-          <span>#{order.shortCode}</span>
-          <span>{formatBRL(order.totalInCents)}</span>
-        </div>
+        <SummaryRow label={itemsLabel} value={formatBRL(order.totalInCents)} />
+        <SummaryRow label="Atendido por" value={order.store.name} />
+        <SummaryRow label="Status" value={statusLabel} />
       </div>
 
-      <WhatsAppOpenButton
+      {/* Banner brand-tint */}
+      <div className="mt-[22px] rounded-[12px] bg-brand-tint px-3.5 py-3.5 text-[11.5px] leading-[1.55] text-gray-700">
+        Salve o pedido{" "}
+        <span className="font-mono font-semibold">#{order.shortCode}</span> — você pode usá-lo pra
+        acompanhar status mesmo sem cadastro.
+      </div>
+
+      <SuccessCtas
         publicToken={order.publicToken}
         whatsappUrl={whatsappUrl}
-        className="mt-6"
+        storeSlug={storeSlug}
       />
+    </div>
+  );
+}
 
-      <Button asChild variant="ghost" className="mt-2 w-full">
-        <Link href={`/p/${order.publicToken}`} prefetch={false}>
-          Ver detalhes do pedido
-          <ArrowRight className="size-4" aria-hidden />
-        </Link>
-      </Button>
-
-      <p className="text-muted-foreground/70 mt-6 text-xs">
-        Guarde este código. Você pode reabrir o pedido em qualquer momento
-        em <span className="text-foreground font-mono">vitre.app/p/{order.publicToken}</span>.
-      </p>
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between py-[5px] text-[12px]">
+      <span className="text-gray-600">{label}</span>
+      <span className="font-medium text-foreground">{value}</span>
     </div>
   );
 }

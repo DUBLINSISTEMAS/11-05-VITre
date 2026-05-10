@@ -1,0 +1,1 @@
+ALTER TABLE "store" ADD COLUMN "bottom_nav_style" text DEFAULT 'pill' NOT NULL;

@@ -1,12 +1,27 @@
 "use client";
 
 /**
- * Galeria de imagens redesign - estilo app de moda premium.
+ * Galeria de imagens do PDP — fiel ao canvas-v1 (`_vitre-storefront.jsx:246-258`).
  *
- * Features:
- * - Imagem principal grande com navegação via dots
- * - Thumbnails circulares para cores/variantes
- * - Navegação suave com intersection observer
+ * Layout:
+ *   - Imagem principal full-bleed (sem rounded-radius). Aspect-square no
+ *     mobile, mantém na desktop (orquestração de full-bleed/padding fica
+ *     com `product-detail-view`).
+ *   - Carrossel horizontal scroll-snap com IntersectionObserver pra
+ *     sincronizar com os dots.
+ *   - Dots indicator absolute bottom-3.5 centro:
+ *       active   = 18×6 rounded-[3px] bg-foreground (pill expandido)
+ *       inactive = 6×6  rounded-[3px] bg-black/25
+ *     Transition `width 200ms` ao trocar slide.
+ *   - Header (back+search) NÃO está aqui — é responsabilidade do
+ *     `<StoreHeader variant="pdp-floating">` orquestrado pelo detail-view.
+ *
+ * Removido vs versão anterior:
+ *   - Thumbnails circulares abaixo da galeria (linhas 124-150 da versão
+ *     antiga). Canvas não tem.
+ *   - Background overlay com `bg-black/20 backdrop-blur` em volta dos
+ *     dots — canvas tem dots flutuando direto sobre a imagem.
+ *   - `rounded-3xl bg-gray-50` no container — canvas é borderRadius 0.
  */
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -32,9 +47,7 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
       (entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
-            const idx = Number(
-              (entry.target as HTMLElement).dataset.slideIndex,
-            );
+            const idx = Number((entry.target as HTMLElement).dataset.slideIndex);
             if (!Number.isNaN(idx)) setActiveIndex(idx);
           }
         }
@@ -62,91 +75,62 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
 
   if (images.length === 0) {
     return (
-      <div className="flex aspect-square items-center justify-center rounded-3xl bg-gray-100 text-sm text-muted-foreground">
+      <div className="flex aspect-square items-center justify-center bg-gray-100 text-sm text-muted-foreground">
         Sem foto
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {/* Main image carousel */}
-      <div className="relative">
-        <div
-          ref={containerRef}
-          className="flex aspect-square w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden rounded-3xl bg-gray-50 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          role="region"
-          aria-roledescription="carrossel"
-          aria-label={`Imagens de ${productName}`}
-        >
-          {images.map((img, idx) => (
-            <figure
-              key={img.id}
-              ref={(el) => {
-                slideRefs.current[idx] = el;
-              }}
-              data-slide-index={idx}
-              className="relative aspect-square w-full shrink-0 snap-start"
-            >
-              <Image
-                src={img.url}
-                alt={img.alt ?? productName}
-                fill
-                sizes="(max-width: 1024px) 100vw, 50vw"
-                priority={idx === 0}
-                className="h-auto w-full object-cover"
-              />
-            </figure>
-          ))}
-        </div>
+    <div className="relative">
+      {/* Carrossel scroll-snap */}
+      <div
+        ref={containerRef}
+        className="flex aspect-square w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden bg-gray-50 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        role="region"
+        aria-roledescription="carrossel"
+        aria-label={`Imagens de ${productName}`}
+      >
+        {images.map((img, idx) => (
+          <figure
+            key={img.id}
+            ref={(el) => {
+              slideRefs.current[idx] = el;
+            }}
+            data-slide-index={idx}
+            className="relative aspect-square w-full shrink-0 snap-start"
+          >
+            <Image
+              src={img.url}
+              alt={img.alt ?? productName}
+              fill
+              sizes="(max-width: 1024px) 100vw, 50vw"
+              priority={idx === 0}
+              className="h-auto w-full object-cover"
+            />
+          </figure>
+        ))}
+      </div>
 
-        {/* Dots indicator overlay */}
-        {images.length > 1 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 rounded-full bg-black/20 px-2 py-1 backdrop-blur-sm">
-            {images.map((img, idx) => (
+      {/* Dots — canvas linhas 254-258 */}
+      {images.length > 1 && (
+        <div className="absolute inset-x-0 bottom-3.5 flex items-center justify-center gap-1.5">
+          {images.map((img, idx) => {
+            const active = idx === activeIndex;
+            return (
               <button
                 key={img.id}
                 type="button"
                 onClick={() => scrollTo(idx)}
-                className={cn(
-                  "rounded-full transition-all duration-300 outline-none",
-                  idx === activeIndex
-                    ? "bg-white w-4 h-1.5"
-                    : "bg-white/50 hover:bg-white/70 w-1.5 h-1.5",
-                )}
                 aria-label={`Ver imagem ${idx + 1} de ${images.length}`}
+                className={cn(
+                  "h-1.5 rounded-[3px] outline-none transition-[width,background-color] duration-200",
+                  "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                  active ? "w-[18px] bg-foreground" : "w-1.5 bg-black/25 hover:bg-black/40",
+                )}
               />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Circular thumbnails */}
-      {images.length > 1 && (
-        <div className="flex items-center justify-center gap-3 px-5 lg:px-0">
-          {images.map((img, idx) => (
-            <button
-              key={img.id}
-              type="button"
-              onClick={() => scrollTo(idx)}
-              className={cn(
-                "relative size-12 overflow-hidden rounded-full outline-none transition-all duration-200",
-                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                idx === activeIndex
-                  ? "ring-2 ring-foreground ring-offset-2"
-                  : "opacity-60 hover:opacity-100",
-              )}
-              aria-label={`Ver imagem ${idx + 1} de ${images.length}`}
-            >
-              <Image
-                src={img.url}
-                alt=""
-                fill
-                sizes="48px"
-                className="object-cover"
-              />
-            </button>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

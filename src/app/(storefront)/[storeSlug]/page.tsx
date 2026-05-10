@@ -1,19 +1,29 @@
 /**
- * Home pública de uma loja.
+ * Home pública — fiel ao canvas-referencia (canvas-v1).
  *
- * Server Component. Owner-aware: se o lojista visita a própria loja
- * vazia, mostra CTA pra cadastrar primeiro produto. Cliente comum vê
- * copy de "loja sendo preparada".
+ * Server Component. Owner-aware: lojista vê CTA pra cadastrar primeiro
+ * produto na loja vazia; cliente vê copy de catálogo em construção.
+ *
+ * Estrutura canvas-v1 (em VTHome):
+ *   1. <HeroCard>            — kicker editorial + título + subtítulo + CTA
+ *   2. Categorias header     — "Categorias" display + count mono
+ *   3. <CategoryStrip>       — tiles quadrados horizontal
+ *   4. "Em destaque" header  — title + "Ver todos →" cor da loja
+ *   5. <ProductGrid (4)>     — 2-col overlay, primeiros 4 destaques
+ *   6. <PromoStrip>          — só se houver promo ativa
+ *   7. <ProductGrid (2)>     — 2-col overlay, sem header, mais 2 produtos
  */
 import { Plus, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { BannerCarousel } from "@/components/storefront/banner-carousel";
-import { CategoryPills } from "@/components/storefront/category-pills";
+import { CategoryStrip } from "@/components/storefront/category-strip";
+import { HeroCard } from "@/components/storefront/hero-card";
 import { ProductGrid } from "@/components/storefront/product-grid";
+import { PromoStrip } from "@/components/storefront/promo-strip";
 import { Button } from "@/components/ui/button";
 import { getSessionOrNull } from "@/lib/auth-server";
+import { hasActivePromo } from "@/lib/pricing";
 import { getActiveBanners } from "@/lib/storefront/banners-loader";
 import { getCategoryTree } from "@/lib/storefront/categories-loader";
 import {
@@ -40,40 +50,92 @@ export default async function StoreHomePage({
   ]);
 
   const isOwner = session?.user?.id === store.ownerId;
-  const showFeaturedSection = featured.length > 0;
-  const featuredLcpEligible = banners.length === 0;
-  const recentLcpEligible = !showFeaturedSection && banners.length === 0;
-  const isCatalogEmpty = !showFeaturedSection && recent.length === 0;
+  const heroBanner = banners[0] ?? null;
+  const isCatalogEmpty = featured.length === 0 && recent.length === 0;
+
+  // Bloco 1 (header "Em destaque"): primeiros 4 destaques
+  const featuredBlock = featured.slice(0, 4);
+  // Bloco 2 (sem header): mais 2 produtos. Preferência: do recent que
+  // ainda não estão em featuredBlock.
+  const featuredIds = new Set(featuredBlock.map((p) => p.id));
+  const moreBlock = recent
+    .filter((p) => !featuredIds.has(p.id))
+    .slice(0, 2);
+
+  // PromoStrip: deriva count + nearest promoEndsAt do que está carregado.
+  const now = new Date();
+  const allLoaded = [
+    ...featuredBlock,
+    ...moreBlock,
+    ...featured.slice(4),
+    ...recent,
+  ];
+  const promoSet = new Map<string, (typeof allLoaded)[number]>();
+  for (const p of allLoaded) {
+    if (!promoSet.has(p.id) && hasActivePromo(p, now)) promoSet.set(p.id, p);
+  }
+  const promoCount = promoSet.size;
+  const promoEndDates = Array.from(promoSet.values())
+    .map((p) => p.promoEndsAt)
+    .filter((d): d is Date => d != null && d > now);
+  const nearestEndsAt =
+    promoEndDates.length > 0
+      ? new Date(Math.min(...promoEndDates.map((d) => d.getTime())))
+      : null;
 
   return (
-    <div className="space-y-6">
-      {banners.length > 0 && (
-        <section aria-label="Promoções">
-          <BannerCarousel banners={banners} />
-        </section>
-      )}
-
-      <CategoryPills storeSlug={store.slug} categories={categoryTree} />
-
-      {showFeaturedSection && (
-        <ProductGrid
+    <div className="space-y-[18px]">
+      {heroBanner && (
+        <HeroCard
+          banner={heroBanner}
           storeSlug={store.slug}
-          products={featured}
-          priorityFirst={featuredLcpEligible}
-          priorityCount={2}
-          sectionTitle="Especial Para Você"
-          seeAllHref={`/${store.slug}/destaques`}
+          storeName={store.name}
+          priority
         />
       )}
 
-      {recent.length > 0 && (
+      {categoryTree.length > 0 && (
+        <section className="space-y-2">
+          <header className="flex items-baseline justify-between">
+            <h2 className="text-sm font-semibold tracking-[-0.3px] text-foreground">
+              Categorias
+            </h2>
+            <span className="font-mono text-[9.5px] text-gray-500">
+              {String(categoryTree.length).padStart(2, "0")}
+            </span>
+          </header>
+          <CategoryStrip
+            storeSlug={store.slug}
+            categories={categoryTree}
+          />
+        </section>
+      )}
+
+      {featuredBlock.length > 0 && (
         <ProductGrid
           storeSlug={store.slug}
-          products={recent}
-          priorityFirst={recentLcpEligible}
+          products={featuredBlock}
+          sectionTitle="Em destaque"
+          seeAllHref={`/${store.slug}/destaques`}
+          priorityFirst={!heroBanner}
           priorityCount={2}
-          sectionTitle="Novidades"
-          seeAllHref={`/${store.slug}/novidades`}
+          variant="overlay"
+        />
+      )}
+
+      {promoCount > 0 && (
+        <PromoStrip
+          storeSlug={store.slug}
+          count={promoCount}
+          nearestEndsAt={nearestEndsAt}
+        />
+      )}
+
+      {moreBlock.length > 0 && (
+        <ProductGrid
+          storeSlug={store.slug}
+          products={moreBlock}
+          variant="overlay"
         />
       )}
 
@@ -93,14 +155,17 @@ function EmptyCatalog({
 }) {
   if (isOwner) {
     return (
-      <div className="px-6 py-16 text-center">
-        <div className="bg-primary/10 mx-auto mb-5 flex size-20 items-center justify-center rounded-full">
-          <Sparkles className="text-primary size-10" />
+      <div className="rounded-2xl border border-border bg-card px-6 py-16 text-center">
+        <div className="mx-auto mb-5 flex size-20 items-center justify-center rounded-full bg-foreground/5">
+          <Sparkles className="size-9 text-foreground" />
         </div>
-        <h2 className="text-foreground mb-1.5 text-lg font-semibold">
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          PRIMEIRO PASSO
+        </p>
+        <h2 className="mt-1 text-lg font-semibold text-foreground">
           Sua loja está pronta
         </h2>
-        <p className="text-muted-foreground mx-auto max-w-xs text-sm leading-relaxed">
+        <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">
           Cadastre o primeiro produto para que seus clientes possam ver o
           catálogo da {storeName}.
         </p>
@@ -115,14 +180,17 @@ function EmptyCatalog({
   }
 
   return (
-    <div className="px-6 py-20 text-center">
-      <div className="bg-muted mx-auto mb-5 flex size-20 items-center justify-center rounded-full">
-        <Sparkles className="text-muted-foreground size-10" />
+    <div className="rounded-2xl border border-border bg-card px-6 py-20 text-center">
+      <div className="mx-auto mb-5 flex size-20 items-center justify-center rounded-full bg-muted">
+        <Sparkles className="size-9 text-muted-foreground" />
       </div>
-      <h2 className="text-foreground mb-1.5 text-lg font-semibold">
+      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+        EM BREVE
+      </p>
+      <h2 className="mt-1 text-lg font-semibold text-foreground">
         Catálogo em construção
       </h2>
-      <p className="text-muted-foreground mx-auto max-w-xs text-sm leading-relaxed">
+      <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">
         Em breve você verá os produtos da {storeName} aqui.
       </p>
     </div>

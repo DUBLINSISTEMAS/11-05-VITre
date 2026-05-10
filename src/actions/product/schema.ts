@@ -23,34 +23,74 @@ export type ReorderProductImagesInput = z.infer<typeof reorderProductImagesSchem
 
 // ---------- Variante (input do form, antes de persistir) ----------
 
-export const variantInputSchema = z.object({
-  /** Presente quando já está no banco; ausente em variante nova. */
-  id: z.string().uuid().optional(),
-  /**
-   * Id estável client-side (gerado em adições novas). Server ignora — só
-   * existe para o React keyear linhas no editor. Mantido no schema pra
-   * Zod não strip-ar e quebrar estabilidade durante re-renders.
-   */
-  tempId: z.string().optional(),
-  name: z
-    .string()
-    .trim()
-    .min(1, "Nome da variante não pode ficar em branco.")
-    .max(40, "Nome muito longo (máx 40)."),
-  /** centavos. null = usa basePriceInCents do produto. */
-  priceInCents: z
-    .number()
-    .int()
-    .min(0, "Preço não pode ser negativo.")
-    .max(999_999_999, "Preço acima do máximo permitido.")
-    .nullable(),
-  /** null = sem controle de estoque pra esta variante (herda do produto). */
-  stockQuantity: z
-    .number()
-    .int()
-    .min(0, "Estoque não pode ser negativo.")
-    .nullable(),
-});
+/**
+ * Helper: normaliza string opcional vinda do form.
+ * Trim + "" → null (lojista deixou em branco = sem valor).
+ * Aceita também null vindo direto (ex: server prefilling).
+ */
+const optionalTrimmedString = (max: number, fieldLabel: string) =>
+  z
+    .union([
+      z
+        .string()
+        .trim()
+        .max(max, `${fieldLabel} muito longo (máx ${max}).`),
+      z.null(),
+    ])
+    .transform((v) => (v === null || v === "" ? null : v));
+
+export const variantAxisSchema = z.enum(["size", "color"]);
+export type VariantAxis = z.infer<typeof variantAxisSchema>;
+
+export const variantInputSchema = z
+  .object({
+    /** Presente quando já está no banco; ausente em variante nova. */
+    id: z.string().uuid().optional(),
+    /**
+     * Id estável client-side (gerado em adições novas). Server ignora — só
+     * existe para o React keyear linhas no editor. Mantido no schema pra
+     * Zod não strip-ar e quebrar estabilidade durante re-renders.
+     */
+    tempId: z.string().optional(),
+    name: z
+      .string()
+      .trim()
+      .min(1, "Nome da variante não pode ficar em branco.")
+      .max(40, "Nome muito longo (máx 40)."),
+    /** centavos. null = usa basePriceInCents do produto. */
+    priceInCents: z
+      .number()
+      .int()
+      .min(0, "Preço não pode ser negativo.")
+      .max(999_999_999, "Preço acima do máximo permitido.")
+      .nullable(),
+    /** null = sem controle de estoque pra esta variante (herda do produto). */
+    stockQuantity: z
+      .number()
+      .int()
+      .min(0, "Estoque não pode ser negativo.")
+      .nullable(),
+    /**
+     * Eixo da variante. "size" renderiza pill com texto; "color" renderiza
+     * swatch preenchido por `colorHex`. Default "size" preserva
+     * comportamento histórico (todas variantes pré-canvas-v1 são tamanho).
+     */
+    axis: variantAxisSchema.default("size"),
+    /**
+     * CSS color string (hex/oklch/rgb). Usado só quando axis="color".
+     * Vazio "" → null (lojista limpou). Aceita até 64 chars (cobre
+     * "oklch(0.85 0.02 80 / 0.95)" com folga).
+     */
+    colorHex: optionalTrimmedString(64, "Cor"),
+  })
+  .refine(
+    (v) =>
+      v.axis !== "color" || (v.colorHex !== null && v.colorHex.length > 0),
+    {
+      message: "Informe a cor (ex: #1E3FE6).",
+      path: ["colorHex"],
+    },
+  );
 export type VariantInput = z.infer<typeof variantInputSchema>;
 
 // ---------- Update produto ----------
@@ -90,6 +130,11 @@ const productFormFieldsSchema = z.object({
     .nullable(),
   isActive: z.boolean(),
   isFeatured: z.boolean(),
+  // Meta-fields canvas-v1 (PDP). Todos opcionais; "" → null no transform.
+  composition: optionalTrimmedString(120, "Composição"),
+  modeling: optionalTrimmedString(120, "Modelagem"),
+  lining: optionalTrimmedString(120, "Forro"),
+  washing: optionalTrimmedString(120, "Lavagem"),
   variants: z.array(variantInputSchema).max(20, "Máximo de 20 variantes."),
 });
 
@@ -108,7 +153,13 @@ export const productFormSchema = productFormFieldsSchema
     message: "Informe a quantidade em estoque.",
     path: ["stockQuantity"],
   });
-export type ProductFormValues = z.infer<typeof productFormFieldsSchema>;
+/**
+ * RHF: defaultValues = INPUT (pré-transform — `composition` é string `""`).
+ * Server: data = OUTPUT (pós-transform — `composition` é `string|null`).
+ * Mantemos os 2 tipos exportados pra cada lado importar o seu.
+ */
+export type ProductFormValues = z.input<typeof productFormFieldsSchema>;
+export type ProductFormOutput = z.output<typeof productFormFieldsSchema>;
 
 /** Schema da action — adiciona `productId` e reaplica refines. */
 export const updateProductSchema = productFormFieldsSchema
@@ -126,7 +177,13 @@ export const updateProductSchema = productFormFieldsSchema
     message: "Informe a quantidade em estoque.",
     path: ["stockQuantity"],
   });
-export type UpdateProductInput = z.infer<typeof updateProductSchema>;
+/**
+ * Tipo do INPUT da action (pré-Zod-parse). Usamos `z.input<>` porque a action
+ * faz `safeParse` internamente — defaults (`axis: "size"`) e transforms
+ * (`composition` "" → null) rodam server-side. Se usássemos `z.infer<>`
+ * (= output), o form RHF (que carrega `z.input<>`) não tipa-bateria.
+ */
+export type UpdateProductInput = z.input<typeof updateProductSchema>;
 
 // ---------- Toggle ativo / Delete ----------
 

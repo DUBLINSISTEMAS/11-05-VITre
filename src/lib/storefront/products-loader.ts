@@ -23,7 +23,20 @@
  * tipos comuns) vivem em `_shared.ts` e são importados também por
  * `search-loader.ts`. NÃO importe `_shared.ts` de fora deste diretório.
  */
-import { and, asc, count, desc, eq, gte, inArray, lte } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  or,
+  sql,
+} from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 import { cache } from "react";
 
@@ -59,6 +72,12 @@ export interface ListProductsParams {
   categorySlug?: string;
   priceMinCents?: number;
   priceMaxCents?: number;
+  /**
+   * Filtra apenas produtos com promoção ativa AGORA. Usa now() server-side
+   * (NOT NULL no preço, janela de datas válida com extremos opcionais).
+   * Espelha `hasActivePromo` em pricing.ts.
+   */
+  promoOnly?: boolean;
   sort?: ProductSort;
   page?: number;
   limit?: number;
@@ -133,6 +152,27 @@ async function loadProductsFromDb(
       conditions.push(lte(productTable.basePriceInCents, params.priceMaxCents));
     }
 
+    if (params.promoOnly) {
+      // Mesma lógica de `hasActivePromo`: preço promo presente, menor que
+      // base, e janela de datas válida (extremos opcionais = sem limite).
+      conditions.push(isNotNull(productTable.promoPriceInCents));
+      conditions.push(
+        sql`${productTable.promoPriceInCents} < ${productTable.basePriceInCents}`,
+      );
+      conditions.push(
+        or(
+          isNull(productTable.promoStartsAt),
+          lte(productTable.promoStartsAt, sql`now()`),
+        )!,
+      );
+      conditions.push(
+        or(
+          isNull(productTable.promoEndsAt),
+          gte(productTable.promoEndsAt, sql`now()`),
+        )!,
+      );
+    }
+
     const where = and(...conditions);
 
     const [rows, totalResult] = await Promise.all([
@@ -180,6 +220,7 @@ export const listProducts = cache(
       params.categorySlug ?? "all",
       String(params.priceMinCents ?? ""),
       String(params.priceMaxCents ?? ""),
+      params.promoOnly ? "promo" : "all-promo",
       params.sort ?? "relevance",
       String(params.page ?? 1),
       String(params.limit ?? DEFAULT_PRODUCT_LIMIT),

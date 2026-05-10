@@ -3,9 +3,17 @@
 import { ChevronDownIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { useId, useState } from "react";
 
+import type { VariantAxis } from "@/actions/product/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { tempId } from "@/lib/id";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +29,14 @@ export interface VariantData {
   priceInCents: number | null;
   /** null = usa stock do produto (ou ilimitado) */
   stockQuantity: number | null;
+  /** Eixo: tamanho (pill texto) ou cor (swatch). Default "size". */
+  axis: VariantAxis;
+  /**
+   * CSS color (hex/oklch/rgb). Forma do form (sempre string, "" = vazio).
+   * Zod transform converte "" → null no submit. Banco recebe null quando
+   * axis="size" (ver action update.ts).
+   */
+  colorHex: string;
 }
 
 interface VariantEditorProps {
@@ -55,6 +71,8 @@ export function VariantEditor({
       name: "",
       priceInCents: null,
       stockQuantity: null,
+      axis: "size",
+      colorHex: "",
     };
     onChange([...value, newVariant]);
     setExpanded(true);
@@ -163,6 +181,13 @@ function VariantRow({
   const nameId = useId();
   const priceId = useId();
   const stockId = useId();
+  const axisId = useId();
+  const colorId = useId();
+
+  // Placeholder do nome muda conforme eixo: ajuda Sandra a entender que
+  // pra cor o "nome" é label visível ("Cru", "Café"), não o hex.
+  const namePlaceholder =
+    variant.axis === "color" ? "Cru · Café · Preto" : "P · 14 · 100ml";
 
   return (
     <div className="bg-card rounded-lg border p-3">
@@ -176,7 +201,7 @@ function VariantRow({
             value={variant.name}
             onChange={(e) => onUpdate({ name: e.target.value })}
             disabled={disabled}
-            placeholder="P · 14 · 100ml"
+            placeholder={namePlaceholder}
             maxLength={40}
             autoComplete="off"
           />
@@ -195,6 +220,31 @@ function VariantRow({
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="space-y-1.5">
+          <Label htmlFor={axisId} className="text-xs">
+            Tipo
+          </Label>
+          <Select
+            value={variant.axis}
+            onValueChange={(v) => {
+              const nextAxis = v as VariantAxis;
+              // Trocar pra "size" zera colorHex pra não persistir lixo.
+              onUpdate({
+                axis: nextAxis,
+                colorHex: nextAxis === "color" ? variant.colorHex : "",
+              });
+            }}
+            disabled={disabled}
+          >
+            <SelectTrigger id={axisId}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="size">Tamanho</SelectItem>
+              <SelectItem value="color">Cor</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="space-y-1.5">
           <Label htmlFor={priceId} className="text-xs">
             Preço
@@ -233,6 +283,33 @@ function VariantRow({
             placeholder="Ilimitado"
           />
         </div>
+        {variant.axis === "color" ? (
+          <div className="space-y-1.5">
+            <Label htmlFor={colorId} className="text-xs">
+              Cor (hex/oklch)
+            </Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id={colorId}
+                value={variant.colorHex}
+                onChange={(e) => onUpdate({ colorHex: e.target.value })}
+                disabled={disabled}
+                placeholder="#1E3FE6"
+                maxLength={64}
+                autoComplete="off"
+                spellCheck={false}
+                className="font-mono text-xs"
+              />
+              <span
+                aria-hidden
+                className="border-border size-6 shrink-0 rounded-full border"
+                style={{
+                  background: variant.colorHex || "transparent",
+                }}
+              />
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

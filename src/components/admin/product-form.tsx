@@ -55,6 +55,11 @@ export interface ProductFormInitialData {
   stockQuantity: number | null;
   isActive: boolean;
   isFeatured: boolean;
+  /** Meta-fields canvas-v1 — null quando lojista não preencheu. */
+  composition: string | null;
+  modeling: string | null;
+  lining: string | null;
+  washing: string | null;
   variants: VariantData[];
   images: ProductImageData[];
 }
@@ -122,11 +127,20 @@ export function ProductForm({
       stockQuantity: initialData.stockQuantity,
       isActive: initialData.isActive,
       isFeatured: initialData.isFeatured,
+      // Meta-fields: RHF mantém "" no input (string sempre, NÃO null) —
+      // Zod transform "" → null roda no submit. Null vindo do banco vira "".
+      composition: initialData.composition ?? "",
+      modeling: initialData.modeling ?? "",
+      lining: initialData.lining ?? "",
+      washing: initialData.washing ?? "",
       variants: initialData.variants.map((v) => ({
         id: v.id,
         name: v.name,
         priceInCents: v.priceInCents,
         stockQuantity: v.stockQuantity,
+        axis: v.axis,
+        // RHF: "" controlado no Input; transform converte pra null no submit.
+        colorHex: v.colorHex ?? "",
       })),
     },
   });
@@ -247,6 +261,82 @@ export function ProductForm({
               {errors.description.message}
             </p>
           ) : null}
+        </div>
+      </FormSection>
+
+      <FormSection
+        title="Detalhes"
+        description="Aparecem na ficha do produto na vitrine. Tudo opcional — preencha só o que fizer sentido."
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="product-composition">Composição</Label>
+            <Input
+              id="product-composition"
+              placeholder="Ex: 100% linho"
+              maxLength={120}
+              autoComplete="off"
+              disabled={isPending}
+              aria-invalid={!!errors.composition}
+              {...register("composition")}
+            />
+            {errors.composition?.message ? (
+              <p className="text-destructive text-xs">
+                {errors.composition.message}
+              </p>
+            ) : null}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="product-modeling">Modelagem</Label>
+            <Input
+              id="product-modeling"
+              placeholder="Ex: Evasê midi"
+              maxLength={120}
+              autoComplete="off"
+              disabled={isPending}
+              aria-invalid={!!errors.modeling}
+              {...register("modeling")}
+            />
+            {errors.modeling?.message ? (
+              <p className="text-destructive text-xs">
+                {errors.modeling.message}
+              </p>
+            ) : null}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="product-lining">Forro</Label>
+            <Input
+              id="product-lining"
+              placeholder="Ex: Não possui"
+              maxLength={120}
+              autoComplete="off"
+              disabled={isPending}
+              aria-invalid={!!errors.lining}
+              {...register("lining")}
+            />
+            {errors.lining?.message ? (
+              <p className="text-destructive text-xs">
+                {errors.lining.message}
+              </p>
+            ) : null}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="product-washing">Lavagem</Label>
+            <Input
+              id="product-washing"
+              placeholder="Ex: À mão"
+              maxLength={120}
+              autoComplete="off"
+              disabled={isPending}
+              aria-invalid={!!errors.washing}
+              {...register("washing")}
+            />
+            {errors.washing?.message ? (
+              <p className="text-destructive text-xs">
+                {errors.washing.message}
+              </p>
+            ) : null}
+          </div>
         </div>
       </FormSection>
 

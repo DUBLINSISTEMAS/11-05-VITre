@@ -29,11 +29,5 @@ export default async function SacolaPage({
   const store = await getStoreBySlug(storeSlug);
   if (!store) notFound();
 
-  return (
-    <CheckoutPanel
-      storeSlug={store.slug}
-      storeName={store.name}
-      whatsappDisplay={store.whatsappDisplay}
-    />
-  );
+  return <CheckoutPanel store={store} />;
 }

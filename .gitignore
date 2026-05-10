@@ -29,6 +29,19 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+*.log
+
+# editor / OS
+.idea/
+*.swp
+*~
+.cache/
+desktop.ini
+Thumbs.db
+
+# canvas extraction artefatos temporários (relatório + JSX extraído)
+canvas-extracted-tmp/
+scripts/extract-canvas-tmp.cjs
 
 # env files (can opt-in for committing if needed)
 .env*

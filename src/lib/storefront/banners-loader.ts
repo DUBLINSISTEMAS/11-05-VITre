@@ -10,6 +10,13 @@ import { cache } from "react";
 
 import type { Banner } from "@/db/schema";
 import { bannerTable } from "@/db/schema";
+
+/**
+ * Alias semântico — banners ativos retornados ao storefront.
+ * Hoje `Banner` direto, mas mantemos o alias caso o storefront precise
+ * de uma projeção (joins, derivados editorial) sem afetar o tipo no admin.
+ */
+export type ActiveBanner = Banner;
 import { STORE_CACHE_TAG } from "@/lib/storefront/store-loader";
 import { withTenant } from "@/lib/tenant";
 

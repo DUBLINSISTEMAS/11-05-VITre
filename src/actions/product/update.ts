@@ -153,6 +153,12 @@ export async function updateProduct(
           stockQuantity: data.trackStock ? data.stockQuantity : null,
           isActive: data.isActive,
           isFeatured: data.isFeatured,
+          // Meta-fields canvas-v1 — null quando lojista deixou em branco
+          // (Zod transform "" → null já normalizou).
+          composition: data.composition,
+          modeling: data.modeling,
+          lining: data.lining,
+          washing: data.washing,
           updatedAt: new Date(),
         })
         .where(
@@ -200,6 +206,10 @@ export async function updateProduct(
             priceInCents: v.priceInCents,
             stockQuantity: v.stockQuantity,
             trackStock: v.stockQuantity !== null,
+            // Eixo canvas-v1: zera colorHex quando axis="size" pra não
+            // arrastar valor antigo se Sandra trocou tamanho ↔ cor.
+            axis: v.axis,
+            colorHex: v.axis === "color" ? v.colorHex : null,
           })
           .where(
             and(
@@ -219,6 +229,8 @@ export async function updateProduct(
             priceInCents: v.priceInCents,
             stockQuantity: v.stockQuantity,
             trackStock: v.stockQuantity !== null,
+            axis: v.axis,
+            colorHex: v.axis === "color" ? v.colorHex : null,
           })),
         );
       }

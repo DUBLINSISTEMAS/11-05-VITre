@@ -29,9 +29,10 @@ export type UploadCategoryImageResult =
  * Sobe imagem para uma categoria. Substitui imagem anterior (deleta a antiga
  * do Storage best-effort) — single-slot por categoria.
  *
- * Usada nos círculos da home (CategoryCircles). Compressão padrão do
- * projeto (sharp 800×800 webp 75%) — pode ser ampla, será mostrada num
- * crop circular de 72px no mobile, então sharp.fit:cover já cuida.
+ * Usada na strip de categorias da home (CategoryStrip). Compressão
+ * padrão do projeto (sharp 800×800 webp 75%) — pode ser ampla, será
+ * mostrada num tile quadrado de 76px no mobile (rounded-[10px]), então
+ * sharp.fit:cover já cuida.
  *
  * Validações:
  *  - Sessão + ratelimit (upload)

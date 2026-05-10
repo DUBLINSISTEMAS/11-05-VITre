@@ -1,20 +1,30 @@
 "use client";
 
 /**
- * Premium checkout panel with modern styling.
+ * CheckoutPanel — fiel ao canvas-referencia (VTSacola).
  *
- * Features:
- * - Clean, organized layout
- * - Visual progress indicators
- * - Enhanced form UX
- * - WhatsApp integration CTA
+ * Estrutura canvas:
+ *   1. Header sticky-title ("Sua sacola" + counter "{N} ITENS")
+ *   2. Lista de itens (thumbnail 80×100 + variantes + stepper 28px + total)
+ *   3. Form "Seus dados" (name + whatsapp + notes — Lote 2: NÃO existe no
+ *      canvas mas é necessário pro createOrderFromCart preencher o WA;
+ *      bloco mínimo, posicionado entre lista e totals).
+ *   4. Cupom — ESCONDIDO (decisão Lote 2: sem couponTable).
+ *   5. Totals card (Subtotal/Frete/Total) bg-muted border rounded-12.
+ *   6. Aviso dashed border ("Pedido finalizado pelo WhatsApp...").
+ *   7. Sticky CTA WA height-48 rounded-12 shadow-colored.
+ *
+ * Lógica preservada (sem mudanças):
+ *   - createOrderFromCart server action (idempotency via crypto.randomUUID)
+ *   - RHF + Zod (customerInputSchema)
+ *   - Routing pra /sucesso após sucesso
+ *   - Tratamento de OUT_OF_STOCK e RATE_LIMIT
+ *
+ * Bottom-nav e header global escondidos em /sacola via shell-content.
  */
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  ArrowRight,
-  CheckCircle2,
   Loader2,
-  MessageCircle,
   Minus,
   Plus,
   ShoppingBag,
@@ -33,24 +43,21 @@ import {
   customerInputSchema,
 } from "@/actions/order/schema";
 import { WhatsAppInput } from "@/components/onboarding/whatsapp-input";
+import { StoreHeader } from "@/components/storefront/store-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import type { Store } from "@/db/schema";
 import { useCart } from "@/hooks/use-cart";
 import { formatBRL } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
 export interface CheckoutPanelProps {
-  storeSlug: string;
-  storeName: string;
-  whatsappDisplay: string;
+  store: Store;
 }
 
-export function CheckoutPanel({
-  storeSlug,
-  storeName,
-}: CheckoutPanelProps) {
+export function CheckoutPanel({ store }: CheckoutPanelProps) {
   const { state, count, subtotalCents, isHydrated, updateQty, removeItem } =
     useCart();
   const [isSubmitting, startTransition] = useTransition();
@@ -76,6 +83,8 @@ export function CheckoutPanel({
   useEffect(() => setStoreLoaded(true), []);
 
   const isEmpty = isHydrated && count === 0;
+  const counterLabel = count === 1 ? "1 ITEM" : `${count} ITENS`;
+  const storeFirstName = store.name.split(" ")[0] ?? store.name;
 
   const onSubmit = (data: CustomerInput) => {
     const items = state.items.map((it) => ({
@@ -94,14 +103,14 @@ export function CheckoutPanel({
 
     startTransition(async () => {
       const result = await createOrderFromCart({
-        storeSlug,
+        storeSlug: store.slug,
         idempotencyKey: idempotencyKeyRef.current!,
         items,
         ...data,
       });
 
       if (result.ok && result.shortCode) {
-        router.push(`/${storeSlug}/sucesso?code=${result.shortCode}`);
+        router.push(`/${store.slug}/sucesso?code=${result.shortCode}`);
         return;
       }
 
@@ -124,152 +133,169 @@ export function CheckoutPanel({
   // SSR / pré-hidratação
   if (!isHydrated || !storeLoaded) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <Loader2 className="size-8 animate-spin text-muted-foreground" />
-        <p className="text-muted-foreground text-sm">Carregando sacola...</p>
-      </div>
+      <>
+        <StoreHeader variant="sticky-title" store={store} title="Sua sacola" />
+        <div className="flex flex-col items-center justify-center gap-4 px-4 py-20">
+          <Loader2 className="text-muted-foreground size-8 animate-spin" />
+          <p className="text-muted-foreground text-sm">Carregando sacola...</p>
+        </div>
+      </>
     );
   }
 
   if (isEmpty) {
     return (
-      <div className="mx-auto max-w-md py-16 text-center">
-        <div className="mx-auto mb-6 flex size-20 items-center justify-center rounded-full bg-muted">
-          <ShoppingBag
-            className="size-10 text-muted-foreground"
-            aria-hidden
-          />
+      <>
+        <StoreHeader variant="sticky-title" store={store} title="Sua sacola" />
+        <div className="mx-auto max-w-md px-4 py-16 text-center">
+          <div className="bg-muted mx-auto mb-6 flex size-20 items-center justify-center rounded-full">
+            <ShoppingBag
+              className="text-muted-foreground size-10"
+              aria-hidden
+            />
+          </div>
+          <h1 className="text-foreground text-2xl font-bold">
+            Sua sacola está vazia
+          </h1>
+          <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+            Adicione produtos do catálogo da {store.name} e finalize seu pedido aqui.
+          </p>
+          <Button asChild size="lg" className="mt-8">
+            <Link href={`/${store.slug}`}>Ver catálogo</Link>
+          </Button>
         </div>
-        <h1 className="text-foreground text-2xl font-bold">
-          Sua sacola está vazia
-        </h1>
-        <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-          Adicione produtos do catalogo da {storeName} e finalize seu pedido aqui.
-        </p>
-        <Button asChild size="lg" className="mt-8 gap-2">
-          <Link href={`/${storeSlug}`}>
-            Ver catalogo
-            <ArrowRight className="size-4" />
-          </Link>
-        </Button>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="pb-36 lg:pb-12">
-      {/* Header */}
-      <header className="mb-8">
-        <h1 className="text-foreground text-2xl font-bold tracking-tight sm:text-3xl">
-          Finalizar pedido
-        </h1>
-        <p className="text-muted-foreground mt-2 text-sm">
-          Após enviar, abrimos uma conversa no WhatsApp com {storeName}.
+    <>
+      <StoreHeader
+        variant="sticky-title"
+        store={store}
+        title="Sua sacola"
+        counter={counterLabel}
+      />
+
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="mx-auto w-full max-w-screen-md px-4 pb-32 pt-2"
+        noValidate
+      >
+        {/* Lista de itens */}
+        <ul className="divide-border divide-y" role="list">
+          {state.items.map((item) => (
+            <li
+              key={`${item.productId}:${item.variantId ?? "_"}`}
+              className="py-3 first:pt-0"
+            >
+              <CartItemRow
+                item={item}
+                onIncrement={() =>
+                  updateQty(item.productId, item.variantId, item.quantity + 1)
+                }
+                onDecrement={() =>
+                  updateQty(item.productId, item.variantId, item.quantity - 1)
+                }
+                onRemove={() => removeItem(item.productId, item.variantId)}
+              />
+            </li>
+          ))}
+        </ul>
+
+        {/* Form Seus dados — bloco mínimo entre lista e totals (não-canvas
+            mas necessário pro WhatsApp prefill). */}
+        <section className="mt-6 space-y-3">
+          <h2 className="text-muted-foreground font-mono text-[9.5px] uppercase tracking-[0.5px]">
+            Seus dados
+          </h2>
+          <div className="space-y-3">
+            <FieldGroup
+              label="Nome completo"
+              htmlFor="customerName"
+              error={form.formState.errors.customerName?.message}
+              required
+            >
+              <Input
+                id="customerName"
+                autoComplete="name"
+                placeholder="Como devemos te chamar?"
+                className="h-10"
+                {...form.register("customerName")}
+                aria-invalid={!!form.formState.errors.customerName}
+              />
+            </FieldGroup>
+
+            <FieldGroup
+              label="WhatsApp"
+              htmlFor="customerPhone"
+              error={form.formState.errors.customerPhone?.message}
+              required
+            >
+              <Controller
+                control={form.control}
+                name="customerPhone"
+                render={({ field }) => (
+                  <WhatsAppInput
+                    id="customerPhone"
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    aria-invalid={!!form.formState.errors.customerPhone}
+                  />
+                )}
+              />
+            </FieldGroup>
+
+            <FieldGroup
+              label="Observações"
+              htmlFor="customerNotes"
+              hint="Tamanho, cor, horário de entrega — opcional"
+              error={form.formState.errors.customerNotes?.message}
+            >
+              <Textarea
+                id="customerNotes"
+                rows={3}
+                placeholder="Ex.: pode entregar na portaria a partir de 14h"
+                className="resize-none"
+                {...form.register("customerNotes")}
+                aria-invalid={!!form.formState.errors.customerNotes}
+              />
+            </FieldGroup>
+          </div>
+        </section>
+
+        {/* Totals card */}
+        <div className="border-border bg-muted/40 mt-5 space-y-2 rounded-xl border p-3.5">
+          <Row label="Subtotal" value={formatBRL(subtotalCents)} mono />
+          <Row label="Frete" value="A combinar" />
+          <Row label="Desconto" value="—" />
+          <hr className="border-border my-2" />
+          <div className="flex items-baseline justify-between">
+            <span className="text-[12.5px] font-semibold">Total</span>
+            <span className="text-[18px] font-semibold tabular-nums tracking-tight">
+              {formatBRL(subtotalCents)}
+            </span>
+          </div>
+        </div>
+
+        {/* Aviso dashed */}
+        <p className="border-border text-muted-foreground mt-3.5 rounded-[10px] border border-dashed p-3 text-[11px] leading-[1.5]">
+          O pedido é finalizado pelo WhatsApp da loja. Frete e formas de
+          pagamento são combinados diretamente com {storeFirstName}.
         </p>
-      </header>
+      </form>
 
-      <div className="lg:grid lg:grid-cols-[1fr_360px] lg:gap-12">
-        {/* Form section */}
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="space-y-8"
-          noValidate
-        >
-          {/* Cart items */}
-          <section className="space-y-4">
-            <SectionHeader
-              number={1}
-              title="Itens da sacola"
-              subtitle={`${count} ${count === 1 ? "item" : "itens"}`}
-            />
-            <div className="bg-card rounded-xl border border-border/60 shadow-sm overflow-hidden">
-              <ul className="divide-y divide-border/60" role="list">
-                {state.items.map((item) => (
-                  <li key={`${item.productId}:${item.variantId ?? "_"}`}>
-                    <CartItemRow
-                      item={item}
-                      onIncrement={() =>
-                        updateQty(item.productId, item.variantId, item.quantity + 1)
-                      }
-                      onDecrement={() =>
-                        updateQty(item.productId, item.variantId, item.quantity - 1)
-                      }
-                      onRemove={() => removeItem(item.productId, item.variantId)}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </section>
-
-          {/* Customer data */}
-          <section className="space-y-4">
-            <SectionHeader
-              number={2}
-              title="Seus dados"
-              subtitle="Para contato e entrega"
-            />
-            <div className="bg-card rounded-xl border border-border/60 shadow-sm p-5 space-y-5">
-              <FieldGroup
-                label="Nome completo"
-                htmlFor="customerName"
-                error={form.formState.errors.customerName?.message}
-                required
-              >
-                <Input
-                  id="customerName"
-                  autoComplete="name"
-                  placeholder="Como devemos te chamar?"
-                  className="h-11 bg-background"
-                  {...form.register("customerName")}
-                  aria-invalid={!!form.formState.errors.customerName}
-                />
-              </FieldGroup>
-
-              <FieldGroup
-                label="WhatsApp"
-                htmlFor="customerPhone"
-                error={form.formState.errors.customerPhone?.message}
-                required
-              >
-                <Controller
-                  control={form.control}
-                  name="customerPhone"
-                  render={({ field }) => (
-                    <WhatsAppInput
-                      id="customerPhone"
-                      value={field.value ?? ""}
-                      onChange={field.onChange}
-                      aria-invalid={!!form.formState.errors.customerPhone}
-                    />
-                  )}
-                />
-              </FieldGroup>
-
-              <FieldGroup
-                label="Observacoes"
-                htmlFor="customerNotes"
-                hint="Tamanho, cor, horario de entrega - opcional"
-                error={form.formState.errors.customerNotes?.message}
-              >
-                <Textarea
-                  id="customerNotes"
-                  rows={3}
-                  placeholder="Ex.: pode entregar na portaria a partir de 14h"
-                  className="bg-background resize-none"
-                  {...form.register("customerNotes")}
-                  aria-invalid={!!form.formState.errors.customerNotes}
-                />
-              </FieldGroup>
-            </div>
-          </section>
-
-          {/* Desktop CTA */}
+      {/* Sticky CTA WA */}
+      <div
+        className="border-border bg-background fixed inset-x-0 bottom-0 z-40 border-t px-4 py-3"
+        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+      >
+        <div className="mx-auto max-w-screen-md">
           <Button
-            type="submit"
-            size="lg"
+            type="button"
+            onClick={form.handleSubmit(onSubmit)}
             disabled={isSubmitting}
-            className="hidden lg:flex w-full h-14 rounded-full text-base font-semibold gap-3 bg-whatsapp hover:bg-whatsapp-hover text-whatsapp-foreground"
+            className="bg-whatsapp hover:bg-whatsapp-hover text-whatsapp-foreground h-12 w-full rounded-xl text-[14px] font-semibold shadow-[0_6px_16px_rgba(37,211,102,0.3)]"
           >
             {isSubmitting ? (
               <>
@@ -278,118 +304,37 @@ export function CheckoutPanel({
               </>
             ) : (
               <>
-                <MessageCircle className="size-5" />
-                Finalizar pelo WhatsApp
+                <WhatsAppIcon className="size-5" />
+                Finalizar no WhatsApp
               </>
             )}
           </Button>
-        </form>
-
-        {/* Order summary sidebar */}
-        <aside className="hidden lg:block">
-          <div className="sticky top-24 space-y-6">
-            <div className="bg-card rounded-xl border border-border/60 shadow-sm p-6 space-y-5">
-              <h2 className="text-foreground text-sm font-semibold uppercase tracking-wide">
-                Resumo do pedido
-              </h2>
-              
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Subtotal ({count} {count === 1 ? "item" : "itens"})</span>
-                  <span className="text-foreground font-medium tabular-nums">
-                    {formatBRL(subtotalCents)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Frete</span>
-                  <span className="text-foreground">A combinar</span>
-                </div>
-              </div>
-
-              <div className="border-t border-border/60 pt-4">
-                <div className="flex justify-between items-baseline">
-                  <span className="text-foreground font-semibold">Total</span>
-                  <span className="text-foreground text-2xl font-bold tabular-nums">
-                    {formatBRL(subtotalCents)}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Security badges */}
-            <div className="flex items-center justify-center gap-4 text-muted-foreground">
-              <div className="flex items-center gap-1.5 text-xs">
-                <CheckCircle2 className="size-4 text-success" />
-                <span>Pagamento seguro</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-xs">
-                <CheckCircle2 className="size-4 text-success" />
-                <span>Direto com a loja</span>
-              </div>
-            </div>
-          </div>
-        </aside>
-      </div>
-
-      {/* Mobile CTA */}
-      <div
-        className="fixed inset-x-0 bottom-0 z-50 lg:hidden"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
-      >
-        <div className="bg-card/95 backdrop-blur-xl border-t border-border/40 px-4 py-3">
-          <div className="mx-auto max-w-screen-xl flex items-center justify-between gap-4">
-            <div>
-              <p className="text-muted-foreground text-xs">Total</p>
-              <p className="text-foreground text-xl font-bold tabular-nums">
-                {formatBRL(subtotalCents)}
-              </p>
-            </div>
-            <Button
-              type="submit"
-              size="lg"
-              disabled={isSubmitting}
-              onClick={form.handleSubmit(onSubmit)}
-              className="h-12 px-6 rounded-full text-base font-semibold gap-2 bg-whatsapp hover:bg-whatsapp-hover text-whatsapp-foreground"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  Enviando...
-                </>
-              ) : (
-                <>
-                  <MessageCircle className="size-4" />
-                  Finalizar
-                </>
-              )}
-            </Button>
-          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
-function SectionHeader({
-  number,
-  title,
-  subtitle,
+function Row({
+  label,
+  value,
+  mono = false,
 }: {
-  number: number;
-  title: string;
-  subtitle?: string;
+  label: string;
+  value: string;
+  mono?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-foreground text-background text-sm font-bold">
-        {number}
-      </div>
-      <div>
-        <h2 className="text-foreground text-base font-semibold">{title}</h2>
-        {subtitle && (
-          <p className="text-muted-foreground text-xs">{subtitle}</p>
+    <div className="flex items-baseline justify-between">
+      <span className="text-muted-foreground text-[12px]">{label}</span>
+      <span
+        className={cn(
+          "text-foreground text-[12px] tabular-nums",
+          mono && "font-mono",
         )}
-      </div>
+      >
+        {value}
+      </span>
     </div>
   );
 }
@@ -410,18 +355,18 @@ function FieldGroup({
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-2">
-      <Label htmlFor={htmlFor} className="text-sm font-medium">
+    <div className="space-y-1.5">
+      <Label htmlFor={htmlFor} className="text-[12px] font-medium">
         {label}
         {required && <span className="text-destructive ml-0.5">*</span>}
       </Label>
       {children}
       {error ? (
-        <p role="alert" className="text-destructive text-xs font-medium">
+        <p role="alert" className="text-destructive text-[11px] font-medium">
           {error}
         </p>
       ) : hint ? (
-        <p className="text-muted-foreground text-xs">{hint}</p>
+        <p className="text-muted-foreground text-[11px]">{hint}</p>
       ) : null}
     </div>
   );
@@ -445,8 +390,9 @@ function CartItemRow({
   const canIncrement = stockCap === null || item.quantity < stockCap;
 
   return (
-    <div className="flex gap-4 p-4">
-      <div className="relative aspect-square size-20 shrink-0 overflow-hidden rounded-lg bg-muted">
+    <div className="flex gap-3">
+      {/* thumbnail 80×100 conforme canvas */}
+      <div className="bg-muted relative h-[100px] w-20 shrink-0 overflow-hidden rounded-lg">
         {item.imageUrl ? (
           <Image
             src={item.imageUrl}
@@ -456,20 +402,23 @@ function CartItemRow({
             className="object-cover"
           />
         ) : (
-          <div className="text-muted-foreground/50 grid h-full place-items-center text-[10px]">
+          <div className="text-muted-foreground/50 grid size-full place-items-center text-[10px]">
             Sem foto
           </div>
         )}
       </div>
 
-      <div className="min-w-0 flex-1 space-y-2">
+      <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-foreground line-clamp-2 text-sm font-medium leading-snug">
+          <div className="min-w-0 flex-1">
+            <p className="text-muted-foreground font-mono text-[9.5px] uppercase tracking-[0.5px]">
+              {item.productId.slice(0, 8)}
+            </p>
+            <p className="text-foreground mt-0.5 line-clamp-2 text-[12.5px] font-medium leading-[1.25]">
               {item.productName}
             </p>
             {item.variantName && (
-              <p className="text-muted-foreground text-xs mt-0.5">
+              <p className="text-muted-foreground mt-1 text-[10.5px] font-medium">
                 {item.variantName}
               </p>
             )}
@@ -477,29 +426,30 @@ function CartItemRow({
           <button
             type="button"
             onClick={onRemove}
-            className="text-muted-foreground hover:text-destructive -m-1 p-1 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+            className="text-muted-foreground hocus:text-destructive -m-1 p-1 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
             aria-label={`Remover ${item.productName}`}
           >
             <Trash2 className="size-4" aria-hidden />
           </button>
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
+        <div className="mt-auto flex items-end justify-between pt-2">
+          {/* Stepper height 28px border canvas */}
+          <div className="border-border flex h-7 items-center rounded-lg border">
             <button
               type="button"
               onClick={onDecrement}
               className={cn(
-                "grid size-8 place-items-center rounded-md text-sm font-semibold transition-colors",
-                "text-foreground hover:bg-background",
-                "outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                "grid size-7 place-items-center rounded-l-lg transition-colors",
+                "text-foreground hover:bg-muted",
+                "outline-none focus-visible:ring-2 focus-visible:ring-ring",
               )}
               aria-label={`Diminuir quantidade de ${item.productName}`}
             >
-              <Minus className="size-3.5" />
+              <Minus className="size-3" />
             </button>
             <span
-              className="w-8 text-center text-sm font-semibold tabular-nums"
+              className="w-[22px] text-center text-[12px] font-semibold tabular-nums"
               aria-label={`Quantidade: ${item.quantity}`}
             >
               {item.quantity}
@@ -509,21 +459,38 @@ function CartItemRow({
               onClick={onIncrement}
               disabled={!canIncrement}
               className={cn(
-                "grid size-8 place-items-center rounded-md text-sm font-semibold transition-colors",
-                "text-foreground hover:bg-background",
+                "grid size-7 place-items-center rounded-r-lg transition-colors",
+                "text-foreground hover:bg-muted",
                 "outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                "disabled:opacity-40 disabled:cursor-not-allowed"
+                "disabled:opacity-40 disabled:cursor-not-allowed",
               )}
               aria-label={`Aumentar quantidade de ${item.productName}`}
             >
-              <Plus className="size-3.5" />
+              <Plus className="size-3" />
             </button>
           </div>
-          <span className="text-foreground text-base font-bold tabular-nums">
+          <span className="text-foreground text-[13px] font-semibold tabular-nums">
             {formatBRL(lineTotal)}
           </span>
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * WhatsApp logo path — usado direto pra evitar dependency em outro
+ * componente. Fonte: brand guidelines WhatsApp + Lucide-style stroke.
+ */
+function WhatsAppIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden
+    >
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.768.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z" />
+    </svg>
   );
 }

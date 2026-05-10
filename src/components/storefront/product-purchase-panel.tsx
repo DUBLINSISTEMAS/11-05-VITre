@@ -1,63 +1,95 @@
 "use client";
 
 /**
- * Painel de compra do produto — redesign estilo app de moda premium.
+ * Painel de compra do produto — fiel ao canvas-v1 (`_vitre-storefront.jsx:241-358`).
  *
- * Features:
- * - Nome + categoria + preço grande
- * - Seletor de tamanho em pills com animação
- * - Descrição colapsável
- * - Barra fixa no bottom com share + Add to Cart
- * - Loading states + toast feedback
- * - Textos em PT-BR via i18n
+ *  ┌──────────────────────────────────────┐
+ *  │ SKU  (mono 9.5px)                    │
+ *  │ Nome do produto                       │  display 22px
+ *  │ R$ X,XX  R$ Y,YY  −25%               │  preço-row
+ *  │ ou 3× de R$ Z,ZZ sem juros           │  sub 11px
+ *  ├──────────────────────────────────────┤
+ *  │ Tamanho       guia de medidas         │
+ *  │ [PP] [P] [M̲] [G] [G̶G̶]                │  pills 46×38 rounded-8
+ *  ├──────────────────────────────────────┤
+ *  │ Cor — Cru                             │
+ *  │ ⬤  ⚫  ⬤  ⬤                            │  swatches 34×34 anel duplo
+ *  ├──────────────────────────────────────┤
+ *  │ Descrição                             │
+ *  │ <texto pretty 12px>                   │
+ *  ├──────────────────────────────────────┤
+ *  │ ── COMPOSIÇÃO  ── MODELAGEM            │  meta grid 2-col border-top
+ *  │ 100% linho     Evasê midi              │
+ *  ├──────────────────────────────────────┤
+ *  │ [♥] Adicionar à sacola · R$ X,XX      │  sticky CTA preto rounded-12
+ *  └──────────────────────────────────────┘
+ *
+ * Variantes têm `axis: "size" | "color"` (schema canvas-v1, migration 0008):
+ *  - axis="size" renderiza no bloco de pills
+ *  - axis="color" renderiza no bloco de swatches usando `colorHex`
+ *
+ * Premissa Lote 2: produto tem variantes em UM eixo predominante (ou
+ * size, ou color). Combinatorial size×color é Lote 3+.
+ *
+ * Lógica preservada do anterior (intocada): useCart, useToast, isVariantSoldOut,
+ * resolveVariantPriceState, buildAddToCartSnapshot. UX simplificada: sem qty
+ * stepper (qty=1 implícito; cliente ajusta na sacola), sem share, sem
+ * descrição colapsável (canvas mostra completa), sem framer-motion.
  */
-import { AnimatePresence, motion } from "framer-motion";
-import { Check, ChevronDown, Loader2, Share2 } from "lucide-react";
+import { Heart } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
 import { useToast } from "@/components/storefront/toast";
-import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/use-cart";
+import { useFavorites } from "@/hooks/use-favorites";
 import {
   buildAddToCartSnapshot,
   isVariantSoldOut,
   resolveVariantPriceState,
   type VariantForSelection,
 } from "@/lib/cart/variant-selection";
-import { formatBRL,t } from "@/lib/storefront/i18n";
+import { formatBRL, formatInstallments, getEffectivePrice } from "@/lib/pricing";
 import type { ProductDetail } from "@/lib/storefront/products-loader";
 import { cn } from "@/lib/utils";
 
 export interface ProductPurchasePanelProps {
   product: ProductDetail;
-  storeSlug: string;
 }
 
-type ButtonState = "idle" | "loading" | "success";
+const META_FIELDS = [
+  ["COMPOSIÇÃO", "composition"],
+  ["MODELAGEM", "modeling"],
+  ["FORRO", "lining"],
+  ["LAVAGEM", "washing"],
+] as const;
 
-export function ProductPurchasePanel({
-  product,
-  storeSlug,
-}: ProductPurchasePanelProps) {
-  const [quantity, setQuantity] = useState(1);
-  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
-    null,
-  );
-  const [showFullDescription, setShowFullDescription] = useState(false);
-  const [buttonState, setButtonState] = useState<ButtonState>("idle");
+export function ProductPurchasePanel({ product }: ProductPurchasePanelProps) {
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [recentlyAdded, setRecentlyAdded] = useState(false);
+
   const { addItem } = useCart();
   const { addToast } = useToast();
+  const { isFavorite, toggleFavorite, isHydrated } = useFavorites();
 
-  const hasVariants = product.variants.length > 0;
+  // Separa variantes por eixo. Lote 2 trata size/color como mutuamente
+  // exclusivos por produto — se admin criou ambos, renderiza ambos blocos
+  // e cliente seleciona um (mas combinatorial não é resolvido aqui).
+  const sizeVariants = useMemo(
+    () => product.variants.filter((v) => v.axis === "size" && v.isActive),
+    [product.variants],
+  );
+  const colorVariants = useMemo(
+    () => product.variants.filter((v) => v.axis === "color" && v.isActive),
+    [product.variants],
+  );
+  const hasVariants = sizeVariants.length + colorVariants.length > 0;
 
   const selectedVariant: VariantForSelection | null = useMemo(() => {
     if (!hasVariants || !selectedVariantId) return null;
-    const v = product.variants.find((it) => it.id === selectedVariantId);
-    return v ?? null;
+    return product.variants.find((v) => v.id === selectedVariantId) ?? null;
   }, [hasVariants, selectedVariantId, product.variants]);
 
   const now = useMemo(() => new Date(), []);
-
   const priceState = useMemo(
     () => resolveVariantPriceState(product, selectedVariant, now),
     [product, selectedVariant, now],
@@ -70,259 +102,277 @@ export function ProductPurchasePanel({
     : false;
 
   const ctaDisabled =
-    productIsSoldOut || selectionRequired || selectedVariantSoldOut || buttonState !== "idle";
+    productIsSoldOut || selectionRequired || selectedVariantSoldOut || recentlyAdded;
 
-  const handleSelectVariant = (variantId: string) => {
-    setSelectedVariantId(variantId);
-    setQuantity(1);
-  };
+  const ctaPrice = getEffectivePrice(product, now); // preço de catálogo (sem variant) pro label do CTA
+  const ctaPriceWithVariant = priceState.effectivePriceInCents;
 
-  const addCurrentToCart = useCallback(() => {
+  // SKU placeholder: primeiros 8 chars do ID em uppercase. Quando schema
+  // ganhar campo `sku` dedicado no produto, swap aqui.
+  const sku = product.id.slice(0, 8).toUpperCase();
+
+  const discountPercent = priceState.isOnPromo
+    ? Math.round((1 - priceState.effectivePriceInCents / priceState.basePriceInCents) * 100)
+    : null;
+
+  const installmentLabel = formatInstallments(priceState.effectivePriceInCents, 3);
+
+  // Meta grid só renderiza se pelo menos 1 dos 4 campos tem valor.
+  const metaPairs = useMemo(() => {
+    const pairs: Array<readonly [string, string]> = [];
+    for (const [label, key] of META_FIELDS) {
+      const value = product[key];
+      if (typeof value === "string" && value.trim() !== "") {
+        pairs.push([label, value.trim()]);
+      }
+    }
+    return pairs;
+  }, [product]);
+
+  // Cor ativa pro header "Cor — {nome}". Se nada selecionado mas há
+  // colorVariants, mostra o primeiro pra UX coerente com o canvas.
+  const activeColorName =
+    colorVariants.find((v) => v.id === selectedVariantId)?.name ?? colorVariants[0]?.name ?? null;
+
+  const handleAddToCart = useCallback(() => {
     if (ctaDisabled) return;
     const snapshot = buildAddToCartSnapshot({
       product,
       variant: selectedVariant,
-      quantity,
+      quantity: 1,
       imageUrl: product.images[0]?.url ?? null,
       now: new Date(),
     });
     addItem(snapshot);
-  }, [addItem, ctaDisabled, product, quantity, selectedVariant]);
-
-  const handleAddToCart = useCallback(() => {
-    if (ctaDisabled) return;
-
-    // Adição instantânea — sem delay artificial
-    addCurrentToCart();
-
-    // Show success state
-    setButtonState("success");
-    
-    // Show toast with product image
     addToast({
       type: "cart",
-      title: t.cart.title,
+      title: "Adicionado à sacola",
       description: selectedVariant
         ? `${product.name} — ${selectedVariant.name}`
         : product.name,
       image: product.images[0]?.url,
     });
-    
-    // Reset after delay
-    setTimeout(() => {
-      setButtonState("idle");
-    }, 1500);
-  }, [addCurrentToCart, addToast, ctaDisabled, product, selectedVariant]);
+    setRecentlyAdded(true);
+    setTimeout(() => setRecentlyAdded(false), 1500);
+  }, [addItem, addToast, ctaDisabled, product, selectedVariant]);
 
-  const handleShare = async () => {
-    const url = `${window.location.origin}/${storeSlug}/produto/${product.slug}`;
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: product.name,
-          text: product.description || `Confira ${product.name}`,
-          url,
-        });
-      } catch {
-        // User cancelled
-      }
-    } else {
-      await navigator.clipboard.writeText(url);
-      addToast({
-        type: "success",
-        title: t.actions.copied,
-        duration: 2000,
-      });
-    }
-  };
+  const isFav = isHydrated && isFavorite(product.id);
+
+  const handleToggleFavorite = useCallback(() => {
+    toggleFavorite({
+      productId: product.id,
+      productSlug: product.slug,
+      productName: product.name,
+      imageUrl: product.images[0]?.url ?? null,
+      priceCents: ctaPrice,
+    });
+  }, [toggleFavorite, product, ctaPrice]);
 
   const ctaLabel = useMemo(() => {
-    if (productIsSoldOut || selectedVariantSoldOut) return t.product.outOfStock;
-    if (buttonState === "loading") return t.product.adding;
-    if (buttonState === "success") return t.product.added;
-    return t.product.addToCart;
-  }, [productIsSoldOut, selectedVariantSoldOut, buttonState]);
-
-  const descriptionPreview = product.description?.slice(0, 120);
-  const hasMoreDescription =
-    product.description && product.description.length > 120;
+    if (productIsSoldOut || selectedVariantSoldOut) return "Esgotado";
+    if (selectionRequired) {
+      if (sizeVariants.length > 0 && colorVariants.length > 0) return "Selecione tamanho e cor";
+      if (sizeVariants.length > 0) return "Selecione um tamanho";
+      return "Selecione uma cor";
+    }
+    if (recentlyAdded) return "Adicionado!";
+    return `Adicionar à sacola · ${formatBRL(ctaPriceWithVariant)}`;
+  }, [
+    productIsSoldOut,
+    selectedVariantSoldOut,
+    selectionRequired,
+    sizeVariants.length,
+    colorVariants.length,
+    recentlyAdded,
+    ctaPriceWithVariant,
+  ]);
 
   return (
     <>
-      {/* Scrollable content area */}
-      <div className="space-y-5 pb-28">
-        {/* Product info */}
-        <div className="space-y-1 px-5">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <h2 className="text-xl font-bold text-foreground text-balance">
-                {product.name}
-              </h2>
-            </div>
-            <div className="text-right">
-              <p className="text-xl font-bold tabular-nums text-foreground">
-                {formatBRL(priceState.effectivePriceInCents)}
-              </p>
-              {priceState.isOnPromo && (
-                <p className="text-sm text-muted-foreground line-through">
-                  {formatBRL(priceState.basePriceInCents)}
-                </p>
-              )}
-            </div>
+      {/* Scrollable content */}
+      <div className="pb-24 lg:pb-0">
+        {/* Title block — canvas linhas 261-271 */}
+        <div className="px-4 pt-4">
+          <div className="font-mono text-[9.5px] uppercase tracking-[0.5px] text-gray-400">
+            {sku}
           </div>
+          <h1 className="mt-1.5 text-[22px] font-semibold leading-[1.15] tracking-[-0.5px] text-foreground [text-wrap:pretty]">
+            {product.name}
+          </h1>
+          <div className="mt-2.5 flex flex-wrap items-baseline gap-2">
+            <span className="font-mono text-[22px] font-semibold tracking-[-0.5px] tabular-nums text-foreground">
+              {formatBRL(priceState.effectivePriceInCents)}
+            </span>
+            {priceState.isOnPromo && (
+              <>
+                <span className="font-mono text-[13px] tabular-nums text-gray-400 line-through">
+                  {formatBRL(priceState.basePriceInCents)}
+                </span>
+                {discountPercent !== null && (
+                  <span className="rounded-[4px] bg-success-soft px-1.5 py-[3px] font-mono text-[10px] font-semibold uppercase text-success">
+                    −{discountPercent}%
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+          {installmentLabel && (
+            <div className="mt-1.5 text-[11px] text-gray-500">{installmentLabel}</div>
+          )}
         </div>
 
-        {/* Size selector */}
-        {hasVariants && (
-          <div className="space-y-3 px-5">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-foreground">{t.product.selectSize}</h3>
-              <button
-                type="button"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {t.product.sizeChart}
-              </button>
+        {/* Size selector — canvas linhas 273-298 */}
+        {sizeVariants.length > 0 && (
+          <div className="px-4 pt-5">
+            <div className="mb-2.5 flex items-baseline justify-between">
+              <span className="text-[12px] font-semibold text-foreground">Tamanho</span>
+              <span className="font-mono text-[10px] text-gray-500">guia de medidas</span>
             </div>
             <div
               role="radiogroup"
               aria-label="Selecione um tamanho"
               className="flex flex-wrap gap-2"
             >
-              {product.variants.map((variant) => {
-                const soldOut = isVariantSoldOut(product, variant);
-                const isSelected = selectedVariantId === variant.id;
+              {sizeVariants.map((v) => {
+                const soldOut = isVariantSoldOut(product, v);
+                const selected = selectedVariantId === v.id;
                 return (
-                  <motion.button
-                    key={variant.id}
+                  <button
+                    key={v.id}
                     type="button"
                     role="radio"
-                    aria-checked={isSelected}
-                    aria-label={
-                      soldOut ? `${variant.name} (${t.product.outOfStock})` : variant.name
-                    }
+                    aria-checked={selected}
+                    aria-label={soldOut ? `${v.name} (esgotado)` : v.name}
                     disabled={soldOut}
-                    onClick={() => handleSelectVariant(variant.id)}
-                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setSelectedVariantId(v.id)}
                     className={cn(
-                      "min-w-12 rounded-full border-2 px-4 py-2.5 text-sm font-semibold tabular-nums transition-all outline-none",
+                      "h-[38px] w-[46px] rounded-[8px] border text-[12px] font-semibold tabular-nums transition-colors outline-none",
                       "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                      isSelected
-                        ? "border-foreground bg-foreground text-background shadow-md"
-                        : "border-gray-200 bg-white text-foreground hover:border-gray-300 hover:shadow-sm",
-                      soldOut &&
-                        "cursor-not-allowed border-gray-100 text-gray-300 line-through opacity-60 hover:border-gray-100 hover:shadow-none",
+                      selected
+                        ? "border-foreground bg-foreground text-background"
+                        : "border-border bg-background text-foreground hover:border-gray-400",
+                      soldOut && "cursor-not-allowed text-gray-300 line-through opacity-60",
                     )}
                   >
-                    {variant.name}
-                  </motion.button>
+                    {v.name}
+                  </button>
                 );
               })}
             </div>
-            {selectionRequired && (
-              <p className="text-xs text-muted-foreground">
-                {t.product.selectVariant}
-              </p>
-            )}
           </div>
         )}
 
-        {/* Description */}
+        {/* Color selector — canvas linhas 300-315 */}
+        {colorVariants.length > 0 && (
+          <div className="px-4 pt-[18px]">
+            <div className="mb-2.5 text-[12px] font-semibold text-foreground">
+              Cor{activeColorName ? ` — ${activeColorName}` : ""}
+            </div>
+            <div
+              role="radiogroup"
+              aria-label="Selecione uma cor"
+              className="flex flex-wrap gap-2"
+            >
+              {colorVariants.map((v) => {
+                const soldOut = isVariantSoldOut(product, v);
+                const selected = selectedVariantId === v.id;
+                // Anel duplo (active): border-2 fg + outline 2 bg negativo
+                // simula o "ring + halo" do canvas (linhas 309-311).
+                return (
+                  <button
+                    key={v.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    aria-label={soldOut ? `${v.name} (esgotado)` : v.name}
+                    disabled={soldOut}
+                    onClick={() => setSelectedVariantId(v.id)}
+                    style={{ background: v.colorHex ?? "var(--gray-200)" }}
+                    className={cn(
+                      "size-[34px] rounded-full transition-shadow outline-none",
+                      "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                      selected
+                        ? "border-2 border-foreground outline outline-2 outline-background -outline-offset-4"
+                        : "border border-border",
+                      soldOut && "cursor-not-allowed opacity-40",
+                    )}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {selectionRequired && (
+          <div className="px-4 pt-2 text-[11px] text-gray-500">
+            Escolha uma opção pra adicionar à sacola.
+          </div>
+        )}
+
+        {/* Descrição — canvas linhas 318-323 */}
         {product.description && (
-          <div className="space-y-2 px-5">
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {showFullDescription ? product.description : descriptionPreview}
-              {hasMoreDescription && !showFullDescription && "..."}
+          <div className="px-4 pt-5">
+            <div className="mb-2 text-[12px] font-semibold text-foreground">Descrição</div>
+            <p className="text-[12px] leading-[1.55] text-gray-700 [text-wrap:pretty]">
+              {product.description}
             </p>
-            {hasMoreDescription && (
-              <button
-                type="button"
-                onClick={() => setShowFullDescription(!showFullDescription)}
-                className="flex items-center gap-1 text-sm font-medium text-foreground hover:text-muted-foreground transition-colors"
-              >
-                {showFullDescription ? "Mostrar menos" : t.product.learnMore}
-                <ChevronDown
-                  className={cn(
-                    "size-4 transition-transform",
-                    showFullDescription && "rotate-180"
-                  )}
-                />
-              </button>
-            )}
+          </div>
+        )}
+
+        {/* Meta grid — canvas linhas 326-338 */}
+        {metaPairs.length > 0 && (
+          <div className="grid grid-cols-2 gap-2 px-4 pt-[18px] pb-6">
+            {metaPairs.map(([label, value]) => (
+              <div key={label} className="border-t border-border pt-2">
+                <div className="font-mono text-[9.5px] uppercase tracking-[0.4px] text-gray-400">
+                  {label}
+                </div>
+                <div className="mt-0.5 text-[11.5px] font-medium text-foreground">{value}</div>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
-      {/* Fixed bottom action bar */}
-      <div 
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-100 bg-white/95 backdrop-blur-lg px-5 py-4 lg:relative lg:border-0 lg:bg-transparent lg:backdrop-blur-none lg:px-0 lg:py-0 lg:mt-6"
-        style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+      {/* Sticky CTA — canvas linhas 342-353 */}
+      <div
+        className={cn(
+          "fixed inset-x-0 bottom-0 z-30 flex items-center gap-2 border-t border-border bg-background px-3.5 py-3",
+          "lg:relative lg:px-0 lg:py-4",
+        )}
+        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
-        <div className="mx-auto flex max-w-screen-xl items-center gap-3">
-          {/* Share button */}
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="size-14 shrink-0 rounded-full border-gray-200 shadow-sm hover:shadow-md transition-shadow"
-            onClick={handleShare}
-            aria-label={t.product.share}
-          >
-            <Share2 className="size-5" />
-          </Button>
+        {/* Heart button 44×44 rounded-12 (canvas é "save" mas reuso favoritos) */}
+        <button
+          type="button"
+          onClick={handleToggleFavorite}
+          aria-label={isFav ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+          aria-pressed={isFav}
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded-[12px] border border-border bg-background text-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Heart
+            className={cn("size-5", isFav && "fill-rose-500 text-rose-500")}
+            strokeWidth={1.6}
+          />
+        </button>
 
-          {/* Add to cart button */}
-          <motion.button
-            type="button"
-            onClick={handleAddToCart}
-            disabled={ctaDisabled}
-            whileTap={{ scale: ctaDisabled ? 1 : 0.98 }}
-            className={cn(
-              "relative flex-1 flex items-center justify-center gap-2 rounded-full py-4 text-base font-bold transition-all overflow-hidden",
-              "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              ctaDisabled && buttonState === "idle"
-                ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                : buttonState === "success"
+        {/* Add-to-cart 44 rounded-12 bg-foreground */}
+        <button
+          type="button"
+          onClick={handleAddToCart}
+          disabled={ctaDisabled && !recentlyAdded}
+          className={cn(
+            "inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-[12px] border-0 text-[13.5px] font-semibold outline-none transition-colors",
+            "focus-visible:ring-2 focus-visible:ring-ring",
+            ctaDisabled && !recentlyAdded
+              ? "cursor-not-allowed bg-gray-200 text-gray-400"
+              : recentlyAdded
                 ? "bg-success text-success-foreground"
-                : "bg-foreground text-background shadow-lg hover:shadow-xl hover:brightness-110 active:brightness-95"
-            )}
-          >
-            <AnimatePresence mode="wait">
-              {buttonState === "loading" ? (
-                <motion.div
-                  key="loading"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  className="flex items-center gap-2"
-                >
-                  <Loader2 className="size-5 animate-spin" />
-                  <span>{ctaLabel}</span>
-                </motion.div>
-              ) : buttonState === "success" ? (
-                <motion.div
-                  key="success"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  className="flex items-center gap-2"
-                >
-                  <Check className="size-5" />
-                  <span>{ctaLabel}</span>
-                </motion.div>
-              ) : (
-                <motion.span
-                  key="idle"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                >
-                  {ctaLabel}
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </motion.button>
-        </div>
+                : "bg-foreground text-background hover:bg-foreground/90 active:bg-foreground/85",
+          )}
+        >
+          {ctaLabel}
+        </button>
       </div>
     </>
   );

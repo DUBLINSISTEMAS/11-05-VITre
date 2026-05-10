@@ -95,6 +95,10 @@
   --whatsapp-hover: oklch(0.66 0.21 145);        /* ≈ #20BD5A */
   --whatsapp-foreground: oklch(0.99 0 0);
 
+  /* — Brand-tint: cor da loja diluída para fundos de aviso/destaque (canvas-v1).
+   * Usado em VTSucesso (banner com #shortCode) e demais surfaces tingidas. */
+  --brand-tint: color-mix(in oklch, var(--brand-store) 8%, white);
+
   --border: var(--gray-200);
   --input: var(--gray-200);
   --ring: var(--primary);
@@ -154,6 +158,9 @@
   --color-whatsapp: var(--whatsapp);
   --color-whatsapp-hover: var(--whatsapp-hover);
   --color-whatsapp-foreground: var(--whatsapp-foreground);
+
+  /* — Brand-tint utility (banner brand-tint canvas-v1) — */
+  --color-brand-tint: var(--brand-tint);
 
   /* — Paleta gray utilities — */
   --color-gray-50: var(--gray-50);

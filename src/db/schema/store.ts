@@ -47,6 +47,11 @@ export const storeTable = pgTable(
     logoUrl: text("logo_url"),
     iconUrl: text("icon_url"),
     primaryColor: text("primary_color").notNull().default("#1E3FE6"),
+    // Variant da bottom-nav do storefront (canvas-v1).
+    // Valores válidos: "pill" (default) | "rule" | "glass".
+    // Tipo `text` em vez de pgEnum pra evitar migration de enum quando
+    // adicionarmos novas variants. Aplicação valida em BottomNavVariant.
+    bottomNavStyle: text("bottom_nav_style").notNull().default("pill"),
 
     // Endereço
     addressStreet: text("address_street"),

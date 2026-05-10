@@ -9,6 +9,7 @@ import {
   index,
   integer,
   jsonb,
+  pgEnum,
   pgTable,
   text,
   timestamp,
@@ -101,6 +102,12 @@ export const productTable = pgTable(
     stockQuantity: integer("stock_quantity"),
     isActive: boolean("is_active").notNull().default(true),
     isFeatured: boolean("is_featured").notNull().default(false),
+    // Meta fields canvas-v1 (PDP linhas 326-338) — todos opcionais.
+    // Renderizados em meta-grid 2-col só quando algum deles tem valor.
+    composition: text("composition"), // ex: "100% linho"
+    modeling: text("modeling"),       // ex: "Evasê midi"
+    lining: text("lining"),           // ex: "Não possui"
+    washing: text("washing"),         // ex: "À mão"
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -173,7 +180,15 @@ export type NewProductImage = typeof productImageTable.$inferInsert;
 // =====================================================================
 // CHECKs em price_in_cents (>= 0|NULL) e stock_quantity (>= 0|NULL) em
 // supabase/sql/07_check_constraints.sql.
+//
+// Eixo (`axis`) define como a variante é exibida no PDP canvas-v1:
+//   - "size":  pill 46×38 rounded-8 com texto (ex: "P", "M", "100ml")
+//   - "color": swatch 34×34 rounded-full preenchido por `colorHex`
+// Default "size" preserva comportamento histórico (todas variantes
+// existentes são tamanho).
 // =====================================================================
+export const variantAxisEnum = pgEnum("variant_axis", ["size", "color"]);
+
 export const productVariantTable = pgTable(
   "product_variant",
   {
@@ -184,7 +199,7 @@ export const productVariantTable = pgTable(
     productId: uuid("product_id")
       .notNull()
       .references(() => productTable.id, { onDelete: "cascade" }),
-    name: text("name").notNull(), // "P", "M", "G", "Anel 12", "100ml"
+    name: text("name").notNull(), // "P", "M", "G", "Anel 12", "100ml", "Cru"
     sku: text("sku"),
     attributes: jsonb("attributes")
       .notNull()
@@ -194,6 +209,11 @@ export const productVariantTable = pgTable(
     trackStock: boolean("track_stock").notNull().default(false),
     stockQuantity: integer("stock_quantity"),
     isActive: boolean("is_active").notNull().default(true),
+    // Eixo canvas-v1 — define renderização no PDP (pill vs swatch).
+    axis: variantAxisEnum("axis").notNull().default("size"),
+    // CSS color (hex/oklch/rgb) — só usado quando axis="color".
+    // Ex: "oklch(0.85 0.02 80)", "#1E3FE6", "rgb(231,200,170)".
+    colorHex: text("color_hex"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => ({
@@ -226,6 +246,13 @@ export const bannerTable = pgTable(
       .references(() => storeTable.id, { onDelete: "cascade" }),
     imageUrl: text("image_url").notNull(),
     link: text("link"),
+    // Campos editoriais (canvas-v1) — todos opcionais.
+    // HeroCard renderiza com fallback quando ausentes.
+    kicker: text("kicker"), // ex: "NOVA COLEÇÃO · OUTONO 26"
+    title: text("title"), // ex: "Linhas que respiram."
+    subtitle: text("subtitle"), // ex: "14 peças em algodão e linho."
+    ctaLabel: text("cta_label"), // ex: "Ver coleção"
+    imageAlt: text("image_alt"),
     position: integer("position").notNull().default(0),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at").notNull().defaultNow(),

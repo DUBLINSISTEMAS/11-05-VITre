@@ -67,3 +67,18 @@ export function formatPriceLabel(
   }
   return formatBRL(p.basePriceInCents);
 }
+
+/**
+ * Formata parcelas sem juros: 60700, 3 → "ou 3× de R$ 202,33 sem juros".
+ * Canvas linha 271 do _vitre-storefront.jsx.
+ *
+ * Divisão simples por N (sem ajuste de centavos sobrando — comum em
+ * checkout brasileiro mostrar valor da parcela "ideal" e somar diferença
+ * na 1ª no momento da cobrança real, mas como não há gateway o número é
+ * só informativo).
+ */
+export function formatInstallments(cents: number, installments = 3): string {
+  if (installments <= 1 || cents <= 0) return "";
+  const each = Math.floor(cents / installments);
+  return `ou ${installments}× de ${formatBRL(each)} sem juros`;
+}

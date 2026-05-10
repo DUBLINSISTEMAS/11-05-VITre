@@ -1,253 +1,245 @@
 "use client";
 
 /**
- * Header do storefront redesenhado - estilo app de moda premium.
+ * StoreHeader — fiel ao canvas-referencia (VTAppBar).
  *
- * Estado expandido (topo da página):
- *   ┌──────────────────────────────────┐
- *   │ (avatar) Hey, Alex ▼    [sacola] │
- *   │ [🔍 Explore Fashion...]  [filtro]│
- *   └──────────────────────────────────┘
+ * 4 variants pixel-a-pixel ao canvas-extracted/_vitre-storefront.jsx:
  *
- * Estado colapsado (após scroll):
- *   ┌──────────────────────────────────┐
- *   │ logo+nome  [busca] [sacola]      │
- *   └──────────────────────────────────┘
+ *   home          — VTHome (linha ~95-115).      Avatar + nome + handle + buscar.
+ *   pdp-floating  — VTPDP (linha ~249-252).      Absolute sobre galeria, 36×36 round + blur.
+ *   sticky-title  — VTSacola (linha ~374-378).   Sticky bg-bg + back + title + counter.
+ *   category      — VTCategoria (linha ~524-532). Sticky bg-bg + back 32 + kicker/title + counter.
  *
- * Destaques:
- * - Saudação personalizada com avatar/inicial
- * - Barra de busca com placeholder elegante
- * - Botão de filtro neutro (cinza) ao lado da busca
- * - Badge da sacola com cor da loja (--brand-store, ADR-0011)
+ * Padding-top 54px do canvas é compensação de status-bar iOS — no web
+ * usamos valores menores direto. Botões "voltar" usam router.back() com
+ * fallback opcional via prop `backHref` (SSR-safe pra cold-loads).
  */
-import { motion } from "framer-motion";
-import { ChevronDown, Search, ShoppingBag, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 
-import { useCategoriesSidebarTrigger } from "@/components/storefront/categories-sidebar";
-import { useSacolaDrawerTrigger } from "@/components/storefront/sacola-drawer";
-import { Button } from "@/components/ui/button";
 import type { Store } from "@/db/schema";
-import { useCart } from "@/hooks/use-cart";
-import { cn } from "@/lib/utils";
 
-const COLLAPSE_THRESHOLD = 80;
-
-export interface StoreHeaderProps {
+type HomeProps = {
+  variant?: "home";
   store: Store;
+};
+
+type PdpFloatingProps = {
+  variant: "pdp-floating";
+  store: Store;
+  /** Fallback se window.history vazio. Default: /{storeSlug}. */
+  backHref?: string;
+};
+
+type StickyTitleProps = {
+  variant: "sticky-title";
+  store: Store;
+  title: string;
+  /** Ex: "2 ITENS". */
+  counter?: string;
+  backHref?: string;
+};
+
+type CategoryProps = {
+  variant: "category";
+  store: Store;
+  /** Ex: "CATEGORIA". */
+  kicker?: string;
+  title: string;
+  /** Ex: "14 PEÇAS". */
+  counter?: string;
+  backHref?: string;
+};
+
+export type StoreHeaderProps =
+  | HomeProps
+  | PdpFloatingProps
+  | StickyTitleProps
+  | CategoryProps;
+
+export function StoreHeader(props: StoreHeaderProps) {
+  const variant = props.variant ?? "home";
+  if (variant === "home") return <HomeVariant store={props.store} />;
+  if (variant === "pdp-floating") return <PdpFloatingVariant {...(props as PdpFloatingProps)} />;
+  if (variant === "sticky-title") return <StickyTitleVariant {...(props as StickyTitleProps)} />;
+  return <CategoryVariant {...(props as CategoryProps)} />;
 }
 
-export function StoreHeader({ store }: StoreHeaderProps) {
-  const router = useRouter();
-  const { open: openCategories } = useCategoriesSidebarTrigger();
-  const { open: openSacola } = useSacolaDrawerTrigger();
-  const { count: cartCount, isHydrated } = useCart();
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
+/* ─────────────────────────── home ─────────────────────────── */
+
+function HomeVariant({ store }: { store: Store }) {
   const baseHref = `/${store.slug}`;
-  const showBadge = isHydrated && cartCount > 0;
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const y = window.scrollY;
-      setIsScrolled(y > 8);
-      setIsCollapsed(y > COLLAPSE_THRESHOLD);
-    };
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  const handleSearchNavigate = () => {
-    router.push(`${baseHref}/buscar`);
-  };
+  const initial = store.name.charAt(0).toUpperCase();
+  const handle = store.instagramHandle ?? store.slug;
 
   return (
-    <header
-      className={cn(
-        "sticky top-0 z-30 bg-background transition-shadow duration-200",
-        isScrolled && "shadow-sm",
-      )}
-    >
-      <div className="mx-auto w-full max-w-screen-xl px-4 py-3">
-        {/* Collapsed header - simple logo + search + cart */}
-        <div
-          className={cn(
-            "flex items-center justify-between gap-3 transition-all duration-300",
-            isCollapsed ? "opacity-100" : "absolute opacity-0 pointer-events-none"
-          )}
-          aria-hidden={!isCollapsed}
+    <header className="sticky top-0 z-30 border-b border-border bg-background">
+      <div className="mx-auto flex w-full max-w-screen-xl items-center gap-2.5 px-4 py-3">
+        <Link
+          href={baseHref}
+          prefetch
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          aria-label={`Início — ${store.name}`}
         >
-          <Link
-            href={baseHref}
-            prefetch
-            className="flex min-w-0 items-center gap-2.5 rounded-lg px-1 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label={`Início — ${store.name}`}
-            tabIndex={isCollapsed ? 0 : -1}
-          >
-            {store.logoUrl ? (
-              <div className="size-8 shrink-0 overflow-hidden rounded-full ring-1 ring-border">
-                <Image
-                  src={store.logoUrl}
-                  alt=""
-                  width={32}
-                  height={32}
-                  priority
-                  className="size-full object-cover"
-                />
-              </div>
-            ) : (
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-foreground">
-                <span className="text-sm font-bold text-background">
-                  {store.name.charAt(0)}
-                </span>
-              </div>
-            )}
-            <span className="truncate text-base font-semibold tracking-tight">
+          {store.logoUrl ? (
+            <span
+              aria-hidden
+              className="relative inline-block size-8 shrink-0 overflow-hidden rounded-lg bg-muted"
+            >
+              <Image
+                src={store.logoUrl}
+                alt=""
+                fill
+                sizes="32px"
+                className="object-cover"
+              />
+            </span>
+          ) : (
+            <span
+              aria-hidden
+              className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[14px] font-semibold tracking-[-0.4px] text-white"
+              style={{ background: store.primaryColor }}
+            >
+              {initial}
+            </span>
+          )}
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[14px] font-semibold leading-[1.1] tracking-[-0.3px] text-foreground">
               {store.name}
             </span>
-          </Link>
+            <span className="mt-0.5 block truncate font-mono text-[10px] text-gray-500">
+              @{handle}
+            </span>
+          </span>
+        </Link>
 
-          <div className="flex shrink-0 items-center gap-1">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-10 rounded-full hover:bg-muted"
-              aria-label="Buscar produtos"
-              onClick={handleSearchNavigate}
-              tabIndex={isCollapsed ? 0 : -1}
-            >
-              <Search className="size-5" />
-            </Button>
-
-            <CartButton
-              showBadge={showBadge}
-              cartCount={cartCount}
-              onClick={openSacola}
-              tabIndex={isCollapsed ? 0 : -1}
-            />
-          </div>
-        </div>
-
-        {/* Expanded header - greeting + search bar */}
-        <div
-          className={cn(
-            "transition-all duration-300",
-            isCollapsed ? "opacity-0 pointer-events-none h-0 overflow-hidden" : "opacity-100"
-          )}
-          aria-hidden={isCollapsed}
+        <Link
+          href={`${baseHref}/buscar`}
+          prefetch={false}
+          aria-label="Buscar produtos"
+          className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-foreground outline-none transition-colors hover:bg-gray-200 focus-visible:ring-2 focus-visible:ring-ring"
         >
-          {/* Top row: greeting + cart */}
-          <div className="flex items-center justify-between mb-3">
-            <Link
-              href={baseHref}
-              className="flex items-center gap-2 group outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full pr-2"
-              tabIndex={isCollapsed ? -1 : 0}
-            >
-              {/* Avatar */}
-              {store.logoUrl ? (
-                <div className="size-10 shrink-0 overflow-hidden rounded-full ring-2 ring-border">
-                  <Image
-                    src={store.logoUrl}
-                    alt=""
-                    width={40}
-                    height={40}
-                    priority
-                    className="size-full object-cover"
-                  />
-                </div>
-              ) : (
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-foreground">
-                  <span className="text-sm font-bold text-background">
-                    {store.name.charAt(0)}
-                  </span>
-                </div>
-              )}
-              
-              {/* Greeting */}
-              <div className="flex items-center gap-1">
-                <span className="text-sm font-medium text-foreground">
-                  Hey, <span className="font-semibold">{store.name.split(" ")[0]}</span>
-                </span>
-                <ChevronDown className="size-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-              </div>
-            </Link>
-
-            <CartButton
-              showBadge={showBadge}
-              cartCount={cartCount}
-              onClick={openSacola}
-              tabIndex={isCollapsed ? -1 : 0}
-            />
-          </div>
-
-          {/* Search bar row */}
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleSearchNavigate}
-              className="group flex h-12 flex-1 items-center gap-3 rounded-xl bg-gray-100 px-4 text-left outline-none transition-colors hover:bg-gray-200/80 focus-visible:ring-2 focus-visible:ring-ring"
-              tabIndex={isCollapsed ? -1 : 0}
-            >
-              <Search className="size-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-              <span className="text-muted-foreground text-sm">
-                Buscar produtos...
-              </span>
-            </button>
-
-            {/* Filter button - neutral (cinza) */}
-            <motion.button
-              type="button"
-              onClick={openCategories}
-              className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground outline-none transition-colors transition-transform hover:bg-gray-200 hover:text-foreground hover:scale-105 active:scale-95 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              aria-label="Filtrar categorias"
-              tabIndex={isCollapsed ? -1 : 0}
-              whileTap={{ scale: 0.95 }}
-            >
-              <SlidersHorizontal className="size-5" />
-            </motion.button>
-          </div>
-        </div>
+          <Search className="size-5" strokeWidth={1.6} />
+        </Link>
       </div>
     </header>
   );
 }
 
-interface CartButtonProps {
-  showBadge: boolean;
-  cartCount: number;
-  onClick: () => void;
-  tabIndex?: number;
+/* ───────────────────── pdp-floating ───────────────────── */
+
+function PdpFloatingVariant({ store, backHref }: PdpFloatingProps) {
+  const fallback = backHref ?? `/${store.slug}`;
+
+  return (
+    <div className="pointer-events-none absolute inset-x-3 top-3 z-30 flex items-center justify-between">
+      <BackButton size={36} fallback={fallback} className="pointer-events-auto" floating />
+      <Link
+        href={`/${store.slug}/buscar`}
+        prefetch={false}
+        aria-label="Buscar produtos"
+        className="pointer-events-auto inline-flex size-9 items-center justify-center rounded-full border-0 bg-white/85 text-foreground backdrop-blur-md outline-none transition-colors hover:bg-white focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <Search className="size-5" strokeWidth={1.6} />
+      </Link>
+    </div>
+  );
 }
 
-function CartButton({ showBadge, cartCount, onClick, tabIndex = 0 }: CartButtonProps) {
+/* ───────────────────── sticky-title ───────────────────── */
+
+function StickyTitleVariant({ store, title, counter, backHref }: StickyTitleProps) {
+  const fallback = backHref ?? `/${store.slug}`;
+
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon"
-      className="relative size-10 rounded-full hover:bg-muted"
-      aria-label={
-        showBadge
-          ? `Sacola (${cartCount} ${cartCount === 1 ? "item" : "itens"})`
-          : "Sacola vazia"
-      }
-      onClick={onClick}
-      tabIndex={tabIndex}
-    >
-      <ShoppingBag className="size-5 text-foreground" />
-      {showBadge && (
-        <span
-          aria-hidden
-          className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 animate-in zoom-in-50 place-items-center rounded-full bg-brand-store px-1.5 text-[10px] font-bold tabular-nums text-brand-store-foreground shadow-sm duration-200"
-        >
-          {cartCount > 99 ? "99+" : cartCount}
+    <header className="sticky top-0 z-30 border-b border-border bg-background">
+      <div className="mx-auto flex w-full max-w-screen-xl items-center gap-2.5 px-4 py-3">
+        <BackButton size={36} fallback={fallback} />
+        <span className="min-w-0 flex-1 truncate text-[18px] font-semibold leading-tight tracking-[-0.4px] text-foreground">
+          {title}
         </span>
-      )}
-    </Button>
+        {counter ? (
+          <span className="ml-auto shrink-0 font-mono text-[10px] uppercase tracking-[0.5px] text-gray-500">
+            {counter}
+          </span>
+        ) : null}
+      </div>
+    </header>
+  );
+}
+
+/* ─────────────────────── category ─────────────────────── */
+
+function CategoryVariant({ store, kicker, title, counter, backHref }: CategoryProps) {
+  const fallback = backHref ?? `/${store.slug}`;
+
+  return (
+    <header className="sticky top-0 z-30 border-b border-border bg-background">
+      <div className="mx-auto flex w-full max-w-screen-xl items-center gap-2.5 px-4 pt-3 pb-2.5">
+        <BackButton size={32} fallback={fallback} />
+        <span className="min-w-0 flex-1">
+          {kicker ? (
+            <span className="block font-mono text-[9.5px] uppercase leading-none tracking-[0.5px] text-gray-500">
+              {kicker}
+            </span>
+          ) : null}
+          <span className="mt-1 block truncate text-[18px] font-semibold leading-[1.1] tracking-[-0.4px] text-foreground">
+            {title}
+          </span>
+        </span>
+        {counter ? (
+          <span className="ml-auto shrink-0 font-mono text-[10px] uppercase tracking-[0.5px] text-gray-500">
+            {counter}
+          </span>
+        ) : null}
+      </div>
+    </header>
+  );
+}
+
+/* ─────────────────────── back button ─────────────────────── */
+
+function BackButton({
+  size,
+  fallback,
+  className = "",
+  floating = false,
+}: {
+  size: 32 | 36;
+  fallback: string;
+  className?: string;
+  floating?: boolean;
+}) {
+  const router = useRouter();
+  const sizeClass = size === 36 ? "size-9" : "size-8";
+
+  // Floating variant (PDP): white blur background sobre imagem.
+  // Default: sólido bg-muted dentro de header opaco.
+  const visualClass = floating
+    ? "bg-white/85 text-foreground backdrop-blur-md hover:bg-white"
+    : "bg-muted text-foreground hover:bg-gray-200";
+
+  function onClick() {
+    // Tenta voltar; cai no fallback se não houver histórico (cold-load,
+    // share link). `window.history.length > 1` não é 100% confiável (sempre
+    // ≥1) mas Next mantém referrer interno suficiente pra UX comum.
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+      return;
+    }
+    router.push(fallback);
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Voltar"
+      className={`inline-flex ${sizeClass} shrink-0 items-center justify-center rounded-full border-0 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring ${visualClass} ${className}`}
+    >
+      <ArrowLeft className={size === 36 ? "size-5" : "size-4"} strokeWidth={1.8} />
+    </button>
   );
 }

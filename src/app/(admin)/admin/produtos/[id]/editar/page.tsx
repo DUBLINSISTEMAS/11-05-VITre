@@ -65,6 +65,8 @@ export default async function EditarProdutoPage({
           name: productVariantTable.name,
           priceInCents: productVariantTable.priceInCents,
           stockQuantity: productVariantTable.stockQuantity,
+          axis: productVariantTable.axis,
+          colorHex: productVariantTable.colorHex,
         })
         .from(productVariantTable)
         .where(eq(productVariantTable.productId, id))
@@ -158,11 +160,18 @@ export default async function EditarProdutoPage({
           stockQuantity: product.stockQuantity,
           isActive: product.isActive,
           isFeatured: product.isFeatured,
+          composition: product.composition,
+          modeling: product.modeling,
+          lining: product.lining,
+          washing: product.washing,
           variants: variants.map((v) => ({
             id: v.id,
             name: v.name,
             priceInCents: v.priceInCents,
             stockQuantity: v.stockQuantity,
+            axis: v.axis,
+            // Form representa colorHex como string ("" = vazio); banco null.
+            colorHex: v.colorHex ?? "",
           })),
           images,
         }}
