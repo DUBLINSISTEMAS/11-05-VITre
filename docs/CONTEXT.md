@@ -1,6 +1,6 @@
 # Vitrê — Contexto rápido (briefing de 1 minuto)
 
-Atualizado: 2026-05-08 (após Fase 1.6).
+Atualizado: 2026-05-10 (após Auditoria pré-deploy 7 ondas).
 
 ## Em uma frase
 
@@ -8,8 +8,10 @@ SaaS multi-tenant de catálogo digital com checkout via WhatsApp para lojas pequ
 
 ## Estado
 
-- **Fase concluída**: 1.6 — pipeline checkout end-to-end. PDP → Adicionar → drawer → /sacola (form mínimo nome+WA) → server action atômica (idempotency, validação estoque, recálculo preço) → /sucesso (Lottie + copy honesto) → WhatsApp pré-preenchido → /p/[token] pública (sem dados pessoais; rota migrada no hardening P0 #2 — antes era `/p/[shortCode]`). 25 páginas, ADR-0010 fixou as 8 decisões, code-review consolidado aplicado.
-- **Próxima**: 1.7 — deploy Vercel + buckets prod + cron keep-alive + seed Sandra real + Lighthouse mobile real ≥80. Última fase do MVP.
+- **Fase concluída**: 1.6 — pipeline checkout end-to-end. PDP → Adicionar → drawer → /sacola (form mínimo nome+WA) → server action atômica (idempotency, validação estoque, recálculo preço) → /sucesso (Lottie + copy honesto) → WhatsApp pré-preenchido → /p/[token] pública (sem dados pessoais).
+- **Redesign canvas-v1**: Lotes 1–4 ✅ aplicados (storefront `396e7c3` + admin `8f3c677`/`214ef26` + onboarding `4eb4b79`).
+- **Auditoria pré-deploy 2026-05-10** ✅ fechada — 7 ondas (UX Sandra, RLS-ready, decisões produto, framer-motion→CSS, DB hardening incremental, repo health, verificação). 5 relatórios em `docs/sessoes/2026-05-10-auditoria-completa/`. Sem reset de DB — base estruturalmente sólida.
+- **Próxima**: 1.7 — deploy Vercel + buckets prod + cron keep-alive + seed Sandra real + Lighthouse mobile real ≥80. Última fase do MVP. Lote 5+ canvas reservado pós-deploy.
 - **Tier**: Supabase Free + Vercel Hobby + Resend Free + Upstash Free
 - **Provisionado**: Supabase `zwbkzkyunbmoihcbeztm` em sa-east-1, Upstash `optimal-llama-117627`, Resend ativo
 - **Estimativa restante Fase 1**: ~6h (deploy + cron + seed + smoke test)
@@ -76,7 +78,9 @@ Next 15 + Drizzle + Supabase Postgres/Storage + Better Auth + shadcn/ui + Tailwi
 5. ~~CRUD categoria + banner + promo + config + lista de pedidos~~ ✅
 6. ~~Catálogo público + ISR + SEO~~ ✅
 7. ~~Carrinho + checkout WhatsApp + Lottie~~ ✅
-8. **Deploy Vercel + Cron + seed Sandra (6h)** ← próximo
+8. ~~Redesign canvas-v1 (Lotes 1–4)~~ ✅
+9. ~~Auditoria pré-deploy 2026-05-10 (7 ondas)~~ ✅
+10. **Deploy Vercel + Cron + seed Sandra (6h)** ← próximo
 
 ## Documento mestre
 
