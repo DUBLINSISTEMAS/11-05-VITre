@@ -12,11 +12,11 @@ import { useTransition } from "react";
 import { cn } from "@/lib/utils";
 
 const TABS = [
-  { value: null, label: "Todos" },
-  { value: "active", label: "Visíveis" },
-  { value: "inactive", label: "Pausados" },
-  { value: "draft", label: "Rascunhos" },
-  { value: "no-stock", label: "Sem estoque" },
+  { value: null, label: "Todos", countKey: "all" },
+  { value: "active", label: "Visíveis", countKey: "active" },
+  { value: "inactive", label: "Pausados", countKey: "inactive" },
+  { value: "draft", label: "Rascunhos", countKey: "draft" },
+  { value: "no-stock", label: "Sem estoque", countKey: "no-stock" },
 ] as const;
 
 export type ProductStatusFilter =
@@ -25,7 +25,19 @@ export type ProductStatusFilter =
   | "draft"
   | "no-stock";
 
-export function ProductsStatusTabs() {
+export interface ProductsStatusTabsCounts {
+  all: number;
+  active: number;
+  inactive: number;
+  draft: number;
+  "no-stock": number;
+}
+
+interface ProductsStatusTabsProps {
+  counts: ProductsStatusTabsCounts;
+}
+
+export function ProductsStatusTabs({ counts }: ProductsStatusTabsProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [, startTransition] = useTransition();
@@ -50,6 +62,7 @@ export function ProductsStatusTabs() {
     >
       {TABS.map((tab) => {
         const isActive = (tab.value ?? null) === (current ?? null);
+        const count = counts[tab.countKey];
         return (
           <button
             key={tab.label}
@@ -65,6 +78,14 @@ export function ProductsStatusTabs() {
             )}
           >
             {tab.label}
+            <span
+              className={cn(
+                "ml-1.5 font-mono text-[11px] tabular-nums",
+                isActive ? "opacity-80" : "opacity-60",
+              )}
+            >
+              {count}
+            </span>
           </button>
         );
       })}

@@ -101,41 +101,13 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
       />
 
       <div className="grid gap-4 lg:grid-cols-3 lg:items-start">
-        {/* === Coluna esquerda (col-span-2): cliente, itens, snippet WA === */}
+        {/* === Coluna esquerda (col-span-2): timeline + itens === */}
         <div className="space-y-4 lg:col-span-2">
-          <section className="bg-card space-y-3 rounded-xl border p-4 shadow-sm sm:p-5">
+          <section className="bg-card flex flex-col gap-4 rounded-xl border p-4 shadow-sm sm:p-5">
             <h2 className="text-[13.5px] font-semibold tracking-tight">
-              Cliente
+              Linha do tempo
             </h2>
-
-            <div className="flex flex-wrap items-center gap-3 text-sm">
-              <PhoneIcon className="text-muted-foreground size-4 shrink-0" />
-              <span className="font-mono text-[13px]">
-                {order.customerPhone}
-              </span>
-              <Button
-                asChild
-                size="sm"
-                className="bg-whatsapp text-whatsapp-foreground hover:bg-whatsapp-hover ml-auto"
-              >
-                <a
-                  href={whatsappLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <MessageCircleIcon /> Abrir conversa
-                </a>
-              </Button>
-            </div>
-
-            {order.customerNotes ? (
-              <div className="bg-muted/50 space-y-1 rounded-lg p-3">
-                <p className="text-eyebrow">Observações da cliente</p>
-                <p className="whitespace-pre-wrap text-sm">
-                  {order.customerNotes}
-                </p>
-              </div>
-            ) : null}
+            <OrderTimeline order={order} />
           </section>
 
           <section className="bg-card space-y-3 rounded-xl border p-4 shadow-sm sm:p-5">
@@ -187,11 +159,59 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
               </span>
             </div>
           </section>
+        </div>
+
+        {/* === Coluna direita (col-span-1, sticky): cliente, ações, conversa === */}
+        <div className="space-y-4 lg:sticky lg:top-4 lg:col-span-1">
+          <section className="bg-card space-y-3 rounded-xl border p-4 shadow-sm sm:p-5">
+            <h2 className="text-[13.5px] font-semibold tracking-tight">
+              Cliente
+            </h2>
+
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <PhoneIcon className="text-muted-foreground size-4 shrink-0" />
+              <span className="font-mono text-[13px]">
+                {order.customerPhone}
+              </span>
+              <Button
+                asChild
+                size="sm"
+                className="bg-whatsapp text-whatsapp-foreground hover:bg-whatsapp-hover ml-auto"
+              >
+                <a
+                  href={whatsappLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <MessageCircleIcon /> Abrir conversa
+                </a>
+              </Button>
+            </div>
+
+            {order.customerNotes ? (
+              <div className="bg-muted/50 space-y-1 rounded-lg p-3">
+                <p className="text-eyebrow">Observações da cliente</p>
+                <p className="whitespace-pre-wrap text-sm">
+                  {order.customerNotes}
+                </p>
+              </div>
+            ) : null}
+          </section>
+
+          <section className="bg-card flex flex-col gap-3 rounded-xl border p-4 shadow-sm sm:p-5">
+            <h2 className="text-[13.5px] font-semibold tracking-tight">
+              Ações
+            </h2>
+            <OrderStatusActions
+              orderId={order.id}
+              status={order.status as (typeof ORDER_STATUS_VALUES)[number]}
+            />
+          </section>
 
           {/* Placeholder canvas: snippet última msg WhatsApp.
               Admin não tem histórico de msgs (checkout one-shot via deeplink).
-              Cartão visual estático que reforça que conversa fica no app
-              do WhatsApp e linka pra reabrir. */}
+              Quote estilizada (bg-success-soft) reforça "voz do cliente"
+              sem prometer histórico que não existe. */}
           <section className="bg-card flex flex-col gap-3 rounded-xl border p-4 shadow-sm sm:p-5">
             <div className="flex items-baseline justify-between gap-2">
               <h2 className="text-[13.5px] font-semibold tracking-tight">
@@ -199,11 +219,9 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
               </h2>
               <span className="text-eyebrow">Externo</span>
             </div>
-            <div className="bg-muted/40 flex flex-col gap-1 rounded-lg p-3">
-              <p className="text-muted-foreground text-[11px]">
-                Histórico fica no aplicativo WhatsApp da loja. O Vitrê só
-                abre a conversa pré-preenchida com o código do pedido.
-              </p>
+            <div className="bg-success-soft text-foreground/80 rounded-lg p-3 text-[13px] italic">
+              {order.customerName.split(" ")[0] ?? "Cliente"} responde direto
+              pelo WhatsApp — abra a conversa pra continuar.
             </div>
             <Button
               asChild
@@ -215,26 +233,6 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                 <MessageCircleIcon /> Abrir conversa
               </a>
             </Button>
-          </section>
-        </div>
-
-        {/* === Coluna direita (col-span-1, sticky): timeline + ações === */}
-        <div className="space-y-4 lg:sticky lg:top-4 lg:col-span-1">
-          <section className="bg-card flex flex-col gap-4 rounded-xl border p-4 shadow-sm sm:p-5">
-            <h2 className="text-[13.5px] font-semibold tracking-tight">
-              Linha do tempo
-            </h2>
-            <OrderTimeline order={order} />
-          </section>
-
-          <section className="bg-card flex flex-col gap-3 rounded-xl border p-4 shadow-sm sm:p-5">
-            <h2 className="text-[13.5px] font-semibold tracking-tight">
-              Ações
-            </h2>
-            <OrderStatusActions
-              orderId={order.id}
-              status={order.status as (typeof ORDER_STATUS_VALUES)[number]}
-            />
           </section>
         </div>
       </div>

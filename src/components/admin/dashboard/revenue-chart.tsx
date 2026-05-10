@@ -41,9 +41,9 @@ export function RevenueChart({ series }: RevenueChartProps) {
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <div className="space-y-1">
           <span className="text-eyebrow">Receita</span>
-          <p className="text-base font-semibold tracking-tight text-foreground">
-            {formatBRL(total)}{" "}
-            <span className="text-xs font-medium text-muted-foreground">
+          <p className="text-foreground flex items-baseline gap-2 font-mono text-[22px] font-semibold tabular-nums leading-none tracking-[-0.02em]">
+            {formatBRL(total)}
+            <span className="text-muted-foreground font-sans text-[11.5px] font-medium tracking-normal">
               · {period} dias
             </span>
           </p>
@@ -82,24 +82,27 @@ export function RevenueChart({ series }: RevenueChartProps) {
 }
 
 // ---------------------------------------------------------------------------
-// SVG renderer (puro, sem state). ViewBox 0..100 x 0..40 — escala automática.
+// SVG renderer (puro, sem state). ViewBox 0..600 x 0..200 — escala automática
+// horizontal via preserveAspectRatio="none". 4 gridlines dashed (y=20/70/120/170)
+// + 6 labels mono no eixo X (canvas linhas 184-205).
 // ---------------------------------------------------------------------------
 function ChartSvg({
   points,
 }: {
   points: ReadonlyArray<{ date: string; totalInCents: number }>;
 }) {
-  const width = 100;
-  const height = 40;
-  const padTop = 4;
-  const padBottom = 4;
+  const width = 600;
+  const height = 200;
+  const padTop = 20;
+  const padBottom = 30; // espaço pras labels do eixo X
+  const innerH = height - padTop - padBottom; // 150
 
   const max = Math.max(1, ...points.map((p) => p.totalInCents));
   const n = points.length;
 
   if (n === 0) {
     return (
-      <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
+      <div className="text-muted-foreground flex h-44 items-center justify-center text-sm">
         Sem dados ainda.
       </div>
     );
@@ -108,10 +111,7 @@ function ChartSvg({
   // Coordenadas normalizadas. Quando n=1, x fica em 0 (única amostra).
   const xs = points.map((_, i) => (n === 1 ? 0 : (i / (n - 1)) * width));
   const ys = points.map(
-    (p) =>
-      height -
-      padBottom -
-      ((p.totalInCents / max) * (height - padTop - padBottom)),
+    (p) => padTop + innerH - (p.totalInCents / max) * innerH,
   );
 
   // Path linha: M x0,y0 L x1,y1 L x2,y2 ...
@@ -119,8 +119,9 @@ function ChartSvg({
     .map((x, i) => `${i === 0 ? "M" : "L"}${x.toFixed(2)},${ys[i]!.toFixed(2)}`)
     .join(" ");
 
-  // Path área (linha fechada com baseline): linePath + L lastX,height L firstX,height Z
-  const areaPath = `${linePath} L${xs[n - 1]!.toFixed(2)},${height} L${xs[0]!.toFixed(2)},${height} Z`;
+  // Path área (linha fechada com baseline): + L lastX,baseline L firstX,baseline Z
+  const baseline = padTop + innerH;
+  const areaPath = `${linePath} L${xs[n - 1]!.toFixed(2)},${baseline} L${xs[0]!.toFixed(2)},${baseline} Z`;
 
   // Último ponto não-zero pra badge
   const lastNonZeroIdx = (() => {
@@ -130,34 +131,54 @@ function ChartSvg({
     return null;
   })();
 
+  // Gridlines em y=padTop, padTop+innerH/3, padTop+2*innerH/3, baseline
+  const gridYs = [padTop, padTop + innerH / 3, padTop + (2 * innerH) / 3, baseline];
+
+  // X-axis ticks: 6 labels distribuídas. Pra n<6 mostra todas; pra n>=6
+  // pega ~6 indices uniformes, sempre incluindo primeiro e último.
+  const tickCount = Math.min(6, n);
+  const tickIdxs = tickCount <= 1
+    ? [0]
+    : Array.from({ length: tickCount }, (_, i) =>
+        Math.round((i / (tickCount - 1)) * (n - 1)),
+      );
+
   return (
     <div className="relative">
       <svg
         viewBox={`0 0 ${width} ${height}`}
         preserveAspectRatio="none"
-        className="block h-32 w-full"
+        className="block h-44 w-full"
         aria-hidden
       >
         <defs>
           <linearGradient id="revenue-area" x1="0" y1="0" x2="0" y2="1">
-            <stop
-              offset="0%"
-              stopColor="var(--primary)"
-              stopOpacity="0.18"
-            />
-            <stop
-              offset="100%"
-              stopColor="var(--primary)"
-              stopOpacity="0"
-            />
+            <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.18" />
+            <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
           </linearGradient>
         </defs>
+
+        {/* Gridlines dashed */}
+        {gridYs.map((y, i) => (
+          <line
+            key={i}
+            x1="0"
+            y1={y}
+            x2={width}
+            y2={y}
+            stroke="var(--border)"
+            strokeWidth="1"
+            strokeDasharray="3 4"
+            vectorEffect="non-scaling-stroke"
+          />
+        ))}
+
         <path d={areaPath} fill="url(#revenue-area)" />
         <path
           d={linePath}
           fill="none"
           stroke="var(--primary)"
-          strokeWidth="0.6"
+          strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
           vectorEffect="non-scaling-stroke"
@@ -166,14 +187,22 @@ function ChartSvg({
           <circle
             cx={xs[lastNonZeroIdx]}
             cy={ys[lastNonZeroIdx]}
-            r="0.9"
+            r="3.5"
             fill="var(--primary)"
             stroke="var(--card)"
-            strokeWidth="0.4"
+            strokeWidth="2"
             vectorEffect="non-scaling-stroke"
           />
         ) : null}
       </svg>
+
+      {/* X-axis labels (HTML overlay pra evitar text scaling weirdo do SVG) */}
+      <div className="text-muted-foreground pointer-events-none absolute inset-x-0 -bottom-1 flex justify-between font-mono text-[10.5px] tabular-nums">
+        {tickIdxs.map((idx) => (
+          <span key={idx}>{formatTick(points[idx]!.date)}</span>
+        ))}
+      </div>
+
       {lastNonZeroIdx !== null ? (
         <LastPointBadge
           xRatio={xs[lastNonZeroIdx]! / width}
@@ -183,6 +212,14 @@ function ChartSvg({
       ) : null}
     </div>
   );
+}
+
+// "25/03" — DD/MM curto pra labels do eixo X.
+function formatTick(isoDate: string): string {
+  const d = new Date(isoDate + "T00:00:00Z");
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  return `${dd}/${mm}`;
 }
 
 function LastPointBadge({

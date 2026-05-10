@@ -74,37 +74,18 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
   const onlyPromo = params.promo === "1";
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
 
-  // ---- WHERE dinâmico ----
-  const conditions: SQL[] = [eq(productTable.storeId, store.id)];
+  // ---- WHERE base (storeId + busca + categoria + promo) ----
+  const baseConditions: SQL[] = [eq(productTable.storeId, store.id)];
   if (q) {
     const safeQ = q.replace(/[\\%_]/g, "\\$&");
-    conditions.push(ilike(productTable.name, `%${safeQ}%`));
+    baseConditions.push(ilike(productTable.name, `%${safeQ}%`));
   }
   if (categoryId) {
-    conditions.push(eq(productTable.categoryId, categoryId));
+    baseConditions.push(eq(productTable.categoryId, categoryId));
   }
-
-  // Status (4 valores). "active" e "inactive" excluem rascunho.
-  if (statusFilter === "active") {
-    conditions.push(eq(productTable.isActive, true));
-    conditions.push(sql`${productTable.slug} not like 'draft-%'`);
-    conditions.push(sql`btrim(${productTable.name}) <> ''`);
-  } else if (statusFilter === "inactive") {
-    conditions.push(eq(productTable.isActive, false));
-    conditions.push(sql`${productTable.slug} not like 'draft-%'`);
-    conditions.push(sql`btrim(${productTable.name}) <> ''`);
-  } else if (statusFilter === "draft") {
-    conditions.push(
-      sql`(${productTable.slug} like 'draft-%' or btrim(${productTable.name}) = '')`,
-    );
-  } else if (statusFilter === "no-stock") {
-    conditions.push(eq(productTable.trackStock, true));
-    conditions.push(eq(productTable.stockQuantity, 0));
-  }
-
   if (onlyPromo) {
     const now = sql`now()`;
-    conditions.push(isNotNull(productTable.promoPriceInCents));
+    baseConditions.push(isNotNull(productTable.promoPriceInCents));
     const startCond = or(
       isNull(productTable.promoStartsAt),
       lte(productTable.promoStartsAt, now),
@@ -113,71 +94,133 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
       isNull(productTable.promoEndsAt),
       gte(productTable.promoEndsAt, now),
     );
-    if (startCond) conditions.push(startCond);
-    if (endCond) conditions.push(endCond);
+    if (startCond) baseConditions.push(startCond);
+    if (endCond) baseConditions.push(endCond);
   }
-  const whereClause = and(...conditions);
+
+  // ---- Status conditions (separadas pra permitir count por aba) ----
+  const statusConditions = (s: StatusFilter | null): SQL[] => {
+    if (s === "active") {
+      return [
+        eq(productTable.isActive, true),
+        sql`${productTable.slug} not like 'draft-%'`,
+        sql`btrim(${productTable.name}) <> ''`,
+      ];
+    }
+    if (s === "inactive") {
+      return [
+        eq(productTable.isActive, false),
+        sql`${productTable.slug} not like 'draft-%'`,
+        sql`btrim(${productTable.name}) <> ''`,
+      ];
+    }
+    if (s === "draft") {
+      return [
+        sql`(${productTable.slug} like 'draft-%' or btrim(${productTable.name}) = '')`,
+      ];
+    }
+    if (s === "no-stock") {
+      return [
+        eq(productTable.trackStock, true),
+        eq(productTable.stockQuantity, 0),
+      ];
+    }
+    return [];
+  };
+
+  const whereClause = and(...baseConditions, ...statusConditions(statusFilter));
 
   // ---- Fetch paralelo: lista + total + categorias da loja + capas ----
   const offset = (page - 1) * PAGE_SIZE;
-  const { products, total, categories, coversByProduct } = await withTenant(
-    store.id,
-    session.user.id,
-    async (tx) => {
-      const [products, totalRows, categories] = await Promise.all([
-        tx.query.productTable.findMany({
-          where: whereClause,
-          orderBy: [desc(productTable.updatedAt)],
-          limit: PAGE_SIZE,
-          offset,
-          columns: {
-            id: true,
-            name: true,
-            slug: true,
-            basePriceInCents: true,
-            promoPriceInCents: true,
-            promoStartsAt: true,
-            promoEndsAt: true,
-            isActive: true,
-            trackStock: true,
-            stockQuantity: true,
-          },
-        }),
-        tx.select({ value: count() }).from(productTable).where(whereClause),
-        tx.query.categoryTable.findMany({
-          where: eq(categoryTable.storeId, store.id),
-          orderBy: [asc(categoryTable.position), asc(categoryTable.name)],
-          columns: { id: true, name: true, parentId: true },
-        }),
-      ]);
+  const {
+    products,
+    total,
+    categories,
+    coversByProduct,
+    tabCounts,
+  } = await withTenant(store.id, session.user.id, async (tx) => {
+    const countByStatus = (s: StatusFilter | null) =>
+      tx
+        .select({ value: count() })
+        .from(productTable)
+        .where(and(...baseConditions, ...statusConditions(s)));
 
-      let coversByProduct = new Map<string, string>();
-      if (products.length > 0) {
-        const productIds = products.map((p) => p.id);
-        const covers = await tx
-          .select({
-            productId: productImageTable.productId,
-            url: productImageTable.url,
-          })
-          .from(productImageTable)
-          .where(
-            and(
-              eq(productImageTable.storeId, store.id),
-              eq(productImageTable.position, 0),
-              inArray(productImageTable.productId, productIds),
-            ),
-          );
-        coversByProduct = new Map(covers.map((c) => [c.productId, c.url]));
-      }
+    const [
+      products,
+      totalRows,
+      categories,
+      cAll,
+      cActive,
+      cInactive,
+      cDraft,
+      cNoStock,
+    ] = await Promise.all([
+      tx.query.productTable.findMany({
+        where: whereClause,
+        orderBy: [desc(productTable.updatedAt)],
+        limit: PAGE_SIZE,
+        offset,
+        columns: {
+          id: true,
+          name: true,
+          slug: true,
+          basePriceInCents: true,
+          promoPriceInCents: true,
+          promoStartsAt: true,
+          promoEndsAt: true,
+          isActive: true,
+          trackStock: true,
+          stockQuantity: true,
+        },
+      }),
+      tx.select({ value: count() }).from(productTable).where(whereClause),
+      tx.query.categoryTable.findMany({
+        where: eq(categoryTable.storeId, store.id),
+        orderBy: [asc(categoryTable.position), asc(categoryTable.name)],
+        columns: { id: true, name: true, parentId: true },
+      }),
+      countByStatus(null),
+      countByStatus("active"),
+      countByStatus("inactive"),
+      countByStatus("draft"),
+      countByStatus("no-stock"),
+    ]);
 
-      return {
-        products,
-        total: totalRows[0]?.value ?? 0,
-        categories,
-        coversByProduct,
-      };
-    },
-  );
+    const tabCounts = {
+      all: cAll[0]?.value ?? 0,
+      active: cActive[0]?.value ?? 0,
+      inactive: cInactive[0]?.value ?? 0,
+      draft: cDraft[0]?.value ?? 0,
+      "no-stock": cNoStock[0]?.value ?? 0,
+    };
+
+    let coversByProduct = new Map<string, string>();
+    if (products.length > 0) {
+      const productIds = products.map((p) => p.id);
+      const covers = await tx
+        .select({
+          productId: productImageTable.productId,
+          url: productImageTable.url,
+        })
+        .from(productImageTable)
+        .where(
+          and(
+            eq(productImageTable.storeId, store.id),
+            eq(productImageTable.position, 0),
+            inArray(productImageTable.productId, productIds),
+          ),
+        );
+      coversByProduct = new Map(covers.map((c) => [c.productId, c.url]));
+    }
+
+    return {
+      products,
+      total: totalRows[0]?.value ?? 0,
+      categories,
+      coversByProduct,
+      tabCounts,
+    };
+  });
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -230,7 +273,7 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
         }
       />
 
-      <ProductsStatusTabs />
+      <ProductsStatusTabs counts={tabCounts} />
 
       <ProductsFilters categories={filterCategories} />
 

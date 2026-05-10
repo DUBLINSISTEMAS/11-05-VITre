@@ -3,7 +3,6 @@
 import {
   ImagePlusIcon,
   Loader2Icon,
-  StarIcon,
   Trash2Icon,
 } from "lucide-react";
 import Image from "next/image";
@@ -145,7 +144,7 @@ export function ImageUploader({
         {images.map((img, idx) => (
           <div
             key={img.id}
-            className="group bg-muted relative aspect-square overflow-hidden rounded-xl border"
+            className="group bg-muted relative aspect-[3/4] overflow-hidden rounded-xl border"
           >
             <Image
               src={img.url}
@@ -155,10 +154,9 @@ export function ImageUploader({
               className="object-cover"
             />
             {idx === 0 ? (
-              <div className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded-full bg-black/70 px-2 py-1 text-[10px] font-medium text-white">
-                <StarIcon className="size-3 fill-yellow-400 text-yellow-400" />
-                Capa
-              </div>
+              <span className="bg-foreground text-background absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.04em]">
+                CAPA
+              </span>
             ) : null}
             <button
               type="button"
@@ -175,7 +173,7 @@ export function ImageUploader({
         {pendingPreviews.map((p) => (
           <div
             key={p.id}
-            className="bg-muted relative aspect-square overflow-hidden rounded-xl border"
+            className="bg-muted relative aspect-[3/4] overflow-hidden rounded-xl border"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -194,7 +192,7 @@ export function ImageUploader({
             type="button"
             onClick={() => inputRef.current?.click()}
             className={cn(
-              "border-border bg-muted/30 hover:bg-muted/60 hover:border-foreground/30 flex aspect-square flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed transition-colors",
+              "border-border bg-muted/30 hover:bg-muted/60 hover:border-foreground/30 flex aspect-[3/4] flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed transition-colors",
             )}
             aria-label="Adicionar imagem"
           >

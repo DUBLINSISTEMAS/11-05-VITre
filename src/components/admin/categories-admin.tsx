@@ -228,9 +228,9 @@ function CategoryCard({
   return (
     <div
       className={cn(
-        "bg-background/50 flex items-center gap-2 rounded-xl border p-2.5 transition-colors sm:gap-3 sm:p-3",
+        "bg-card flex items-center gap-2 rounded-xl border p-2.5 shadow-sm transition-colors sm:gap-3 sm:p-3",
         !category.isActive && "opacity-60",
-        isChild && "border-dashed",
+        isChild && "border-dashed shadow-none",
       )}
     >
       <div className="flex shrink-0 flex-col">

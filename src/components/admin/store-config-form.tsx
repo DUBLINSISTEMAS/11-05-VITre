@@ -55,7 +55,7 @@ interface StoreConfigFormProps {
 
 /**
  * Form único de configurações da loja. Mesmo padrão estrutural do
- * ProductForm (FormSection cards, sticky save mobile, save inline desktop).
+ * ProductForm (FormCard cards radius 12, sticky save mobile, inline desktop).
  *
  * Logos têm upload separado (componente `StoreImageUploader`) — o form
  * RHF não os controla, eles persistem direto via server actions.
@@ -119,9 +119,9 @@ export function StoreConfigForm({
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="divide-border divide-y pb-36 lg:pb-4"
+      className="space-y-4 pb-36 lg:pb-4"
     >
-      <FormSection
+      <FormCard
         title="Identidade"
         description="O que aparece pra quem visita sua loja."
       >
@@ -165,9 +165,9 @@ export function StoreConfigForm({
             já mandou pros clientes.
           </p>
         </div>
-      </FormSection>
+      </FormCard>
 
-      <FormSection
+      <FormCard
         title="Logo e ícone"
         description="Logo aparece no topo da loja. Ícone é a aba do navegador (favicon)."
       >
@@ -183,9 +183,9 @@ export function StoreConfigForm({
           label="Ícone da loja"
           hint="Recomendado: imagem quadrada, idealmente 256×256px."
         />
-      </FormSection>
+      </FormCard>
 
-      <FormSection
+      <FormCard
         title="Nicho"
         description="Ajuda quando criamos sugestões automáticas e indicações."
       >
@@ -211,9 +211,9 @@ export function StoreConfigForm({
             </Select>
           )}
         />
-      </FormSection>
+      </FormCard>
 
-      <FormSection
+      <FormCard
         title="Cor primária"
         description="A cor que destaca botões, links e elementos da sua loja."
       >
@@ -233,9 +233,9 @@ export function StoreConfigForm({
             {errors.primaryColor.message}
           </p>
         ) : null}
-      </FormSection>
+      </FormCard>
 
-      <FormSection
+      <FormCard
         title="Contato"
         description="WhatsApp recebe os pedidos. Instagram aparece como link na loja."
       >
@@ -285,9 +285,9 @@ export function StoreConfigForm({
             </p>
           ) : null}
         </div>
-      </FormSection>
+      </FormCard>
 
-      <FormSection
+      <FormCard
         title="Endereço (opcional)"
         description="Mostrado na página da loja. Útil pra retirada presencial."
       >
@@ -368,7 +368,7 @@ export function StoreConfigForm({
             </p>
           ) : null}
         </div>
-      </FormSection>
+      </FormCard>
 
       {/* Save desktop inline */}
       <div className="hidden justify-end pt-4 lg:flex">
@@ -419,17 +419,22 @@ export function StoreConfigForm({
   );
 }
 
-interface FormSectionProps {
+interface FormCardProps {
   title: string;
   description?: string;
   children: React.ReactNode;
 }
 
-function FormSection({ title, description, children }: FormSectionProps) {
+/**
+ * Card padrão de form do admin Lote 3 — bg-card radius 12 shadow-sm,
+ * com header (title + description opcional) e content body.
+ * Mesmo pattern aplicado em product-form.tsx (Onda 4).
+ */
+function FormCard({ title, description, children }: FormCardProps) {
   return (
-    <section className="grid gap-4 py-5 first:pt-0 last:pb-0 lg:grid-cols-[14rem_1fr] lg:gap-8 lg:py-6">
-      <header className="space-y-0.5">
-        <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
+    <section className="bg-card rounded-xl border p-4 shadow-sm sm:p-5">
+      <header className="mb-4 space-y-0.5">
+        <h2 className="text-[13.5px] font-semibold tracking-tight">{title}</h2>
         {description ? (
           <p className="text-muted-foreground text-xs leading-relaxed">
             {description}

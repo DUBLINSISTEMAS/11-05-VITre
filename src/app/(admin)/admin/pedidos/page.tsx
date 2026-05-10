@@ -1,16 +1,13 @@
 import { and, count, desc, eq, type SQL } from "drizzle-orm";
 import { ReceiptIcon, SearchXIcon } from "lucide-react";
-import Link from "next/link";
 
 import { ORDER_STATUS_VALUES } from "@/actions/order/schema";
-import { OrderStatusBadge } from "@/components/admin/order-status-badge";
 import { OrdersFilters } from "@/components/admin/orders-filters";
+import { OrdersTable } from "@/components/admin/orders-table";
 import { AdminPageHeader } from "@/components/admin/shell/page-header";
 import { Pagination } from "@/components/common/pagination";
 import { orderTable } from "@/db/schema";
 import { requireSession } from "@/lib/auth-server";
-import { formatRelativeDate } from "@/lib/format";
-import { formatBRL } from "@/lib/pricing";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
@@ -116,33 +113,7 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
         )
       ) : (
         <>
-          <ul className="divide-border divide-y rounded-xl border">
-            {orders.map((o) => (
-              <li key={o.id}>
-                <Link
-                  href={`/admin/pedidos/${o.id}`}
-                  prefetch
-                  className="hocus:bg-accent/40 group flex items-center gap-3 p-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 sm:p-4"
-                >
-                  <div className="bg-primary/10 text-primary flex size-12 shrink-0 items-center justify-center rounded-lg font-mono text-sm font-semibold sm:size-14 sm:text-base">
-                    {o.shortCode}
-                  </div>
-                  <div className="min-w-0 flex-1 space-y-0.5">
-                    <p className="truncate text-sm font-medium sm:text-base">
-                      {o.customerName}
-                    </p>
-                    <p className="text-muted-foreground truncate text-xs">
-                      {formatBRL(o.totalInCents)} ·{" "}
-                      {formatRelativeDate(o.createdAt)}
-                    </p>
-                  </div>
-                  <div className="shrink-0">
-                    <OrderStatusBadge status={o.status} />
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <OrdersTable orders={orders} />
 
           <Pagination
             currentPage={page}

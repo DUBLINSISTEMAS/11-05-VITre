@@ -228,7 +228,7 @@ function BannerCard({
   return (
     <div
       className={cn(
-        "bg-background/50 flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center",
+        "bg-card flex flex-col gap-3 rounded-xl border p-3 shadow-sm sm:flex-row sm:items-center",
         !banner.isActive && "opacity-60",
       )}
     >
