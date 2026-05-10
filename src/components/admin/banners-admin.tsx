@@ -66,15 +66,24 @@ export function BannersAdmin({ banners, maxBanners }: BannersAdminProps) {
 
   const handleUpload = (file: File) => {
     startTransition(async () => {
-      const formData = new FormData();
-      formData.append("file", file);
-      const r = await uploadBanner(formData);
-      if (!r.ok) {
-        toast.error(r.error);
-        return;
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const r = await uploadBanner(formData);
+        if (!r.ok) {
+          toast.error(r.error);
+          return;
+        }
+        toast.success("Banner enviado.");
+        router.refresh();
+      } catch (e) {
+        // Captura throw inesperado (RateLimitError não-tratado, Next body limit,
+        // Upstash offline). Sem catch, useTransition engole e toast nunca aparece.
+        console.error("[banners-admin] upload falhou", e);
+        toast.error(
+          "Falha no upload. Verifique sua conexão e tente novamente.",
+        );
       }
-      toast.success("Banner enviado.");
-      router.refresh();
     });
     if (inputRef.current) inputRef.current.value = "";
   };
@@ -88,38 +97,55 @@ export function BannersAdmin({ banners, maxBanners }: BannersAdminProps) {
     newOrder[toIdx] = tmp;
 
     startTransition(async () => {
-      const r = await reorderBanners({ orderedIds: newOrder.map((b) => b.id) });
-      if (!r.ok) {
-        toast.error(r.error);
-        return;
+      try {
+        const r = await reorderBanners({
+          orderedIds: newOrder.map((b) => b.id),
+        });
+        if (!r.ok) {
+          toast.error(r.error);
+          return;
+        }
+        router.refresh();
+      } catch (e) {
+        console.error("[banners-admin] reorder falhou", e);
+        toast.error("Falha ao reordenar. Tente novamente.");
       }
-      router.refresh();
     });
   };
 
   const handleToggle = (b: BannerRow) => {
     startTransition(async () => {
-      const r = await toggleBannerActive({
-        bannerId: b.id,
-        isActive: !b.isActive,
-      });
-      if (!r.ok) {
-        toast.error(r.error);
-        return;
+      try {
+        const r = await toggleBannerActive({
+          bannerId: b.id,
+          isActive: !b.isActive,
+        });
+        if (!r.ok) {
+          toast.error(r.error);
+          return;
+        }
+        router.refresh();
+      } catch (e) {
+        console.error("[banners-admin] toggle falhou", e);
+        toast.error("Falha ao pausar/ativar. Tente novamente.");
       }
-      router.refresh();
     });
   };
 
   const handleDelete = (b: BannerRow) => {
     startTransition(async () => {
-      const r = await deleteBanner({ bannerId: b.id });
-      if (!r.ok) {
-        toast.error(r.error);
-        return;
+      try {
+        const r = await deleteBanner({ bannerId: b.id });
+        if (!r.ok) {
+          toast.error(r.error);
+          return;
+        }
+        toast.success("Banner excluído.");
+        router.refresh();
+      } catch (e) {
+        console.error("[banners-admin] delete falhou", e);
+        toast.error("Falha ao excluir. Tente novamente.");
       }
-      toast.success("Banner excluído.");
-      router.refresh();
     });
   };
 

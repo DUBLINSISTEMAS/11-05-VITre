@@ -16,6 +16,7 @@ import {
 import { sql } from "drizzle-orm";
 import { PackageIcon, PlusIcon, SearchXIcon } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 
 import type { CategoryOption } from "@/components/admin/category-dialog";
 import { ProductsFilters } from "@/components/admin/products-filters";
@@ -273,9 +274,15 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
         }
       />
 
-      <ProductsStatusTabs counts={tabCounts} />
+      {/* Suspense boundary obrigatório: ambos componentes usam useSearchParams().
+          Convenção CLAUDE.md #9. Fallback mantém altura pra evitar layout shift. */}
+      <Suspense fallback={<div className="bg-muted/30 h-10 animate-pulse rounded-md" />}>
+        <ProductsStatusTabs counts={tabCounts} />
+      </Suspense>
 
-      <ProductsFilters categories={filterCategories} />
+      <Suspense fallback={<div className="bg-muted/30 h-10 animate-pulse rounded-md" />}>
+        <ProductsFilters categories={filterCategories} />
+      </Suspense>
 
       {products.length === 0 ? (
         hasFilters ? (

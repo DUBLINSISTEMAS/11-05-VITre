@@ -64,6 +64,13 @@ export function StoreImageUploader({
         toast.success(
           kind === "logo" ? "Logo atualizado." : "Ícone atualizado.",
         );
+      } catch (e) {
+        // Captura throw inesperado (RateLimitError não-tratado, Next body limit,
+        // Upstash offline). Sem catch, useTransition engole e toast nunca aparece.
+        console.error("[store-image-uploader] upload falhou", e);
+        toast.error(
+          "Falha no upload. Verifique sua conexão e tente novamente.",
+        );
       } finally {
         URL.revokeObjectURL(blobUrl);
         setPreviewUrl(null);
@@ -74,12 +81,17 @@ export function StoreImageUploader({
 
   const handleRemove = () => {
     startTransition(async () => {
-      const result = await removeStoreImage({ kind });
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
+      try {
+        const result = await removeStoreImage({ kind });
+        if (!result.ok) {
+          toast.error(result.error);
+          return;
+        }
+        toast.success(kind === "logo" ? "Logo removido." : "Ícone removido.");
+      } catch (e) {
+        console.error("[store-image-uploader] remove falhou", e);
+        toast.error("Falha ao remover. Tente novamente.");
       }
-      toast.success(kind === "logo" ? "Logo removido." : "Ícone removido.");
     });
   };
 

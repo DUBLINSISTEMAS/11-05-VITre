@@ -1,5 +1,6 @@
 import { and, count, desc, eq, type SQL } from "drizzle-orm";
 import { ReceiptIcon, SearchXIcon } from "lucide-react";
+import { Suspense } from "react";
 
 import { ORDER_STATUS_VALUES } from "@/actions/order/schema";
 import { OrdersFilters } from "@/components/admin/orders-filters";
@@ -103,7 +104,11 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
         }
       />
 
-      <OrdersFilters />
+      {/* Suspense boundary obrigatório: OrdersFilters usa useSearchParams().
+          Convenção CLAUDE.md #9. */}
+      <Suspense fallback={<div className="bg-muted/30 h-10 animate-pulse rounded-md" />}>
+        <OrdersFilters />
+      </Suspense>
 
       {orders.length === 0 ? (
         hasFilters ? (

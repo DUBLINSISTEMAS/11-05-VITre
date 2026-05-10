@@ -60,6 +60,13 @@ export function CategoryImageUploader({
         }
         toast.success("Imagem da categoria atualizada.");
         router.refresh();
+      } catch (e) {
+        // Captura throw inesperado (RateLimitError não-tratado, Next body limit,
+        // Upstash offline). Sem catch, useTransition engole e toast nunca aparece.
+        console.error("[category-image-uploader] upload falhou", e);
+        toast.error(
+          "Falha no upload. Verifique sua conexão e tente novamente.",
+        );
       } finally {
         URL.revokeObjectURL(blobUrl);
         setPreviewUrl(null);
@@ -70,13 +77,18 @@ export function CategoryImageUploader({
 
   const handleRemove = () => {
     startTransition(async () => {
-      const result = await removeCategoryImage({ categoryId });
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
+      try {
+        const result = await removeCategoryImage({ categoryId });
+        if (!result.ok) {
+          toast.error(result.error);
+          return;
+        }
+        toast.success("Imagem removida.");
+        router.refresh();
+      } catch (e) {
+        console.error("[category-image-uploader] remove falhou", e);
+        toast.error("Falha ao remover. Tente novamente.");
       }
-      toast.success("Imagem removida.");
-      router.refresh();
     });
   };
 

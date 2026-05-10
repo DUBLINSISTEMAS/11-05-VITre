@@ -76,7 +76,11 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      bodySizeLimit: "5mb",
+      // Sharp comprime ANTES de chegar aqui? Não — comprimimos server-side
+      // dentro da action. Logo o body cru tem que comportar foto de iPhone
+      // (5-8 MB) com folga. 12 MB cobre fotos modernas + Content-Type overhead.
+      // Mantém alinhado com MAX_INPUT_BYTES de lib/image.ts (10 MB).
+      bodySizeLimit: "12mb",
     },
   },
   async headers() {
