@@ -38,8 +38,10 @@ export function ShellContent({
   // Detecta se está na página de busca
   const isSearchPage = pathname.endsWith("/buscar");
 
-  // Detecta se está na página de perfil (única que deve mostrar footer)
-  const isProfilePage = pathname.endsWith("/perfil");
+  // Detecta se está na página de "Sobre" — é onde mostra o footer informativo
+  // da loja (substituiu /perfil, que violava ADR-0008 e linkava pra rotas
+  // inexistentes — auditoria 2026-05-10).
+  const isAboutPage = pathname.endsWith("/sobre");
 
   // Canvas-v1: sacola e sucesso são telas fullscreen com header próprio
   // (sticky-title) e SEM bottom-nav. Decisão team-memory 2026-05-09.
@@ -84,8 +86,8 @@ export function ShellContent({
         {children}
       </main>
 
-      {/* Footer - mostra apenas na página de perfil */}
-      {isProfilePage && <StoreFooter store={store} />}
+      {/* Footer informativo da loja — só na página /sobre. */}
+      {isAboutPage && <StoreFooter store={store} />}
 
       {/* Bottom nav - variant lê do store (canvas-v1): pill | rule | glass. */}
       {!hideBottomNav && (

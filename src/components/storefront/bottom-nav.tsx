@@ -28,6 +28,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 
+import { useCategoriesSidebarTrigger } from "@/components/storefront/categories-sidebar";
 import { useCart } from "@/hooks/use-cart";
 import { cn } from "@/lib/utils";
 
@@ -40,43 +41,68 @@ export interface BottomNavProps {
 
 type TabId = "home" | "cat" | "srch" | "bag";
 
-interface TabConfig {
-  id: TabId;
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
-  label: string;
-  href: string;
-}
+/**
+ * Discriminated union: aba ou navega via Link ("link") ou dispara uma ação
+ * client-side ("action"). Categorias usa "action" pra abrir a sidebar
+ * (não há rota `/categoria` raiz — drilldown vive no drawer).
+ */
+type TabConfig =
+  | {
+      id: TabId;
+      kind: "link";
+      icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+      label: string;
+      href: string;
+    }
+  | {
+      id: TabId;
+      kind: "action";
+      icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+      label: string;
+      onClick: () => void;
+    };
 
 export function BottomNav({ storeSlug, variant = "pill" }: BottomNavProps) {
   const { count: cartCount, isHydrated } = useCart();
+  const { open: openCategoriesSidebar } = useCategoriesSidebarTrigger();
   const pathname = usePathname();
   const baseHref = `/${storeSlug}`;
 
   const tabs: TabConfig[] = useMemo(
     () => [
-      { id: "home", icon: Home, label: "Início", href: baseHref },
+      { id: "home", kind: "link", icon: Home, label: "Início", href: baseHref },
       {
         id: "cat",
+        kind: "action",
         icon: Grid2x2,
         label: "Categorias",
-        href: `${baseHref}/categoria`,
+        onClick: openCategoriesSidebar,
       },
-      { id: "srch", icon: Search, label: "Buscar", href: `${baseHref}/buscar` },
+      {
+        id: "srch",
+        kind: "link",
+        icon: Search,
+        label: "Buscar",
+        href: `${baseHref}/buscar`,
+      },
       {
         id: "bag",
+        kind: "link",
         icon: ShoppingBag,
         label: "Sacola",
         href: `${baseHref}/sacola`,
       },
     ],
-    [baseHref],
+    [baseHref, openCategoriesSidebar],
   );
 
   const activeTab = useMemo((): TabId => {
     if (pathname === baseHref || pathname === `${baseHref}/`) return "home";
     if (pathname.startsWith(`${baseHref}/sacola`)) return "bag";
     if (pathname.startsWith(`${baseHref}/buscar`)) return "srch";
-    if (pathname.startsWith(`${baseHref}/categoria`)) return "cat";
+    // Quando dentro de `/categoria/<slug>`, mantém o destaque de "Categorias"
+    // — o usuário acabou de selecionar via drawer e está navegando dentro.
+    if (pathname.startsWith(`${baseHref}/categoria/`)) return "cat";
     return "home";
   }, [pathname, baseHref]);
 
@@ -130,14 +156,11 @@ function PillItem({
   badge: number;
 }) {
   const Icon = tab.icon;
-  return (
-    <Link
-      href={tab.href}
-      prefetch={false}
-      aria-current={isActive ? "page" : undefined}
-      aria-label={tab.label}
-      className="flex flex-col items-center gap-0.5 rounded-md px-2.5 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
+  const itemClassName =
+    "flex flex-col items-center gap-0.5 rounded-md px-2.5 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+  const content = (
+    <>
       <span
         className={cn(
           "relative inline-flex h-[26px] w-14 items-center justify-center rounded-full transition-colors duration-200",
@@ -164,6 +187,32 @@ function PillItem({
       >
         {tab.label}
       </span>
+    </>
+  );
+
+  if (tab.kind === "action") {
+    return (
+      <button
+        type="button"
+        onClick={tab.onClick}
+        aria-current={isActive ? "page" : undefined}
+        aria-label={tab.label}
+        className={itemClassName}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <Link
+      href={tab.href}
+      prefetch={false}
+      aria-current={isActive ? "page" : undefined}
+      aria-label={tab.label}
+      className={itemClassName}
+    >
+      {content}
     </Link>
   );
 }
@@ -183,15 +232,10 @@ function RuleNav({ tabs, activeTab, cartBadge }: VariantProps) {
         const isActive = activeTab === tab.id;
         const Icon = tab.icon;
         const badge = tab.id === "bag" ? cartBadge : 0;
-        return (
-          <Link
-            key={tab.id}
-            href={tab.href}
-            prefetch={false}
-            aria-current={isActive ? "page" : undefined}
-            aria-label={tab.label}
-            className="relative flex flex-1 flex-col items-center justify-center gap-1 px-2.5 outline-none focus-visible:bg-accent"
-          >
+        const itemClass =
+          "relative flex flex-1 flex-col items-center justify-center gap-1 px-2.5 outline-none focus-visible:bg-accent";
+        const inner = (
+          <>
             <span
               aria-hidden
               className={cn(
@@ -223,6 +267,34 @@ function RuleNav({ tabs, activeTab, cartBadge }: VariantProps) {
             >
               {tab.label}
             </span>
+          </>
+        );
+
+        if (tab.kind === "action") {
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={tab.onClick}
+              aria-current={isActive ? "page" : undefined}
+              aria-label={tab.label}
+              className={itemClass}
+            >
+              {inner}
+            </button>
+          );
+        }
+
+        return (
+          <Link
+            key={tab.id}
+            href={tab.href}
+            prefetch={false}
+            aria-current={isActive ? "page" : undefined}
+            aria-label={tab.label}
+            className={itemClass}
+          >
+            {inner}
           </Link>
         );
       })}
@@ -247,19 +319,13 @@ function GlassNav({ tabs, activeTab, cartBadge }: VariantProps) {
           const isActive = activeTab === tab.id;
           const Icon = tab.icon;
           const badge = tab.id === "bag" ? cartBadge : 0;
-          return (
-            <Link
-              key={tab.id}
-              href={tab.href}
-              prefetch={false}
-              aria-current={isActive ? "page" : undefined}
-              aria-label={tab.label}
-              className={cn(
-                "relative grid size-11 place-items-center rounded-full outline-none transition-colors",
-                "focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-foreground",
-                isActive ? "bg-brand-store" : "hover:bg-white/10",
-              )}
-            >
+          const itemClass = cn(
+            "relative grid size-11 place-items-center rounded-full outline-none transition-colors",
+            "focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-foreground",
+            isActive ? "bg-brand-store" : "hover:bg-white/10",
+          );
+          const inner = (
+            <>
               <Icon
                 className={cn(
                   "size-5",
@@ -275,6 +341,34 @@ function GlassNav({ tabs, activeTab, cartBadge }: VariantProps) {
                   {badge > 99 ? "99+" : badge}
                 </span>
               )}
+            </>
+          );
+
+          if (tab.kind === "action") {
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={tab.onClick}
+                aria-current={isActive ? "page" : undefined}
+                aria-label={tab.label}
+                className={itemClass}
+              >
+                {inner}
+              </button>
+            );
+          }
+
+          return (
+            <Link
+              key={tab.id}
+              href={tab.href}
+              prefetch={false}
+              aria-current={isActive ? "page" : undefined}
+              aria-label={tab.label}
+              className={itemClass}
+            >
+              {inner}
             </Link>
           );
         })}
