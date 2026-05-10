@@ -28,6 +28,7 @@ export default async function AdminLayout({
       ownerEmail={session.user.email}
       storeName={store.name}
       storeSlug={store.slug}
+      primaryColor={store.primaryColor}
     >
       {children}
     </AdminShell>

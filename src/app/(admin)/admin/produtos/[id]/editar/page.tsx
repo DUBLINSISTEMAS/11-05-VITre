@@ -1,11 +1,12 @@
 import { and, asc, eq } from "drizzle-orm";
-import { ArrowLeftIcon, MoreVerticalIcon } from "lucide-react";
+import { MoreVerticalIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { DeleteProductDialog } from "@/components/admin/delete-product-dialog";
 import { ProductForm } from "@/components/admin/product-form";
 import { ProductPublishToggle } from "@/components/admin/product-publish-toggle";
+import { AdminPageHeader } from "@/components/admin/shell/page-header";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -96,48 +97,48 @@ export default async function EditarProdutoPage({
 
   return (
     <div className="space-y-4">
-      {/* Header da página */}
-      <header className="flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <Button asChild variant="ghost" size="icon" className="-ml-2 shrink-0">
-            <Link href="/admin/produtos" prefetch aria-label="Voltar">
-              <ArrowLeftIcon />
-            </Link>
-          </Button>
-          <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">
-            {headerTitle}
-          </h1>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-2">
-          <ProductPublishToggle
-            productId={product.id}
-            isActive={product.isActive}
-            disabled={isDraft}
-          />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Mais opções">
-                <MoreVerticalIcon />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DeleteProductDialog
-                productId={product.id}
-                productName={product.name}
-                trigger={
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onSelect={(e) => e.preventDefault()}
-                  >
-                    Excluir produto
-                  </DropdownMenuItem>
-                }
-              />
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </header>
+      <AdminPageHeader
+        title={headerTitle}
+        subtitle={
+          <Link
+            href="/admin/produtos"
+            prefetch
+            className="hocus:text-foreground inline-flex items-center gap-1 transition-colors"
+          >
+            ← Produtos
+          </Link>
+        }
+        actions={
+          <>
+            <ProductPublishToggle
+              productId={product.id}
+              isActive={product.isActive}
+              disabled={isDraft}
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Mais opções">
+                  <MoreVerticalIcon />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DeleteProductDialog
+                  productId={product.id}
+                  productName={product.name}
+                  trigger={
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      Excluir produto
+                    </DropdownMenuItem>
+                  }
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
+        }
+      />
 
       {isDraft ? (
         <p className="bg-primary/5 text-primary border-primary/20 rounded-lg border px-3 py-2 text-xs">

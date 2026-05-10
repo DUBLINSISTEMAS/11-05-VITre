@@ -1,21 +1,24 @@
 "use client";
 
 // Sidebar lateral fixa do admin (desktop only — `hidden lg:flex`).
-// Estilo inspirado no painel do Fly.io (docs/painel-admin.md):
-// - tile do ícone com gradient + ring + shadow brand-tinted no item ativo
-// - logo + brand no topo, UserMenu no footer
-// - hairline divisor com gradient de brand
+// Canvas-v1 admin (Lote 3): largura 232px, StoreSwitcher no topo,
+// StorefrontFooterCard + UserMenu no rodapé. Mantém o tile do ícone com
+// gradient + ring + shadow brand-tinted no item ativo (Fly.io pattern).
 // Mobile usa BottomNav escuro (componente separado).
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 
 import { ADMIN_NAV_ITEMS } from "./nav-items";
+import { StoreSwitcher } from "./store-switcher";
+import { StorefrontFooterCard } from "./storefront-footer-card";
 import { UserMenu, type UserMenuProps } from "./user-menu";
 
-export type AdminSidebarProps = UserMenuProps;
+export interface AdminSidebarProps extends UserMenuProps {
+  /** Cor primária da loja (hex) — pinta o avatar do StoreSwitcher. */
+  primaryColor: string;
+}
 
 export function AdminSidebar(props: AdminSidebarProps) {
   const pathname = usePathname();
@@ -23,27 +26,15 @@ export function AdminSidebar(props: AdminSidebarProps) {
   return (
     <aside
       aria-label="Navegação principal"
-      className="surface-elevated sticky top-0 hidden h-dvh w-56 shrink-0 flex-col border-r lg:flex"
+      className="surface-elevated sticky top-0 hidden h-dvh w-[232px] shrink-0 flex-col border-r lg:flex"
     >
-      {/* Topo: logo + nome */}
-      <div className="px-4 py-4">
-        <Link
-          href="/admin"
-          className="hocus:bg-accent flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
-          aria-label="Vitrê — ir para o início"
-        >
-          <Image
-            src="/brand/logo-principal.webp"
-            alt=""
-            width={28}
-            height={28}
-            priority
-            className="size-7 rounded-md"
-          />
-          <span className="text-foreground font-semibold tracking-tight">
-            Vitrê
-          </span>
-        </Link>
+      {/* Topo: store switcher (avatar tingido + nome + handle mono) */}
+      <div className="px-3 py-3">
+        <StoreSwitcher
+          storeName={props.storeName}
+          storeSlug={props.storeSlug}
+          primaryColor={props.primaryColor}
+        />
       </div>
 
       <hr className="from-primary/5 via-primary/20 to-primary/5 mx-4 h-px border-0 bg-gradient-to-r" />
@@ -97,18 +88,14 @@ export function AdminSidebar(props: AdminSidebarProps) {
 
       <hr className="from-primary/5 via-primary/20 to-primary/5 mx-4 h-px border-0 bg-gradient-to-r" />
 
-      {/* Footer: UserMenu + ver loja */}
-      <div className="flex items-center justify-between gap-2 px-3 py-3">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
+      {/* Footer: card storefront + UserMenu inline */}
+      <div className="flex flex-col gap-2 px-3 py-3">
+        <StorefrontFooterCard storeSlug={props.storeSlug} />
+        <div className="flex items-center justify-between gap-2 px-1">
+          <p className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
+            {props.ownerEmail}
+          </p>
           <UserMenu {...props} />
-          <div className="min-w-0 flex-1 leading-tight">
-            <p className="truncate text-xs font-medium text-foreground">
-              {props.storeName}
-            </p>
-            <p className="truncate text-[11px] text-muted-foreground">
-              {props.ownerEmail}
-            </p>
-          </div>
         </div>
       </div>
     </aside>

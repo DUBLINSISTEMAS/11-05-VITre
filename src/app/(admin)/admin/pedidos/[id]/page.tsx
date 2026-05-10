@@ -1,20 +1,16 @@
 import { and, eq } from "drizzle-orm";
-import {
-  ArrowLeftIcon,
-  CalendarIcon,
-  MessageCircleIcon,
-  PhoneIcon,
-} from "lucide-react";
+import { MessageCircleIcon, PhoneIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import type { ORDER_STATUS_VALUES } from "@/actions/order/schema";
 import { OrderStatusActions } from "@/components/admin/order-status-actions";
 import { OrderStatusBadge } from "@/components/admin/order-status-badge";
+import { OrderTimeline } from "@/components/admin/order-timeline";
+import { AdminPageHeader } from "@/components/admin/shell/page-header";
 import { Button } from "@/components/ui/button";
 import { orderItemTable, orderTable } from "@/db/schema";
 import { requireSession } from "@/lib/auth-server";
-import { formatFullDate } from "@/lib/format";
 import { formatBRL } from "@/lib/pricing";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
@@ -77,153 +73,171 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
       `Oi ${order.customerName.split(" ")[0] ?? ""}! Estou retornando sobre o pedido ${order.shortCode} 🙂`,
     );
 
+  const itemCount = items.reduce((s, i) => s + i.quantity, 0);
+
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/admin/pedidos">
-            <ArrowLeftIcon /> Voltar
-          </Link>
-        </Button>
-      </div>
-
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <p className="text-muted-foreground font-mono text-sm">
-            #{order.shortCode}
-          </p>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            {order.customerName}
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            {formatBRL(order.totalInCents)} ·{" "}
-            {totalItemCount(items)}{" "}
-            {totalItemCount(items) === 1 ? "item" : "itens"}
-          </p>
-        </div>
-        <OrderStatusBadge status={order.status} size="md" />
-      </header>
-
-      {/* Cliente */}
-      <section className="bg-background/50 space-y-3 rounded-xl border p-4 sm:p-5">
-        <h2 className="text-sm font-semibold tracking-tight">Cliente</h2>
-
-        <div className="flex flex-wrap items-center gap-3 text-sm">
-          <PhoneIcon className="text-muted-foreground size-4 shrink-0" />
-          <span>{order.customerPhone}</span>
-          <Button
-            asChild
-            size="sm"
-            variant="outline"
-            className="ml-auto"
-          >
-            <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-              <MessageCircleIcon /> Abrir WhatsApp
-            </a>
-          </Button>
-        </div>
-
-        {order.customerNotes ? (
-          <div className="bg-muted/50 space-y-1 rounded-lg p-3">
-            <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-              Observações da cliente
-            </p>
-            <p className="text-sm whitespace-pre-wrap">{order.customerNotes}</p>
-          </div>
-        ) : null}
-      </section>
-
-      {/* Itens */}
-      <section className="bg-background/50 space-y-3 rounded-xl border p-4 sm:p-5">
-        <h2 className="text-sm font-semibold tracking-tight">Itens</h2>
-
-        <ul className="divide-border divide-y">
-          {items.map((it) => {
-            const subtotal = it.priceInCentsSnapshot * it.quantity;
-            return (
-              <li key={it.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                <div className="bg-muted relative size-14 shrink-0 overflow-hidden rounded-lg sm:size-16">
-                  {it.imageUrlSnapshot ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={it.imageUrlSnapshot}
-                      alt=""
-                      className="size-full object-cover"
-                    />
-                  ) : null}
-                </div>
-                <div className="min-w-0 flex-1 space-y-0.5">
-                  <p className="truncate text-sm font-medium">
-                    {it.productNameSnapshot}
-                  </p>
-                  {it.variantNameSnapshot ? (
-                    <p className="text-muted-foreground text-xs">
-                      {it.variantNameSnapshot}
-                    </p>
-                  ) : null}
-                  <p className="text-muted-foreground text-xs">
-                    {it.quantity} × {formatBRL(it.priceInCentsSnapshot)}
-                  </p>
-                </div>
-                <p className="text-sm font-medium">{formatBRL(subtotal)}</p>
-              </li>
-            );
-          })}
-        </ul>
-
-        <div className="flex items-center justify-between border-t pt-3">
-          <span className="text-sm font-medium">Total</span>
-          <span className="text-lg font-semibold">
-            {formatBRL(order.totalInCents)}
+      <AdminPageHeader
+        title={order.customerName}
+        subtitle={
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <Link
+              href="/admin/pedidos"
+              prefetch
+              className="hocus:text-foreground transition-colors"
+            >
+              ← Pedidos
+            </Link>
+            <span aria-hidden className="text-muted-foreground/40">·</span>
+            <span className="font-mono">#{order.shortCode}</span>
+            <span aria-hidden className="text-muted-foreground/40">·</span>
+            <span>
+              {formatBRL(order.totalInCents)} · {itemCount}{" "}
+              {itemCount === 1 ? "item" : "itens"}
+            </span>
           </span>
+        }
+        actions={<OrderStatusBadge status={order.status} size="md" />}
+      />
+
+      <div className="grid gap-4 lg:grid-cols-3 lg:items-start">
+        {/* === Coluna esquerda (col-span-2): cliente, itens, snippet WA === */}
+        <div className="space-y-4 lg:col-span-2">
+          <section className="bg-card space-y-3 rounded-xl border p-4 shadow-sm sm:p-5">
+            <h2 className="text-[13.5px] font-semibold tracking-tight">
+              Cliente
+            </h2>
+
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <PhoneIcon className="text-muted-foreground size-4 shrink-0" />
+              <span className="font-mono text-[13px]">
+                {order.customerPhone}
+              </span>
+              <Button
+                asChild
+                size="sm"
+                className="bg-whatsapp text-whatsapp-foreground hover:bg-whatsapp-hover ml-auto"
+              >
+                <a
+                  href={whatsappLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <MessageCircleIcon /> Abrir conversa
+                </a>
+              </Button>
+            </div>
+
+            {order.customerNotes ? (
+              <div className="bg-muted/50 space-y-1 rounded-lg p-3">
+                <p className="text-eyebrow">Observações da cliente</p>
+                <p className="whitespace-pre-wrap text-sm">
+                  {order.customerNotes}
+                </p>
+              </div>
+            ) : null}
+          </section>
+
+          <section className="bg-card space-y-3 rounded-xl border p-4 shadow-sm sm:p-5">
+            <h2 className="text-[13.5px] font-semibold tracking-tight">Itens</h2>
+
+            <ul className="divide-border divide-y">
+              {items.map((it) => {
+                const subtotal = it.priceInCentsSnapshot * it.quantity;
+                return (
+                  <li
+                    key={it.id}
+                    className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+                  >
+                    <div className="bg-muted relative size-14 shrink-0 overflow-hidden rounded-lg sm:size-16">
+                      {it.imageUrlSnapshot ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={it.imageUrlSnapshot}
+                          alt=""
+                          className="size-full object-cover"
+                        />
+                      ) : null}
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <p className="truncate text-sm font-medium">
+                        {it.productNameSnapshot}
+                      </p>
+                      {it.variantNameSnapshot ? (
+                        <p className="text-muted-foreground text-xs">
+                          {it.variantNameSnapshot}
+                        </p>
+                      ) : null}
+                      <p className="text-muted-foreground font-mono text-[11.5px] tabular-nums">
+                        {it.quantity} × {formatBRL(it.priceInCentsSnapshot)}
+                      </p>
+                    </div>
+                    <p className="font-mono text-sm font-medium tabular-nums">
+                      {formatBRL(subtotal)}
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
+
+            <div className="flex items-center justify-between border-t pt-3">
+              <span className="text-sm font-medium">Total</span>
+              <span className="font-mono text-lg font-semibold tabular-nums">
+                {formatBRL(order.totalInCents)}
+              </span>
+            </div>
+          </section>
+
+          {/* Placeholder canvas: snippet última msg WhatsApp.
+              Admin não tem histórico de msgs (checkout one-shot via deeplink).
+              Cartão visual estático que reforça que conversa fica no app
+              do WhatsApp e linka pra reabrir. */}
+          <section className="bg-card flex flex-col gap-3 rounded-xl border p-4 shadow-sm sm:p-5">
+            <div className="flex items-baseline justify-between gap-2">
+              <h2 className="text-[13.5px] font-semibold tracking-tight">
+                Conversa no WhatsApp
+              </h2>
+              <span className="text-eyebrow">Externo</span>
+            </div>
+            <div className="bg-muted/40 flex flex-col gap-1 rounded-lg p-3">
+              <p className="text-muted-foreground text-[11px]">
+                Histórico fica no aplicativo WhatsApp da loja. O Vitrê só
+                abre a conversa pré-preenchida com o código do pedido.
+              </p>
+            </div>
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="self-start"
+            >
+              <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
+                <MessageCircleIcon /> Abrir conversa
+              </a>
+            </Button>
+          </section>
         </div>
-      </section>
 
-      {/* Datas */}
-      <section className="bg-background/50 space-y-2 rounded-xl border p-4 sm:p-5">
-        <h2 className="text-sm font-semibold tracking-tight">Linha do tempo</h2>
-        <ul className="space-y-1.5 text-sm">
-          <DateRow label="Criado" date={order.createdAt} icon />
-          {order.whatsappOpenedAt ? (
-            <DateRow label="Aberto no WhatsApp" date={order.whatsappOpenedAt} />
-          ) : null}
-          {order.confirmedAt ? (
-            <DateRow label="Confirmado" date={order.confirmedAt} />
-          ) : null}
-          <DateRow label="Expira em" date={order.expiresAt} />
-        </ul>
-      </section>
+        {/* === Coluna direita (col-span-1, sticky): timeline + ações === */}
+        <div className="space-y-4 lg:sticky lg:top-4 lg:col-span-1">
+          <section className="bg-card flex flex-col gap-4 rounded-xl border p-4 shadow-sm sm:p-5">
+            <h2 className="text-[13.5px] font-semibold tracking-tight">
+              Linha do tempo
+            </h2>
+            <OrderTimeline order={order} />
+          </section>
 
-      {/* Ações */}
-      <section className="bg-background/50 space-y-3 rounded-xl border p-4 sm:p-5">
-        <h2 className="text-sm font-semibold tracking-tight">Ações</h2>
-        <OrderStatusActions
-          orderId={order.id}
-          status={order.status as (typeof ORDER_STATUS_VALUES)[number]}
-        />
-      </section>
+          <section className="bg-card flex flex-col gap-3 rounded-xl border p-4 shadow-sm sm:p-5">
+            <h2 className="text-[13.5px] font-semibold tracking-tight">
+              Ações
+            </h2>
+            <OrderStatusActions
+              orderId={order.id}
+              status={order.status as (typeof ORDER_STATUS_VALUES)[number]}
+            />
+          </section>
+        </div>
+      </div>
     </div>
-  );
-}
-
-function totalItemCount(items: ReadonlyArray<{ quantity: number }>): number {
-  return items.reduce((s, i) => s + i.quantity, 0);
-}
-
-function DateRow({
-  label,
-  date,
-  icon,
-}: {
-  label: string;
-  date: Date;
-  icon?: boolean;
-}) {
-  return (
-    <li className="flex items-center gap-2">
-      {icon ? <CalendarIcon className="text-muted-foreground size-3.5 shrink-0" /> : <span className="size-3.5 shrink-0" />}
-      <span className="text-muted-foreground">{label}:</span>
-      <span>{formatFullDate(date)}</span>
-    </li>
   );
 }

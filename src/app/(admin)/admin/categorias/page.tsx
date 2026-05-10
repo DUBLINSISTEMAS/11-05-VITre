@@ -3,6 +3,7 @@ import { TagIcon } from "lucide-react";
 
 import { CategoriesAdmin } from "@/components/admin/categories-admin";
 import { CategoryDialog } from "@/components/admin/category-dialog";
+import { AdminPageHeader } from "@/components/admin/shell/page-header";
 import { categoryTable, productTable } from "@/db/schema";
 import { requireSession } from "@/lib/auth-server";
 import { getCurrentStore } from "@/lib/store-context";
@@ -58,19 +59,15 @@ export default async function CategoriasPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <header className="flex items-center justify-between gap-3">
-        <div className="space-y-0.5">
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            Categorias
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            {totalCount === 0
-              ? "Nenhuma categoria ainda."
-              : `${totalCount} ${totalCount === 1 ? "categoria" : "categorias"}`}
-          </p>
-        </div>
-        <CategoryDialog rootCategories={rootOptions} />
-      </header>
+      <AdminPageHeader
+        title="Categorias"
+        subtitle={
+          totalCount === 0
+            ? "Nenhuma categoria ainda."
+            : `${totalCount} ${totalCount === 1 ? "categoria" : "categorias"}`
+        }
+        actions={<CategoryDialog rootCategories={rootOptions} />}
+      />
 
       {categories.length === 0 ? (
         <EmptyState />

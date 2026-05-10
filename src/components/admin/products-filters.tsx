@@ -19,7 +19,6 @@ import { cn } from "@/lib/utils";
 
 import type { CategoryOption } from "./category-dialog";
 
-const STATUS_ALL = "__all__";
 const CATEGORY_ALL = "__all__";
 
 interface ProductsFiltersProps {
@@ -27,15 +26,13 @@ interface ProductsFiltersProps {
 }
 
 /**
- * Filtros da lista de produtos. URL-driven: cada mudança replaceia
- * `?q=&categoryId=&status=&promo=` e o RSC re-renderiza com a query nova.
+ * Filtros da lista de produtos (canvas-v1 admin Lote 3 — sem select de
+ * status, que migrou pra `<ProductsStatusTabs>`). URL-driven: cada
+ * mudança replaceia `?q=&categoryId=&promo=` e o RSC re-renderiza.
  *
- * - Busca: debounce de 300ms (evita 1 query por keystroke).
- * - Categoria/Status/Promo: imediato.
- * - Toda mudança reseta `?page=1` (mantém Sandra na página 1 ao filtrar).
- *
- * Layout: stack vertical em mobile (cada filtro full-width), inline em
- * desktop. Sem Sheet — controle inline cabe e não custa toque extra.
+ * - Busca: debounce de 300ms (com hint ⌘K visual decorativo).
+ * - Categoria/Promo: imediato.
+ * - Toda mudança reseta `?page=1`.
  */
 export function ProductsFilters({ categories }: ProductsFiltersProps) {
   const router = useRouter();
@@ -43,7 +40,6 @@ export function ProductsFilters({ categories }: ProductsFiltersProps) {
   const [, startTransition] = useTransition();
 
   const initialQ = searchParams.get("q") ?? "";
-  const status = searchParams.get("status") ?? STATUS_ALL;
   const categoryId = searchParams.get("categoryId") ?? CATEGORY_ALL;
   const onlyPromo = searchParams.get("promo") === "1";
 
@@ -87,8 +83,14 @@ export function ProductsFilters({ categories }: ProductsFiltersProps) {
 
   const clearAll = () => {
     setQ("");
+    const usp = new URLSearchParams(window.location.search);
+    // Mantém `status` (vem das tabs) — limpar só q + categoryId + promo.
+    const status = usp.get("status");
+    const next = new URLSearchParams();
+    if (status) next.set("status", status);
     startTransition(() => {
-      router.replace("?", { scroll: false });
+      const qs = next.toString();
+      router.replace(qs ? `?${qs}` : "?", { scroll: false });
     });
   };
 
@@ -106,10 +108,7 @@ export function ProductsFilters({ categories }: ProductsFiltersProps) {
   })();
 
   const hasAny =
-    q.trim() !== "" ||
-    status !== STATUS_ALL ||
-    categoryId !== CATEGORY_ALL ||
-    onlyPromo;
+    q.trim() !== "" || categoryId !== CATEGORY_ALL || onlyPromo;
 
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
@@ -124,9 +123,15 @@ export function ProductsFilters({ categories }: ProductsFiltersProps) {
           placeholder="Buscar por nome…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          className="pl-9"
+          className="pl-9 pr-12"
           aria-label="Buscar produtos"
         />
+        <kbd
+          aria-hidden
+          className="border-border bg-muted text-muted-foreground pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded border px-1.5 font-mono text-[10px] sm:inline-block"
+        >
+          ⌘K
+        </kbd>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -136,7 +141,7 @@ export function ProductsFilters({ categories }: ProductsFiltersProps) {
             updateParam("categoryId", v === CATEGORY_ALL ? null : v)
           }
         >
-          <SelectTrigger className="w-full min-w-40 sm:w-auto">
+          <SelectTrigger className="h-9 w-full min-w-40 sm:w-auto">
             <SelectValue placeholder="Categoria" />
           </SelectTrigger>
           <SelectContent>
@@ -167,29 +172,13 @@ export function ProductsFilters({ categories }: ProductsFiltersProps) {
           </SelectContent>
         </Select>
 
-        <Select
-          value={status}
-          onValueChange={(v) =>
-            updateParam("status", v === STATUS_ALL ? null : v)
-          }
-        >
-          <SelectTrigger className="w-full min-w-32 sm:w-auto">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={STATUS_ALL}>Todos</SelectItem>
-            <SelectItem value="active">Visíveis</SelectItem>
-            <SelectItem value="inactive">Pausados</SelectItem>
-          </SelectContent>
-        </Select>
-
         <Button
           type="button"
           variant={onlyPromo ? "default" : "outline"}
-          size="default"
+          size="sm"
           onClick={togglePromo}
           aria-pressed={onlyPromo}
-          className={cn("gap-1.5", onlyPromo && "shadow-brand-sm")}
+          className={cn("h-9 gap-1.5", onlyPromo && "shadow-brand-sm")}
         >
           <SparklesIcon className="size-4" />
           <span>Em promoção</span>
@@ -201,8 +190,8 @@ export function ProductsFilters({ categories }: ProductsFiltersProps) {
             variant="ghost"
             size="sm"
             onClick={clearAll}
-            className="text-muted-foreground"
-            aria-label="Limpar todos os filtros"
+            className="text-muted-foreground h-9"
+            aria-label="Limpar filtros"
           >
             <XIcon className="size-4" /> Limpar
           </Button>

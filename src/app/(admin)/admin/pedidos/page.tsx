@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ORDER_STATUS_VALUES } from "@/actions/order/schema";
 import { OrderStatusBadge } from "@/components/admin/order-status-badge";
 import { OrdersFilters } from "@/components/admin/orders-filters";
+import { AdminPageHeader } from "@/components/admin/shell/page-header";
 import { Pagination } from "@/components/common/pagination";
 import { orderTable } from "@/db/schema";
 import { requireSession } from "@/lib/auth-server";
@@ -94,18 +95,16 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          Pedidos
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          {total === 0
+      <AdminPageHeader
+        title="Pedidos"
+        subtitle={
+          total === 0
             ? hasFilters
               ? "Nenhum pedido bate com os filtros."
               : "Nenhum pedido ainda."
-            : `${total} ${total === 1 ? "pedido" : "pedidos"}`}
-        </p>
-      </header>
+            : `${total} ${total === 1 ? "pedido" : "pedidos"}`
+        }
+      />
 
       <OrdersFilters />
 

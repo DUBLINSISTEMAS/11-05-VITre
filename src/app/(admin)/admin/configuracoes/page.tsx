@@ -1,3 +1,4 @@
+import { AdminPageHeader } from "@/components/admin/shell/page-header";
 import { StoreConfigForm } from "@/components/admin/store-config-form";
 import { requireSession } from "@/lib/auth-server";
 import { env } from "@/lib/env";
@@ -14,14 +15,10 @@ export default async function ConfiguracoesPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          Configurações
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          Identidade, contato e endereço da sua loja.
-        </p>
-      </header>
+      <AdminPageHeader
+        title="Configurações"
+        subtitle="Identidade, contato e endereço da sua loja."
+      />
 
       <StoreConfigForm
         initialData={{

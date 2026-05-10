@@ -197,3 +197,31 @@ export const deleteProductSchema = z.object({
   productId: z.string().uuid(),
 });
 export type DeleteProductInput = z.infer<typeof deleteProductSchema>;
+
+// ---------- Bulk actions (Lote 3 — canvas tabela densa) ----------
+
+/** Limite por chamada — protege contra abuso e mantém transação curta. */
+export const BULK_PRODUCTS_MAX = 100;
+
+export const bulkToggleActiveSchema = z.object({
+  productIds: z
+    .array(z.string().uuid())
+    .min(1, "Selecione pelo menos um produto.")
+    .max(
+      BULK_PRODUCTS_MAX,
+      `Máximo ${BULK_PRODUCTS_MAX} produtos por vez.`,
+    ),
+  isActive: z.boolean(),
+});
+export type BulkToggleActiveInput = z.infer<typeof bulkToggleActiveSchema>;
+
+export const bulkDeleteProductsSchema = z.object({
+  productIds: z
+    .array(z.string().uuid())
+    .min(1, "Selecione pelo menos um produto.")
+    .max(
+      BULK_PRODUCTS_MAX,
+      `Máximo ${BULK_PRODUCTS_MAX} produtos por vez.`,
+    ),
+});
+export type BulkDeleteProductsInput = z.infer<typeof bulkDeleteProductsSchema>;

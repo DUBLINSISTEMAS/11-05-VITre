@@ -32,6 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
@@ -71,25 +72,25 @@ interface ProductFormProps {
   /**
    * Produto é rascunho (sem nome ou slug `draft-*`)? Define se o botão
    * "Salvar e adicionar outro" aparece — fluxo de cadastro contínuo só
-   * faz sentido pra produto novo. Editar produto existente: só "Salvar".
+   * faz sentido pra produto novo.
    */
   isDraft: boolean;
 }
 
 /**
- * Form de edição/criação de produto. Recebe `initialData` já carregada do
- * servidor (a página /editar faz o fetch). RHF + Zod com diff de variantes
- * delegado pra server action.
+ * Form de edição/criação de produto (canvas-v1 admin Lote 3).
  *
- * UX:
- * - Cards FormSection na ordem cognitiva da Sandra (foto → nome → preço → ...)
- * - Save sticky no bottom em mobile (acima do bottom nav fixo)
- * - useCallback nos onChange dos controllers caros (Image/Variant) — evita
- *   re-render em cada keystroke do nome.
+ * Layout:
+ * - Mobile: cards empilhados verticalmente em `space-y-4`.
+ * - Desktop (lg+): grid 3 colunas. Esquerda (col-span-2): Mídia ·
+ *   Identidade · Detalhes · Preço · Variantes. Direita (col-span-1,
+ *   sticky top): Status · Categoria · Salvar.
  *
- * `isActive` fica FORA deste form (toggle no header da página, action separada).
- * `images` fica fora do form do RHF — gerenciadas em state separado, persistidas
- *   pelas actions `uploadProductImage` / `deleteProductImage` em tempo real.
+ * `isActive` continua FORA do form — toggle no header da página via action
+ * separada (publish/pause). `images` fora do RHF — gerenciadas em state
+ * local + actions de upload/delete em tempo real. Lógica de submit (RHF +
+ * useTransition + ref síncrona contra duplo-clique + saveAndCreateNext)
+ * preservada do estado anterior.
  */
 export function ProductForm({
   initialData,
@@ -98,14 +99,9 @@ export function ProductForm({
 }: ProductFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  // Guard síncrono contra duplo-clique: useTransition + disabled re-render
-  // na velocidade do React não cobre o instante T0–T20ms entre 2 toques
-  // rápidos no mobile. Ref síncrona resolve.
   const submittingRef = useRef(false);
 
   const [images, setImages] = useState<ProductImageData[]>(initialData.images);
-  // Lista local que cresce quando uma nova categoria é criada via dialog
-  // — Sandra cria + seleciona sem recarregar a página.
   const [localCategories, setLocalCategories] =
     useState<CategoryOption[]>(categories);
 
@@ -127,8 +123,6 @@ export function ProductForm({
       stockQuantity: initialData.stockQuantity,
       isActive: initialData.isActive,
       isFeatured: initialData.isFeatured,
-      // Meta-fields: RHF mantém "" no input (string sempre, NÃO null) —
-      // Zod transform "" → null roda no submit. Null vindo do banco vira "".
       composition: initialData.composition ?? "",
       modeling: initialData.modeling ?? "",
       lining: initialData.lining ?? "",
@@ -139,15 +133,11 @@ export function ProductForm({
         priceInCents: v.priceInCents,
         stockQuantity: v.stockQuantity,
         axis: v.axis,
-        // RHF: "" controlado no Input; transform converte pra null no submit.
         colorHex: v.colorHex ?? "",
       })),
     },
   });
 
-  // `submitMode` define o comportamento do submit ao clicar em qualquer
-  // dos 2 botões. RHF dispara um único `handleSubmit`; lemos o modo
-  // do estado pra decidir se reseta + redireciona pro próximo draft.
   const [submitMode, setSubmitMode] = useState<"save" | "saveAndContinue">(
     "save",
   );
@@ -172,9 +162,6 @@ export function ProductForm({
           return;
         }
 
-        // saveAndContinue (só disponível pra draft — incrementa contador
-        // só nesse caso, evita inflar número quando Sandra está editando
-        // produto antigo).
         const result = await saveAndCreateNext(payload);
         if (!result.ok) {
           applyFieldErrors(result.fieldErrors);
@@ -186,8 +173,6 @@ export function ProductForm({
         toast.success(
           `Produto cadastrado. Pronto pro próximo. (${count} ${count === 1 ? "nesta série" : "nesta série"})`,
         );
-        // `replace` em vez de `push` — evita acumular histórico de drafts.
-        // Next 15 já scrolla pro topo no route change; sem scrollTo manual.
         router.replace(`/admin/produtos/${result.nextProductId}/editar`);
       } finally {
         submittingRef.current = false;
@@ -202,8 +187,6 @@ export function ProductForm({
     }
   }
 
-  // useCallback evita re-criar essas funções a cada keystroke do nome —
-  // ImageUploader / VariantEditor não re-renderizam à toa.
   const handleImagesChange = useCallback((next: ProductImageData[]) => {
     setImages(next);
   }, []);
@@ -213,271 +196,293 @@ export function ProductForm({
       onSubmit={handleSubmit(onSubmit)}
       // Padding-bottom em mobile pra conteúdo não ficar atrás do sticky
       // save (1 botão ~3.5rem + py-3 + bottom nav 3.5rem + safe-area
-      // ~1.25rem ≈ 9rem). Em desktop, sem sticky → padding mínimo.
-      className="divide-border divide-y pb-36 lg:pb-4"
+      // ~1.25rem ≈ 9rem).
+      className="pb-36 lg:pb-4"
     >
-      <FormSection
-        title="Imagens"
-        description="A primeira foto vira a capa. Tire pelo celular ou escolha da galeria."
-      >
-        <ImageUploader
-          productId={initialData.productId}
-          images={images}
-          onChange={handleImagesChange}
-          disabled={isPending}
-        />
-      </FormSection>
+      <div className="grid gap-4 lg:grid-cols-3 lg:items-start">
+        {/* === Coluna esquerda (lg col-span-2) === */}
+        <div className="space-y-4 lg:col-span-2">
+          <FormCard
+            title="Mídia"
+            description="A primeira foto vira a capa. Tire pelo celular ou escolha da galeria."
+          >
+            <ImageUploader
+              productId={initialData.productId}
+              images={images}
+              onChange={handleImagesChange}
+              disabled={isPending}
+            />
+          </FormCard>
 
-      <FormSection
-        title="Identidade"
-        description="O que aparece pros seus clientes."
-      >
-        <div className="space-y-1.5">
-          <Label htmlFor="product-name">Nome</Label>
-          <Input
-            id="product-name"
-            placeholder="Ex: Vestido midi preto"
-            disabled={isPending}
-            aria-invalid={!!errors.name}
-            {...register("name")}
-          />
-          {errors.name?.message ? (
-            <p className="text-destructive text-xs">{errors.name.message}</p>
-          ) : null}
-        </div>
+          <FormCard title="Identidade">
+            <div className="space-y-1.5">
+              <Label htmlFor="product-name">Nome</Label>
+              <Input
+                id="product-name"
+                placeholder="Ex: Vestido midi preto"
+                disabled={isPending}
+                aria-invalid={!!errors.name}
+                {...register("name")}
+              />
+              {errors.name?.message ? (
+                <p className="text-destructive text-xs">{errors.name.message}</p>
+              ) : null}
+            </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="product-description">Descrição</Label>
-          <Textarea
-            id="product-description"
-            placeholder="Detalhes, medidas, material…"
-            rows={4}
-            disabled={isPending}
-            aria-invalid={!!errors.description}
-            {...register("description")}
-          />
-          {errors.description?.message ? (
-            <p className="text-destructive text-xs">
-              {errors.description.message}
+            <div className="space-y-1.5">
+              <Label htmlFor="product-description">Descrição</Label>
+              <Textarea
+                id="product-description"
+                placeholder="Detalhes, medidas, material…"
+                rows={4}
+                disabled={isPending}
+                aria-invalid={!!errors.description}
+                {...register("description")}
+              />
+              {errors.description?.message ? (
+                <p className="text-destructive text-xs">
+                  {errors.description.message}
+                </p>
+              ) : null}
+            </div>
+          </FormCard>
+
+          <FormCard
+            title="Detalhes"
+            description="Aparecem na ficha do produto. Tudo opcional."
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <MetaField
+                id="product-composition"
+                label="Composição"
+                placeholder="Ex: 100% linho"
+                error={errors.composition?.message}
+                disabled={isPending}
+                {...register("composition")}
+              />
+              <MetaField
+                id="product-modeling"
+                label="Modelagem"
+                placeholder="Ex: Evasê midi"
+                error={errors.modeling?.message}
+                disabled={isPending}
+                {...register("modeling")}
+              />
+              <MetaField
+                id="product-lining"
+                label="Forro"
+                placeholder="Ex: Não possui"
+                error={errors.lining?.message}
+                disabled={isPending}
+                {...register("lining")}
+              />
+              <MetaField
+                id="product-washing"
+                label="Lavagem"
+                placeholder="Ex: À mão"
+                error={errors.washing?.message}
+                disabled={isPending}
+                {...register("washing")}
+              />
+            </div>
+          </FormCard>
+
+          <FormCard title="Preço">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="product-base-price">Preço normal</Label>
+                <Controller
+                  name="basePriceInCents"
+                  control={control}
+                  render={({ field }) => (
+                    <PriceInput
+                      id="product-base-price"
+                      value={field.value}
+                      onChange={(v) => field.onChange(v ?? 0)}
+                      disabled={isPending}
+                      aria-invalid={!!errors.basePriceInCents}
+                    />
+                  )}
+                />
+                {errors.basePriceInCents?.message ? (
+                  <p className="text-destructive text-xs">
+                    {errors.basePriceInCents.message}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="product-promo-price">Preço promocional</Label>
+                <Controller
+                  name="promoPriceInCents"
+                  control={control}
+                  render={({ field }) => (
+                    <PriceInput
+                      id="product-promo-price"
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Sem promoção"
+                      disabled={isPending}
+                      aria-invalid={!!errors.promoPriceInCents}
+                    />
+                  )}
+                />
+                {errors.promoPriceInCents?.message ? (
+                  <p className="text-destructive text-xs">
+                    {errors.promoPriceInCents.message}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+            <p className="text-muted-foreground text-xs">
+              A promoção fica ativa enquanto preenchida. Para parar, limpe o campo.
             </p>
-          ) : null}
-        </div>
-      </FormSection>
+          </FormCard>
 
-      <FormSection
-        title="Detalhes"
-        description="Aparecem na ficha do produto na vitrine. Tudo opcional — preencha só o que fizer sentido."
-      >
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="product-composition">Composição</Label>
-            <Input
-              id="product-composition"
-              placeholder="Ex: 100% linho"
-              maxLength={120}
-              autoComplete="off"
-              disabled={isPending}
-              aria-invalid={!!errors.composition}
-              {...register("composition")}
-            />
-            {errors.composition?.message ? (
-              <p className="text-destructive text-xs">
-                {errors.composition.message}
-              </p>
-            ) : null}
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="product-modeling">Modelagem</Label>
-            <Input
-              id="product-modeling"
-              placeholder="Ex: Evasê midi"
-              maxLength={120}
-              autoComplete="off"
-              disabled={isPending}
-              aria-invalid={!!errors.modeling}
-              {...register("modeling")}
-            />
-            {errors.modeling?.message ? (
-              <p className="text-destructive text-xs">
-                {errors.modeling.message}
-              </p>
-            ) : null}
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="product-lining">Forro</Label>
-            <Input
-              id="product-lining"
-              placeholder="Ex: Não possui"
-              maxLength={120}
-              autoComplete="off"
-              disabled={isPending}
-              aria-invalid={!!errors.lining}
-              {...register("lining")}
-            />
-            {errors.lining?.message ? (
-              <p className="text-destructive text-xs">
-                {errors.lining.message}
-              </p>
-            ) : null}
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="product-washing">Lavagem</Label>
-            <Input
-              id="product-washing"
-              placeholder="Ex: À mão"
-              maxLength={120}
-              autoComplete="off"
-              disabled={isPending}
-              aria-invalid={!!errors.washing}
-              {...register("washing")}
-            />
-            {errors.washing?.message ? (
-              <p className="text-destructive text-xs">
-                {errors.washing.message}
-              </p>
-            ) : null}
-          </div>
-        </div>
-      </FormSection>
-
-      <FormSection title="Preço">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="product-base-price">Preço normal</Label>
+          <FormCard
+            title="Variantes"
+            description="Use quando o mesmo produto tem opções (P/M/G, cores)."
+          >
             <Controller
-              name="basePriceInCents"
+              name="variants"
               control={control}
               render={({ field }) => (
-                <PriceInput
-                  id="product-base-price"
-                  value={field.value}
-                  onChange={(v) => field.onChange(v ?? 0)}
+                <VariantEditor
+                  value={field.value as VariantData[]}
+                  onChange={(next: VariantInput[]) => field.onChange(next)}
                   disabled={isPending}
-                  aria-invalid={!!errors.basePriceInCents}
                 />
               )}
             />
-            {errors.basePriceInCents?.message ? (
-              <p className="text-destructive text-xs">
-                {errors.basePriceInCents.message}
-              </p>
-            ) : null}
-          </div>
+          </FormCard>
+        </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="product-promo-price">Preço promocional</Label>
+        {/* === Coluna direita (lg col-span-1, sticky) === */}
+        <div className="space-y-4 lg:sticky lg:top-4 lg:col-span-1">
+          <FormCard title="Status">
             <Controller
-              name="promoPriceInCents"
+              name="isFeatured"
               control={control}
               render={({ field }) => (
-                <PriceInput
-                  id="product-promo-price"
+                <ToggleRow
+                  id="product-featured"
+                  label="Em destaque"
+                  description="Aparece em primeiro na vitrine."
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  disabled={isPending}
+                />
+              )}
+            />
+            <Controller
+              name="trackStock"
+              control={control}
+              render={({ field: trackField }) => (
+                <Controller
+                  name="stockQuantity"
+                  control={control}
+                  render={({ field: qtyField }) => (
+                    <StockInput
+                      value={{
+                        trackStock: trackField.value,
+                        stockQuantity: qtyField.value,
+                      }}
+                      onChange={(next) => {
+                        trackField.onChange(next.trackStock);
+                        qtyField.onChange(next.stockQuantity);
+                      }}
+                      disabled={isPending}
+                    />
+                  )}
+                />
+              )}
+            />
+            {errors.stockQuantity?.message ? (
+              <p className="text-destructive text-xs">
+                {errors.stockQuantity.message}
+              </p>
+            ) : null}
+          </FormCard>
+
+          <FormCard
+            title="Organização"
+            description="Categoria que agrupa esse produto na vitrine."
+          >
+            <Controller
+              name="categoryId"
+              control={control}
+              render={({ field }) => (
+                <CategoryField
                   value={field.value}
                   onChange={field.onChange}
-                  placeholder="Sem promoção"
+                  categories={localCategories}
                   disabled={isPending}
-                  aria-invalid={!!errors.promoPriceInCents}
+                  onCategoryCreated={(c) => {
+                    const next: CategoryOption = {
+                      id: c.id,
+                      name: c.name,
+                      parentId: c.parentId,
+                    };
+                    setLocalCategories((prev) => [...prev, next]);
+                    field.onChange(c.id);
+                  }}
                 />
               )}
             />
-            {errors.promoPriceInCents?.message ? (
-              <p className="text-destructive text-xs">
-                {errors.promoPriceInCents.message}
-              </p>
+          </FormCard>
+
+          {/* Save desktop: dentro da coluna direita pra ficar sticky junto. */}
+          <div className="hidden flex-col gap-2 lg:flex">
+            <Button
+              type="submit"
+              disabled={isPending || !isDirty}
+              onClick={() => setSubmitMode("save")}
+              className="w-full"
+              size="lg"
+            >
+              {isPending && submitMode === "save" ? (
+                <>
+                  <Loader2Icon className="animate-spin" /> Salvando…
+                </>
+              ) : (
+                <>
+                  <SaveIcon /> Salvar
+                </>
+              )}
+            </Button>
+            {isDraft ? (
+              <Button
+                type="submit"
+                variant="outline"
+                disabled={isPending || !isDirty}
+                onClick={() => setSubmitMode("saveAndContinue")}
+                className="w-full"
+              >
+                {isPending && submitMode === "saveAndContinue" ? (
+                  <>
+                    <Loader2Icon className="animate-spin" /> Salvando…
+                  </>
+                ) : (
+                  <>
+                    <PlusCircleIcon /> Salvar e adicionar outro
+                  </>
+                )}
+              </Button>
             ) : null}
           </div>
         </div>
-        <p className="text-muted-foreground text-xs">
-          A promoção fica ativa enquanto preenchida. Para parar, limpe o campo.
-        </p>
-      </FormSection>
+      </div>
 
-      <FormSection title="Estoque">
-        <Controller
-          name="trackStock"
-          control={control}
-          render={({ field: trackField }) => (
-            <Controller
-              name="stockQuantity"
-              control={control}
-              render={({ field: qtyField }) => (
-                <StockInput
-                  value={{
-                    trackStock: trackField.value,
-                    stockQuantity: qtyField.value,
-                  }}
-                  onChange={(next) => {
-                    trackField.onChange(next.trackStock);
-                    qtyField.onChange(next.stockQuantity);
-                  }}
-                  disabled={isPending}
-                />
-              )}
-            />
-          )}
-        />
-        {errors.stockQuantity?.message ? (
-          <p className="text-destructive text-xs">
-            {errors.stockQuantity.message}
-          </p>
-        ) : null}
-      </FormSection>
-
-      <FormSection
-        title="Categoria"
-        description="Agrupa produtos na vitrine. Você pode criar uma agora se quiser."
-      >
-        <Controller
-          name="categoryId"
-          control={control}
-          render={({ field }) => (
-            <CategoryField
-              value={field.value}
-              onChange={field.onChange}
-              categories={localCategories}
-              disabled={isPending}
-              onCategoryCreated={(c) => {
-                const next: CategoryOption = {
-                  id: c.id,
-                  name: c.name,
-                  parentId: c.parentId,
-                };
-                setLocalCategories((prev) => [...prev, next]);
-                field.onChange(c.id); // auto-seleciona a recém-criada
-              }}
-            />
-          )}
-        />
-      </FormSection>
-
-      <FormSection
-        title="Variantes"
-        description="Use quando o mesmo produto tem opções (P/M/G, cores, tamanhos)."
-      >
-        <Controller
-          name="variants"
-          control={control}
-          render={({ field }) => (
-            <VariantEditor
-              value={field.value as VariantData[]}
-              onChange={(next: VariantInput[]) => field.onChange(next)}
-              disabled={isPending}
-            />
-          )}
-        />
-      </FormSection>
-
-      {/* "Salvar e adicionar outro" inline (acima do sticky), só pra draft.
-          Quando Sandra edita produto antigo, este botão não aparece —
-          fluxo limpo: editar = Salvar, novo = Salvar OU continuar série. */}
+      {/* Save mobile: sticky bottom acima do bottom nav. "+ adicionar outro"
+          inline acima quando draft. */}
       {isDraft ? (
-        <div className="flex justify-center pt-4 lg:justify-end">
+        <div className="flex justify-center pt-4 lg:hidden">
           <Button
             type="submit"
             variant="outline"
             disabled={isPending || !isDirty}
             onClick={() => setSubmitMode("saveAndContinue")}
-            className="w-full sm:w-auto sm:min-w-56"
+            className="w-full"
           >
             {isPending && submitMode === "saveAndContinue" ? (
               <>
@@ -492,28 +497,6 @@ export function ProductForm({
         </div>
       ) : null}
 
-      {/* Save desktop: inline no fim do form. */}
-      <div className="hidden justify-end pt-4 lg:flex">
-        <Button
-          type="submit"
-          disabled={isPending || !isDirty}
-          onClick={() => setSubmitMode("save")}
-          className="min-w-32"
-        >
-          {isPending && submitMode === "save" ? (
-            <>
-              <Loader2Icon className="animate-spin" /> Salvando…
-            </>
-          ) : (
-            <>
-              <SaveIcon /> Salvar
-            </>
-          )}
-        </Button>
-      </div>
-
-      {/* Save mobile: sticky bottom, ACIMA do bottom nav. Compacto (1 botão)
-          pra reduzir cromo. "+ adicionar outro" fica inline acima. */}
       <div
         className={cn(
           "surface-elevated fixed inset-x-0 z-50 px-4 py-3 lg:hidden",
@@ -544,6 +527,113 @@ export function ProductForm({
   );
 }
 
+// ===========================================================================
+// FormCard (canvas-v1 admin Lote 3) — substitui FormSection grid 14rem.
+// Card individual com border + padding + título no topo.
+// ===========================================================================
+
+interface FormCardProps {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}
+
+function FormCard({ title, description, children }: FormCardProps) {
+  return (
+    <section className="bg-card flex flex-col gap-4 rounded-xl border p-4 shadow-sm sm:p-5">
+      <header className="space-y-0.5">
+        <h2 className="text-[13.5px] font-semibold tracking-tight text-foreground">
+          {title}
+        </h2>
+        {description ? (
+          <p className="text-muted-foreground text-[11.5px] leading-relaxed">
+            {description}
+          </p>
+        ) : null}
+      </header>
+      <div className="flex flex-col gap-3">{children}</div>
+    </section>
+  );
+}
+
+// ===========================================================================
+// MetaField — input compacto pros 4 campos meta canvas. Reduz repetição.
+// ===========================================================================
+
+interface MetaFieldProps extends React.ComponentProps<typeof Input> {
+  id: string;
+  label: string;
+  error?: string;
+}
+
+const MetaField = ({
+  id,
+  label,
+  error,
+  className,
+  ...inputProps
+}: MetaFieldProps) => (
+  <div className="space-y-1.5">
+    <Label htmlFor={id}>{label}</Label>
+    <Input
+      id={id}
+      maxLength={120}
+      autoComplete="off"
+      aria-invalid={!!error}
+      className={className}
+      {...inputProps}
+    />
+    {error ? <p className="text-destructive text-xs">{error}</p> : null}
+  </div>
+);
+
+// ===========================================================================
+// ToggleRow — linha de switch com label + descrição (card Status canvas).
+// ===========================================================================
+
+interface ToggleRowProps {
+  id: string;
+  label: string;
+  description?: string;
+  checked: boolean;
+  onCheckedChange: (next: boolean) => void;
+  disabled?: boolean;
+}
+
+function ToggleRow({
+  id,
+  label,
+  description,
+  checked,
+  onCheckedChange,
+  disabled,
+}: ToggleRowProps) {
+  return (
+    <div className="flex items-start justify-between gap-3 border-b pb-3 last:border-0 last:pb-0">
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <Label htmlFor={id} className="text-[12.5px] font-medium">
+          {label}
+        </Label>
+        {description ? (
+          <p className="text-muted-foreground text-[11px] leading-snug">
+            {description}
+          </p>
+        ) : null}
+      </div>
+      <Switch
+        id={id}
+        checked={checked}
+        onCheckedChange={onCheckedChange}
+        disabled={disabled}
+      />
+    </div>
+  );
+}
+
+// ===========================================================================
+// CategoryField — Select + botão "+ Nova categoria" inline.
+// ===========================================================================
+
 interface CategoryFieldProps {
   value: string | null;
   onChange: (next: string | null) => void;
@@ -559,11 +649,6 @@ interface CategoryFieldProps {
 
 const NO_CATEGORY = "__none__";
 
-/**
- * Select de categoria + botão "+ Nova categoria" inline (abre `CategoryDialog`).
- * Quando Sandra cria via dialog, a nova categoria é injetada na lista local
- * e auto-selecionada — fluxo "criar e usar" sem recarregar a página.
- */
 function CategoryField({
   value,
   onChange,
@@ -571,9 +656,6 @@ function CategoryField({
   disabled,
   onCategoryCreated,
 }: CategoryFieldProps) {
-  // Recalcular roots/childrenByParent a cada keystroke do nome (RHF
-  // re-renderiza o form inteiro) é cheap pra ~10 categorias mas trivial
-  // memoizar.
   const { roots, childrenByParent } = useMemo(() => {
     const rootList = categories.filter((c) => c.parentId === null);
     const map = new Map<string, CategoryOption[]>();
@@ -634,10 +716,10 @@ function CategoryField({
   );
 }
 
-/**
- * Contador da sessão de cadastro contínuo. Vive em `sessionStorage` —
- * zera quando o lojista fecha a aba. Só roda no client (window check).
- */
+// ===========================================================================
+// Sessão de cadastro contínuo (sessionStorage).
+// ===========================================================================
+
 const SESSION_COUNTER_KEY = "vitre:product-create-session-count";
 function bumpSessionCounter(): number {
   if (typeof window === "undefined") return 1;
@@ -650,26 +732,4 @@ function bumpSessionCounter(): number {
   } catch {
     return 1;
   }
-}
-
-interface FormSectionProps {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}
-
-function FormSection({ title, description, children }: FormSectionProps) {
-  return (
-    <section className="grid gap-4 py-5 first:pt-0 last:pb-0 lg:grid-cols-[14rem_1fr] lg:gap-8 lg:py-6">
-      <header className="space-y-0.5">
-        <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
-        {description ? (
-          <p className="text-muted-foreground text-xs leading-relaxed">
-            {description}
-          </p>
-        ) : null}
-      </header>
-      <div className="space-y-3">{children}</div>
-    </section>
-  );
 }

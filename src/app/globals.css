@@ -275,6 +275,28 @@
   }
 }
 
+/* — Admin canvas-v1 (Lote 3) — */
+
+/* Eyebrow: monospace 10px uppercase, letter-spacing 0.4 — recorrente em todos os cards do canvas admin. */
+@utility text-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gray-500);
+}
+
+/* Hero number: 28px tabular-nums + tracking negativo, usado em stat cards do dashboard. */
+@utility text-hero-num {
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.0214em;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Premium card shadow on hover */
 @utility card-hover {
   transition: box-shadow 0.2s ease, transform 0.2s ease;

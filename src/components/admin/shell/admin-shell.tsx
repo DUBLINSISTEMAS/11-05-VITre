@@ -1,20 +1,20 @@
 import type { ReactNode } from "react";
 
-import { AdminSidebar } from "./admin-sidebar";
+import { AdminSidebar, type AdminSidebarProps } from "./admin-sidebar";
 import { BottomNav } from "./bottom-nav";
-import { MobileHeader, type MobileHeaderProps } from "./header";
+import { MobileHeader } from "./header";
 
-export interface AdminShellProps extends MobileHeaderProps {
+export interface AdminShellProps extends AdminSidebarProps {
   children: ReactNode;
 }
 
 /**
- * Shell do painel admin no estilo Fly.io.
+ * Shell do painel admin (canvas-v1 admin Lote 3).
  *
  * Layout:
- * - Desktop (lg+): grid `[14rem 1fr]` — sidebar lateral fixa esquerda + main
- *   envolto em card branco com border. Sem topbar (cada página tem seu h1
- *   no topo do card).
+ * - Desktop (lg+): flex — sidebar fixa 232px (StoreSwitcher topo +
+ *   StorefrontFooterCard rodapé) + main envolto em card branco com border.
+ *   Sem topbar (cada página renderiza `<AdminPageHeader>` no topo do card).
  * - Mobile (<lg): coluna única — header slim (logo + UserMenu) + main
  *   edge-to-edge + bottom nav escuro fixo.
  *
