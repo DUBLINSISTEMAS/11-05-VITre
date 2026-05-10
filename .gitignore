@@ -43,6 +43,9 @@ Thumbs.db
 canvas-extracted-tmp/
 scripts/extract-canvas-tmp.cjs
 
+# backups pontuais de tabelas (db-cleanup gera com timestamp)
+scripts/migrations-backup-*.json
+
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
