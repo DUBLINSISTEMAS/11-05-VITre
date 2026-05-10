@@ -10,7 +10,7 @@ import { notFound } from "next/navigation";
 
 import { ProductDetailView } from "@/components/storefront/product-detail-view";
 import { env } from "@/lib/env";
-import { getEffectivePrice, hasActivePromo } from "@/lib/pricing";
+import { getEffectivePrice } from "@/lib/pricing";
 import { getProductBySlug } from "@/lib/storefront/products-loader";
 import { getStoreBySlug } from "@/lib/storefront/store-loader";
 
@@ -77,11 +77,11 @@ export default async function ProductPage({
       "@type": "Offer",
       price: (effectivePriceCents / 100).toFixed(2),
       priceCurrency: "BRL",
-      availability: hasActivePromo(product, now)
-        ? "https://schema.org/InStock"
-        : isOutOfStock
-          ? "https://schema.org/OutOfStock"
-          : "https://schema.org/InStock",
+      // Availability é SOBRE estoque, não sobre promoção. Bug anterior
+      // marcava produto esgotado EM PROMOÇÃO como InStock no Google.
+      availability: isOutOfStock
+        ? "https://schema.org/OutOfStock"
+        : "https://schema.org/InStock",
       url: `${env.NEXT_PUBLIC_APP_URL}/${store.slug}/produto/${product.slug}`,
     },
   };

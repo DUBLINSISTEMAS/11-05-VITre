@@ -61,11 +61,17 @@ export function ProductGridSkeleton({
 }
 
 /**
- * Banner carousel skeleton
+ * Hero card skeleton (substituiu BannerCarouselSkeleton na limpeza
+ * Onda 4 da auditoria 2026-05-10 — banner-carousel.tsx foi removido).
  */
-export function BannerCarouselSkeleton({ className }: { className?: string }) {
+export function HeroCardSkeleton({ className }: { className?: string }) {
   return (
-    <Skeleton className={cn("aspect-[16/9] w-full rounded-3xl sm:aspect-[21/9]", className)} />
+    <Skeleton
+      className={cn(
+        "aspect-[16/9] w-full rounded-3xl sm:aspect-[21/9]",
+        className,
+      )}
+    />
   );
 }
 

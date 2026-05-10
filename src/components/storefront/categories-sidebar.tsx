@@ -10,7 +10,6 @@
  * - Search without auto-focus (prevents mobile keyboard)
  * - Store info footer (WhatsApp em --whatsapp)
  */
-import { AnimatePresence,motion } from "framer-motion";
 import {
   ChevronLeft,
   ChevronRight,
@@ -143,26 +142,19 @@ export function CategoriesSidebar({
                 </div>
               </div>
               
-              <AnimatePresence mode="wait">
-                {drilledRoot && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    transition={{ duration: 0.15 }}
+              {drilledRoot && (
+                <div className="animate-in fade-in zoom-in-90 duration-150">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setDrilledRoot(null)}
+                    className="shrink-0 size-9 rounded-xl hover:bg-gray-100"
+                    aria-label="Voltar"
                   >
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setDrilledRoot(null)}
-                      className="shrink-0 size-9 rounded-xl hover:bg-gray-100"
-                      aria-label="Voltar"
-                    >
-                      <ChevronLeft className="size-5" />
-                    </Button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                    <ChevronLeft className="size-5" />
+                  </Button>
+                </div>
+              )}
             </div>
           </SheetHeader>
 

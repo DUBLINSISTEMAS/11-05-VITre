@@ -7,8 +7,11 @@
  * - Pills com borda, fundo branco (inativo) ou preto (ativo)
  * - Categoria ativa: fundo preto, texto branco, ícone sparkles
  * - Scroll horizontal com snap
+ *
+ * Migrado de framer-motion → CSS na Onda 4 da auditoria 2026-05-10.
+ * O `layoutId` shared transition foi substituído por `transition-colors`
+ * direto na pill (sem efeito morph entre estados, mas dep removida).
  */
-import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -69,25 +72,18 @@ function PillLink({ href, isActive, prefetch = false, children }: PillLinkProps)
     <Link
       href={href}
       prefetch={prefetch}
-      className="relative shrink-0 snap-start outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-full"
-    >
-      {isActive && (
-        <motion.div
-          layoutId="category-pill-active"
-          className="absolute inset-0 rounded-full bg-foreground"
-          transition={{
-            type: "spring",
-            stiffness: 500,
-            damping: 35,
-          }}
-        />
+      aria-current={isActive ? "page" : undefined}
+      className={cn(
+        "relative shrink-0 snap-start rounded-full outline-none",
+        "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
       )}
+    >
       <span
         className={cn(
-          "relative z-10 flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+          "flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-colors duration-200",
           isActive
-            ? "border-transparent text-background"
-            : "border-gray-200 bg-white text-foreground hover:bg-gray-50"
+            ? "border-transparent bg-foreground text-background"
+            : "border-gray-200 bg-white text-foreground hover:bg-gray-50",
         )}
       >
         {children}

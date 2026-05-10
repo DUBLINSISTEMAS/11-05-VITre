@@ -306,3 +306,24 @@
     transform: translateY(-2px);
   }
 }
+
+/* — Heart favorite animations (migrado de framer-motion na Onda 4 da auditoria 2026-05-10) — */
+
+@keyframes heart-pop {
+  0%   { transform: scale(1)   rotate(0); }
+  25%  { transform: scale(1.3) rotate(-10deg); }
+  50%  { transform: scale(0.9) rotate(10deg); }
+  75%  { transform: scale(1.1) rotate(-5deg); }
+  100% { transform: scale(1)   rotate(0); }
+}
+@utility animate-heart-pop {
+  animation: heart-pop 0.3s ease-out;
+}
+
+@keyframes heart-ring-burst {
+  0%   { transform: scale(1);   opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+@utility animate-heart-ring-burst {
+  animation: heart-ring-burst 0.4s ease-out forwards;
+}

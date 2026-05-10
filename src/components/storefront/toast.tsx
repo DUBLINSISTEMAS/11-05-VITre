@@ -2,10 +2,13 @@
 
 /**
  * Toast system para feedback de ações.
- * Leve, sem dependências externas, com animações suaves.
+ *
+ * Migrado de framer-motion → CSS (tw-animate-css `animate-in`) na Onda 4 da
+ * auditoria 2026-05-10. Exit animation foi simplificado — toast some sem
+ * fade-out (escolha consciente do founder pra remover a dep).
  */
-import { AnimatePresence, motion } from "framer-motion";
 import { Check, Heart, ShoppingBag, X } from "lucide-react";
+import Image from "next/image";
 import {
   createContext,
   type ReactNode,
@@ -61,29 +64,25 @@ const bgColors: Record<ToastType, string> = {
 
 function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) {
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 50, scale: 0.9 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 20, scale: 0.95 }}
-      transition={{
-        type: "spring",
-        stiffness: 400,
-        damping: 30,
-      }}
+    <div
+      role="status"
       className={cn(
         "flex items-center gap-3 rounded-2xl border px-4 py-3 shadow-lg backdrop-blur-sm",
         "min-w-[280px] max-w-[360px]",
-        bgColors[toast.type]
+        "animate-in fade-in-0 slide-in-from-bottom-4 zoom-in-95 duration-300",
+        bgColors[toast.type],
       )}
     >
       {/* Image or icon */}
       {toast.image ? (
-        <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-white">
-          <img
+        <div className="relative size-12 shrink-0 overflow-hidden rounded-xl bg-white">
+          <Image
             src={toast.image}
             alt=""
-            className="size-full object-cover"
+            fill
+            sizes="48px"
+            className="object-cover"
+            unoptimized
           />
         </div>
       ) : (
@@ -106,12 +105,14 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) 
 
       {/* Close button */}
       <button
+        type="button"
         onClick={onRemove}
+        aria-label="Fechar"
         className="shrink-0 rounded-full p-1 text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground"
       >
         <X className="size-4" />
       </button>
-    </motion.div>
+    </div>
   );
 }
 
@@ -141,16 +142,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
       {/* Toast container */}
       <div className="fixed bottom-24 left-0 right-0 z-[100] flex flex-col items-center gap-2 px-4 pointer-events-none">
-        <AnimatePresence mode="popLayout">
-          {toasts.map((toast) => (
-            <div key={toast.id} className="pointer-events-auto">
-              <ToastItem
-                toast={toast}
-                onRemove={() => removeToast(toast.id)}
-              />
-            </div>
-          ))}
-        </AnimatePresence>
+        {toasts.map((toast) => (
+          <div key={toast.id} className="pointer-events-auto">
+            <ToastItem
+              toast={toast}
+              onRemove={() => removeToast(toast.id)}
+            />
+          </div>
+        ))}
       </div>
     </ToastContext.Provider>
   );

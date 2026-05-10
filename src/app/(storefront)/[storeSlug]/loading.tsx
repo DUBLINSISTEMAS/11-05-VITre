@@ -1,15 +1,15 @@
-import { 
-  BannerCarouselSkeleton, 
-  CategoryPillsSkeleton, 
+import {
+  CategoryPillsSkeleton,
+  HeroCardSkeleton,
   ProductGridSkeleton,
-  SectionHeaderSkeleton 
+  SectionHeaderSkeleton,
 } from "@/components/storefront/skeletons";
 
 export default function HomeLoading() {
   return (
     <div className="space-y-8">
-      {/* Banner */}
-      <BannerCarouselSkeleton />
+      {/* Hero card (substituiu o antigo BannerCarousel) */}
+      <HeroCardSkeleton />
       
       {/* Category pills */}
       <CategoryPillsSkeleton count={6} />

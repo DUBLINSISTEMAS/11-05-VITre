@@ -1,7 +1,6 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { motion } from "framer-motion";
 import { ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -91,13 +90,12 @@ function EntrarContent() {
         </>
       }
     >
+      {/* Stagger fade-in migrado de framer-motion → tw-animate-css (Onda 4
+          auditoria 2026-05-10). `[animation-fill-mode:backwards]` evita
+          flash do conteúdo antes do delay disparar. */}
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <motion.div
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1 }}
-          >
+          <div className="animate-in fade-in slide-in-from-left-3 duration-300 [animation-delay:100ms] [animation-fill-mode:backwards]">
             <FormField
               control={form.control}
               name="email"
@@ -122,13 +120,9 @@ function EntrarContent() {
                 </FormItem>
               )}
             />
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.15 }}
-          >
+          <div className="animate-in fade-in slide-in-from-left-3 duration-300 [animation-delay:150ms] [animation-fill-mode:backwards]">
             <FormField
               control={form.control}
               name="password"
@@ -178,13 +172,9 @@ function EntrarContent() {
                 </FormItem>
               )}
             />
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 [animation-delay:200ms] [animation-fill-mode:backwards]">
             <Button
               type="submit"
               className="w-full h-10 font-medium gap-2 group"
@@ -202,7 +192,7 @@ function EntrarContent() {
                 </>
               )}
             </Button>
-          </motion.div>
+          </div>
         </form>
       </Form>
     </AuthCard>
