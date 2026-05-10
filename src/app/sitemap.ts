@@ -12,7 +12,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import type { MetadataRoute } from "next";
 
-import { db } from "@/db";
 import {
   categoryTable,
   productTable,
@@ -26,8 +25,12 @@ export const revalidate = 3600; // 1h
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
 
-  return withServiceRole("sitemap: list active stores+products+categories", async () => {
-    const stores = await db
+  // CRÍTICO: usa `tx` (não `db`). `db` é o pool RLS-bound (vitre_app); sem
+  // GUC `app.current_store_id` setado e com FORCE RLS ativo, queries cross-
+  // tenant retornam zero. `withServiceRole` entrega o `tx` com a role
+  // postgres (BYPASSRLS) — é justamente o helper que cobre este caso.
+  return withServiceRole("sitemap: list active stores+products+categories", async (tx) => {
+    const stores = await tx
       .select({
         id: storeTable.id,
         slug: storeTable.slug,
@@ -45,7 +48,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Filtra produtos/categorias por lojas ativas no DB — não trazer
     // dados de loja desativada e descartar em memória.
     const [products, categories] = await Promise.all([
-      db
+      tx
         .select({
           slug: productTable.slug,
           storeId: productTable.storeId,
@@ -58,7 +61,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             inArray(productTable.storeId, storeIds),
           ),
         ),
-      db
+      tx
         .select({
           slug: categoryTable.slug,
           storeId: categoryTable.storeId,

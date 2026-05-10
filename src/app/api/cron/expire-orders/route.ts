@@ -26,13 +26,11 @@
  *
  * Documentação: convenção #4 (revalidateTag) + #1 (RLS-first).
  */
-import { timingSafeEqual } from "node:crypto";
-
 import { and, eq, lt, sql } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 
 import { orderTable, storeTable } from "@/db/schema";
-import { env } from "@/lib/env";
+import { isCronAuthorized } from "@/lib/cron-auth";
 import { logger } from "@/lib/logger";
 import { restockOrderItems } from "@/lib/order/restock";
 import { ANON_USER_ID, withServiceRole, withTenant } from "@/lib/tenant";
@@ -46,26 +44,8 @@ interface ExpiredCandidate {
   storeSlug: string;
 }
 
-function isAuthorized(request: Request): boolean {
-  const header = request.headers.get("authorization");
-  if (!header) return false;
-
-  const expected = `Bearer ${env.CRON_SECRET}`;
-  // Buffers precisam ter o MESMO comprimento pra timingSafeEqual não throw.
-  // Padding manual mantém a comparação constant-time mesmo em mismatch de
-  // tamanho (dummy compare em vez de short-circuit).
-  const headerBuf = Buffer.from(header);
-  const expectedBuf = Buffer.from(expected);
-  if (headerBuf.length !== expectedBuf.length) {
-    // Compara contra ele mesmo pra preservar timing.
-    timingSafeEqual(headerBuf, headerBuf);
-    return false;
-  }
-  return timingSafeEqual(headerBuf, expectedBuf);
-}
-
 export async function GET(request: Request) {
-  if (!isAuthorized(request)) {
+  if (!isCronAuthorized(request)) {
     return new Response("Unauthorized", { status: 401 });
   }
 

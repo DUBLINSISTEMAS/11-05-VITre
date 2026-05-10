@@ -6,6 +6,11 @@ import { headers } from "next/headers";
 
 import { productImageTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import {
+  checkRateLimit,
+  RateLimitError,
+  rateLimits,
+} from "@/lib/rate-limit";
 import { getCurrentStore } from "@/lib/store-context";
 import {
   BUCKETS,
@@ -34,6 +39,15 @@ export async function deleteProductImage(input: {
   const session = await auth.api.getSession({ headers: requestHeaders });
   if (!session?.user) {
     return { ok: false, error: "Sessão expirada." };
+  }
+
+  // Rate limit: alinha com todas as outras mutations admin. Sem isso, era a
+  // única ação sem proteção contra burst.
+  try {
+    await checkRateLimit(rateLimits.mutation, session.user.id);
+  } catch (e) {
+    if (e instanceof RateLimitError) return { ok: false, error: e.message };
+    throw e;
   }
 
   let parsed;

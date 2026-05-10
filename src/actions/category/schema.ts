@@ -56,3 +56,16 @@ export const removeCategoryImageSchema = z.object({
 export type RemoveCategoryImageInput = z.infer<
   typeof removeCategoryImageSchema
 >;
+
+/**
+ * Validação do `categoryId` no upload de imagem. Schema dedicado pq o
+ * payload chega via FormData (multipart), não JSON — extraímos e parseamos
+ * só o campo de ID. Alinha com `uploadProductImageSchema` (defesa em
+ * profundidade contra string arbitrária).
+ */
+export const uploadCategoryImageSchema = z.object({
+  categoryId: z.string().uuid(),
+});
+export type UploadCategoryImageInput = z.infer<
+  typeof uploadCategoryImageSchema
+>;

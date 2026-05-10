@@ -1,0 +1,16 @@
+# Travamos EOL=LF nos arquivos sensíveis a hash. Sem isso, em Windows com
+# `core.autocrlf=true` (default global), git pode normalizar CRLF na entrada
+# e o hash SHA256 calculado por `drizzle-kit migrate` diverge do que está em
+# `drizzle/meta/_journal.json` — Drizzle reaplica migrations já aplicadas.
+#
+# Memória team `db-migrations-discipline` documenta o algoritmo:
+#   __drizzle_migrations.hash = SHA256( <arquivo>.sql lido em LF )
+
+drizzle/*.sql        text eol=lf
+drizzle/meta/*.json  text eol=lf
+supabase/sql/*.sql   text eol=lf
+
+# Outros formatos onde EOL importa pra reprodutibilidade
+*.sh                 text eol=lf
+*.yaml               text eol=lf
+*.yml                text eol=lf

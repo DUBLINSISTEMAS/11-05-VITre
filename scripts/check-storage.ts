@@ -3,8 +3,9 @@
  * contagem de objetos. Uso: `tsx scripts/check-storage.ts`
  *
  * Esperado (após 02_storage_buckets.sql aplicado):
- *   - 3 buckets: store-logos, store-banners, product-images (todos public)
- *   - 3 policies SELECT em storage.objects (uma por bucket, anon+authenticated)
+ *   - 4 buckets: store-logos, store-banners, product-images, category-images
+ *     (todos public)
+ *   - 4 policies SELECT em storage.objects (uma por bucket, anon+authenticated)
  *   - Nenhuma policy de INSERT/UPDATE/DELETE (escrita via service_role)
  */
 import { config } from "dotenv";
@@ -12,7 +13,12 @@ config({ path: ".env.local" });
 
 import { Pool } from "pg";
 
-const EXPECTED_BUCKETS = ["store-logos", "store-banners", "product-images"];
+const EXPECTED_BUCKETS = [
+  "store-logos",
+  "store-banners",
+  "product-images",
+  "category-images",
+];
 
 async function main() {
   const url = process.env.DIRECT_URL;
@@ -71,7 +77,9 @@ async function main() {
     if (missing.length > 0) {
       console.log(`\n  ❌ Faltando: ${missing.join(", ")}`);
     } else {
-      console.log(`\n  ✅ Todos os 3 buckets esperados estão presentes.`);
+      console.log(
+        `\n  ✅ Todos os ${EXPECTED_BUCKETS.length} buckets esperados estão presentes.`,
+      );
     }
 
     console.log(`\n🔒 Policies em storage.objects (${policies.rowCount}):`);

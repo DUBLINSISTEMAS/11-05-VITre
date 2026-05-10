@@ -1,6 +1,5 @@
 import { and, eq, like, ne, or } from "drizzle-orm";
 
-import { db } from "@/db";
 import { productTable } from "@/db/schema";
 import type { Tx } from "@/lib/tenant";
 
@@ -19,17 +18,19 @@ import { generateSlug } from "./slug";
  * em update pra um produto poder manter seu slug atual sem conflitar com ele
  * mesmo.
  *
- * `client` (opcional): use um Tx ativo (de dentro de `withTenant`) para que a
- * query passe pelo GUC de tenant. Default = `db` (para callers que ainda não
- * estão dentro de withTenant).
+ * `client` é OBRIGATÓRIO — deve ser um `tx` ativo de `withTenant`/`withServiceRole`.
+ * Removemos o default `= db` pra evitar armadilha pós-FORCE-RLS: query sem GUC
+ * retornaria taken=[] silenciosamente, função devolveria `base`, INSERT bate
+ * UNIQUE constraint e quebra com erro genérico. TS força todos os callers a
+ * passar tx — defesa em profundidade.
  */
 export async function generateUniqueProductSlug(params: {
   storeId: string;
   name: string;
   excludeProductId?: string;
-  client?: Tx;
+  client: Tx;
 }): Promise<string> {
-  const { storeId, name, excludeProductId, client = db } = params;
+  const { storeId, name, excludeProductId, client } = params;
   const base = generateSlug(name);
 
   if (!base) {

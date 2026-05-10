@@ -21,6 +21,8 @@ import {
 } from "@/lib/supabase/storage";
 import { withTenant } from "@/lib/tenant";
 
+import { uploadCategoryImageSchema } from "./schema";
+
 export type UploadCategoryImageResult =
   | { ok: true; url: string }
   | { ok: false; error: string };
@@ -61,11 +63,15 @@ export async function uploadCategoryImage(
   if (!(file instanceof File)) {
     return { ok: false, error: "Arquivo ausente." };
   }
-  const categoryIdRaw = formData.get("categoryId");
-  if (typeof categoryIdRaw !== "string" || categoryIdRaw.length === 0) {
+  // Zod no boundary — alinha com uploadProductImageSchema. Rejeita strings
+  // não-UUID antes de tocar DB (defesa em profundidade contra payload arbitrário).
+  const parsed = uploadCategoryImageSchema.safeParse({
+    categoryId: formData.get("categoryId"),
+  });
+  if (!parsed.success) {
     return { ok: false, error: "Categoria inválida." };
   }
-  const categoryId = categoryIdRaw;
+  const { categoryId } = parsed.data;
 
   const validationError = validateImageInput(file);
   if (validationError) {
