@@ -48,7 +48,7 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
-    requireEmailVerification: false, // Fase 1: false. Fase 2: true.
+    requireEmailVerification: false, // false: substituído por verificação via Stripe na Fase 2.
     sendResetPassword: async ({ user, url }) => {
       await sendPasswordResetEmail({
         to: user.email,
