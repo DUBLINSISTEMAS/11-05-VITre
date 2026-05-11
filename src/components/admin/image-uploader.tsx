@@ -16,6 +16,7 @@ import {
   compressImageClient,
   IMAGE_COMPRESSION_FAILED_MESSAGE,
 } from "@/lib/image-client";
+import { logger } from "@/lib/logger";
 import { cn } from "@/lib/utils";
 
 export interface ProductImageData {
@@ -131,7 +132,7 @@ export function ImageUploader({
           onChange(current);
         }
       } catch (e) {
-        console.error("[image-uploader] upload falhou", e);
+        logger.error("admin.product_image.upload_failed", { err: e });
         toast.error(
           "Falha no upload. Verifique sua conexão e tente novamente.",
         );

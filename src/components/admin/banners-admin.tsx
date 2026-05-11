@@ -35,6 +35,7 @@ import {
   compressImageClient,
   IMAGE_COMPRESSION_FAILED_MESSAGE,
 } from "@/lib/image-client";
+import { logger } from "@/lib/logger";
 import { cn } from "@/lib/utils";
 
 import { BannerEditDialog } from "./banner-edit-dialog";
@@ -91,7 +92,7 @@ export function BannersAdmin({ banners, maxBanners }: BannersAdminProps) {
       } catch (e) {
         // Captura throw inesperado (RateLimitError não-tratado, Next body limit,
         // Upstash offline). Sem catch, useTransition engole e toast nunca aparece.
-        console.error("[banners-admin] upload falhou", e);
+        logger.error("admin.banner.upload_failed", { err: e });
         toast.error(
           "Falha no upload. Verifique sua conexão e tente novamente.",
         );
@@ -119,7 +120,7 @@ export function BannersAdmin({ banners, maxBanners }: BannersAdminProps) {
         }
         router.refresh();
       } catch (e) {
-        console.error("[banners-admin] reorder falhou", e);
+        logger.error("admin.banner.reorder_failed", { err: e });
         toast.error("Falha ao reordenar. Tente novamente.");
       }
     });
@@ -138,7 +139,7 @@ export function BannersAdmin({ banners, maxBanners }: BannersAdminProps) {
         }
         router.refresh();
       } catch (e) {
-        console.error("[banners-admin] toggle falhou", e);
+        logger.error("admin.banner.toggle_failed", { err: e, bannerId: b.id });
         toast.error("Falha ao pausar/ativar. Tente novamente.");
       }
     });
@@ -155,7 +156,7 @@ export function BannersAdmin({ banners, maxBanners }: BannersAdminProps) {
         toast.success("Banner excluído.");
         router.refresh();
       } catch (e) {
-        console.error("[banners-admin] delete falhou", e);
+        logger.error("admin.banner.delete_failed", { err: e, bannerId: b.id });
         toast.error("Falha ao excluir. Tente novamente.");
       }
     });

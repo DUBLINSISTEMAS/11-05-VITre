@@ -18,6 +18,7 @@ import {
   compressImageClient,
   IMAGE_COMPRESSION_FAILED_MESSAGE,
 } from "@/lib/image-client";
+import { logger } from "@/lib/logger";
 import { cn } from "@/lib/utils";
 
 interface CategoryImageUploaderProps {
@@ -72,7 +73,7 @@ export function CategoryImageUploader({
       } catch (e) {
         // Captura throw inesperado (RateLimitError não-tratado, Next body limit,
         // Upstash offline). Sem catch, useTransition engole e toast nunca aparece.
-        console.error("[category-image-uploader] upload falhou", e);
+        logger.error("admin.category_image.upload_failed", { err: e, categoryId });
         toast.error(
           "Falha no upload. Verifique sua conexão e tente novamente.",
         );
@@ -95,7 +96,7 @@ export function CategoryImageUploader({
         toast.success("Imagem removida.");
         router.refresh();
       } catch (e) {
-        console.error("[category-image-uploader] remove falhou", e);
+        logger.error("admin.category_image.remove_failed", { err: e, categoryId });
         toast.error("Falha ao remover. Tente novamente.");
       }
     });

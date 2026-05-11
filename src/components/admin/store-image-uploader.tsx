@@ -17,6 +17,7 @@ import {
   compressImageClient,
   IMAGE_COMPRESSION_FAILED_MESSAGE,
 } from "@/lib/image-client";
+import { logger } from "@/lib/logger";
 import { cn } from "@/lib/utils";
 
 interface StoreImageUploaderProps {
@@ -76,7 +77,7 @@ export function StoreImageUploader({
       } catch (e) {
         // Captura throw inesperado (RateLimitError não-tratado, Next body limit,
         // Upstash offline). Sem catch, useTransition engole e toast nunca aparece.
-        console.error("[store-image-uploader] upload falhou", e);
+        logger.error("admin.store_image.upload_failed", { err: e, kind });
         toast.error(
           "Falha no upload. Verifique sua conexão e tente novamente.",
         );
@@ -98,7 +99,7 @@ export function StoreImageUploader({
         }
         toast.success(kind === "logo" ? "Logo removido." : "Ícone removido.");
       } catch (e) {
-        console.error("[store-image-uploader] remove falhou", e);
+        logger.error("admin.store_image.remove_failed", { err: e, kind });
         toast.error("Falha ao remover. Tente novamente.");
       }
     });
