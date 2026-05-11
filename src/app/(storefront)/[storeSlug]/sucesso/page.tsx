@@ -22,10 +22,12 @@
  */
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { z } from "zod";
 
 import { SuccessClearCart } from "@/components/storefront/success-clear-cart";
 import { SuccessCtas } from "@/components/storefront/success-ctas";
 import { env } from "@/lib/env";
+import { searchTextSchema } from "@/lib/page-search-params";
 import { formatBRL } from "@/lib/pricing";
 import { buildPublicOrderWhatsAppMessage } from "@/lib/public-order";
 import { getOrderByShortCode } from "@/lib/storefront/order-loader";
@@ -41,9 +43,9 @@ interface PageParams {
   storeSlug: string;
 }
 
-interface SearchParams {
-  code?: string;
-}
+const sucessoSearchSchema = z.object({
+  code: searchTextSchema,
+});
 
 // Mapeamento status → label PT-BR (canvas usa "Aguardando contato"
 // pra awaiting_whatsapp; demais derivamos do enum).
@@ -60,11 +62,11 @@ export default async function SuccessPage({
   searchParams,
 }: {
   params: Promise<PageParams>;
-  searchParams: Promise<SearchParams>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const [{ storeSlug }, sp] = await Promise.all([params, searchParams]);
 
-  const code = sp.code?.trim();
+  const { code } = sucessoSearchSchema.parse(sp);
   if (!code) redirect(`/${storeSlug}/sacola`);
 
   const [store, order] = await Promise.all([

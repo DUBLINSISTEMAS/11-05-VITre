@@ -11,11 +11,18 @@
  */
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { z } from "zod";
 
 import { Pagination } from "@/components/common/pagination";
 import { CategoryFilterChips } from "@/components/storefront/category-filter-chips";
 import { ProductGrid } from "@/components/storefront/product-grid";
 import { StoreHeader } from "@/components/storefront/store-header";
+import {
+  boolFlagSchema,
+  enumWithDefault,
+  pageNumberSchema,
+  priceCentsSchema,
+} from "@/lib/page-search-params";
 import { getCategoryBySlug } from "@/lib/storefront/categories-loader";
 import {
   listProducts,
@@ -28,35 +35,21 @@ interface PageParams {
   categorySlug: string;
 }
 
-interface SearchParams {
-  page?: string;
-  priceMin?: string;
-  priceMax?: string;
-  sort?: string;
-  promo?: string;
-}
-
 const PAGE_SIZE = 24;
-const VALID_SORTS: ProductSort[] = [
+const VALID_SORTS = [
   "relevance",
   "price_asc",
   "price_desc",
   "newest",
-];
+] as const satisfies readonly ProductSort[];
 
-function parseSortParam(value: string | undefined): ProductSort {
-  if (value && (VALID_SORTS as string[]).includes(value)) {
-    return value as ProductSort;
-  }
-  return "relevance";
-}
-
-function parsePriceParam(value: string | undefined): number | undefined {
-  if (!value) return undefined;
-  const num = Number(value);
-  if (!Number.isFinite(num) || num < 0) return undefined;
-  return Math.round(num);
-}
+const categoriaSearchSchema = z.object({
+  page: pageNumberSchema,
+  priceMin: priceCentsSchema,
+  priceMax: priceCentsSchema,
+  sort: enumWithDefault(VALID_SORTS, "relevance"),
+  promo: boolFlagSchema,
+});
 
 function formatPiecesCounter(total: number): string {
   if (total === 0) return "0 PEÇAS";
@@ -86,17 +79,19 @@ export default async function CategoryPage({
   searchParams,
 }: {
   params: Promise<PageParams>;
-  searchParams: Promise<SearchParams>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const [{ storeSlug, categorySlug }, sp] = await Promise.all([
     params,
     searchParams,
   ]);
-  const page = Math.max(1, Number(sp.page) || 1);
-  const sort = parseSortParam(sp.sort);
-  const priceMinCents = parsePriceParam(sp.priceMin);
-  const priceMaxCents = parsePriceParam(sp.priceMax);
-  const promoOnly = sp.promo === "1";
+  const {
+    page,
+    sort,
+    priceMin: priceMinCents,
+    priceMax: priceMaxCents,
+    promo: promoOnly,
+  } = categoriaSearchSchema.parse(sp);
 
   const store = await getStoreBySlug(storeSlug);
   if (!store) notFound();

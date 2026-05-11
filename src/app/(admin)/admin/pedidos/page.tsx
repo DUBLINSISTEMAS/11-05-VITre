@@ -1,6 +1,7 @@
 import { and, count, desc, eq, type SQL } from "drizzle-orm";
 import { ReceiptIcon, SearchXIcon } from "lucide-react";
 import { Suspense } from "react";
+import { z } from "zod";
 
 import { ORDER_STATUS_VALUES } from "@/actions/order/schema";
 import { OrdersFilters } from "@/components/admin/orders-filters";
@@ -9,17 +10,24 @@ import { AdminPageHeader } from "@/components/admin/shell/page-header";
 import { Pagination } from "@/components/common/pagination";
 import { orderTable } from "@/db/schema";
 import { requireSession } from "@/lib/auth-server";
+import {
+  enumOrNull,
+  pageNumberSchema,
+  searchTextSchema,
+} from "@/lib/page-search-params";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
 const PAGE_SIZE = 20;
 
+const pedidosSearchSchema = z.object({
+  q: searchTextSchema,
+  status: enumOrNull(ORDER_STATUS_VALUES),
+  page: pageNumberSchema,
+});
+
 interface PedidosPageProps {
-  searchParams: Promise<{
-    q?: string;
-    status?: string;
-    page?: string;
-  }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export default async function PedidosPage({ searchParams }: PedidosPageProps) {
@@ -29,22 +37,16 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
     throw new Error("UNREACHABLE: pedidos page sem loja");
   }
 
-  const params = await searchParams;
-  const q = (params.q ?? "").trim().toUpperCase();
-  const statusFilter = params.status ?? null;
-  const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
+  const {
+    q: rawQ,
+    status: statusFilter,
+    page,
+  } = pedidosSearchSchema.parse(await searchParams);
+  const q = rawQ.toUpperCase();
 
   const conditions: SQL[] = [eq(orderTable.storeId, store.id)];
-  if (
-    statusFilter &&
-    (ORDER_STATUS_VALUES as readonly string[]).includes(statusFilter)
-  ) {
-    conditions.push(
-      eq(
-        orderTable.status,
-        statusFilter as (typeof ORDER_STATUS_VALUES)[number],
-      ),
-    );
+  if (statusFilter) {
+    conditions.push(eq(orderTable.status, statusFilter));
   }
   if (q) {
     // shortCode é unique global; matching exato por loja garante isolamento.

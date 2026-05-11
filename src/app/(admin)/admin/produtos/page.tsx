@@ -17,6 +17,7 @@ import { sql } from "drizzle-orm";
 import { PackageIcon, PlusIcon, SearchXIcon } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
+import { z } from "zod";
 
 import type { CategoryOption } from "@/components/admin/category-dialog";
 import { ProductsFilters } from "@/components/admin/products-filters";
@@ -34,27 +35,31 @@ import {
   productTable,
 } from "@/db/schema";
 import { requireSession } from "@/lib/auth-server";
+import {
+  boolFlagSchema,
+  enumOrNull,
+  idOrNullSchema,
+  pageNumberSchema,
+  searchTextSchema,
+} from "@/lib/page-search-params";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
 const PAGE_SIZE = 20;
 
-type StatusFilter = "active" | "inactive" | "draft" | "no-stock";
-const STATUS_VALUES: ReadonlyArray<StatusFilter> = [
-  "active",
-  "inactive",
-  "draft",
-  "no-stock",
-];
+const STATUS_VALUES = ["active", "inactive", "draft", "no-stock"] as const;
+type StatusFilter = (typeof STATUS_VALUES)[number];
+
+const produtosSearchSchema = z.object({
+  q: searchTextSchema,
+  categoryId: idOrNullSchema,
+  status: enumOrNull(STATUS_VALUES),
+  promo: boolFlagSchema,
+  page: pageNumberSchema,
+});
 
 interface ProdutosPageProps {
-  searchParams: Promise<{
-    q?: string;
-    categoryId?: string;
-    status?: string;
-    promo?: string;
-    page?: string;
-  }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export default async function ProdutosPage({ searchParams }: ProdutosPageProps) {
@@ -64,16 +69,13 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
     throw new Error("UNREACHABLE: produtos page sem loja");
   }
 
-  const params = await searchParams;
-  const q = (params.q ?? "").trim();
-  const categoryId = params.categoryId?.trim() || null;
-  const rawStatus = params.status ?? null;
-  const statusFilter: StatusFilter | null =
-    rawStatus && (STATUS_VALUES as ReadonlyArray<string>).includes(rawStatus)
-      ? (rawStatus as StatusFilter)
-      : null;
-  const onlyPromo = params.promo === "1";
-  const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
+  const {
+    q,
+    categoryId,
+    status: statusFilter,
+    promo: onlyPromo,
+    page,
+  } = produtosSearchSchema.parse(await searchParams);
 
   // ---- WHERE base (storeId + busca + categoria + promo) ----
   const baseConditions: SQL[] = [eq(productTable.storeId, store.id)];

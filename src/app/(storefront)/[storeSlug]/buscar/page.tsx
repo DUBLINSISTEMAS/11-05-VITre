@@ -11,11 +11,16 @@ import { ArrowLeft, Search as SearchIcon, SlidersHorizontal, X } from "lucide-re
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { z } from "zod";
 
 import { Pagination } from "@/components/common/pagination";
 import { CategoryPills } from "@/components/storefront/category-pills";
 import { ProductGrid } from "@/components/storefront/product-grid";
 import { Button } from "@/components/ui/button";
+import {
+  pageNumberSchema,
+  searchTextSchema,
+} from "@/lib/page-search-params";
 import { getCategoryTree } from "@/lib/storefront/categories-loader";
 import { searchProducts } from "@/lib/storefront/search-loader";
 import { getStoreBySlug } from "@/lib/storefront/store-loader";
@@ -30,24 +35,23 @@ interface PageParams {
   storeSlug: string;
 }
 
-interface SearchParams {
-  q?: string;
-  page?: string;
-}
+const buscarSearchSchema = z.object({
+  q: searchTextSchema,
+  page: pageNumberSchema,
+});
 
 export default async function SearchPage({
   params,
   searchParams,
 }: {
   params: Promise<PageParams>;
-  searchParams: Promise<SearchParams>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const [{ storeSlug }, sp] = await Promise.all([params, searchParams]);
   const store = await getStoreBySlug(storeSlug);
   if (!store) notFound();
 
-  const q = (sp.q ?? "").trim();
-  const page = Math.max(1, Number(sp.page) || 1);
+  const { q, page } = buscarSearchSchema.parse(sp);
   const baseHref = `/${store.slug}`;
 
   // Carrega categorias para os pills
