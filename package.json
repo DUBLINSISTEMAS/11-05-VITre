@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "tsx --test \"tests/**/*.test.ts\"",
+    "test:integration": "tsx --test \"tests/integration/**/*.test.ts\"",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",

@@ -65,11 +65,34 @@ vitre/
 npm run dev              # localhost:3000
 npm run build            # build de produção
 npm run lint
+npm run test             # testes unitários/source checks
+npm run test:integration # testes reais com credenciais (ver seção abaixo)
 npm run db:generate      # Drizzle gera migration
 npm run db:migrate       # aplica via DIRECT_URL
 npm run db:push          # alternativa rápida (dev only)
 npm run db:studio        # Drizzle Studio
 npm run db:check         # health check do schema
 npm run db:check-storage # health check dos buckets
+npm run db:check-anon    # valida que anon não lê tabelas sensíveis
 npm run db:apply <file>  # aplica SQL custom (ex: supabase/sql/04_*.sql)
+```
+
+## Testes de integração reais
+
+Os testes em `tests/integration/` conectam no Supabase real usando
+`NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` da `.env.local`.
+Eles ficam pulados por padrão para não depender de rede/credenciais no CI local.
+
+Rode manualmente antes de deploy e sempre que alterar RLS, grants ou policies:
+
+```powershell
+$env:RUN_INTEGRATION = "1"
+pnpm test:integration
+Remove-Item Env:RUN_INTEGRATION
+```
+
+Para o caso crítico de grants públicos, rode também:
+
+```bash
+pnpm db:check-anon
 ```
