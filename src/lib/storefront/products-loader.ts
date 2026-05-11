@@ -175,16 +175,18 @@ async function loadProductsFromDb(
 
     const where = and(...conditions);
 
-    const [rows, totalResult] = await Promise.all([
-      tx
-        .select()
-        .from(productTable)
-        .where(where)
-        .orderBy(...applySort(sort))
-        .limit(safeLimit)
-        .offset(offset),
-      tx.select({ value: count() }).from(productTable).where(where),
-    ]);
+    // SÉRIE dentro do tx — `pg` deprecou paralelas no mesmo client.
+    const rows = await tx
+      .select()
+      .from(productTable)
+      .where(where)
+      .orderBy(...applySort(sort))
+      .limit(safeLimit)
+      .offset(offset);
+    const totalResult = await tx
+      .select({ value: count() })
+      .from(productTable)
+      .where(where);
 
     const items = await attachPrimaryImage(tx, storeId, rows);
     const total = totalResult[0]?.value ?? 0;
@@ -253,29 +255,28 @@ async function loadProductBySlugFromDb(
     });
     if (!product) return null;
 
-    const [images, variants] = await Promise.all([
-      tx
-        .select()
-        .from(productImageTable)
-        .where(
-          and(
-            eq(productImageTable.storeId, storeId),
-            eq(productImageTable.productId, product.id),
-          ),
-        )
-        .orderBy(asc(productImageTable.position)),
-      tx
-        .select()
-        .from(productVariantTable)
-        .where(
-          and(
-            eq(productVariantTable.storeId, storeId),
-            eq(productVariantTable.productId, product.id),
-            eq(productVariantTable.isActive, true),
-          ),
-        )
-        .orderBy(asc(productVariantTable.name)),
-    ]);
+    // SÉRIE dentro do tx — `pg` deprecou paralelas no mesmo client.
+    const images = await tx
+      .select()
+      .from(productImageTable)
+      .where(
+        and(
+          eq(productImageTable.storeId, storeId),
+          eq(productImageTable.productId, product.id),
+        ),
+      )
+      .orderBy(asc(productImageTable.position));
+    const variants = await tx
+      .select()
+      .from(productVariantTable)
+      .where(
+        and(
+          eq(productVariantTable.storeId, storeId),
+          eq(productVariantTable.productId, product.id),
+          eq(productVariantTable.isActive, true),
+        ),
+      )
+      .orderBy(asc(productVariantTable.name));
 
     return { ...product, images, variants };
   });

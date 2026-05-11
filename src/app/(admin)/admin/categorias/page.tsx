@@ -20,26 +20,25 @@ export default async function CategoriasPage() {
     store.id,
     session.user.id,
     async (tx) => {
-      const [categories, productCounts] = await Promise.all([
-        tx.query.categoryTable.findMany({
-          where: eq(categoryTable.storeId, store.id),
-          orderBy: [asc(categoryTable.position), asc(categoryTable.name)],
-          columns: {
-            id: true,
-            name: true,
-            slug: true,
-            parentId: true,
-            position: true,
-            isActive: true,
-            imageUrl: true,
-          },
-        }),
-        tx
-          .select({ categoryId: productTable.categoryId, value: count() })
-          .from(productTable)
-          .where(eq(productTable.storeId, store.id))
-          .groupBy(productTable.categoryId),
-      ]);
+      // SÉRIE dentro do tx — `pg` deprecou paralelas no mesmo client.
+      const categories = await tx.query.categoryTable.findMany({
+        where: eq(categoryTable.storeId, store.id),
+        orderBy: [asc(categoryTable.position), asc(categoryTable.name)],
+        columns: {
+          id: true,
+          name: true,
+          slug: true,
+          parentId: true,
+          position: true,
+          isActive: true,
+          imageUrl: true,
+        },
+      });
+      const productCounts = await tx
+        .select({ categoryId: productTable.categoryId, value: count() })
+        .from(productTable)
+        .where(eq(productTable.storeId, store.id))
+        .groupBy(productTable.categoryId);
       return { categories, productCounts };
     },
   );

@@ -76,30 +76,31 @@ export async function restockOrderItems(
     return { itemsProcessed: 0, partialMisses: 0 };
   }
 
-  // 2. Carrega TODOS os produtos e variantes em batch (2 queries totais,
-  //    paralelas). Antes era 2N queries seriais.
+  // 2. Carrega TODOS os produtos e variantes em batch (2 queries totais
+  //    em SÉRIE — `pg` deprecou paralelas no mesmo tx). Antes era 2N
+  //    queries seriais; 2 ainda é uma grande melhora.
   const productIds = Array.from(new Set(items.map((i) => i.productId)));
   const variantIds = items
     .map((i) => i.variantId)
     .filter((v): v is string => v !== null);
   const variantIdsUnique = Array.from(new Set(variantIds));
 
-  const [productRows, variantRows] = await Promise.all([
-    tx
-      .select({
-        id: productTable.id,
-        trackStock: productTable.trackStock,
-        stockQuantity: productTable.stockQuantity,
-      })
-      .from(productTable)
-      .where(
-        and(
-          eq(productTable.storeId, storeId),
-          inArray(productTable.id, productIds),
-        ),
+  const productRows = await tx
+    .select({
+      id: productTable.id,
+      trackStock: productTable.trackStock,
+      stockQuantity: productTable.stockQuantity,
+    })
+    .from(productTable)
+    .where(
+      and(
+        eq(productTable.storeId, storeId),
+        inArray(productTable.id, productIds),
       ),
+    );
+  const variantRows =
     variantIdsUnique.length > 0
-      ? tx
+      ? await tx
           .select({
             id: productVariantTable.id,
             trackStock: productVariantTable.trackStock,
@@ -112,21 +113,18 @@ export async function restockOrderItems(
               inArray(productVariantTable.id, variantIdsUnique),
             ),
           )
-      : Promise.resolve(
-          [] as Array<{
-            id: string;
-            trackStock: boolean;
-            stockQuantity: number | null;
-          }>,
-        ),
-  ]);
+      : ([] as Array<{
+          id: string;
+          trackStock: boolean;
+          stockQuantity: number | null;
+        }>);
 
   const productById = new Map(productRows.map((p) => [p.id, p]));
   const variantById = new Map(variantRows.map((v) => [v.id, v]));
 
-  // 3. Decide destino de cada item e dispara UPDATEs em paralelo.
+  // 3. Decide destino de cada item e dispara UPDATEs em SÉRIE dentro
+  //    do tx (`pg` deprecou paralelas no mesmo client).
   let partialMisses = 0;
-  const updatePromises: Array<Promise<void>> = [];
 
   for (const item of items) {
     const product = productById.get(item.productId);
@@ -142,70 +140,60 @@ export async function restockOrderItems(
     );
 
     if (shouldRestockVariant && variant) {
-      updatePromises.push(
-        tx
-          .update(productVariantTable)
-          .set({
-            stockQuantity: sql`${productVariantTable.stockQuantity} + ${item.quantity}`,
-          })
-          .where(
-            and(
-              eq(productVariantTable.id, variant.id),
-              eq(productVariantTable.storeId, storeId),
-            ),
-          )
-          .returning({ id: productVariantTable.id })
-          .then((updated) => {
-            if (updated.length === 0) {
-              // Pode acontecer se: variant foi deletada entre carregamento e
-              // UPDATE (race extremamente improvável dentro da mesma tx), ou
-              // caller passou storeId errado (defesa em profundidade).
-              partialMisses += 1;
-              console.warn(`[restock] partial: variant UPDATE retornou 0 rows`, {
-                orderId,
-                storeId,
-                productId: item.productId,
-                variantId: item.variantId,
-                quantity: item.quantity,
-              });
-            }
-          }),
-      );
+      const updated = await tx
+        .update(productVariantTable)
+        .set({
+          stockQuantity: sql`${productVariantTable.stockQuantity} + ${item.quantity}`,
+        })
+        .where(
+          and(
+            eq(productVariantTable.id, variant.id),
+            eq(productVariantTable.storeId, storeId),
+          ),
+        )
+        .returning({ id: productVariantTable.id });
+      if (updated.length === 0) {
+        // Pode acontecer se: variant foi deletada entre carregamento e
+        // UPDATE (race extremamente improvável dentro da mesma tx), ou
+        // caller passou storeId errado (defesa em profundidade).
+        partialMisses += 1;
+        console.warn(`[restock] partial: variant UPDATE retornou 0 rows`, {
+          orderId,
+          storeId,
+          productId: item.productId,
+          variantId: item.variantId,
+          quantity: item.quantity,
+        });
+      }
       continue;
     }
 
     if (shouldRestockProduct && product) {
-      updatePromises.push(
-        tx
-          .update(productTable)
-          .set({
-            stockQuantity: sql`${productTable.stockQuantity} + ${item.quantity}`,
-          })
-          .where(
-            and(
-              eq(productTable.id, product.id),
-              eq(productTable.storeId, storeId),
-            ),
-          )
-          .returning({ id: productTable.id })
-          .then((updated) => {
-            if (updated.length === 0) {
-              partialMisses += 1;
-              console.warn(`[restock] partial: product UPDATE retornou 0 rows`, {
-                orderId,
-                storeId,
-                productId: item.productId,
-                quantity: item.quantity,
-              });
-            }
-          }),
-      );
+      const updated = await tx
+        .update(productTable)
+        .set({
+          stockQuantity: sql`${productTable.stockQuantity} + ${item.quantity}`,
+        })
+        .where(
+          and(
+            eq(productTable.id, product.id),
+            eq(productTable.storeId, storeId),
+          ),
+        )
+        .returning({ id: productTable.id });
+      if (updated.length === 0) {
+        partialMisses += 1;
+        console.warn(`[restock] partial: product UPDATE retornou 0 rows`, {
+          orderId,
+          storeId,
+          productId: item.productId,
+          quantity: item.quantity,
+        });
+      }
     }
     // else: produto sem trackStock e variante sem trackStock — no-op
     // (cenário 3 dos testes). Estoque é ilimitado nos dois lados.
   }
-
-  await Promise.all(updatePromises);
 
   return { itemsProcessed: items.length, partialMisses };
 }

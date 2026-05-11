@@ -49,39 +49,38 @@ export default async function EditarProdutoPage({
     });
     if (!product) return null;
 
-    // Imagens, variantes e categorias da loja em paralelo
-    const [images, variants, categories] = await Promise.all([
-      tx
-        .select({
-          id: productImageTable.id,
-          url: productImageTable.url,
-          position: productImageTable.position,
-        })
-        .from(productImageTable)
-        .where(eq(productImageTable.productId, id))
-        .orderBy(asc(productImageTable.position)),
-      tx
-        .select({
-          id: productVariantTable.id,
-          name: productVariantTable.name,
-          priceInCents: productVariantTable.priceInCents,
-          stockQuantity: productVariantTable.stockQuantity,
-          axis: productVariantTable.axis,
-          colorHex: productVariantTable.colorHex,
-        })
-        .from(productVariantTable)
-        .where(eq(productVariantTable.productId, id))
-        .orderBy(asc(productVariantTable.createdAt)),
-      tx
-        .select({
-          id: categoryTable.id,
-          name: categoryTable.name,
-          parentId: categoryTable.parentId,
-        })
-        .from(categoryTable)
-        .where(eq(categoryTable.storeId, store.id))
-        .orderBy(asc(categoryTable.name)),
-    ]);
+    // Imagens, variantes e categorias da loja — SÉRIE dentro do tx
+    // (`pg` deprecou paralelas no mesmo client).
+    const images = await tx
+      .select({
+        id: productImageTable.id,
+        url: productImageTable.url,
+        position: productImageTable.position,
+      })
+      .from(productImageTable)
+      .where(eq(productImageTable.productId, id))
+      .orderBy(asc(productImageTable.position));
+    const variants = await tx
+      .select({
+        id: productVariantTable.id,
+        name: productVariantTable.name,
+        priceInCents: productVariantTable.priceInCents,
+        stockQuantity: productVariantTable.stockQuantity,
+        axis: productVariantTable.axis,
+        colorHex: productVariantTable.colorHex,
+      })
+      .from(productVariantTable)
+      .where(eq(productVariantTable.productId, id))
+      .orderBy(asc(productVariantTable.createdAt));
+    const categories = await tx
+      .select({
+        id: categoryTable.id,
+        name: categoryTable.name,
+        parentId: categoryTable.parentId,
+      })
+      .from(categoryTable)
+      .where(eq(categoryTable.storeId, store.id))
+      .orderBy(asc(categoryTable.name));
 
     return { product, images, variants, categories };
   });

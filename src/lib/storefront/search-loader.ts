@@ -61,16 +61,18 @@ async function runSearch(
       ? and(...baseConditions, ilike(productTable.name, escapeIlikeTerm(q)))
       : and(...baseConditions);
 
-    const [rows, totalResult] = await Promise.all([
-      tx
-        .select()
-        .from(productTable)
-        .where(where)
-        .orderBy(desc(productTable.createdAt))
-        .limit(safeLimit)
-        .offset(offset),
-      tx.select({ value: count() }).from(productTable).where(where),
-    ]);
+    // SÉRIE dentro do tx — `pg` deprecou paralelas no mesmo client.
+    const rows = await tx
+      .select()
+      .from(productTable)
+      .where(where)
+      .orderBy(desc(productTable.createdAt))
+      .limit(safeLimit)
+      .offset(offset);
+    const totalResult = await tx
+      .select({ value: count() })
+      .from(productTable)
+      .where(where);
 
     const items = await attachPrimaryImage(tx, storeId, rows);
     const total = totalResult[0]?.value ?? 0;

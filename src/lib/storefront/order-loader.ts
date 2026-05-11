@@ -50,24 +50,23 @@ async function getOrderByColumn(
     });
     if (!order) return null;
 
-    const [store, items] = await Promise.all([
-      tx.query.storeTable.findFirst({
-        where: eq(storeTable.id, order.storeId),
-        columns: {
-          id: true,
-          slug: true,
-          name: true,
-          logoUrl: true,
-          primaryColor: true,
-          whatsappNumber: true,
-          whatsappDisplay: true,
-        },
-      }),
-      tx
-        .select()
-        .from(orderItemTable)
-        .where(eq(orderItemTable.orderId, order.id)),
-    ]);
+    // SÉRIE dentro do tx — `pg` deprecou paralelas no mesmo client.
+    const store = await tx.query.storeTable.findFirst({
+      where: eq(storeTable.id, order.storeId),
+      columns: {
+        id: true,
+        slug: true,
+        name: true,
+        logoUrl: true,
+        primaryColor: true,
+        whatsappNumber: true,
+        whatsappDisplay: true,
+      },
+    });
+    const items = await tx
+      .select()
+      .from(orderItemTable)
+      .where(eq(orderItemTable.orderId, order.id));
 
     if (!store) return null;
     return { ...order, items, store };

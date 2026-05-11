@@ -146,46 +146,40 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
         .from(productTable)
         .where(and(...baseConditions, ...statusConditions(s)));
 
-    const [
-      products,
-      totalRows,
-      categories,
-      cAll,
-      cActive,
-      cInactive,
-      cDraft,
-      cNoStock,
-    ] = await Promise.all([
-      tx.query.productTable.findMany({
-        where: whereClause,
-        orderBy: [desc(productTable.updatedAt)],
-        limit: PAGE_SIZE,
-        offset,
-        columns: {
-          id: true,
-          name: true,
-          slug: true,
-          basePriceInCents: true,
-          promoPriceInCents: true,
-          promoStartsAt: true,
-          promoEndsAt: true,
-          isActive: true,
-          trackStock: true,
-          stockQuantity: true,
-        },
-      }),
-      tx.select({ value: count() }).from(productTable).where(whereClause),
-      tx.query.categoryTable.findMany({
-        where: eq(categoryTable.storeId, store.id),
-        orderBy: [asc(categoryTable.position), asc(categoryTable.name)],
-        columns: { id: true, name: true, parentId: true },
-      }),
-      countByStatus(null),
-      countByStatus("active"),
-      countByStatus("inactive"),
-      countByStatus("draft"),
-      countByStatus("no-stock"),
-    ]);
+    // SÉRIE dentro do tx — `pg` deprecou queries paralelas no mesmo
+    // client. Cada count com index é ~1ms; 8 queries totais ~8-12ms.
+    const products = await tx.query.productTable.findMany({
+      where: whereClause,
+      orderBy: [desc(productTable.updatedAt)],
+      limit: PAGE_SIZE,
+      offset,
+      columns: {
+        id: true,
+        name: true,
+        slug: true,
+        basePriceInCents: true,
+        promoPriceInCents: true,
+        promoStartsAt: true,
+        promoEndsAt: true,
+        isActive: true,
+        trackStock: true,
+        stockQuantity: true,
+      },
+    });
+    const totalRows = await tx
+      .select({ value: count() })
+      .from(productTable)
+      .where(whereClause);
+    const categories = await tx.query.categoryTable.findMany({
+      where: eq(categoryTable.storeId, store.id),
+      orderBy: [asc(categoryTable.position), asc(categoryTable.name)],
+      columns: { id: true, name: true, parentId: true },
+    });
+    const cAll = await countByStatus(null);
+    const cActive = await countByStatus("active");
+    const cInactive = await countByStatus("inactive");
+    const cDraft = await countByStatus("draft");
+    const cNoStock = await countByStatus("no-stock");
 
     const tabCounts = {
       all: cAll[0]?.value ?? 0,

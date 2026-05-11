@@ -57,24 +57,26 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
     store.id,
     session.user.id,
     async (tx) => {
-      const [orders, totalRows] = await Promise.all([
-        tx.query.orderTable.findMany({
-          where: whereClause,
-          orderBy: [desc(orderTable.createdAt)],
-          limit: PAGE_SIZE,
-          offset,
-          columns: {
-            id: true,
-            shortCode: true,
-            customerName: true,
-            customerPhone: true,
-            totalInCents: true,
-            status: true,
-            createdAt: true,
-          },
-        }),
-        tx.select({ value: count() }).from(orderTable).where(whereClause),
-      ]);
+      // SÉRIE — `pg` deprecou queries paralelas no mesmo client tx.
+      const orders = await tx.query.orderTable.findMany({
+        where: whereClause,
+        orderBy: [desc(orderTable.createdAt)],
+        limit: PAGE_SIZE,
+        offset,
+        columns: {
+          id: true,
+          shortCode: true,
+          customerName: true,
+          customerPhone: true,
+          totalInCents: true,
+          status: true,
+          createdAt: true,
+        },
+      });
+      const totalRows = await tx
+        .select({ value: count() })
+        .from(orderTable)
+        .where(whereClause);
       return { orders, total: totalRows[0]?.value ?? 0 };
     },
   );

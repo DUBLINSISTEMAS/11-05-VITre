@@ -164,19 +164,21 @@ export async function createOrderFromCart(
         .filter((v): v is string => v !== null);
       const uniqueVariantIds = Array.from(new Set(variantIds));
 
-      const [products, variants] = await Promise.all([
-        tx
-          .select()
-          .from(productTable)
-          .where(
-            and(
-              eq(productTable.storeId, store.id),
-              eq(productTable.isActive, true),
-              inArray(productTable.id, productIds),
-            ),
+      // SÉRIE dentro do withServiceRole tx — `pg` deprecou paralelas no
+      // mesmo client. 2 SELECTs com index são rápidos.
+      const products = await tx
+        .select()
+        .from(productTable)
+        .where(
+          and(
+            eq(productTable.storeId, store.id),
+            eq(productTable.isActive, true),
+            inArray(productTable.id, productIds),
           ),
+        );
+      const variants =
         uniqueVariantIds.length > 0
-          ? tx
+          ? await tx
               .select()
               .from(productVariantTable)
               .where(
@@ -186,8 +188,7 @@ export async function createOrderFromCart(
                   inArray(productVariantTable.id, uniqueVariantIds),
                 ),
               )
-          : Promise.resolve([]),
-      ]);
+          : [];
 
       if (products.length !== productIds.length) {
         const found = new Set(products.map((p) => p.id));

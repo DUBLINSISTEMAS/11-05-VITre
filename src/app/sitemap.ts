@@ -47,33 +47,33 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     // Filtra produtos/categorias por lojas ativas no DB — não trazer
     // dados de loja desativada e descartar em memória.
-    const [products, categories] = await Promise.all([
-      tx
-        .select({
-          slug: productTable.slug,
-          storeId: productTable.storeId,
-          updatedAt: productTable.updatedAt,
-        })
-        .from(productTable)
-        .where(
-          and(
-            eq(productTable.isActive, true),
-            inArray(productTable.storeId, storeIds),
-          ),
+    // SÉRIE dentro do mesmo tx — `pg` deprecou queries paralelas no
+    // mesmo client. Cada SELECT com index é rápido; 2 round-trips OK.
+    const products = await tx
+      .select({
+        slug: productTable.slug,
+        storeId: productTable.storeId,
+        updatedAt: productTable.updatedAt,
+      })
+      .from(productTable)
+      .where(
+        and(
+          eq(productTable.isActive, true),
+          inArray(productTable.storeId, storeIds),
         ),
-      tx
-        .select({
-          slug: categoryTable.slug,
-          storeId: categoryTable.storeId,
-        })
-        .from(categoryTable)
-        .where(
-          and(
-            eq(categoryTable.isActive, true),
-            inArray(categoryTable.storeId, storeIds),
-          ),
+      );
+    const categories = await tx
+      .select({
+        slug: categoryTable.slug,
+        storeId: categoryTable.storeId,
+      })
+      .from(categoryTable)
+      .where(
+        and(
+          eq(categoryTable.isActive, true),
+          inArray(categoryTable.storeId, storeIds),
         ),
-    ]);
+      );
 
     const slugByStoreId = new Map(stores.map((s) => [s.id, s.slug]));
 
