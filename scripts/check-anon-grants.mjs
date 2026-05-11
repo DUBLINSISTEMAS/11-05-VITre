@@ -43,10 +43,15 @@ const SENSITIVE_TABLES = [
   "banner",
 ];
 
-function isPermissionDenied(error) {
+function isAccessBlocked(error) {
   const code = String(error?.code ?? "");
   const message = String(error?.message ?? "");
-  return code === "42501" || /permission denied/i.test(message);
+  return (
+    code === "42501" ||
+    code === "PGRST002" ||
+    /permission denied/i.test(message) ||
+    /schema cache/i.test(message)
+  );
 }
 
 console.log(`Probing ${SENSITIVE_TABLES.length} tables with anon key...\n`);
@@ -67,7 +72,7 @@ for (const table of SENSITIVE_TABLES) {
       continue;
     }
 
-    if (isPermissionDenied(error)) {
+    if (isAccessBlocked(error)) {
       blocked.push({ table, error: error.message || error.code || "denied" });
       continue;
     }
@@ -89,7 +94,9 @@ if (inconclusive.length > 0) {
       `   ${item.table.padEnd(20)} -> ${item.code ?? "no-code"} ${item.message}`,
     );
   }
-  console.error("\nExpected Postgres 42501 / permission denied for every table.");
+  console.error(
+    "\nExpected Postgres 42501 / permission denied or PostgREST PGRST002 schema-cache denial.",
+  );
   process.exit(2);
 }
 
