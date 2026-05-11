@@ -1,7 +1,7 @@
 /**
  * Tradutores de erros do Postgres/Drizzle para mensagens amigáveis.
  *
- * Sandra (50+, pouca tech) nunca deve ver "duplicate key value violates unique
+ * Lojista (50+, pouca tech) nunca deve ver "duplicate key value violates unique
  * constraint product_store_slug_unique" — isso vira "Já existe um produto com
  * esse nome. Tente outro."
  */

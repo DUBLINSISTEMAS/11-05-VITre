@@ -24,7 +24,7 @@ interface StockInputProps {
  * - Off (default): estoque ilimitado. `stockQuantity = null`.
  * - On: input revelado. `stockQuantity` é integer ≥ 0.
  *
- * UX: explica em texto pequeno o que cada estado significa pra Sandra.
+ * UX: explica em texto pequeno o que cada estado significa pro lojista.
  */
 export function StockInput({ value, onChange, disabled }: StockInputProps) {
   const switchId = useId();

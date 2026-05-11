@@ -52,7 +52,7 @@ interface CategoryDialogProps {
 const NO_PARENT = "__none__";
 
 /**
- * Modal de criar categoria. Curto, autocontido — Sandra preenche nome
+ * Modal de criar categoria. Curto, autocontido — lojista preenche nome
  * (obrigatório) e opcionalmente escolhe categoria pai. Salva, fecha,
  * volta pro contexto onde abriu.
  *

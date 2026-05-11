@@ -24,7 +24,7 @@ export type DeleteCategoryResult =
 /**
  * Deleta categoria.
  *
- * Bloqueia se tem subcategorias filhas (Sandra deve mover/apagar antes).
+ * Bloqueia se tem subcategorias filhas (lojista deve mover/apagar antes).
  * Permite deletar mesmo com produtos associados — o FK é `set null`,
  * produtos ficam "Sem categoria" automaticamente.
  *

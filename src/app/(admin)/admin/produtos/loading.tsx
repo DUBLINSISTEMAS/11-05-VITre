@@ -3,7 +3,7 @@
  * o server component da página resolve as queries do Drizzle.
  *
  * 6 skeletons de card combinam com a grade `sm:grid-cols-2 lg:grid-cols-3`.
- * Sandra vê estrutura imediatamente em vez de tela branca, mesmo em 4G ruim.
+ * Lojista vê estrutura imediatamente em vez de tela branca, mesmo em 4G ruim.
  */
 import { Skeleton } from "@/components/ui/skeleton";
 

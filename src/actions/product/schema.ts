@@ -98,7 +98,7 @@ export type VariantInput = z.infer<typeof variantInputSchema>;
 /**
  * Campos do form do produto. Reaproveitados pelo RHF (client) e pela action
  * server (que apenas adiciona `productId`). Os 2 refines abaixo precisam
- * ser aplicados nos dois lados — sem isso, Sandra preencheria promo > base
+ * ser aplicados nos dois lados — sem isso, lojista preencheria promo > base
  * e só veria o erro depois do submit.
  */
 const productFormFieldsSchema = z.object({

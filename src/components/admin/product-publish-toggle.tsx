@@ -18,7 +18,7 @@ interface ProductPublishToggleProps {
  *
  * Atualização otimista de verdade: estado local reflete a intenção
  * imediatamente, reverte se a action falhar. Importante porque a action
- * pode levar 2-3s no 4G ruim de Pedreiras — sem isso, Sandra acha que o
+ * pode levar 2-3s no 4G ruim de cidade pequena — sem isso, lojista acha que o
  * switch travou.
  */
 export function ProductPublishToggle({

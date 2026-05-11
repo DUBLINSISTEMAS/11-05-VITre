@@ -35,7 +35,7 @@ interface DeleteProductDialogProps {
 
 /**
  * Diálogo de exclusão de produto. Confirmação por 2 cliques (não digitar
- * nome — Sandra de 50 anos não acerta digitação exata 3x).
+ * nome — lojista 50+ não acerta digitação exata 3x).
  *
  * Após sucesso: redireciona pra `/admin/produtos`.
  */

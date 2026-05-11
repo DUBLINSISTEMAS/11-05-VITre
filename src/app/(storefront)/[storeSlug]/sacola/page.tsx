@@ -7,7 +7,7 @@
  *
  * Fluxo: usuário revisa itens → preenche dados → "Finalizar pelo
  * WhatsApp" → server action `createOrderFromCart` (Bloco C) → redirect
- * /sucesso → wa.me da Sandra.
+ * /sucesso → wa.me do lojista.
  */
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";

@@ -125,7 +125,7 @@ export async function updateProduct(
 
       // 7. Slug: regenera se o slug-base do nome mudou OU se ainda é placeholder
       // de draft. Caso contrário mantém o atual — URL pública é estável e não
-      // quebra links já compartilhados via WhatsApp pela Sandra.
+      // quebra links já compartilhados via WhatsApp pelo lojista.
       const isDraftSlug = existing.slug.startsWith("draft-");
       const slugBaseChanged =
         generateSlug(existing.name) !== generateSlug(data.name);
@@ -208,7 +208,7 @@ export async function updateProduct(
             stockQuantity: v.stockQuantity,
             trackStock: v.stockQuantity !== null,
             // Eixo canvas-v1: zera colorHex quando axis="size" pra não
-            // arrastar valor antigo se Sandra trocou tamanho ↔ cor.
+            // arrastar valor antigo se lojista trocou tamanho ↔ cor.
             axis: v.axis,
             colorHex: v.axis === "color" ? v.colorHex : null,
           })
@@ -239,7 +239,7 @@ export async function updateProduct(
       return { ok: true, nextSlug } as const;
     });
   } catch (e) {
-    // Tradução de unique violation no slug (Sandra-friendly)
+    // Tradução de unique violation no slug (lojista-friendly)
     if (isUniqueViolation(e)) {
       const constraint = getConstraintName(e);
       if (constraint === "product_store_slug_unique") {

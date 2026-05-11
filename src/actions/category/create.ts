@@ -30,7 +30,7 @@ export type CreateCategoryResult =
  * Cria categoria. Slug único por loja com sufixo `-2/-3/...` se conflito.
  *
  * 2 níveis máximo: se `parentId` é informado, valida que o parent é raiz
- * (`parent_id` dele é null). Cobre o caso "Sandra adiciona sub-sub" mesmo
+ * (`parent_id` dele é null). Cobre o caso "lojista adiciona sub-sub" mesmo
  * que a UI tenha bloqueado.
  *
  * Mensagens PT-BR claras. Sem jargão de DB.

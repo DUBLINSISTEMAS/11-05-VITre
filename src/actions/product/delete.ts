@@ -35,7 +35,7 @@ export type DeleteProductResult =
  *  3. Remove do Storage as imagens coletadas no passo 1. Falha silenciosa
  *     (orfãos no bucket são cosméticos; ordem inversa quebraria FK).
  *
- * Sandra-friendly: confirmação dupla é responsabilidade da UI (AlertDialog).
+ * Lojista-friendly: confirmação dupla é responsabilidade da UI (AlertDialog).
  * Aqui assumimos que o caller já confirmou.
  */
 export async function deleteProduct(

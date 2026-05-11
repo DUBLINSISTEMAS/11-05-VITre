@@ -41,7 +41,7 @@ const MAX_IMAGES_PER_PRODUCT = 5;
  * - max 10MB no upload bruto
  * - mime allowlist
  *
- * Rate limit por userId (Sandra na rede da loja com várias funcionárias
+ * Rate limit por userId (lojista na rede da loja com várias funcionárias
  * compartilhando IP — userId é o identificador correto aqui).
  */
 export async function uploadProductImage(

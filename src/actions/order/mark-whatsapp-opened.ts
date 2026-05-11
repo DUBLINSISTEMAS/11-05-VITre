@@ -4,7 +4,7 @@
  * Atualiza `whatsappOpenedAt` do pedido — analytics + state machine.
  *
  * NÃO é crítico: cliente clica WhatsApp e é redirecionado mesmo se a
- * action falhar. Useful pra Sandra ver % de pedidos que efetivamente
+ * action falhar. Useful pra lojista ver % de pedidos que efetivamente
  * abriram conversa (vs. abandonaram no /sucesso).
  *
  * Idempotente — múltiplos clicks só atualizam o timestamp pro mais

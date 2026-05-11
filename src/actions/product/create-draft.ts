@@ -59,7 +59,7 @@ export async function createDraftProduct(): Promise<CreateDraftProductResult> {
 
   try {
     return await withTenant(store.id, userId, async (tx) => {
-      // Reuso de draft recente: se Sandra clicou "+ Novo produto" e abandonou,
+      // Reuso de draft recente: se lojista clicou "+ Novo produto" e abandonou,
       // evita acumular lixo. Procura draft `draft-*` sem nome E sem imagens
       // criado nas últimas 24h. Se achar, reusa o id.
       const recentDraft = await tx

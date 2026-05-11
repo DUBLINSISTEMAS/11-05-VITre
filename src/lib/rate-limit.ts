@@ -45,7 +45,7 @@ export const rateLimits = {
   /**
    * Mutações genéricas de admin (autenticado, por user). 60/min.
    * Cobre create/update/delete de produto, categoria, banner, etc.
-   * Limite folgado o suficiente pra Sandra cadastrar 30 produtos numa sentada,
+   * Limite folgado o suficiente pra lojista cadastrar 30 produtos numa sentada,
    * mas barra script malicioso ou bug de loop infinito.
    */
   mutation: new Ratelimit({

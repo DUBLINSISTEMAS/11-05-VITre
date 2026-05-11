@@ -184,7 +184,7 @@ function VariantRow({
   const axisId = useId();
   const colorId = useId();
 
-  // Placeholder do nome muda conforme eixo: ajuda Sandra a entender que
+  // Placeholder do nome muda conforme eixo: ajuda lojista a entender que
   // pra cor o "nome" é label visível ("Cru", "Café"), não o hex.
   const namePlaceholder =
     variant.axis === "color" ? "Cru · Café · Preto" : "P · 14 · 100ml";

@@ -5,7 +5,7 @@
 // - Desktop (lg+): tabela densa estilo canvas — checkbox · foto 64×80 ·
 //   nome+sku · preço · estoque · status pill · ações kebab. Header
 //   monospace uppercase. Linhas grid template fixo.
-// - Mobile (<lg): grid de cards visuais (mantém UX da Sandra hoje).
+// - Mobile (<lg): grid de cards visuais (mantém UX do lojista mobile-first).
 //
 // Selection state: `selectedIds` Set local. Quando >0, renderiza
 // `<BulkActionsToolbar>` sticky bottom dentro do card de listagem.

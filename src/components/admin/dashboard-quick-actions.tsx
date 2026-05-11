@@ -39,7 +39,7 @@ interface QuickAction {
  *      desktopOnly no bottom nav por causa da regra de 4 itens fixos).
  *
  * `highlight` no card de pedidos pendentes quando count > 0 — chama a
- * atenção da Sandra pra cliente esperando resposta.
+ * atenção do lojista pra cliente esperando resposta.
  */
 export function DashboardQuickActions({ stats }: DashboardQuickActionsProps) {
   const actions: QuickAction[] = [

@@ -8,7 +8,7 @@
  * Service role: pedido vive fora da árvore de tenant (cliente não faz
  * parte da loja); resolver por token público opaco é o caso documentado.
  *
- * Sem cache: pedido muda status (Sandra confirma/cancela) e cliente
+ * Sem cache: pedido muda status (lojista confirma/cancela) e cliente
  * espera ver o estado atual. Volume é baixo o suficiente.
  */
 import { eq } from "drizzle-orm";

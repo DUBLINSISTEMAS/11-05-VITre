@@ -6,7 +6,7 @@
  * Captura qualquer throw em RSC/action dentro de /admin/* (falha de query
  * Drizzle, pool exausto, race em withTenant, erro inesperado de action).
  * Sem este boundary, qualquer erro sobe pra _error global do Next e a
- * Sandra vê uma tela genérica em inglês, sem opção de retry.
+ * lojista vê uma tela genérica em inglês, sem opção de retry.
  *
  * Por que está no nível do segmento (admin)/admin:
  *   - Cobre TODAS as rotas filhas (produtos, pedidos, categorias, …).

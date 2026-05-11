@@ -13,7 +13,7 @@
  *    aceita qualquer length naturalmente. Pedidos pré-2026-05-11
  *    continuam acessíveis pelos códigos antigos.
  *  - Risco residual: pedidos 4-char antigos ainda enumeráveis. Aceitável
- *    pq são pedidos seed/teste de Sandra; pedidos reais (pós-deploy) já
+ *    pq são pedidos seed/teste do lojista piloto; pedidos reais (pós-deploy) já
  *    nascem com 6 chars.
  *
  * Risco de colisão com 6 chars: birthday paradox prevê ~38k pedidos

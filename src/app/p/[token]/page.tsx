@@ -2,7 +2,7 @@
  * Página pública de pedido por publicToken (`/p/{24-char token}`).
  *
  * Função real (ADR-0010): fallback de continuidade — cliente perdeu
- * conversa no WhatsApp, precisa reabrir; ou Sandra mandou link pra
+ * conversa no WhatsApp, precisa reabrir; ou lojista mandou link pra
  * referência. NÃO é tracking de status (cliente não atualiza pedido).
  *
  * Privacidade: NÃO mostra nome/whatsapp/notas do cliente. Risco de

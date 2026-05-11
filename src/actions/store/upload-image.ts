@@ -30,7 +30,7 @@ export type UploadStoreImageResult =
 
 /**
  * Sobe logo OU ícone da loja. Substitui imagem anterior (deleta a antiga
- * do Storage best-effort) — Sandra só vê a nova.
+ * do Storage best-effort) — lojista só vê a nova.
  *
  * Bucket: `store-logos` (mesmo bucket pra logo e ícone — paths separados
  * por nome de arquivo).

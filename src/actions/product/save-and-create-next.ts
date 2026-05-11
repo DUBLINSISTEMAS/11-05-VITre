@@ -43,7 +43,7 @@ export async function saveAndCreateNext(
   // 1. Salva o atual (delega pra action existente — mesma transação,
   //    mesma defesa em profundidade, mesmo revalidate, mesma validação Zod
   //    com fieldErrors). Se falhar, retorna o erro específico do `updateProduct`
-  //    intacto pra Sandra ver mensagem precisa (não genérica).
+  //    intacto pra lojista ver mensagem precisa (não genérica).
   const saveResult = await updateProduct(input);
   if (!saveResult.ok) {
     return saveResult;
