@@ -5,54 +5,89 @@ import {
   PackageIcon,
   ReceiptIcon,
   SettingsIcon,
+  StoreIcon,
   TagIcon,
 } from "lucide-react";
 
-export interface AdminNavItem {
+/**
+ * Item de nav simples (link direto pra rota).
+ */
+export interface AdminNavLink {
+  kind: "link";
   href: string;
   label: string;
-  /** Label curto para bottom nav mobile (cabe em ~60px). */
-  shortLabel?: string;
   icon: LucideIcon;
   /** True para match exato (rota raiz). */
   exact?: boolean;
-  /** Desktop-only — sidebar mostra; bottom nav mobile fica em 4 itens fixos. */
-  desktopOnly?: boolean;
 }
 
-export const ADMIN_NAV_ITEMS: readonly AdminNavItem[] = [
+/**
+ * Grupo de nav com sub-items recolhíveis. Clica no header pra expandir,
+ * clica num child pra navegar. O grupo é considerado "ativo" se a rota
+ * atual bate com algum child (header em estado open por default nesse caso).
+ */
+export interface AdminNavGroup {
+  kind: "group";
+  label: string;
+  icon: LucideIcon;
+  children: AdminNavLink[];
+}
+
+export type AdminNavEntry = AdminNavLink | AdminNavGroup;
+
+export const ADMIN_NAV_ITEMS: readonly AdminNavEntry[] = [
   {
+    kind: "link",
     href: "/admin",
-    label: "Início",
+    label: "Painel",
     icon: HomeIcon,
     exact: true,
   },
   {
-    href: "/admin/produtos",
-    label: "Produtos",
-    icon: PackageIcon,
+    kind: "group",
+    label: "Sua Loja",
+    icon: StoreIcon,
+    children: [
+      {
+        kind: "link",
+        href: "/admin/produtos",
+        label: "Produtos",
+        icon: PackageIcon,
+      },
+      {
+        kind: "link",
+        href: "/admin/categorias",
+        label: "Categorias",
+        icon: TagIcon,
+      },
+      {
+        kind: "link",
+        href: "/admin/banners",
+        label: "Banners",
+        icon: ImageIcon,
+      },
+      {
+        kind: "link",
+        href: "/admin/pedidos",
+        label: "Pedidos",
+        icon: ReceiptIcon,
+      },
+    ],
   },
   {
-    href: "/admin/categorias",
-    label: "Categorias",
-    icon: TagIcon,
-    desktopOnly: true,
-  },
-  {
-    href: "/admin/banners",
-    label: "Banners",
-    icon: ImageIcon,
-    desktopOnly: true,
-  },
-  {
-    href: "/admin/pedidos",
-    label: "Pedidos",
-    icon: ReceiptIcon,
-  },
-  {
+    kind: "link",
     href: "/admin/configuracoes",
     label: "Configurações",
-    shortLabel: "Ajustes",
     icon: SettingsIcon,
   },
 ] as const;
+
+/** Acha se um link está ativo dado o pathname atual. */
+export function isLinkActive(link: AdminNavLink, pathname: string): boolean {
+  return link.exact ? pathname === link.href : pathname.startsWith(link.href);
+}
+
+/** Acha se algum child do grupo está ativo. */
+export function isGroupActive(group: AdminNavGroup, pathname: string): boolean {
+  return group.children.some((c) => isLinkActive(c, pathname));
+}
