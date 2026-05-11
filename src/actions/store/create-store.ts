@@ -5,13 +5,14 @@ import { headers } from "next/headers";
 
 import { categoryTable, storeTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import { NICHE_CATEGORIES, type NicheValue } from "@/lib/niche-categories";
-import { checkRateLimit, getClientIp, RateLimitError,rateLimits } from "@/lib/rate-limit";
-import { generateSlug,isReservedSlug, isValidSlugFormat } from "@/lib/slug";
+import { checkRateLimit, getClientIp, RateLimitError, rateLimits } from "@/lib/rate-limit";
+import { generateSlug, isReservedSlug, isValidSlugFormat } from "@/lib/slug";
 import { withTenant } from "@/lib/tenant";
 import { parseWhatsAppBR } from "@/lib/whatsapp-format";
 
-import { type CreateStoreInput,createStoreSchema } from "./schema";
+import { type CreateStoreInput, createStoreSchema } from "./schema";
 
 export type CreateStoreResult =
   | { ok: true; redirectTo: string }
@@ -127,7 +128,10 @@ export async function createStore(input: CreateStoreInput): Promise<CreateStoreR
         );
       });
     }
-  } catch {
+  } catch (err) {
+    // M6: catch silencioso cega founder em prod. Logger.error reenvia
+    // pro Sentry (instrumentation já configurado) sem vazar pro cliente.
+    logger.error("store.create_failed", { err });
     return {
       ok: false,
       error: "Não foi possível criar sua loja agora. Tente novamente.",
