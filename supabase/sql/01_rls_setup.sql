@@ -19,6 +19,18 @@
 --   Nossa conexão Drizzle usa role `postgres` (bypass RLS). FORCE RLS com
 --   role custom é roadmap pós-MVP.
 --
+-- DECISÃO sobre `*_public_read_active`:
+--   Estas policies permitem SELECT cross-tenant via anon key (`is_active=true`
+--   sem filtro de store). Significa que um cliente pode iterar TODOS os
+--   produtos/categorias/banners de TODAS as lojas ativas via supabase-js
+--   direto — basicamente scraping do catálogo. Aceito porque:
+--     (a) Catálogo é público mesmo; não é vazamento de dado privado.
+--     (b) Preço/estoque já são renderizados no storefront SSR pra anônimos.
+--     (c) PII vive em `order` / `order_item` — essas SIM são isoladas
+--         (policies removidas; resolução pública só por public_token via
+--         server-side com BYPASSRLS controlado).
+--   Reavaliar se aparecer caso "loja só visível com link direto" (Fase 4+).
+--
 -- Referências: docs/decisoes/0001-multi-tenant-rls-postgres.md
 -- =====================================================================
 
