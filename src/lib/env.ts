@@ -40,12 +40,18 @@ const envSchema = z.object({
   // Cron secret
   CRON_SECRET: z.string().min(16),
 
+  // Health endpoint detail gate (gate H3 — sem isso, role/bypassrls são
+  // ocultos no payload público do /api/health).
+  HEALTH_SECRET: z.string().min(16).optional(),
+
   // Sentry (opcional — Sentry vira no-op em dev local sem DSN).
   // DSN não é secret crítico (vai no client bundle pelo SDK).
   // SENTRY_ENVIRONMENT permite separar prod/preview no dashboard Sentry.
+  // NEXT_PUBLIC_SENTRY_ENVIRONMENT é lido em instrumentation-client.ts (M3).
   SENTRY_DSN: z.string().url().optional(),
   NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
   SENTRY_ENVIRONMENT: z.string().optional(),
+  NEXT_PUBLIC_SENTRY_ENVIRONMENT: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
