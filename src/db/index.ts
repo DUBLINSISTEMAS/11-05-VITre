@@ -28,6 +28,8 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
+import { env } from "@/lib/env";
+
 import * as schema from "./schema";
 
 declare global {
@@ -40,18 +42,18 @@ declare global {
 const pool =
   global._vitrePool ??
   new Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: env.DATABASE_URL,
     max: 10,
   });
 
 const servicePool =
   global._vitreServicePool ??
   new Pool({
-    connectionString: process.env.DIRECT_URL,
+    connectionString: env.DIRECT_URL,
     max: 10,
   });
 
-if (process.env.NODE_ENV !== "production") {
+if (env.NODE_ENV !== "production") {
   global._vitrePool = pool;
   global._vitreServicePool = servicePool;
 }

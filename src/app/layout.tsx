@@ -4,6 +4,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { Toaster } from "@/components/ui/sonner";
+import { env } from "@/lib/env";
 import { ReactQueryProvider } from "@/providers/react-query";
 
 const geistSans = Geist({
@@ -25,7 +26,7 @@ export const metadata: Metadata = {
   },
   description:
     "Crie um catálogo profissional para sua loja em minutos. Foto pelo celular, link único pro WhatsApp, sem mensalidade pra começar.",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
+  metadataBase: new URL(env.NEXT_PUBLIC_APP_URL),
   applicationName: "Vitrê",
   authors: [{ name: "Vitrê" }],
   formatDetection: {

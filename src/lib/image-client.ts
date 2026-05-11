@@ -35,6 +35,8 @@ import imageCompression, {
   type Options as ImageCompressionOptions,
 } from "browser-image-compression";
 
+import { clientEnv } from "@/lib/env-client";
+
 const DEFAULT_OPTIONS: ImageCompressionOptions = {
   maxSizeMB: 2,
   maxWidthOrHeight: 1600,
@@ -92,7 +94,7 @@ export async function compressImageClient(
     };
   } catch (e) {
     // Falha graceful: caller manda original e o server lida.
-    if (process.env.NODE_ENV !== "production") {
+    if (clientEnv.isDev) {
       console.warn("[image-client] compressão falhou, usando original", e);
     }
     return {

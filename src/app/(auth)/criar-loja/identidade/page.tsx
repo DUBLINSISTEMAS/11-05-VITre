@@ -24,12 +24,13 @@ import { SIGNUP_WHATSAPP_KEY } from "@/components/onboarding/storage-keys";
 import { WhatsAppInput } from "@/components/onboarding/whatsapp-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { clientEnv } from "@/lib/env-client";
 import { generateSlug, isValidSlugFormat } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 import { isValidWhatsAppBR } from "@/lib/whatsapp-format";
 
 const APP_URL_HOST =
-  (process.env.NEXT_PUBLIC_APP_URL ?? "")
+  clientEnv.APP_URL
     .replace(/^https?:\/\//, "")
     .replace(/\/$/, "")
     .replace(/^www\./, "") || "vitre.app";

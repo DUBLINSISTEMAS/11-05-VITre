@@ -8,15 +8,16 @@ import { toast } from "sonner";
 
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell";
 import { Button } from "@/components/ui/button";
+import { clientEnv } from "@/lib/env-client";
 
 const APP_URL_HOST =
-  (process.env.NEXT_PUBLIC_APP_URL ?? "")
+  clientEnv.APP_URL
     .replace(/^https?:\/\//, "")
     .replace(/\/$/, "")
     .replace(/^www\./, "") || "vitre.app";
 
 const APP_URL_FULL =
-  process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || "https://vitre.app";
+  clientEnv.APP_URL.replace(/\/$/, "") || "https://vitre.app";
 
 export default function BemVindoPage() {
   return (
