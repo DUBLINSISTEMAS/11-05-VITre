@@ -81,23 +81,3 @@ export function isValidSlugFormat(slug: string): boolean {
 export function isReservedSlug(slug: string): boolean {
   return RESERVED_SLUGS.has(slug);
 }
-
-export type SlugRejectionReason =
-  | "format"
-  | "reserved"
-  | "taken";
-
-export interface SlugValidation {
-  ok: boolean;
-  reason?: SlugRejectionReason;
-}
-
-/**
- * Validação síncrona (formato + reservado). Disponibilidade no banco é checada
- * separadamente via server action `checkSlugAvailability`.
- */
-export function validateSlugSync(slug: string): SlugValidation {
-  if (!isValidSlugFormat(slug)) return { ok: false, reason: "format" };
-  if (isReservedSlug(slug)) return { ok: false, reason: "reserved" };
-  return { ok: true };
-}

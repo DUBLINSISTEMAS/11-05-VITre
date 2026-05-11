@@ -21,19 +21,6 @@ export function formatRelativeDate(d: Date): string {
 }
 
 /**
- * "07 mai 2026, 14:30" — formato completo p/ tooltip ou detalhe.
- */
-export function formatFullDate(d: Date): string {
-  return d.toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-/**
  * Stat delta para chips dos stat cards do dashboard admin (canvas-v1).
  *
  * - `kind: "percent"` → "+12,3%" / "−3,4%" / "0%"

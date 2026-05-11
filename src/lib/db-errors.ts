@@ -13,13 +13,6 @@ export function isUniqueViolation(e: unknown): boolean {
   return code === "23505";
 }
 
-/** Código SQLSTATE 23503 = foreign_key_violation. */
-export function isForeignKeyViolation(e: unknown): boolean {
-  if (typeof e !== "object" || e === null) return false;
-  const code = (e as { code?: string }).code;
-  return code === "23503";
-}
-
 /**
  * Extrai o nome do constraint que falhou. Útil para mapear unique violation
  * de slug vs unique de outra coluna.

@@ -4,7 +4,6 @@ import test from "node:test";
 
 import {
   buildPublicOrderPath,
-  buildPublicOrderWhatsAppMessage,
   generatePublicOrderToken,
   PUBLIC_ORDER_TOKEN_LENGTH,
 } from "../src/lib/public-order";

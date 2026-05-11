@@ -24,9 +24,9 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { FavoriteButton } from "@/components/storefront/favorite-button";
-import { getEffectivePrice, hasActivePromo } from "@/lib/pricing";
+import { formatBRL, getEffectivePrice, hasActivePromo } from "@/lib/pricing";
 import type { ProductCardData } from "@/lib/storefront/_shared";
-import { formatBRL, t } from "@/lib/storefront/i18n";
+import { t } from "@/lib/storefront/i18n";
 import { cn } from "@/lib/utils";
 
 export interface ProductCardProps {

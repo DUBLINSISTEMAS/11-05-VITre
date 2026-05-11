@@ -15,7 +15,8 @@ import { FavoriteButton } from "@/components/storefront/favorite-button";
 import { ProductCardSkeleton } from "@/components/storefront/skeletons";
 import { Button } from "@/components/ui/button";
 import { useFavorites } from "@/hooks/use-favorites";
-import { formatBRL, plural,t } from "@/lib/storefront/i18n";
+import { formatBRL } from "@/lib/pricing";
+import { plural, t } from "@/lib/storefront/i18n";
 
 export default function FavoritosPage() {
   const params = useParams();

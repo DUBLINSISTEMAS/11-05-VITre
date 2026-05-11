@@ -32,6 +32,10 @@ function loadCronSource(): string {
   return readFileSync("src/app/api/cron/expire-orders/route.ts", "utf8");
 }
 
+function loadCronAuthSource(): string {
+  return readFileSync("src/lib/cron-auth.ts", "utf8");
+}
+
 // ---------------------------------------------------------------------
 // Cenário 1: Auth 401 + timing-safe
 // ---------------------------------------------------------------------
@@ -42,17 +46,26 @@ test("cron expire-orders: rejeita request sem Authorization (401)", () => {
   assert.match(source, /new Response\("Unauthorized",\s*\{\s*status:\s*401\s*\}\)/);
 });
 
-test("cron expire-orders: usa crypto.timingSafeEqual no auth (não ===)", () => {
+test("cron expire-orders: delega auth pro helper compartilhado isCronAuthorized", () => {
+  // Onda 2 da auditoria 2026-05-10 extraiu auth pra `@/lib/cron-auth`
+  // (DRY entre expire-orders e keep-alive). Route deve usar o helper,
+  // não reimplementar crypto.
   const source = loadCronSource();
-  // Comparação constant-time é obrigatória pra evitar timing attack.
-  assert.match(source, /timingSafeEqual/);
-  assert.match(source, /from\s+["']node:crypto["']/);
-  // Sanidade: header NÃO pode ser comparado direto com === em string.
-  // (essa heurística é um pouco solta, mas captura o antipattern óbvio)
+  assert.match(source, /isCronAuthorized/);
+  assert.match(source, /from\s+["']@\/lib\/cron-auth["']/);
+  // Sanidade: header NÃO pode ser comparado direto com === em string
+  // (timing attack). Helper centralizado evita drift.
   assert.doesNotMatch(
     source,
     /authHeader\s*!==\s*`Bearer \$\{env\.CRON_SECRET\}`/,
   );
+});
+
+test("cron-auth helper: usa crypto.timingSafeEqual (não comparação ===)", () => {
+  // Comparação constant-time é obrigatória pra evitar timing attack.
+  const source = loadCronAuthSource();
+  assert.match(source, /timingSafeEqual/);
+  assert.match(source, /from\s+["']node:crypto["']/);
 });
 
 // ---------------------------------------------------------------------

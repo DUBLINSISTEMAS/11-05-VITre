@@ -159,17 +159,3 @@ export const t = {
 export function plural(count: number, singular: string, pluralForm: string): string {
   return count === 1 ? singular : pluralForm;
 }
-
-// Helper para formatar preço em BRL
-export function formatBRL(value: number): string {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(value / 100);
-}
-
-// Helper para formatar desconto
-export function formatDiscount(originalPrice: number, currentPrice: number): string {
-  const discount = Math.round(((originalPrice - currentPrice) / originalPrice) * 100);
-  return `${discount}% OFF`;
-}
