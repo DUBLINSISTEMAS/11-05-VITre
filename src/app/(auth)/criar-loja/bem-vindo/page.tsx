@@ -39,9 +39,12 @@ function WelcomeSkeleton() {
 
 function WelcomeContent() {
   const searchParams = useSearchParams();
-  const storeName = searchParams.get("nome") || "Sua loja";
+  const storeNameRaw = searchParams.get("nome")?.trim() ?? "";
+  const storeName = storeNameRaw || "Sua loja";
   const storeSlug = searchParams.get("slug") || "";
-  const firstName = storeName.trim().split(" ")[0] ?? "Sandra";
+  // Primeira palavra do nome da loja — só personaliza se veio nome real
+  // pela URL; sem nome, omite a vírgula vocativa.
+  const firstWord = storeNameRaw ? storeNameRaw.split(/\s+/)[0] : "";
   const storeUrlDisplay = `${APP_URL_HOST}/${storeSlug}`;
   const storeUrlFull = `${APP_URL_FULL}/${storeSlug}`;
 
@@ -81,8 +84,14 @@ function WelcomeContent() {
           </div>
 
           <h1 className="mt-6 text-center text-[32px] font-semibold leading-[1.05] tracking-[-0.8px] sm:text-[38px] sm:tracking-[-1px]">
-            Sua loja está no ar,{" "}
-            <span className="text-primary">{firstName}</span>.
+            Sua loja está no ar
+            {firstWord ? (
+              <>
+                ,{" "}
+                <span className="text-primary">{firstWord}</span>
+              </>
+            ) : null}
+            .
           </h1>
           <p className="text-muted-foreground mx-auto mt-3.5 max-w-[520px] text-center text-[14px] leading-[1.55]">
             Compartilhe esse link no Instagram, status do WhatsApp ou cartão de
