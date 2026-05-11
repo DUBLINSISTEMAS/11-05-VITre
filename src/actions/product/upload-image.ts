@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 
 import { productImageTable, productTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { isUniqueViolation } from "@/lib/db-errors";
 import { compressImage, validateImageInput } from "@/lib/image";
 import { logger } from "@/lib/logger";
 import {
@@ -224,9 +225,3 @@ export async function uploadProductImage(
 }
 
 class ProductImageLimitError extends Error {}
-
-function isUniqueViolation(e: unknown): boolean {
-  if (typeof e !== "object" || e === null) return false;
-  const code = (e as { code?: string }).code;
-  return code === "23505";
-}
