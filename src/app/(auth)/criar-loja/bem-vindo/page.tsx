@@ -40,7 +40,6 @@ function WelcomeSkeleton() {
 function WelcomeContent() {
   const searchParams = useSearchParams();
   const storeNameRaw = searchParams.get("nome")?.trim() ?? "";
-  const storeName = storeNameRaw || "Sua loja";
   const storeSlug = searchParams.get("slug") || "";
   // Primeira palavra do nome da loja — só personaliza se veio nome real
   // pela URL; sem nome, omite a vírgula vocativa.
