@@ -73,6 +73,14 @@ export default async function ProductPage({
     name: product.name,
     description: product.description || undefined,
     image: product.images.map((i) => i.url),
+    // SKU: usamos product.id (UUID) como identificador estável. Sem SKU
+    // real no modelo; UUID serve pro Rich Results e satisfaz o gate do
+    // Schema.org Product (`sku` ou `productID` recomendado).
+    sku: product.id,
+    brand: {
+      "@type": "Brand",
+      name: store.name,
+    },
     offers: {
       "@type": "Offer",
       price: (effectivePriceCents / 100).toFixed(2),
