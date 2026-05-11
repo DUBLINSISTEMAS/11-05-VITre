@@ -2,19 +2,26 @@
  * Cliente Resend + helpers de envio de email transacional.
  *
  * Templates HTML inline (sem react-email para manter o bundle leve).
- * Pegada visual: Vitrê azul `#1E3FE6`, mobile-first, mínimo de adornos.
- *
- * Limitação MVP: até comprarmos `vitre.app` e verificarmos no Resend,
- * `RESEND_FROM_EMAIL=onboarding@resend.dev`. Resend free aceita esse from
- * mas só envia para o email do dono da conta. Trocar antes da Fase 1.7.
+ * Pegada visual: Vitre azul `#1E3FE6`, mobile-first, minimo de adornos.
  */
 import { Resend } from "resend";
 
 import { env } from "@/lib/env";
+import { logger } from "@/lib/logger";
 
 const resend = new Resend(env.RESEND_API_KEY);
 
 const VITRE_PRIMARY = "#1E3FE6";
+
+if (
+  process.env.NODE_ENV === "production" &&
+  env.RESEND_FROM_EMAIL.endsWith("@resend.dev")
+) {
+  logger.warn("email.using_resend_dev_in_prod", {
+    note:
+      "Resend dev domain so envia para o dono da conta. Configurar dominio verificado antes de cliente real.",
+  });
+}
 
 interface SendVerificationEmailInput {
   to: string;
