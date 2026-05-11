@@ -27,8 +27,10 @@
  */
 export const clientEnv = {
   APP_URL: process.env.NEXT_PUBLIC_APP_URL ?? "",
-  SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-  SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+  // SUPABASE_URL e SUPABASE_ANON_KEY foram removidos: nenhum componente
+  // client consome supabase-js direto. Storage assina pelo server action
+  // (sharp/strip EXIF), e leituras públicas vão por SSR. Reintroduzir
+  // só quando aparecer caso real de uso (ex.: Realtime no client).
   /**
    * `NODE_ENV` é uma das poucas envs que Next replaces em build pra
    * ambos client e server (gating de dead-code). Centralizado aqui pra
