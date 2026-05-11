@@ -6,8 +6,6 @@
  *     bagunçada, sem como filtrar por tipo/loja/operação.
  *   - Logger emite JSON com `level`, `event`, `timestamp` + payload — Vercel
  *     parseia automaticamente em "Filter by JSON".
- *   - Sem dependência externa (não usa Sentry/Pino/winston). Fica pequeno
- *     enquanto MVP, fácil de trocar depois.
  *
  * Uso:
  *   logger.error("order.expire.cron_failed", { orderId, err });
@@ -21,7 +19,17 @@
  *     `name`/`message`/`stack` automaticamente.
  *   - PII (email, telefone, customerName): NÃO logar exceto em DEBUG.
  *     Use `userId`, `orderId`, IDs opacos.
+ *
+ * Sentry (T1-3):
+ *   - `logger.error(...)` reenvia automaticamente pro Sentry como
+ *     `captureException` quando `err` é Error, ou `captureMessage` caso
+ *     contrário. `event` vira `tags.event` pra filtrar no dashboard.
+ *   - `logger.warn/info/debug` NÃO sobem pro Sentry (ruído > sinal pra Free
+ *     tier 5k/mês).
+ *   - Se Sentry não estiver inicializado (dev sem DSN), `captureException`
+ *     é no-op silencioso.
  */
+import * as Sentry from "@sentry/nextjs";
 
 type LogLevel = "debug" | "info" | "warn" | "error";
 
@@ -71,6 +79,19 @@ function emit(level: LogLevel, event: string, payload: LogPayload = {}): void {
 
   if (level === "error") {
     console.error(line);
+    // Reenvia pro Sentry só nível `error`. No-op se SDK não inicializado.
+    if (err instanceof Error) {
+      Sentry.captureException(err, {
+        tags: { event },
+        extra: rest,
+      });
+    } else {
+      Sentry.captureMessage(event, {
+        level: "error",
+        tags: { event },
+        extra: { ...rest, err: serialized },
+      });
+    }
   } else if (level === "warn") {
     console.warn(line);
   } else {

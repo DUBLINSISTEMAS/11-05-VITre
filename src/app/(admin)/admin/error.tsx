@@ -13,7 +13,11 @@
  *   - Mantém o shell do admin (sidebar, header) — não precisa relogar.
  *
  * Deve ser Client Component (regra do Next App Router pra error boundaries).
+ *
+ * Sentry (T1-3): `captureException` reporta com tag `boundary: admin` pra
+ * separar dos erros de outras zonas. `digest` do Next vai como tag extra.
  */
+import * as Sentry from "@sentry/nextjs";
 import { AlertTriangleIcon, RotateCcwIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect } from "react";
@@ -27,11 +31,8 @@ interface AdminErrorProps {
 
 export default function AdminError({ error, reset }: AdminErrorProps) {
   useEffect(() => {
-    // Telemetria mínima — quando integrarmos Sentry/Datadog, plugar aqui.
-    console.error("[admin/error.tsx]", {
-      message: error.message,
-      digest: error.digest,
-      stack: error.stack,
+    Sentry.captureException(error, {
+      tags: { boundary: "admin", digest: error.digest ?? "no-digest" },
     });
   }, [error]);
 

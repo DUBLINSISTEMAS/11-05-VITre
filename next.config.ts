@@ -1,3 +1,4 @@
+import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
 /**
@@ -93,4 +94,22 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+/**
+ * Sentry wrap:
+ *   - Plugin Webpack/Turbopack do Sentry tenta upload de source maps no build.
+ *   - Sem SENTRY_AUTH_TOKEN, o upload falha silently (warning, build OK).
+ *   - Pra ativar upload: gerar token no Dashboard Sentry > Settings > Auth Tokens,
+ *     adicionar SENTRY_AUTH_TOKEN às envs Vercel + GitHub Actions secrets.
+ *   - `silent: !CI` esconde logs verbosos em dev local; CI/Vercel mostram.
+ */
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  // sourcemaps.disable=true pula upload (não temos SENTRY_AUTH_TOKEN ainda).
+  // Quando founder gerar token, remover esta linha e source maps sobem
+  // pra Sentry desofuscar stacks de prod.
+  sourcemaps: { disable: true },
+  // tunnelRoute: "/monitoring", // descomentar se ad-blockers travarem o ingest.
+});

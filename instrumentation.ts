@@ -1,0 +1,55 @@
+/**
+ * Sentry — bootstrap server + edge runtime.
+ *
+ * Convenções deste arquivo:
+ *   - Lê `process.env.SENTRY_DSN` direto (não via `@/lib/env`): instrumentation
+ *     roda ANTES do Next bootstrap, env validation com Zod ainda não está
+ *     pronta. Se DSN ausente → no-op silencioso (dev local sem config).
+ *   - `sendDefaultPii: false`: Vitrê NÃO permite Sentry capturar headers de
+ *     request, cookies, request body. Erros vão sem PII por default.
+ *   - `tracesSampleRate: 0`: tracing desligado por hora (Free tier tem
+ *     limite separado de traces). Pode ativar gradativo se notar
+ *     necessidade de p95 por rota.
+ *   - `onRequestError`: hook Next 15 que captura erros de RSC + route
+ *     handlers + server actions automaticamente. Exportado conforme docs
+ *     Sentry v10+.
+ *
+ * Ref: production-readiness-tier1 / T1-3.
+ */
+import * as Sentry from "@sentry/nextjs";
+
+export function register() {
+  const dsn = process.env.SENTRY_DSN;
+  if (!dsn) {
+    // Dev local sem DSN — Sentry vira no-op.
+    // Em prod (Vercel), env var ausente é problema de config, não bug.
+    return;
+  }
+
+  const baseConfig: Sentry.NodeOptions = {
+    dsn,
+    environment: process.env.SENTRY_ENVIRONMENT ?? process.env.NODE_ENV,
+    tracesSampleRate: 0, // desligado — Free tier tracing tem cota separada.
+    sendDefaultPii: false,
+    // `ignoreErrors`: ruído conhecido que não vale gastar cota Free (5k/mês).
+    ignoreErrors: [
+      "AbortError", // fetch abortado pelo cliente (next/navigation)
+      "NEXT_REDIRECT", // redirect() do Next não é erro real
+      "NEXT_NOT_FOUND", // notFound() do Next não é erro real
+    ],
+  };
+
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    Sentry.init(baseConfig);
+  }
+
+  if (process.env.NEXT_RUNTIME === "edge") {
+    Sentry.init(baseConfig);
+  }
+}
+
+/**
+ * Captura erros lançados durante RSC, route handlers e server actions.
+ * Next 15 invoca este hook automaticamente quando exportado.
+ */
+export const onRequestError = Sentry.captureRequestError;

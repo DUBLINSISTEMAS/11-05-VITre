@@ -39,6 +39,13 @@ const envSchema = z.object({
 
   // Cron secret
   CRON_SECRET: z.string().min(16),
+
+  // Sentry (opcional — Sentry vira no-op em dev local sem DSN).
+  // DSN não é secret crítico (vai no client bundle pelo SDK).
+  // SENTRY_ENVIRONMENT permite separar prod/preview no dashboard Sentry.
+  SENTRY_DSN: z.string().url().optional(),
+  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
+  SENTRY_ENVIRONMENT: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
