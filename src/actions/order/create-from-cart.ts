@@ -47,7 +47,7 @@ import {
   rateLimits,
 } from "@/lib/rate-limit";
 import { generateShortCode } from "@/lib/shortcode";
-import { withServiceRole } from "@/lib/tenant";
+import { ANON_USER_ID, withServiceRole, withTenant } from "@/lib/tenant";
 import { parseWhatsAppBR } from "@/lib/whatsapp-format";
 import {
   buildOrderMessage,
@@ -114,24 +114,28 @@ export async function createOrderFromCart(
   }
   const data = parsed.data;
 
-  // 3. Resolve store (service_role — slug→tenant antes de saber id)
-  return withServiceRole(
-    `createOrderFromCart slug=${data.storeSlug}`,
-    async (tx) => {
-      const store = await tx.query.storeTable.findFirst({
-        where: and(
-          eq(storeTable.slug, data.storeSlug),
-          eq(storeTable.isActive, true),
-        ),
-      });
-      if (!store) {
-        return {
-          ok: false,
-          errorCode: "STORE_NOT_FOUND",
-          errorMessage: "Loja não encontrada.",
-        };
-      }
+  // 3. Resolve store (service_role — slug→tenant antes de saber id).
+  //    Gate H1 da auditoria 2026-05-11: ESCOPO MÍNIMO. Antes a função inteira
+  //    rodava sob withServiceRole (BYPASSRLS) — 200+ linhas vulneráveis a bug
+  //    cross-tenant. Agora só este SELECT roda em service role; o resto vai
+  //    pra withTenant(store.id, ANON_USER_ID, ...) e ganha defesa em
+  //    profundidade do RLS (convenção #1).
+  type StoreCtx = NonNullable<
+    Awaited<ReturnType<typeof resolveStoreBySlug>>
+  >;
+  const store: StoreCtx | null = await resolveStoreBySlug(data.storeSlug);
+  if (!store) {
+    return {
+      ok: false,
+      errorCode: "STORE_NOT_FOUND",
+      errorMessage: "Loja não encontrada.",
+    };
+  }
 
+  return withTenant<CreateOrderResult>(
+    store.id,
+    ANON_USER_ID,
+    async (tx) => {
       // 4. Idempotência
       const existing = await tx.query.orderTable.findFirst({
         where: and(
@@ -500,6 +504,42 @@ export async function createOrderFromCart(
         shortCode: createdShortCode,
         whatsappUrl: buildWhatsAppUrl(store.whatsappNumber, message),
       };
+    },
+  );
+}
+
+/**
+ * Resolve store por slug em escopo mínimo de service role (gate H1).
+ * Antes a função inteira rodava sob withServiceRole — agora só este SELECT.
+ * Retorna apenas os campos que createOrderFromCart precisa downstream.
+ */
+async function resolveStoreBySlug(
+  slug: string,
+): Promise<
+  | {
+      id: string;
+      slug: string;
+      name: string;
+      whatsappNumber: string;
+    }
+  | null
+> {
+  return withServiceRole(
+    `createOrderFromCart: resolve store by slug=${slug}`,
+    async (tx) => {
+      const rows = await tx
+        .select({
+          id: storeTable.id,
+          slug: storeTable.slug,
+          name: storeTable.name,
+          whatsappNumber: storeTable.whatsappNumber,
+        })
+        .from(storeTable)
+        .where(
+          and(eq(storeTable.slug, slug), eq(storeTable.isActive, true)),
+        )
+        .limit(1);
+      return rows[0] ?? null;
     },
   );
 }
