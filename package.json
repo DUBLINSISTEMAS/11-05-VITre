@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Vitrê — SaaS de catálogo digital com checkout via WhatsApp",
+  "//": "TODO: migrar next lint para ESLint CLI antes do Next 16. Ver docs/issues/next16-eslint-cli.md",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
