@@ -15,6 +15,7 @@
     "db:studio": "drizzle-kit studio",
     "db:check": "tsx scripts/check-db.ts",
     "db:check-storage": "tsx scripts/check-storage.ts",
+    "db:check-anon": "node scripts/check-anon-grants.mjs",
     "db:apply": "tsx scripts/apply-sql.ts"
   },
   "dependencies": {
