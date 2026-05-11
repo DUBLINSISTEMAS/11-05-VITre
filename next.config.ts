@@ -16,7 +16,7 @@ import type { NextConfig } from "next";
  *     é roadmap. Por hora 'unsafe-inline' é o trade-off comum.
  *   - img-src libera `*.supabase.co` (Storage), `data:` (ícones inline) e
  *     `blob:` (preview de upload).
- *   - connect-src libera `*.supabase.co` pra Storage upload via fetch.
+ *   - connect-src libera Supabase Storage e ingest client-side do Sentry.
  *
  * Aplicado a TODAS as rotas. Se um path específico precisar relaxar
  * (ex: futura página com iframe legítimo), criar entry separado em `headers()`.
@@ -30,7 +30,7 @@ const SECURITY_HEADERS = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' https://*.supabase.co data: blob:",
       "font-src 'self' data:",
-      "connect-src 'self' https://*.supabase.co",
+      "connect-src 'self' https://*.supabase.co https://*.sentry.io https://*.ingest.sentry.io",
       "frame-ancestors 'none'",
       "form-action 'self'",
       "base-uri 'self'",
