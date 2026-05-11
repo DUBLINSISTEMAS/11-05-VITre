@@ -71,7 +71,7 @@ export default async function AboutPage({
           </p>
         ) : (
           <p className="text-muted-foreground/70 text-base italic">
-            Conheça nossos produtos navegando pelo catálogo.
+            Conheça nossos produtos navegando pela vitrine.
           </p>
         )}
       </header>

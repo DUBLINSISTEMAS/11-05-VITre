@@ -158,10 +158,10 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
             Sua sacola está vazia
           </h1>
           <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-            Adicione produtos do catálogo da {store.name} e finalize seu pedido aqui.
+            Adicione produtos da vitrine da {store.name} e finalize seu pedido aqui.
           </p>
           <Button asChild size="lg" className="mt-8">
-            <Link href={`/${store.slug}`}>Ver catálogo</Link>
+            <Link href={`/${store.slug}`}>Ver vitrine</Link>
           </Button>
         </div>
       </>

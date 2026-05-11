@@ -83,7 +83,7 @@ function WelcomeContent() {
           </div>
 
           <h1 className="mt-6 text-center text-[32px] font-semibold leading-[1.05] tracking-[-0.8px] sm:text-[38px] sm:tracking-[-1px]">
-            Sua loja está no ar
+            Sua vitrine está no ar
             {firstWord ? (
               <>
                 ,{" "}
@@ -106,7 +106,7 @@ function WelcomeContent() {
               type="button"
               onClick={handleCopy}
               className="bg-foreground text-background hocus:bg-foreground/90 inline-flex h-[50px] shrink-0 items-center gap-1.5 border-l px-4 text-[12.5px] font-semibold transition-colors"
-              aria-label="Copiar link da loja"
+              aria-label="Copiar link da vitrine"
             >
               {copied ? (
                 <CheckIcon className="size-3.5" />
@@ -167,7 +167,7 @@ const NEXT_STEPS = [
   {
     n: "01",
     t: "Adicione 5 produtos",
-    s: "Lojas com pelo menos 5 produtos vendem 3× mais nos primeiros 30 dias.",
+    s: "Vitrines com pelo menos 5 produtos vendem 3× mais nos primeiros 30 dias.",
     cta: "Cadastrar produto",
     href: "/admin/produtos/novo",
   },
@@ -181,7 +181,7 @@ const NEXT_STEPS = [
   {
     n: "03",
     t: "Suba seu primeiro banner",
-    s: "Banners no topo da loja chamam atenção pra coleções e promoções.",
+    s: "Banners no topo da vitrine chamam atenção pra coleções e promoções.",
     cta: "Subir banner",
     href: "/admin/banners",
   },

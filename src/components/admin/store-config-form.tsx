@@ -123,7 +123,7 @@ export function StoreConfigForm({
     >
       <FormCard
         title="Identidade"
-        description="O que aparece pra quem visita sua loja."
+        description="O que aparece pra quem visita sua vitrine."
       >
         <div className="space-y-1.5">
           <Label htmlFor="store-name">Nome da loja</Label>
@@ -169,7 +169,7 @@ export function StoreConfigForm({
 
       <FormCard
         title="Logo e ícone"
-        description="Logo aparece no topo da loja. Ícone é a aba do navegador (favicon)."
+        description="Logo aparece no topo da vitrine. Ícone é a aba do navegador (favicon)."
       >
         <StoreImageUploader
           kind="logo"
@@ -215,7 +215,7 @@ export function StoreConfigForm({
 
       <FormCard
         title="Cor primária"
-        description="A cor que destaca botões, links e elementos da sua loja."
+        description="A cor que destaca botões, links e elementos da sua vitrine."
       >
         <Controller
           name="primaryColor"
@@ -237,7 +237,7 @@ export function StoreConfigForm({
 
       <FormCard
         title="Contato"
-        description="WhatsApp recebe os pedidos. Instagram aparece como link na loja."
+        description="WhatsApp recebe os pedidos. Instagram aparece como link na vitrine."
       >
         <div className="space-y-1.5">
           <Label htmlFor="store-whatsapp">WhatsApp</Label>
@@ -289,7 +289,7 @@ export function StoreConfigForm({
 
       <FormCard
         title="Endereço (opcional)"
-        description="Mostrado na página da loja. Útil pra retirada presencial."
+        description="Mostrado na página da vitrine. Útil pra retirada presencial."
       >
         <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
           <div className="space-y-1.5">

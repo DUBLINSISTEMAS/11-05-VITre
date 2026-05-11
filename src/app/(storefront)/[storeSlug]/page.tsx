@@ -159,11 +159,11 @@ function EmptyCatalog({
           PRIMEIRO PASSO
         </p>
         <h2 className="mt-1 text-lg font-semibold text-foreground">
-          Sua loja está pronta
+          Sua vitrine está pronta
         </h2>
         <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">
-          Cadastre o primeiro produto para que seus clientes possam ver o
-          catálogo da {storeName}.
+          Cadastre o primeiro produto para que seus clientes possam ver a
+          vitrine da {storeName}.
         </p>
         <Button asChild className="mt-6 gap-2">
           <Link href="/admin/produtos/novo">
@@ -184,7 +184,7 @@ function EmptyCatalog({
         EM BREVE
       </p>
       <h2 className="mt-1 text-lg font-semibold text-foreground">
-        Catálogo em construção
+        Vitrine em construção
       </h2>
       <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">
         Em breve você verá os produtos da {storeName} aqui.

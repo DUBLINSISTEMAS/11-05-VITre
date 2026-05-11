@@ -96,7 +96,7 @@ export function BannerEditDialog({ banner }: BannerEditDialogProps) {
               aria-invalid={!!linkError}
             />
             <p className="text-muted-foreground text-xs">
-              Use um caminho da loja (começando com /) ou um link completo
+              Use um caminho da vitrine (começando com /) ou um link completo
               (http/https). Deixe em branco se for só decorativo.
             </p>
             {linkError ? (

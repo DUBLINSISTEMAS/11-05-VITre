@@ -21,11 +21,11 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Vitrê — Catálogo digital com checkout WhatsApp",
+    default: "Vitrê — Vitrine digital com checkout WhatsApp",
     template: "%s · Vitrê",
   },
   description:
-    "Crie um catálogo profissional para sua loja em minutos. Foto pelo celular, link único pro WhatsApp, sem mensalidade pra começar.",
+    "Monte sua vitrine digital em minutos. Foto pelo celular, link único pro WhatsApp, sem mensalidade pra começar.",
   metadataBase: new URL(env.NEXT_PUBLIC_APP_URL),
   applicationName: "Vitrê",
   authors: [{ name: "Vitrê" }],

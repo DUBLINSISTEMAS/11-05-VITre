@@ -15,7 +15,7 @@ export function StorefrontFooterCard({ storeSlug }: StorefrontFooterCardProps) {
     <div className="bg-card flex flex-col gap-2 rounded-lg border p-3">
       <span className="text-eyebrow">Seu storefront</span>
       <span className="truncate font-mono text-[11.5px] text-foreground/80">
-        vitre.app/{storeSlug}
+        vitre.site/{storeSlug}
       </span>
       <Link
         href={`/${storeSlug}`}
@@ -23,7 +23,7 @@ export function StorefrontFooterCard({ storeSlug }: StorefrontFooterCardProps) {
         rel="noopener noreferrer"
         className="hocus:bg-accent inline-flex h-7 w-fit items-center gap-1 rounded-md border px-2 text-[11.5px] font-medium text-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
       >
-        Abrir loja
+        Abrir vitrine
         <ArrowUpRightIcon className="size-3" aria-hidden />
       </Link>
     </div>

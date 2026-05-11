@@ -143,7 +143,7 @@ function EmptyState() {
       </div>
       <h2 className="text-lg font-semibold">Sem pedidos por enquanto</h2>
       <p className="text-muted-foreground max-w-sm text-sm">
-        Quando algum cliente fechar uma compra pelo WhatsApp na sua loja,
+        Quando algum cliente fechar uma compra pelo WhatsApp na sua vitrine,
         o pedido aparece aqui com o código curto.
       </p>
     </div>

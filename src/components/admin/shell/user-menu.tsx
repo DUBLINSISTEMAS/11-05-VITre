@@ -78,7 +78,7 @@ export function UserMenu({
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <Link href={`/${storeSlug}`} target="_blank" rel="noopener noreferrer">
-            <StoreIcon className="size-4" /> Ver minha loja
+            <StoreIcon className="size-4" /> Ver minha vitrine
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>

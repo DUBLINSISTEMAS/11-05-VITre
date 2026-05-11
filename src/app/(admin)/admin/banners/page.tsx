@@ -34,7 +34,7 @@ export default async function BannersPage() {
     <div className="space-y-4 sm:space-y-6">
       <AdminPageHeader
         title="Banners"
-        subtitle={`Imagens grandes que aparecem no topo da sua loja. Até ${MAX_BANNERS} banners.`}
+        subtitle={`Imagens grandes que aparecem no topo da sua vitrine. Até ${MAX_BANNERS} banners.`}
       />
 
       <BannersAdmin banners={banners} maxBanners={MAX_BANNERS} />

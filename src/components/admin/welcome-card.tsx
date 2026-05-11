@@ -22,7 +22,7 @@ export function WelcomeCard({ storeName, storeUrl }: WelcomeCardProps) {
 
   const handleShare = () => {
     startSharing(async () => {
-      const message = `Confira o catálogo da ${storeName}: ${storeUrl}`;
+      const message = `Confira a vitrine da ${storeName}: ${storeUrl}`;
       if (typeof navigator !== "undefined" && "share" in navigator) {
         try {
           await navigator.share({
@@ -67,7 +67,7 @@ export function WelcomeCard({ storeName, storeUrl }: WelcomeCardProps) {
       </div>
 
       <p className="text-muted-foreground text-sm leading-relaxed sm:text-base">
-        Tudo pronto. Cadastre seus primeiros produtos para o catálogo aparecer
+        Tudo pronto. Cadastre seus primeiros produtos para a vitrine aparecer
         para os clientes — eles compram direto pelo WhatsApp.
       </p>
 
@@ -79,7 +79,7 @@ export function WelcomeCard({ storeName, storeUrl }: WelcomeCardProps) {
         </Button>
         <Button asChild size="lg" variant="outline">
           <a href={storeUrl} target="_blank" rel="noopener noreferrer">
-            <ExternalLinkIcon /> Ver minha loja
+            <ExternalLinkIcon /> Ver minha vitrine
           </a>
         </Button>
         <Button

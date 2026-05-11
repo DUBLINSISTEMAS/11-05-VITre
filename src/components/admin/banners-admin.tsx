@@ -238,7 +238,7 @@ function EmptyState() {
       </div>
       <h2 className="text-lg font-semibold">Sem banners ainda</h2>
       <p className="text-muted-foreground max-w-sm text-sm">
-        Banners aparecem no topo da sua loja, ótimos pra destacar promoções
+        Banners aparecem no topo da sua vitrine, ótimos pra destacar promoções
         ou coleções novas.
       </p>
     </div>

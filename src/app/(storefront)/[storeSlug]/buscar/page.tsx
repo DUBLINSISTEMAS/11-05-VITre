@@ -191,12 +191,12 @@ export default async function SearchPage({
               <SearchIcon className="size-7 text-muted-foreground" />
             </div>
             <p className="text-base font-medium text-foreground mb-1">
-              {q ? "Nenhum produto encontrado" : "Catálogo vazio"}
+              {q ? "Nenhum produto encontrado" : "Vitrine vazia"}
             </p>
             <p className="text-sm text-muted-foreground max-w-xs">
               {q
                 ? "Tente outras palavras ou explore as categorias"
-                : "Esta loja ainda não tem produtos cadastrados"}
+                : "Esta vitrine ainda não tem produtos cadastrados"}
             </p>
           </div>
         )}

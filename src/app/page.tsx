@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 /**
  * Landing pública (rota /). Mobile-first.
  *
- * Vitrê = catálogo digital com checkout via WhatsApp pra pequenas lojas
+ * Vitrê = vitrine digital com checkout via WhatsApp pra pequenas lojas
  * de moda, joia, semijoia e perfumaria. Sem gateway próprio — a venda
  * continua acontecendo no WhatsApp do lojista, a vitrine só organiza
  * produto, preço e link.
@@ -43,18 +43,18 @@ export default function Home() {
       <section className="flex-1">
         <div className="mx-auto w-full max-w-3xl px-5 pb-16 pt-12 sm:px-8 sm:pt-20">
           <p className="text-primary mb-4 font-mono text-[10.5px] font-semibold uppercase tracking-[0.08em]">
-            Catálogo digital · Checkout WhatsApp
+            Vitrine digital · Checkout WhatsApp
           </p>
 
           <h1 className="text-[34px] font-semibold leading-[1.05] tracking-[-1px] sm:text-[48px] sm:tracking-[-1.4px]">
-            Sua vitrine online,
+            Sua vitrine digital,
             <br />
             <span className="text-muted-foreground">vendendo pelo WhatsApp.</span>
           </h1>
 
           <p className="text-muted-foreground mt-5 max-w-xl text-[15px] leading-[1.55] sm:text-base">
             Pequenas lojas de moda, joia, semijoia e perfumaria organizam
-            o catálogo num link só. O cliente escolhe, fecha o pedido, e
+            a vitrine num link só. O cliente escolhe, fecha o pedido, e
             a conversa cai direto no seu WhatsApp.
           </p>
 
@@ -118,7 +118,7 @@ export default function Home() {
 const FEATURES = [
   {
     kicker: "01",
-    title: "Catálogo num link",
+    title: "Vitrine num link",
     body: "Cadastre produtos, preço e foto. Compartilha um link só no Instagram, status do WhatsApp ou cartão.",
   },
   {
@@ -129,6 +129,6 @@ const FEATURES = [
   {
     kicker: "03",
     title: "Sem gateway, sem taxa",
-    body: "Você cobra como já cobra hoje. A Vitrê só organiza o catálogo — quem vende continua sendo você.",
+    body: "Você cobra como já cobra hoje. A Vitrê só organiza a vitrine — quem vende continua sendo você.",
   },
 ] as const;

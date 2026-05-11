@@ -94,7 +94,7 @@ export default function CriarContaPage() {
             Comece grátis · 14 dias
           </p>
           <h1 className="mt-3 text-[32px] font-semibold leading-[1.05] tracking-[-1px] sm:text-[36px]">
-            Sua loja online <br className="hidden sm:block" />
+            Sua vitrine digital <br className="hidden sm:block" />
             em <span className="text-primary">5 minutos</span>.
           </h1>
           <p className="text-muted-foreground mt-3 max-w-[460px] text-[14px] leading-[1.55]">
@@ -328,7 +328,7 @@ export default function CriarContaPage() {
               {[
                 {
                   n: "01",
-                  l: "Catálogo de produtos",
+                  l: "Vitrine digital",
                   t: "Adicione fotos, preços e variantes.",
                 },
                 {

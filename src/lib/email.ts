@@ -131,7 +131,7 @@ function buildEmailHtml({
             </td>
           </tr>
         </table>
-        <div style="font-size:12px;color:#a3a3a3;margin-top:16px;">Vitrê — catálogo digital com checkout WhatsApp</div>
+        <div style="font-size:12px;color:#a3a3a3;margin-top:16px;">Vitrê — vitrine digital com checkout WhatsApp</div>
       </td>
     </tr>
   </table>

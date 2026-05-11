@@ -68,7 +68,7 @@ export function ProductPublishToggle({
         checked={optimistic}
         onCheckedChange={handleToggle}
         disabled={disabled || isPending}
-        aria-label="Visível na minha loja"
+        aria-label="Visível na minha vitrine"
       />
     </label>
   );

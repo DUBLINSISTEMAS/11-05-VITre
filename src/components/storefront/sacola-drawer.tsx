@@ -226,7 +226,7 @@ function EmptyState({
         Adicione produtos e finalize seu pedido pelo WhatsApp.
       </p>
       <Button asChild className="mt-6 rounded-full" onClick={onClose}>
-        <Link href={`/${storeSlug}`}>Ver catálogo</Link>
+        <Link href={`/${storeSlug}`}>Ver vitrine</Link>
       </Button>
     </div>
   );

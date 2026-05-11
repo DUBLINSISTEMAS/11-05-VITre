@@ -40,7 +40,7 @@ export async function generateMetadata({
     },
     description:
       store.description ??
-      `Catálogo digital de ${store.name}. Compre via WhatsApp, sem cadastro.`,
+      `Vitrine digital de ${store.name}. Compre via WhatsApp, sem cadastro.`,
     openGraph: {
       title: store.name,
       description: store.description ?? undefined,
