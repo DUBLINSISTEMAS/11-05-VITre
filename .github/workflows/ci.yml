@@ -1,0 +1,65 @@
+# CI — validação estática + testes em cada PR e push pra main.
+#
+# Por quê:
+#   Founder solo sem CI inevitavelmente mergea regressão pra prod.
+#   Este workflow é a primeira camada (gratuita) de defesa: type-check +
+#   lint + 68 testes unitários antes de qualquer merge.
+#
+# Escopo deste workflow:
+#   - tsc --noEmit         (type errors)
+#   - next lint            (regras ESLint do projeto)
+#   - pnpm test            (tsx --test, 68 testes)
+#
+# Fora de escopo (por hora):
+#   - `next build`: requer env vars de prod (DATABASE_URL, BETTER_AUTH_SECRET,
+#     UPSTASH_*, RESEND_*). Adicionar quando staging existir + secrets
+#     forem replicados em GitHub Actions secrets.
+#   - integration tests com DB real: Tier 2.
+#
+# Ref: production-readiness-tier1 / T1-4.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Cancela runs antigos do mesmo PR/branch quando push novo chega.
+# Economiza minutos do Free tier (2000 min/mês).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: tsc + lint + test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check
+        run: pnpm exec tsc --noEmit
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
