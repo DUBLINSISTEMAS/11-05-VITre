@@ -17,6 +17,7 @@ import { Pagination } from "@/components/common/pagination";
 import { CategoryFilterChips } from "@/components/storefront/category-filter-chips";
 import { ProductGrid } from "@/components/storefront/product-grid";
 import { StoreHeader } from "@/components/storefront/store-header";
+import { env } from "@/lib/env";
 import {
   boolFlagSchema,
   enumWithDefault,
@@ -59,18 +60,32 @@ function formatPiecesCounter(total: number): string {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<PageParams>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<Metadata> {
-  const { storeSlug, categorySlug } = await params;
+  const [{ storeSlug, categorySlug }, sp] = await Promise.all([
+    params,
+    searchParams,
+  ]);
   const store = await getStoreBySlug(storeSlug);
   if (!store) return { title: "Não encontrado" };
   const category = await getCategoryBySlug(store.id, store.slug, categorySlug);
   if (!category) return { title: "Categoria não encontrada" };
 
+  // Canonical aponta sempre pra página 1, sem filtros — evita duplicate
+  // content por paginação/sort/promo (Google rebaixaria as variantes).
+  const baseUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  const canonical = `${baseUrl}/${storeSlug}/categoria/${categorySlug}`;
+  const { page } = categoriaSearchSchema.parse(sp);
+
   return {
     title: category.name,
     description: `Produtos de ${category.name} — ${store.name}.`,
+    alternates: { canonical },
+    // Página >1 sem valor SEO próprio — evita índice paginado infinito.
+    robots: page > 1 ? { index: false, follow: true } : undefined,
   };
 }
 
