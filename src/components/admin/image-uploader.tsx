@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { deleteProductImage } from "@/actions/product/delete-image";
 import { uploadProductImage } from "@/actions/product/upload-image";
 import { tempId } from "@/lib/id";
+import { compressImageClient } from "@/lib/image-client";
 import { cn } from "@/lib/utils";
 
 export interface ProductImageData {
@@ -52,13 +53,15 @@ export function ImageUploader({
 }: ImageUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [pendingPreviews, setPendingPreviews] = useState<
-    { id: string; previewUrl: string }[]
+    { id: string; previewUrl: string; phase: "compressing" | "uploading" }[]
   >([]);
   const [isDeleting, startDelete] = useTransition();
 
   // Ref espelhando o estado para o cleanup ler sempre o valor atual,
   // não a closure do mount (deps `[]` causaria leak em uploads em andamento).
-  const pendingRef = useRef<{ id: string; previewUrl: string }[]>([]);
+  const pendingRef = useRef<
+    { id: string; previewUrl: string; phase: "compressing" | "uploading" }[]
+  >([]);
   useEffect(() => {
     pendingRef.current = pendingPreviews;
   }, [pendingPreviews]);
@@ -91,11 +94,24 @@ export function ImageUploader({
     for (const file of filesToUpload) {
       const previewId = tempId();
       const previewUrl = URL.createObjectURL(file);
-      setPendingPreviews((prev) => [...prev, { id: previewId, previewUrl }]);
+      setPendingPreviews((prev) => [
+        ...prev,
+        { id: previewId, previewUrl, phase: "compressing" },
+      ]);
 
       try {
+        // Comprime no client ANTES do FormData (resolve 413 do Next + UX 4G).
+        // Falha graceful: caller manda original se compressão der ruim.
+        const { file: outFile } = await compressImageClient(file);
+
+        setPendingPreviews((prev) =>
+          prev.map((p) =>
+            p.id === previewId ? { ...p, phase: "uploading" } : p,
+          ),
+        );
+
         const formData = new FormData();
-        formData.append("file", file);
+        formData.append("file", outFile);
         formData.append("productId", productId);
 
         const result = await uploadProductImage(formData);
@@ -181,8 +197,11 @@ export function ImageUploader({
               alt=""
               className="size-full object-cover opacity-60"
             />
-            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/40">
               <Loader2Icon className="size-6 animate-spin text-white" />
+              <span className="text-[10px] font-medium uppercase tracking-wider text-white/90">
+                {p.phase === "compressing" ? "Otimizando" : "Enviando"}
+              </span>
             </div>
           </div>
         ))}
@@ -215,7 +234,7 @@ export function ImageUploader({
 
       <p className="text-muted-foreground text-xs">
         Até {maxImages} imagens. A primeira é a capa do produto. JPG, PNG ou
-        WebP — máx 10MB cada.
+        WebP — fotos grandes são otimizadas automaticamente.
       </p>
     </div>
   );

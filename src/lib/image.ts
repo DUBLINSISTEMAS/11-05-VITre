@@ -14,10 +14,18 @@
 import sharp from "sharp";
 
 /**
- * Limite ANTES do sharp. Output é sempre WebP comprimido ~100-200 KB
- * (bem abaixo do limite do bucket 4MB no Supabase).
+ * Limite ANTES do sharp. Cobre input pós-compressão CLIENT-SIDE
+ * (`src/lib/image-client.ts` comprime no browser pra ~200 KB - 2 MB
+ * antes de mandar pra server action). 50 MB é o teto de segurança caso
+ * o client falhe em comprimir (Safari iOS OOM, browser exótico) e mande
+ * o original — server ainda aceita e re-comprime via sharp.
+ *
+ * Output do sharp é sempre WebP ~100-200 KB (bem abaixo do limite do
+ * bucket 4 MB no Supabase). Pipeline em duas camadas:
+ *   1. browser-image-compression no client (otimização de transporte)
+ *   2. sharp 800x800 WebP 75% no server (gate de qualidade + EXIF strip)
  */
-export const MAX_INPUT_BYTES = 10 * 1024 * 1024; // 10 MB input bruto
+export const MAX_INPUT_BYTES = 50 * 1024 * 1024; // 50 MB input bruto (defesa pós-client)
 
 /**
  * MIME types aceitos no upload bruto. sharp converte tudo para WebP no output.
@@ -84,7 +92,7 @@ export function validateImageInput(file: File): string | null {
   if (file.size === 0) return "Arquivo vazio.";
   if (file.size > MAX_INPUT_BYTES) {
     const mb = (file.size / 1024 / 1024).toFixed(1);
-    return `Imagem muito grande (${mb}MB). Máximo 10MB.`;
+    return `Imagem muito grande (${mb}MB). Máximo 50MB.`;
   }
   // Mensagem específica para HEIC/HEIF (foto padrão do iPhone)
   if (file.type === "image/heic" || file.type === "image/heif") {
