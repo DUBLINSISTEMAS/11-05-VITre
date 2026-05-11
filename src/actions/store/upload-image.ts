@@ -8,6 +8,7 @@ import { headers } from "next/headers";
 import { storeTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { compressImage, validateImageInput } from "@/lib/image";
+import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
   RateLimitError,
@@ -80,7 +81,14 @@ export async function uploadStoreImage(
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
     compressed = await compressImage(buffer);
-  } catch {
+  } catch (e) {
+    logger.error("upload.store.compress_failed", {
+      err: e,
+      kind,
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+    });
     return {
       ok: false,
       error: "Não conseguimos processar essa imagem. Tente outra.",

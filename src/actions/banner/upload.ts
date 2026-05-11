@@ -8,6 +8,7 @@ import { headers } from "next/headers";
 import { bannerTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { compressImage, validateImageInput } from "@/lib/image";
+import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
   RateLimitError,
@@ -83,7 +84,13 @@ export async function uploadBanner(
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
     compressed = await compressImage(buffer);
-  } catch {
+  } catch (e) {
+    logger.error("upload.banner.compress_failed", {
+      err: e,
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+    });
     return {
       ok: false,
       error: "Não conseguimos processar essa imagem. Tente outra.",

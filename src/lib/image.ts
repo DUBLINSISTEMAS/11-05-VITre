@@ -50,9 +50,16 @@ export interface CompressedImage {
 /**
  * Comprime e normaliza uma imagem para WebP 800x800.
  * Throw se sharp falhar (formato corrompido / não suportado).
+ *
+ * `failOn: "truncated"` (não `"error"`): libvips dispara warnings em fotos
+ * de iPhone perfeitamente válidas (ICC profile estranho, marcador EXIF
+ * inesperado, JFIF/Adobe segments inconsistentes). Com `"error"` esses
+ * warnings viram rejeição fatal e o usuário vê "Não conseguimos processar
+ * essa imagem" em fotos que abrem normalmente em qualquer outro app.
+ * `"truncated"` mantém a rejeição pra arquivos genuinamente corrompidos.
  */
 export async function compressImage(input: Buffer): Promise<CompressedImage> {
-  const compressed = await sharp(input, { failOn: "error" })
+  const compressed = await sharp(input, { failOn: "truncated" })
     .rotate() // auto-orient pelo EXIF antes de strip
     .resize(COMPRESSED_TARGET_SIZE, COMPRESSED_TARGET_SIZE, {
       fit: "inside",
