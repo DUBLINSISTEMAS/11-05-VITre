@@ -89,7 +89,9 @@ export async function createStore(input: CreateStoreInput): Promise<CreateStoreR
   }
 
   const niche = parsed.niche as NicheValue;
-  const initialCategories = NICHE_CATEGORIES[niche] ?? [];
+  const initialCategories = parsed.includeNicheCategories
+    ? (NICHE_CATEGORIES[niche] ?? [])
+    : [];
 
   // INSERT da store passa pelo GUC `app.current_user_id` (policy
   // `store_owner_access` permite via WITH CHECK). INSERT das categorias

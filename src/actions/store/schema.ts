@@ -45,6 +45,15 @@ export const createStoreSchema = z.object({
     .max(2, "Use 2 letras (ex: MA)")
     .optional()
     .or(z.literal("")),
+  /**
+   * Opt-in: cria categorias sugeridas do nicho (Vestidos, Anéis, etc).
+   * Default true preserva comportamento histórico. Lojista pode desligar
+   * pra começar com categoria vazia e nomear as próprias.
+   *
+   * Default no schema → field opcional na entrada; usar z.input<> no form
+   * se quiser permitir omissão. Hoje o form sempre passa explícito.
+   */
+  includeNicheCategories: z.boolean().default(true),
 });
 export type CreateStoreInput = z.infer<typeof createStoreSchema>;
 

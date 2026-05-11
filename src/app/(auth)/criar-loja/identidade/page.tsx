@@ -23,6 +23,7 @@ import { SlugInput } from "@/components/onboarding/slug-input";
 import { SIGNUP_WHATSAPP_KEY } from "@/components/onboarding/storage-keys";
 import { WhatsAppInput } from "@/components/onboarding/whatsapp-input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { clientEnv } from "@/lib/env-client";
 import { generateSlug, isValidSlugFormat } from "@/lib/slug";
@@ -70,6 +71,7 @@ export default function CriarLojaIdentidadePage() {
       primaryColor: "#1E3FE6",
       addressCity: "",
       addressState: "",
+      includeNicheCategories: true,
     },
     mode: "onTouched",
   });
@@ -305,6 +307,39 @@ export default function CriarLojaIdentidadePage() {
                         );
                       })}
                     </div>
+                  )}
+                />
+
+                {/* Opt-in: categorias sugeridas do nicho. */}
+                <Controller
+                  name="includeNicheCategories"
+                  control={form.control}
+                  render={({ field }) => (
+                    <label
+                      className={cn(
+                        "mt-3 flex items-start gap-3 rounded-[10px] border bg-card px-3 py-3 transition-colors",
+                        "hocus-within:border-foreground/30 cursor-pointer",
+                      )}
+                    >
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={(checked) =>
+                          field.onChange(checked === true)
+                        }
+                        disabled={isPending}
+                        className="mt-0.5"
+                        aria-label="Criar categorias sugeridas do nicho"
+                      />
+                      <div className="flex-1">
+                        <span className="text-foreground block text-[12.5px] font-medium">
+                          Criar categorias sugeridas
+                        </span>
+                        <p className="text-muted-foreground mt-0.5 text-[11px] leading-[1.4]">
+                          Adicionamos algumas categorias comuns do seu nicho. Você
+                          pode editar, renomear ou apagar depois.
+                        </p>
+                      </div>
+                    </label>
                   )}
                 />
               </Section>
