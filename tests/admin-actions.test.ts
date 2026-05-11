@@ -62,3 +62,11 @@ test("banner upload cleans the orphan .webp when DB insert fails", () => {
   );
 });
 
+test("store creation inserts store and initial categories in one transaction", () => {
+  const action = readFileSync("src/actions/store/create-store.ts", "utf8");
+
+  assert.match(action, /await withTenant\("", userId, async \(tx\) => \{/);
+  assert.match(action, /\.insert\(storeTable\)[\s\S]*tx\.insert\(categoryTable\)/);
+  assert.match(action, /set_config\('app\.current_store_id', \$\{created\.id\}, true\)/);
+  assert.doesNotMatch(action, /withTenant\(newStore\.id/);
+});

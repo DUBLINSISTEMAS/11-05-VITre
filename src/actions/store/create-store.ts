@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 
 import { categoryTable, storeTable } from "@/db/schema";
@@ -24,10 +24,10 @@ export type CreateStoreResult =
 
 /**
  * Cria a primeira loja do usuário logado, com categorias pré-populadas pelo nicho.
- * Tudo numa transação Drizzle — se categorias falharem, store também é desfeita.
+ * Tudo numa transação Drizzle. Se categorias falharem, store também é desfeita.
  *
  * Aceita `CreateStoreInput` (tipo de entrada, com `.default()` opcional)
- * mas trabalha com `CreateStoreData` (saída do parse) internamente —
+ * mas trabalha com `CreateStoreData` (saída do parse) internamente.
  * `includeNicheCategories` é booleano garantido depois do parse.
  */
 export async function createStore(input: CreateStoreInput): Promise<CreateStoreResult> {
@@ -40,7 +40,7 @@ export async function createStore(input: CreateStoreInput): Promise<CreateStoreR
 
   const requestHeaders = await headers();
 
-  // Rate limit por IP (compartilha bucket com auth — limite de 10 req/10min)
+  // Rate limit por IP (compartilha bucket com auth, limite de 10 req/10min).
   try {
     await checkRateLimit(rateLimits.auth, getClientIp(requestHeaders));
   } catch (e) {
@@ -55,7 +55,7 @@ export async function createStore(input: CreateStoreInput): Promise<CreateStoreR
   }
   const userId = session.user.id;
 
-  // Garantir slug ainda livre + formato válido (race com check assíncrono)
+  // Garantir slug ainda livre + formato válido (race com check assíncrono).
   if (!isValidSlugFormat(parsed.slug) || isReservedSlug(parsed.slug)) {
     return { ok: false, error: "Endereço da loja inválido." };
   }
@@ -77,7 +77,7 @@ export async function createStore(input: CreateStoreInput): Promise<CreateStoreR
     };
   }
 
-  // Garantir que esse user ainda não tem loja (Fase 1: 1 user = 1 loja)
+  // Garantir que esse user ainda não tem loja (Fase 1: 1 user = 1 loja).
   const existingStore = await withTenant("", userId, async (tx) =>
     tx.query.storeTable.findFirst({
       where: eq(storeTable.ownerId, userId),
@@ -88,7 +88,7 @@ export async function createStore(input: CreateStoreInput): Promise<CreateStoreR
     return { ok: true, redirectTo: "/admin" };
   }
 
-  // Parse WhatsApp para E.164 + display
+  // Parse WhatsApp para E.164 + display.
   let phone;
   try {
     phone = parseWhatsAppBR(parsed.whatsappNumber);
@@ -101,12 +101,10 @@ export async function createStore(input: CreateStoreInput): Promise<CreateStoreR
     ? (NICHE_CATEGORIES[niche] ?? [])
     : [];
 
-  // INSERT da store passa pelo GUC `app.current_user_id` (policy
-  // `store_owner_access` permite via WITH CHECK). INSERT das categorias
-  // re-entra com o storeId recém-criado pra que category_tenant_isolation
-  // libere o INSERT inicial.
+  // Store + categorias rodam na MESMA transação. Se o INSERT das categorias
+  // falhar, o INSERT da store também é desfeito pelo rollback do Drizzle.
   try {
-    const newStore = await withTenant("", userId, async (tx) => {
+    await withTenant("", userId, async (tx) => {
       const [created] = await tx
         .insert(storeTable)
         .values({
@@ -123,21 +121,21 @@ export async function createStore(input: CreateStoreInput): Promise<CreateStoreR
         .returning();
 
       if (!created) throw new Error("Falha ao criar loja.");
-      return created;
-    });
 
-    if (initialCategories.length > 0) {
-      await withTenant(newStore.id, userId, async (tx) => {
+      if (initialCategories.length > 0) {
+        await tx.execute(sql`SELECT set_config('app.current_store_id', ${created.id}, true)`);
         await tx.insert(categoryTable).values(
           initialCategories.map((name, position) => ({
-            storeId: newStore.id,
+            storeId: created.id,
             name,
             slug: generateSlug(name),
             position,
           })),
         );
-      });
-    }
+      }
+
+      return created;
+    });
   } catch (err) {
     // M6: catch silencioso cega founder em prod. Logger.error reenvia
     // pro Sentry (instrumentation já configurado) sem vazar pro cliente.
