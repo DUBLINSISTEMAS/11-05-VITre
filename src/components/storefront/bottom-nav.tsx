@@ -15,10 +15,10 @@
  *   semibold quando ativo.
  *
  *   "glass" — capsule flutuante centralizada, bg-foreground com
- *   ícones em background. 4 ícones lado-a-lado com hit-area 44px.
+ *   ícones em background. 5 ícones lado-a-lado com hit-area 44px.
  *   Item ativo recebe pill `bg-brand-store`.
  *
- * Tabs alinhadas ao ADR-0008: Início · Categorias · Buscar · Sacola.
+ * Tabs alinhadas ao ADR-0008: Início · Categorias · Favoritos · Buscar · Sacola.
  * Badge da sacola é o `cartCount` do useCart.
  *
  * Sem Framer Motion — canvas usa CSS transitions puras (.2s).
@@ -311,7 +311,7 @@ function RuleNav({ tabs, activeTab, cartBadge }: VariantProps) {
 }
 
 /* ─── glass (canvas) ──────────────────────────────────────────────────
-   Capsule flutuante autônoma centralizada, bg-foreground, 4 ícones em
+   Capsule flutuante autônoma centralizada, bg-foreground, 5 ícones em
    background. Aba ativa = pill bg-brand-store sobre o ícone. Sem
    labels (só ícones). Hit-area 44px.
 */
