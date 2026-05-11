@@ -7,8 +7,8 @@
  *     iPhone (5-8 MB) estoura e retorna 413 antes da action ser invocada.
  *   - Lojista (típico Vitrê) está em 4G de cidade pequena — subir
  *     5 MB é caro. Comprimir pra ~200 KB no celular dela é 25× menos banda.
- *   - Suporta fotos > 10 MB (input via desktop/fotógrafo profissional)
- *     sem precisar mexer em config server-side.
+ *   - Suporta fotos grandes de celular sem precisar mexer em config
+ *     server-side.
  *
  * Defesa em profundidade:
  *   - Esta compressão é OTIMIZAÇÃO de transporte, NÃO substitui a do server.
@@ -16,13 +16,11 @@
  *     re-comprimindo, normalizando orientação EXIF, e principalmente
  *     STRIPANDO o EXIF (GPS da loja!).
  *   - Se essa compressão falhar (Safari iOS OOM, browser sem suporte a
- *     Web Worker, etc.), o caller faz fallback pro arquivo original.
- *     O server-side ainda processa, e se for >MAX_INPUT_BYTES, rejeita
- *     com mensagem clara.
+ *     Web Worker, etc.), o caller mostra erro claro. Não enviamos o original
+ *     porque ele pode estourar o bodySizeLimit antes da action executar.
  *
  * Decisões de parâmetros:
- *   - `maxSizeMB: 2` — folga sobre o limite de 4MB do bucket Supabase Storage
- *     e bem dentro do `bodySizeLimit` que vier a ser respeitado.
+ *   - `maxSizeMB: 6` — margem abaixo do limite canonico de 8 MB.
  *   - `maxWidthOrHeight: 1600` — server-side resize pra 800px depois;
  *     1600 dá margem de qualidade pro sharp redimensionar sem artefatos.
  *   - `useWebWorker: true` — não trava UI durante compressão (~2-5s no celular).
@@ -38,7 +36,7 @@ import imageCompression, {
 import { clientEnv } from "@/lib/env-client";
 
 const DEFAULT_OPTIONS: ImageCompressionOptions = {
-  maxSizeMB: 2,
+  maxSizeMB: 6,
   maxWidthOrHeight: 1600,
   useWebWorker: true,
   fileType: "image/webp",
@@ -56,11 +54,13 @@ export interface CompressClientResult {
   finalSize: number;
 }
 
+export const IMAGE_COMPRESSION_FAILED_MESSAGE =
+  "Não foi possível otimizar essa imagem. Tente uma foto menor que 8 MB.";
+
 /**
  * Comprime `file` no client. Em caso de erro (browser sem suporte,
  * memória estourada, formato exótico), retorna o arquivo original
- * com `compressed: false` — caller decide se manda assim mesmo ou
- * mostra erro.
+ * com `compressed: false` para o caller abortar com mensagem clara.
  *
  * Não joga exceção. Nunca.
  */
@@ -93,7 +93,7 @@ export async function compressImageClient(
       finalSize: finalFile.size,
     };
   } catch (e) {
-    // Falha graceful: caller manda original e o server lida.
+    // Falha graceful: caller aborta com toast claro, sem mandar original.
     if (clientEnv.isDev) {
       console.warn("[image-client] compressão falhou, usando original", e);
     }

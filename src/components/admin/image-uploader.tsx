@@ -12,7 +12,10 @@ import { toast } from "sonner";
 import { deleteProductImage } from "@/actions/product/delete-image";
 import { uploadProductImage } from "@/actions/product/upload-image";
 import { tempId } from "@/lib/id";
-import { compressImageClient } from "@/lib/image-client";
+import {
+  compressImageClient,
+  IMAGE_COMPRESSION_FAILED_MESSAGE,
+} from "@/lib/image-client";
 import { cn } from "@/lib/utils";
 
 export interface ProductImageData {
@@ -101,8 +104,11 @@ export function ImageUploader({
 
       try {
         // Comprime no client ANTES do FormData (resolve 413 do Next + UX 4G).
-        // Falha graceful: caller manda original se compressão der ruim.
-        const { file: outFile } = await compressImageClient(file);
+        const { file: outFile, compressed } = await compressImageClient(file);
+        if (!compressed) {
+          toast.error(IMAGE_COMPRESSION_FAILED_MESSAGE);
+          continue;
+        }
 
         setPendingPreviews((prev) =>
           prev.map((p) =>

@@ -14,7 +14,10 @@ import { toast } from "sonner";
 import { removeCategoryImage } from "@/actions/category/remove-image";
 import { uploadCategoryImage } from "@/actions/category/upload-image";
 import { Button } from "@/components/ui/button";
-import { compressImageClient } from "@/lib/image-client";
+import {
+  compressImageClient,
+  IMAGE_COMPRESSION_FAILED_MESSAGE,
+} from "@/lib/image-client";
 import { cn } from "@/lib/utils";
 
 interface CategoryImageUploaderProps {
@@ -51,8 +54,11 @@ export function CategoryImageUploader({
 
     startTransition(async () => {
       try {
-        // Compressão client-side (resolve 413 + UX 4G). Fallback graceful.
-        const { file: outFile } = await compressImageClient(file);
+        const { file: outFile, compressed } = await compressImageClient(file);
+        if (!compressed) {
+          toast.error(IMAGE_COMPRESSION_FAILED_MESSAGE);
+          return;
+        }
         const formData = new FormData();
         formData.append("file", outFile);
         formData.append("categoryId", categoryId);

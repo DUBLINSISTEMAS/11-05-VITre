@@ -38,7 +38,7 @@ const MAX_IMAGES_PER_PRODUCT = 5;
  *
  * Limites enforced server-side:
  * - max 5 imagens por produto
- * - max 10MB no upload bruto
+ * - max 8 MB no upload bruto
  * - mime allowlist
  *
  * Rate limit por userId (lojista na rede da loja com várias funcionárias

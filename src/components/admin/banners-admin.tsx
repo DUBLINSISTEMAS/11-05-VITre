@@ -31,7 +31,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { compressImageClient } from "@/lib/image-client";
+import {
+  compressImageClient,
+  IMAGE_COMPRESSION_FAILED_MESSAGE,
+} from "@/lib/image-client";
 import { cn } from "@/lib/utils";
 
 import { BannerEditDialog } from "./banner-edit-dialog";
@@ -68,11 +71,14 @@ export function BannersAdmin({ banners, maxBanners }: BannersAdminProps) {
   const handleUpload = (file: File) => {
     startTransition(async () => {
       try {
-        // Compressão client-side (resolve 413 + UX 4G). Fallback graceful.
         // Banner usa proporção wide (1600x600 sugerida) — limites mais largos.
-        const { file: outFile } = await compressImageClient(file, {
+        const { file: outFile, compressed } = await compressImageClient(file, {
           maxWidthOrHeight: 2000,
         });
+        if (!compressed) {
+          toast.error(IMAGE_COMPRESSION_FAILED_MESSAGE);
+          return;
+        }
         const formData = new FormData();
         formData.append("file", outFile);
         const r = await uploadBanner(formData);

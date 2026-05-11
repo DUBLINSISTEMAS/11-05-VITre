@@ -13,7 +13,10 @@ import { toast } from "sonner";
 import { removeStoreImage } from "@/actions/store/remove-image";
 import { uploadStoreImage } from "@/actions/store/upload-image";
 import { Button } from "@/components/ui/button";
-import { compressImageClient } from "@/lib/image-client";
+import {
+  compressImageClient,
+  IMAGE_COMPRESSION_FAILED_MESSAGE,
+} from "@/lib/image-client";
 import { cn } from "@/lib/utils";
 
 interface StoreImageUploaderProps {
@@ -54,8 +57,11 @@ export function StoreImageUploader({
 
     startTransition(async () => {
       try {
-        // Compressão client-side (resolve 413 + UX 4G). Fallback graceful.
-        const { file: outFile } = await compressImageClient(file);
+        const { file: outFile, compressed } = await compressImageClient(file);
+        if (!compressed) {
+          toast.error(IMAGE_COMPRESSION_FAILED_MESSAGE);
+          return;
+        }
         const formData = new FormData();
         formData.append("file", outFile);
         formData.append("kind", kind);
