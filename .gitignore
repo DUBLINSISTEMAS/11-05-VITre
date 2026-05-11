@@ -61,3 +61,6 @@ next-env.d.ts
 .obsidian/
 .trash/
 *.excalidraw.md.bak
+
+# referencias visuais (screenshots locais do founder pra refator de UI)
+/referencia de painel admin/

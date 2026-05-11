@@ -24,7 +24,7 @@ export function AdminPageHeader({
   actions,
 }: AdminPageHeaderProps) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-3 border-b pb-5 sm:pb-6">
+    <div className="flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0 flex-1 space-y-1">
         <h1 className="text-[22px] font-semibold tracking-tight text-foreground sm:text-2xl">
           {title}

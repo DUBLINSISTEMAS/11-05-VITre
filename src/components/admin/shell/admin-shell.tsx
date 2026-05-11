@@ -9,40 +9,31 @@ export interface AdminShellProps extends AdminSidebarProps {
 }
 
 /**
- * Shell do painel admin (canvas-v1 admin Lote 3).
+ * Shell do painel admin (refatorado pra estilo AbacatePay).
  *
  * Layout:
- * - Desktop (lg+): flex — sidebar fixa 232px (StoreSwitcher topo +
- *   StorefrontFooterCard rodapé) + main envolto em card branco com border.
- *   Sem topbar (cada página renderiza `<AdminPageHeader>` no topo do card).
+ * - Desktop (lg+): flex — sidebar fixa 232px + main com conteúdo fluido
+ *   sobre o fundo cinza #F3F4F6. Cada bloco da página é seu próprio card
+ *   branco (não há mais wrapper único).
  * - Mobile (<lg): coluna única — header slim (logo + UserMenu) + main
- *   edge-to-edge + bottom nav escuro fixo.
+ *   edge-to-edge + bottom nav escuro fixo (será substituído por drawer
+ *   na Onda 2).
  *
- * Ornamento: gradiente radial sutil (CSS puro, sem WebP) — economiza banda
- * em mobile com 4G ruim de Pedreiras.
+ * Sem ornamento de fundo: AbacatePay é flat sobre cinza. Mais limpo,
+ * mais econômico em banda mobile.
  */
 export function AdminShell({ children, ...userProps }: AdminShellProps) {
   return (
     <div className="relative min-h-dvh bg-[#F3F4F6]">
-      {/* Ornamento decorativo — pointer-events-none, fixed atrás de tudo */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-0 -z-10"
-        style={{
-          backgroundImage:
-            "radial-gradient(at 18% 0%, color-mix(in oklch, var(--primary) 8%, transparent) 0px, transparent 55%), radial-gradient(at 88% 12%, color-mix(in oklch, var(--navy-200) 50%, transparent) 0px, transparent 50%)",
-        }}
-      />
-
       <div className="lg:flex">
         <AdminSidebar {...userProps} />
 
         <div className="flex min-w-0 flex-1 flex-col">
           <MobileHeader {...userProps} />
 
-          {/* Main: edge-to-edge mobile, card centralizado desktop */}
+          {/* Main: conteúdo flui direto sobre cinza, sem wrapper card */}
           <main className="flex-1 px-4 pt-4 pb-24 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 lg:pb-12">
-            <div className="bg-card mx-auto w-full max-w-5xl rounded-xl border p-4 shadow-sm sm:p-6 lg:p-8">
+            <div className="mx-auto w-full max-w-7xl space-y-4 sm:space-y-5">
               {children}
             </div>
           </main>
