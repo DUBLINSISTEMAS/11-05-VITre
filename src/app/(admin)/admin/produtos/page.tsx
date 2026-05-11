@@ -20,6 +20,7 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import type { CategoryOption } from "@/components/admin/category-dialog";
+import { ProductsErrorToast } from "@/components/admin/products-error-toast";
 import { ProductsFilters } from "@/components/admin/products-filters";
 import { ProductsStatusTabs } from "@/components/admin/products-status-tabs";
 import {
@@ -272,6 +273,10 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
 
       {/* Suspense boundary obrigatório: ambos componentes usam useSearchParams().
           Convenção CLAUDE.md #9. Fallback mantém altura pra evitar layout shift. */}
+      <Suspense fallback={null}>
+        <ProductsErrorToast />
+      </Suspense>
+
       <Suspense fallback={<div className="bg-muted/30 h-10 animate-pulse rounded-md" />}>
         <ProductsStatusTabs counts={tabCounts} />
       </Suspense>
