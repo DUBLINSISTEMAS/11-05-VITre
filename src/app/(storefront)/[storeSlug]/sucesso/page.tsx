@@ -1,17 +1,21 @@
 /**
- * Página `/sucesso?code=A7K2` — confirmação pós-checkout.
+ * Página `/sucesso?token=<publicToken>` — confirmação pós-checkout.
+ *
+ * Chave de URL = publicToken (32 chars opaco). NÃO use shortCode aqui:
+ * shortCode tem 4 chars (~14M combos) e é adivinhável; atacante adivinha
+ * código, abre /sucesso, e captura o publicToken renderizado.
  *
  * Redesign canvas-v1 fiel a `_vitre-storefront.jsx:457-515`:
  *  - Check 88×88 success-soft com SVG strokeWidth 2.4
  *  - Heading 24px display + sub 13px gray-600
- *  - Card resumo: kicker mono "PEDIDO" + #shortCode mono à direita +
- *    3 linhas (itens/total, atendido por, status)
+ *  - Card resumo: kicker mono "PEDIDO" + #shortCode mono à direita
+ *    (display apenas — shortCode continua exibido pra cliente)
  *  - Banner brand-tint inline com #shortCode mono
  *  - 2 CTAs: WhatsApp (verde) + "Continuar comprando" (outline)
  *  - Sem bottom-nav, sem header (controlados em shell-content.tsx)
  *
  * Server Component:
- *  - Resolve order pelo shortCode (service_role).
+ *  - Resolve order pelo publicToken (service_role).
  *  - Verifica que pertence à loja do path (defesa contra link cruzado).
  *  - Reconstrói whatsappUrl a partir do snapshot + loja (cliente pode
  *    voltar via histórico mesmo se a tab original foi fechada).
@@ -30,7 +34,7 @@ import { env } from "@/lib/env";
 import { searchTextSchema } from "@/lib/page-search-params";
 import { formatBRL } from "@/lib/pricing";
 import { buildPublicOrderWhatsAppMessage } from "@/lib/public-order";
-import { getOrderByShortCode } from "@/lib/storefront/order-loader";
+import { getOrderByPublicToken } from "@/lib/storefront/order-loader";
 import { getStoreBySlug } from "@/lib/storefront/store-loader";
 import { buildWhatsAppUrl } from "@/lib/whatsapp-message";
 
@@ -44,7 +48,7 @@ interface PageParams {
 }
 
 const sucessoSearchSchema = z.object({
-  code: searchTextSchema,
+  token: searchTextSchema,
 });
 
 // Mapeamento status → label PT-BR (canvas usa "Aguardando contato"
@@ -66,12 +70,12 @@ export default async function SuccessPage({
 }) {
   const [{ storeSlug }, sp] = await Promise.all([params, searchParams]);
 
-  const { code } = sucessoSearchSchema.parse(sp);
-  if (!code) redirect(`/${storeSlug}/sacola`);
+  const { token } = sucessoSearchSchema.parse(sp);
+  if (!token) redirect(`/${storeSlug}/sacola`);
 
   const [store, order] = await Promise.all([
     getStoreBySlug(storeSlug),
-    getOrderByShortCode(code),
+    getOrderByPublicToken(token),
   ]);
   if (!store) notFound();
   if (!order || order.store.slug !== storeSlug) notFound();

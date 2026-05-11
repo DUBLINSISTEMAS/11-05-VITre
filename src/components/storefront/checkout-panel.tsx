@@ -109,8 +109,8 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
         ...data,
       });
 
-      if (result.ok && result.shortCode) {
-        router.push(`/${store.slug}/sucesso?code=${result.shortCode}`);
+      if (result.ok && result.publicToken) {
+        router.push(`/${store.slug}/sucesso?token=${result.publicToken}`);
         return;
       }
 
