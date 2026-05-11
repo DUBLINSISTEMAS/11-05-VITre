@@ -68,6 +68,11 @@ export type CreateOrderErrorCode =
 export interface CreateOrderResult {
   ok: boolean;
   shortCode?: string;
+  /**
+   * Token opaco de 32 chars usado em fluxos públicos (/sucesso, /p/[token]).
+   * shortCode (4 chars) é APENAS pra exibição na UI — adivinhável em rota.
+   */
+  publicToken?: string;
   whatsappUrl?: string;
   errorCode?: CreateOrderErrorCode;
   errorMessage?: string;
@@ -157,6 +162,7 @@ export async function createOrderFromCart(
         return {
           ok: true,
           shortCode: existing.shortCode,
+          publicToken: existing.publicToken,
           whatsappUrl: buildWhatsAppUrl(store.whatsappNumber, message ?? ""),
         };
       }
@@ -502,6 +508,7 @@ export async function createOrderFromCart(
       return {
         ok: true,
         shortCode: createdShortCode,
+        publicToken: createdPublicToken,
         whatsappUrl: buildWhatsAppUrl(store.whatsappNumber, message),
       };
     },
