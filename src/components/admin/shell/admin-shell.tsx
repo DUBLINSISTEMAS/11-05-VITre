@@ -23,7 +23,7 @@ export interface AdminShellProps extends AdminSidebarProps {
  */
 export function AdminShell({ children, ...userProps }: AdminShellProps) {
   return (
-    <div className="bg-background relative min-h-dvh">
+    <div className="relative min-h-dvh bg-[#F3F4F6]">
       {/* Ornamento decorativo — pointer-events-none, fixed atrás de tudo */}
       <div
         aria-hidden="true"
