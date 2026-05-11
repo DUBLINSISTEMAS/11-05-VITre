@@ -39,18 +39,21 @@ declare global {
   var _vitreServicePool: Pool | undefined;
 }
 
+// max:3 — Vercel serverless × Supabase Free (60 conn ceiling).
+// Cada warm lambda mantém o pool; 3 × N lambdas concorrentes >> 10 × N.
+// Pooler do Supabase (PgBouncer transaction mode) faz o multiplex real.
 const pool =
   global._vitrePool ??
   new Pool({
     connectionString: env.DATABASE_URL,
-    max: 10,
+    max: 3,
   });
 
 const servicePool =
   global._vitreServicePool ??
   new Pool({
     connectionString: env.DIRECT_URL,
-    max: 10,
+    max: 3,
   });
 
 if (env.NODE_ENV !== "production") {
