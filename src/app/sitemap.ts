@@ -31,10 +31,11 @@ export const revalidate = 3600; // 1h
  * revalidação (1h) tenta de novo. Falha SEO momentânea > deploy travado.
  */
 function buildStaticSitemap(baseUrl: string): MetadataRoute.Sitemap {
-  // Apenas rotas que existem. `/termos` e `/privacidade` previstas no
-  // roadmap mas ainda não implementadas — incluir 404 no sitemap polui
-  // Search Console.
-  return [{ url: baseUrl, lastModified: new Date(), priority: 1.0 }];
+  return [
+    { url: baseUrl, lastModified: new Date(), priority: 1.0 },
+    { url: `${baseUrl}/termos`, priority: 0.3 },
+    { url: `${baseUrl}/privacidade`, priority: 0.3 },
+  ];
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

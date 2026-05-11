@@ -50,12 +50,23 @@ export const createStoreSchema = z.object({
    * Default true preserva comportamento histórico. Lojista pode desligar
    * pra começar com categoria vazia e nomear as próprias.
    *
-   * Default no schema → field opcional na entrada; usar z.input<> no form
-   * se quiser permitir omissão. Hoje o form sempre passa explícito.
+   * `.default()` faz o campo ser OPCIONAL na entrada (form/client) e
+   * REQUIRED na saída (action recebe boolean garantido). Por isso o
+   * form usa `z.input<>` e a action usa `z.infer<>` — divergência
+   * documentada em team memory `zod-action-input-type-with-defaults.md`.
    */
   includeNicheCategories: z.boolean().default(true),
 });
-export type CreateStoreInput = z.infer<typeof createStoreSchema>;
+/**
+ * Tipo do form (client) — `.default()` faz o campo virar opcional aqui.
+ * Use em `useForm<CreateStoreInput>` e nos handlers do RHF.
+ */
+export type CreateStoreInput = z.input<typeof createStoreSchema>;
+/**
+ * Tipo da action (server, pós-`parse`) — todos os campos resolvidos.
+ * Use no parâmetro de `createStore` e no parsed local.
+ */
+export type CreateStoreData = z.infer<typeof createStoreSchema>;
 
 export const checkSlugSchema = z.object({
   slug: z.string().trim().toLowerCase(),

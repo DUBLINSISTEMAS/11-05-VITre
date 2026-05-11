@@ -12,7 +12,11 @@ import { generateSlug, isReservedSlug, isValidSlugFormat } from "@/lib/slug";
 import { withTenant } from "@/lib/tenant";
 import { parseWhatsAppBR } from "@/lib/whatsapp-format";
 
-import { type CreateStoreInput, createStoreSchema } from "./schema";
+import {
+  type CreateStoreData,
+  type CreateStoreInput,
+  createStoreSchema,
+} from "./schema";
 
 export type CreateStoreResult =
   | { ok: true; redirectTo: string }
@@ -21,9 +25,13 @@ export type CreateStoreResult =
 /**
  * Cria a primeira loja do usuário logado, com categorias pré-populadas pelo nicho.
  * Tudo numa transação Drizzle — se categorias falharem, store também é desfeita.
+ *
+ * Aceita `CreateStoreInput` (tipo de entrada, com `.default()` opcional)
+ * mas trabalha com `CreateStoreData` (saída do parse) internamente —
+ * `includeNicheCategories` é booleano garantido depois do parse.
  */
 export async function createStore(input: CreateStoreInput): Promise<CreateStoreResult> {
-  let parsed: CreateStoreInput;
+  let parsed: CreateStoreData;
   try {
     parsed = createStoreSchema.parse(input);
   } catch {
