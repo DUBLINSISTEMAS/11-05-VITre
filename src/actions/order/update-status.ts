@@ -31,11 +31,20 @@ export type UpdateOrderStatusResult =
  * confirmed → awaiting_whatsapp não é permitido. Setamos `confirmedAt`
  * automaticamente quando vira `confirmed`.
  *
+ * Optimistic lock (gate C1 da auditoria 2026-05-11):
+ *  - UPDATE inclui `AND status = <status lido no SELECT>` + `.returning()`.
+ *  - Se outro processo (cron expire-orders, outra aba do lojista) mudou o
+ *    status entre o SELECT e o UPDATE, o UPDATE vira no-op (0 rows). A
+ *    action retorna erro pra o cliente saber que precisa recarregar.
+ *  - Sem isso, lojista clicando "Cancelar" 2× rápido = 2× `restockOrderItems`
+ *    = estoque infla silencioso.
+ *
  * Reposição de estoque:
  *  - Em `awaiting_whatsapp → canceled` ou `confirmed → canceled` ou
  *    `awaiting_whatsapp → expired`, a função chama `restockOrderItems`
- *    ANTES do UPDATE de status, na MESMA transação `withTenant` — uma
- *    falha rola tudo back (atomicidade entre estoque e status).
+ *    SÓ DEPOIS de confirmar que o UPDATE pegou (returning.length > 0),
+ *    na MESMA transação `withTenant` — uma falha rola tudo back
+ *    (atomicidade entre estoque e status).
  *  - `fulfilled` é terminal (ver VALID_TRANSITIONS), então não há cancel
  *    pós-fulfilled — mas se algum dia mudarmos isso, NÃO repor: cliente
  *    já recebeu o produto.
@@ -78,7 +87,7 @@ export async function updateOrderStatus(
       return { ok: false, error: "Pedido não encontrado." } as const;
     }
 
-    const allowed = VALID_TRANSITIONS[order.status];
+    const allowed = VALID_TRANSITIONS[order.status] ?? [];
     if (!allowed.includes(parsed.data.nextStatus)) {
       return {
         ok: false,
@@ -86,20 +95,9 @@ export async function updateOrderStatus(
       } as const;
     }
 
-    // Reposição de estoque ANTES do UPDATE — mesma transação garante
-    // atomicidade. Repor somente quando o pedido sai do fluxo SEM ser
-    // entregue (canceled ou expired a partir de awaiting_whatsapp/confirmed).
-    const isCancelFromOpen =
-      (order.status === "awaiting_whatsapp" || order.status === "confirmed") &&
-      parsed.data.nextStatus === "canceled";
-    const isExpireFromAwaiting =
-      order.status === "awaiting_whatsapp" &&
-      parsed.data.nextStatus === "expired";
-    if (isCancelFromOpen || isExpireFromAwaiting) {
-      await restockOrderItems(tx, order.id, store.id);
-    }
-
-    await tx
+    // UPDATE com optimistic lock — inclui `status = order.status` no WHERE
+    // pra evitar race (gate C1). `.returning()` confirma se o UPDATE pegou.
+    const updated = await tx
       .update(orderTable)
       .set({
         status: parsed.data.nextStatus,
@@ -111,8 +109,33 @@ export async function updateOrderStatus(
         and(
           eq(orderTable.id, parsed.data.orderId),
           eq(orderTable.storeId, store.id),
+          eq(orderTable.status, order.status),
         ),
-      );
+      )
+      .returning({ id: orderTable.id });
+
+    if (updated.length === 0) {
+      // Outro processo já alterou o status entre o SELECT e o UPDATE.
+      // Sem repor estoque — quem fez a alteração concorrente já tratou.
+      return {
+        ok: false,
+        error:
+          "Este pedido foi atualizado em outra tela. Recarregue a página.",
+      } as const;
+    }
+
+    // Reposição de estoque DEPOIS do UPDATE bem-sucedido — mesma transação
+    // garante atomicidade. Só repor quando o pedido sai do fluxo SEM ser
+    // entregue (canceled ou expired a partir de awaiting_whatsapp/confirmed).
+    const isCancelFromOpen =
+      (order.status === "awaiting_whatsapp" || order.status === "confirmed") &&
+      parsed.data.nextStatus === "canceled";
+    const isExpireFromAwaiting =
+      order.status === "awaiting_whatsapp" &&
+      parsed.data.nextStatus === "expired";
+    if (isCancelFromOpen || isExpireFromAwaiting) {
+      await restockOrderItems(tx, order.id, store.id);
+    }
 
     return { ok: true, status: parsed.data.nextStatus } as const;
   });

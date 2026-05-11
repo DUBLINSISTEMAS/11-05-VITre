@@ -155,19 +155,38 @@ test("updateOrderStatus repõe estoque em awaiting_whatsapp → expired", () => 
   assert.match(source, /awaiting_whatsapp[\s\S]{0,80}expired/);
 });
 
-test("updateOrderStatus chama restock ANTES do UPDATE de status (mesma transação)", () => {
+test("updateOrderStatus faz UPDATE com optimistic lock ANTES do restock (gate C1)", () => {
   const source = loadUpdateStatusSource();
-  // Atomicidade: restock + UPDATE numa só withTenant. Restock vem antes do
-  // .update(orderTable) na ordem do código.
-  const restockIdx = source.indexOf("restockOrderItems(tx");
+  // Gate C1 da auditoria 2026-05-11: UPDATE primeiro com `status = order.status`
+  // no WHERE + .returning() — se updated.length === 0, outro processo (cron
+  // expire-orders ou outra aba) já mudou status, NÃO repõe estoque. Sem isso,
+  // lojista clicando "Cancelar" 2× = double-restock = estoque infla silencioso.
   const updateStatusIdx = source.indexOf("update(orderTable)");
+  const restockIdx = source.indexOf("restockOrderItems(tx");
   assert.ok(
-    restockIdx > 0 && updateStatusIdx > 0,
-    "esperava restockOrderItems(tx, ...) e update(orderTable) presentes",
+    updateStatusIdx > 0 && restockIdx > 0,
+    "esperava update(orderTable) e restockOrderItems(tx, ...) presentes",
   );
   assert.ok(
-    restockIdx < updateStatusIdx,
-    "restock deve rodar ANTES do UPDATE de status (mesma transação)",
+    updateStatusIdx < restockIdx,
+    "UPDATE com optimistic lock deve vir ANTES do restock (gate C1)",
+  );
+  // Confere optimistic lock real: WHERE inclui status atual + .returning()
+  // pra checar affectedRows. Sem isso, race fica aberto.
+  assert.match(
+    source,
+    /eq\(orderTable\.status,\s*order\.status\)/,
+    "WHERE do UPDATE deve incluir eq(orderTable.status, order.status) — optimistic lock",
+  );
+  assert.match(
+    source,
+    /\.returning\(\s*\{\s*id:\s*orderTable\.id\s*\}\s*\)/,
+    "UPDATE deve usar .returning() pra detectar 0-row update (race perdido)",
+  );
+  assert.match(
+    source,
+    /updated\.length\s*===\s*0/,
+    "deve checar updated.length === 0 antes de repor estoque",
   );
 });
 
