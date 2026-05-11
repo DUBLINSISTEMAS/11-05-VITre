@@ -1,17 +1,4 @@
-import {
-  and,
-  count,
-  desc,
-  eq,
-  gte,
-  inArray,
-  isNotNull,
-  isNull,
-  lt,
-  lte,
-  or,
-  sql,
-} from "drizzle-orm";
+import { count, desc, eq, sql } from "drizzle-orm";
 
 import {
   type RecentOrderRow,
@@ -89,143 +76,60 @@ export default async function AdminHomePage() {
   const storeUrl = `${env.NEXT_PUBLIC_APP_URL}/${store.slug}`;
   const firstName = getFirstName(session.user.name);
 
-  // ---- Time windows ----
-  const now = sql`now()`;
-  const last7Start = sql`now() - interval '7 days'`;
-  const prev7Start = sql`now() - interval '14 days'`;
-  const prev7End = sql`now() - interval '7 days'`;
-  const last90Start = sql`now() - interval '90 days'`;
-
-  const promoStartCondition = or(
-    isNull(productTable.promoStartsAt),
-    lte(productTable.promoStartsAt, now),
-  );
-  const promoEndCondition = or(
-    isNull(productTable.promoEndsAt),
-    gte(productTable.promoEndsAt, now),
-  );
-
-  const fulfilledOrConfirmed: ReadonlyArray<
-    "confirmed" | "fulfilled"
-  > = ["confirmed", "fulfilled"];
-
-  // 12 queries leves (count/sum com index em store_id), executadas em
-  // SÉRIE dentro do mesmo tx. `pg` deprecou queries paralelas no mesmo
-  // client (`client.query() when the client is already executing` —
-  // remoção em pg@9). Cada count com index é ~1ms, total ~12-15ms.
+  // 12 stats agregados em 6 round-trips ao DB usando `count(*) FILTER` +
+  // `sum(...) FILTER`, agrupados por tabela. Antes: 12 SELECTs em série
+  // (~12-15ms total). Depois: 6 SELECTs (~6-8ms). Manteríamos in-tx por
+  // node-pg ter deprecado paralelas no mesmo client (pg@9 — ver memory
+  // `node-pg-serialize-queries-in-tx`).
+  //
+  // Estratégia: `FILTER (WHERE ...)` só funciona dentro do MESMO SELECT,
+  // então combina-se queries que compartilham FROM. revenueSeries (group
+  // by day) e recentOrders (top 5 colunas) ficam separadas — estrutura
+  // distinta justifica round-trip dedicado.
   const {
-    ordersLast7Rows,
-    ordersPrev7Rows,
-    revenueLast7Rows,
-    revenuePrev7Rows,
-    productTotalRows,
-    productsPublishedRows,
-    promoActiveRows,
-    pendingOrdersRows,
+    orderStats,
+    productStats,
     categoryCountRows,
     bannerCountRows,
     revenueSeriesRows,
     recentOrdersRaw,
   } = await withTenant(store.id, session.user.id, async (tx) => {
-    // Pedidos confirmados/fulfilled últimos 7 dias
-    const ordersLast7Rows = await tx
-      .select({ value: count() })
-      .from(orderTable)
-      .where(
-        and(
-          eq(orderTable.storeId, store.id),
-          inArray(orderTable.status, fulfilledOrConfirmed),
-          gte(orderTable.createdAt, last7Start),
-        ),
-      );
-    // Pedidos confirmados/fulfilled 7 dias anteriores (8-14d atrás)
-    const ordersPrev7Rows = await tx
-      .select({ value: count() })
-      .from(orderTable)
-      .where(
-        and(
-          eq(orderTable.storeId, store.id),
-          inArray(orderTable.status, fulfilledOrConfirmed),
-          gte(orderTable.createdAt, prev7Start),
-          lt(orderTable.createdAt, prev7End),
-        ),
-      );
-    // Receita 7d
-    const revenueLast7Rows = await tx
+    // 5 stats em orderTable (4 janelas temporais + status pendente)
+    const orderStats = await tx
       .select({
-        value: sql<number>`coalesce(sum(${orderTable.totalInCents}), 0)::int`,
+        ordersLast7: sql<number>`count(*) filter (where ${orderTable.status} in ('confirmed','fulfilled') and ${orderTable.createdAt} >= now() - interval '7 days')::int`,
+        ordersPrev7: sql<number>`count(*) filter (where ${orderTable.status} in ('confirmed','fulfilled') and ${orderTable.createdAt} >= now() - interval '14 days' and ${orderTable.createdAt} < now() - interval '7 days')::int`,
+        revenueLast7: sql<number>`coalesce(sum(${orderTable.totalInCents}) filter (where ${orderTable.status} in ('confirmed','fulfilled') and ${orderTable.createdAt} >= now() - interval '7 days'), 0)::int`,
+        revenuePrev7: sql<number>`coalesce(sum(${orderTable.totalInCents}) filter (where ${orderTable.status} in ('confirmed','fulfilled') and ${orderTable.createdAt} >= now() - interval '14 days' and ${orderTable.createdAt} < now() - interval '7 days'), 0)::int`,
+        pendingOrders: sql<number>`count(*) filter (where ${orderTable.status} in ('awaiting_whatsapp','confirmed'))::int`,
       })
       .from(orderTable)
-      .where(
-        and(
-          eq(orderTable.storeId, store.id),
-          inArray(orderTable.status, fulfilledOrConfirmed),
-          gte(orderTable.createdAt, last7Start),
-        ),
-      );
-    // Receita 7d anteriores
-    const revenuePrev7Rows = await tx
+      .where(eq(orderTable.storeId, store.id));
+
+    // 3 stats em productTable (total, publicados, promoção ativa agora)
+    const productStats = await tx
       .select({
-        value: sql<number>`coalesce(sum(${orderTable.totalInCents}), 0)::int`,
+        productTotal: sql<number>`count(*)::int`,
+        productsPublished: sql<number>`count(*) filter (where ${productTable.isActive} = true)::int`,
+        promoActive: sql<number>`count(*) filter (where ${productTable.promoPriceInCents} is not null and (${productTable.promoStartsAt} is null or ${productTable.promoStartsAt} <= now()) and (${productTable.promoEndsAt} is null or ${productTable.promoEndsAt} >= now()))::int`,
       })
-      .from(orderTable)
-      .where(
-        and(
-          eq(orderTable.storeId, store.id),
-          inArray(orderTable.status, fulfilledOrConfirmed),
-          gte(orderTable.createdAt, prev7Start),
-          lt(orderTable.createdAt, prev7End),
-        ),
-      );
-    // Produtos total
-    const productTotalRows = await tx
-      .select({ value: count() })
       .from(productTable)
       .where(eq(productTable.storeId, store.id));
-    // Produtos publicados (isActive=true)
-    const productsPublishedRows = await tx
-      .select({ value: count() })
-      .from(productTable)
-      .where(
-        and(
-          eq(productTable.storeId, store.id),
-          eq(productTable.isActive, true),
-        ),
-      );
-    // Promoção ativa agora
-    const promoActiveRows = await tx
-      .select({ value: count() })
-      .from(productTable)
-      .where(
-        and(
-          eq(productTable.storeId, store.id),
-          isNotNull(productTable.promoPriceInCents),
-          promoStartCondition,
-          promoEndCondition,
-        ),
-      );
-    // Pedidos pendentes (awaiting + confirmed)
-    const pendingOrdersRows = await tx
-      .select({ value: count() })
-      .from(orderTable)
-      .where(
-        and(
-          eq(orderTable.storeId, store.id),
-          inArray(orderTable.status, ["awaiting_whatsapp", "confirmed"]),
-        ),
-      );
-    // Categorias total
+
+    // Categorias total (estrutura simples, fica isolado)
     const categoryCountRows = await tx
       .select({ value: count() })
       .from(categoryTable)
       .where(eq(categoryTable.storeId, store.id));
-    // Banners total
+
+    // Banners total (estrutura simples, fica isolado)
     const bannerCountRows = await tx
       .select({ value: count() })
       .from(bannerTable)
       .where(eq(bannerTable.storeId, store.id));
-    // Receita por dia últimos 90 dias (apenas dias com receita).
-    // Completa zeros no JS abaixo.
+
+    // Receita por dia últimos 90 dias — group by day, completa zeros no
+    // JS abaixo. Estrutura distinta dos counts; round-trip dedicado.
     const revenueSeriesRows = await tx
       .select({
         day: sql<string>`to_char(date_trunc('day', ${orderTable.createdAt}), 'YYYY-MM-DD')`,
@@ -233,15 +137,12 @@ export default async function AdminHomePage() {
       })
       .from(orderTable)
       .where(
-        and(
-          eq(orderTable.storeId, store.id),
-          inArray(orderTable.status, fulfilledOrConfirmed),
-          gte(orderTable.createdAt, last90Start),
-        ),
+        sql`${orderTable.storeId} = ${store.id} and ${orderTable.status} in ('confirmed','fulfilled') and ${orderTable.createdAt} >= now() - interval '90 days'`,
       )
       .groupBy(sql`date_trunc('day', ${orderTable.createdAt})`)
       .orderBy(sql`date_trunc('day', ${orderTable.createdAt})`);
-    // Top 5 pedidos recentes
+
+    // Top 5 pedidos recentes (colunas selecionadas pra tabela do dashboard)
     const recentOrdersRaw = await tx.query.orderTable.findMany({
       where: eq(orderTable.storeId, store.id),
       orderBy: [desc(orderTable.createdAt)],
@@ -257,14 +158,8 @@ export default async function AdminHomePage() {
     });
 
     return {
-      ordersLast7Rows,
-      ordersPrev7Rows,
-      revenueLast7Rows,
-      revenuePrev7Rows,
-      productTotalRows,
-      productsPublishedRows,
-      promoActiveRows,
-      pendingOrdersRows,
+      orderStats,
+      productStats,
       categoryCountRows,
       bannerCountRows,
       revenueSeriesRows,
@@ -273,14 +168,14 @@ export default async function AdminHomePage() {
   });
 
   // ---- Stat cards data ----
-  const ordersLast7 = ordersLast7Rows[0]?.value ?? 0;
-  const ordersPrev7 = ordersPrev7Rows[0]?.value ?? 0;
-  const revenueLast7 = revenueLast7Rows[0]?.value ?? 0;
-  const revenuePrev7 = revenuePrev7Rows[0]?.value ?? 0;
-  const productTotal = productTotalRows[0]?.value ?? 0;
-  const productsPublished = productsPublishedRows[0]?.value ?? 0;
-  const promoActive = promoActiveRows[0]?.value ?? 0;
-  const pendingOrders = pendingOrdersRows[0]?.value ?? 0;
+  const ordersLast7 = orderStats[0]?.ordersLast7 ?? 0;
+  const ordersPrev7 = orderStats[0]?.ordersPrev7 ?? 0;
+  const revenueLast7 = orderStats[0]?.revenueLast7 ?? 0;
+  const revenuePrev7 = orderStats[0]?.revenuePrev7 ?? 0;
+  const pendingOrders = orderStats[0]?.pendingOrders ?? 0;
+  const productTotal = productStats[0]?.productTotal ?? 0;
+  const productsPublished = productStats[0]?.productsPublished ?? 0;
+  const promoActive = productStats[0]?.promoActive ?? 0;
   const categoryCount = categoryCountRows[0]?.value ?? 0;
   const bannerCount = bannerCountRows[0]?.value ?? 0;
 
