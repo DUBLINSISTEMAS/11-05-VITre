@@ -23,7 +23,7 @@
  *
  * Sem Framer Motion — canvas usa CSS transitions puras (.2s).
  */
-import { Grid2x2, Home, Search, ShoppingBag } from "lucide-react";
+import { Grid2x2, Heart, Home, Search, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
@@ -39,7 +39,7 @@ export interface BottomNavProps {
   variant?: BottomNavVariant;
 }
 
-type TabId = "home" | "cat" | "srch" | "bag";
+type TabId = "home" | "cat" | "fav" | "srch" | "bag";
 
 /**
  * Discriminated union: aba ou navega via Link ("link") ou dispara uma ação
@@ -79,6 +79,13 @@ export function BottomNav({ storeSlug, variant = "pill" }: BottomNavProps) {
         onClick: openCategoriesSidebar,
       },
       {
+        id: "fav",
+        kind: "link",
+        icon: Heart,
+        label: "Favoritos",
+        href: `${baseHref}/favoritos`,
+      },
+      {
         id: "srch",
         kind: "link",
         icon: Search,
@@ -99,6 +106,7 @@ export function BottomNav({ storeSlug, variant = "pill" }: BottomNavProps) {
   const activeTab = useMemo((): TabId => {
     if (pathname === baseHref || pathname === `${baseHref}/`) return "home";
     if (pathname.startsWith(`${baseHref}/sacola`)) return "bag";
+    if (pathname.startsWith(`${baseHref}/favoritos`)) return "fav";
     if (pathname.startsWith(`${baseHref}/buscar`)) return "srch";
     // Quando dentro de `/categoria/<slug>`, mantém o destaque de "Categorias"
     // — o usuário acabou de selecionar via drawer e está navegando dentro.
