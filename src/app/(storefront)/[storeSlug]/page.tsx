@@ -24,12 +24,7 @@ import { PromoStrip } from "@/components/storefront/promo-strip";
 import { Button } from "@/components/ui/button";
 import { getSessionOrNull } from "@/lib/auth-server";
 import { hasActivePromo } from "@/lib/pricing";
-import { getActiveBanners } from "@/lib/storefront/banners-loader";
-import { getCategoryTree } from "@/lib/storefront/categories-loader";
-import {
-  getFeaturedProducts,
-  getRecentProducts,
-} from "@/lib/storefront/products-loader";
+import { getHomePageData } from "@/lib/storefront/home-loader";
 import { getStoreBySlug } from "@/lib/storefront/store-loader";
 
 export default async function StoreHomePage({
@@ -41,13 +36,14 @@ export default async function StoreHomePage({
   const store = await getStoreBySlug(storeSlug);
   if (!store) notFound();
 
-  const [banners, categoryTree, featured, recent, session] = await Promise.all([
-    getActiveBanners(store.id, store.slug),
-    getCategoryTree(store.id, store.slug),
-    getFeaturedProducts(store.id, store.slug, 8),
-    getRecentProducts(store.id, store.slug, 8),
+  // Home consolida 4 queries (banners + categorias + featured + recent)
+  // numa única transação `withTenant` — antes eram 4 transações paralelas
+  // brigando por conexões do pool max=3.
+  const [homeData, session] = await Promise.all([
+    getHomePageData(store.id, store.slug),
     getSessionOrNull(),
   ]);
+  const { banners, categoryTree, featured, recent } = homeData;
 
   const isOwner = session?.user?.id === store.ownerId;
   const heroBanner = banners[0] ?? null;
