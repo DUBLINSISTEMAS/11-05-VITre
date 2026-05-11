@@ -83,12 +83,21 @@ export async function getOrderByPublicToken(
   );
 }
 
+/**
+ * ATENÇÃO: NÃO usar em fluxos públicos. shortCode (4 chars, ~14M combos)
+ * é adivinhável via rate-limit-burst. Use {@link getOrderByPublicToken}
+ * para qualquer rota acessível por anônimo (/sucesso, /p/[token]).
+ *
+ * Reservado pra uso interno: suporte manual, busca admin por código
+ * curto que o cliente forneceu, ou ferramentas internas. shortCode
+ * continua sendo o identificador "amigável" pra exibir/falar.
+ */
 export async function getOrderByShortCode(
   shortCode: string,
 ): Promise<OrderWithItems | null> {
   return getOrderByColumn(
     orderTable.shortCode,
     shortCode,
-    "storefront: order by short code",
+    "internal: order by short code",
   );
 }
