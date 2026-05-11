@@ -39,9 +39,17 @@ const MAX_PRICE_CENTS = 100_000_00;
  * `?page=N` — número inteiro ≥ 1, capped em MAX_PAGE. Default 1.
  * Aceita string (URL) ou number (programático). Strings inválidas
  * (`abc`, `-5`, vazia) viram 1.
+ *
+ * IMPORTANTE: `.nullish()` em Zod v4 é OBRIGATÓRIO pra schema funcionar
+ * dentro de z.object() quando a propriedade pode estar ausente. Incluir
+ * z.undefined() na union NÃO é equivalente — Zod v4 trata schema sem
+ * .optional()/.nullish() como nonoptional e dá erro
+ * "expected nonoptional, received undefined" quando o objeto pai não
+ * tem a propriedade.
  */
 export const pageNumberSchema = z
-  .union([z.string(), z.number(), z.undefined(), z.null()])
+  .union([z.string(), z.number()])
+  .nullish()
   .transform((v) => {
     if (v === undefined || v === null) return 1;
     const n = typeof v === "number" ? v : Number(v);
@@ -71,9 +79,13 @@ export const boolFlagSchema = z
 /**
  * `?priceMin=X` / `?priceMax=X` — preço em centavos. Inválidos viram
  * undefined (sem filtro). Capped em MAX_PRICE_CENTS.
+ *
+ * Veja nota em `pageNumberSchema` sobre `.nullish()` ser obrigatório
+ * pro schema funcionar dentro de z.object() em Zod v4.
  */
 export const priceCentsSchema = z
-  .union([z.string(), z.undefined(), z.null()])
+  .string()
+  .nullish()
   .transform((v) => {
     if (v === undefined || v === null || v === "") return undefined;
     const n = Number(v);
