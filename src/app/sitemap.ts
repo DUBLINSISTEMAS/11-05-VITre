@@ -18,13 +18,39 @@ import {
   storeTable,
 } from "@/db/schema";
 import { env } from "@/lib/env";
+import { logger } from "@/lib/logger";
 import { withServiceRole } from "@/lib/tenant";
 
 export const revalidate = 3600; // 1h
 
+/**
+ * Em build-time Vercel chama esta função pra emitir `sitemap.xml`. Se o
+ * Supabase oscilar (cold start, rate-limit transitório), o build inteiro
+ * quebrava. Agora retornamos um sitemap mínimo com as rotas estáticas
+ * — Googlebot consegue rastrear o resto via links internos, e a próxima
+ * revalidação (1h) tenta de novo. Falha SEO momentânea > deploy travado.
+ */
+function buildStaticSitemap(baseUrl: string): MetadataRoute.Sitemap {
+  // Apenas rotas que existem. `/termos` e `/privacidade` previstas no
+  // roadmap mas ainda não implementadas — incluir 404 no sitemap polui
+  // Search Console.
+  return [{ url: baseUrl, lastModified: new Date(), priority: 1.0 }];
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
 
+  try {
+    return await loadFullSitemap(baseUrl);
+  } catch (err) {
+    logger.error("sitemap.db_fetch_failed", { err });
+    return buildStaticSitemap(baseUrl);
+  }
+}
+
+async function loadFullSitemap(
+  baseUrl: string,
+): Promise<MetadataRoute.Sitemap> {
   // CRÍTICO: usa `tx` (não `db`). `db` é o pool RLS-bound (vitre_app); sem
   // GUC `app.current_store_id` setado e com FORCE RLS ativo, queries cross-
   // tenant retornam zero. `withServiceRole` entrega o `tx` com a role
