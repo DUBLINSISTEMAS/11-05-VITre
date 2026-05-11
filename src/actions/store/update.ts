@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 
 import { storeTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
   RateLimitError,
@@ -107,7 +108,7 @@ export async function updateStore(
         .where(eq(storeTable.id, store.id));
     });
   } catch (e) {
-    console.error("[update-store] update falhou", e);
+    logger.error("store.update_failed", { err: e, storeId: store.id });
     return { ok: false, error: "Falha ao salvar configurações." };
   }
 

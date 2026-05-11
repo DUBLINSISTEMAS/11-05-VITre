@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 
 import { productImageTable, productTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
   RateLimitError,
@@ -95,7 +96,11 @@ export async function bulkDeleteProducts(
       return { deleted: deleted.length, images };
     });
   } catch (e) {
-    console.error("[bulk-delete-products] db delete falhou", e);
+    logger.error("product.bulk_delete_failed", {
+      err: e,
+      storeId: store.id,
+      count: productIds.length,
+    });
     return { ok: false, error: "Falha ao excluir produtos." };
   }
 

@@ -7,6 +7,7 @@ import { headers } from "next/headers";
 import { categoryTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getConstraintName, isUniqueViolation } from "@/lib/db-errors";
+import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
   RateLimitError,
@@ -206,7 +207,11 @@ export async function updateCategory(
         };
       }
     }
-    console.error("[update-category] update falhou", e);
+    logger.error("category.update_failed", {
+      err: e,
+      storeId: store.id,
+      categoryId: data.categoryId,
+    });
     return { ok: false, error: "Falha ao salvar categoria." };
   }
 

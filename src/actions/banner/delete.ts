@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 
 import { bannerTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
   RateLimitError,
@@ -79,7 +80,10 @@ export async function deleteBanner(
       return { ok: true, imageUrl: banner.imageUrl } as const;
     });
   } catch (e) {
-    console.error("[delete-banner] delete falhou", e);
+    logger.error("banner.delete_failed", {
+      err: e,
+      bannerId: parsed.data.bannerId,
+    });
     return { ok: false, error: "Falha ao excluir banner." };
   }
 

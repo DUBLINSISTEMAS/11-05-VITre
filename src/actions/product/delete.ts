@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 
 import { productImageTable, productTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
   RateLimitError,
@@ -99,7 +100,11 @@ export async function deleteProduct(
       return { ok: true, images } as const;
     });
   } catch (e) {
-    console.error("[delete-product] db delete falhou", e);
+    logger.error("product.delete_failed", {
+      err: e,
+      storeId: store.id,
+      productId: parsed.data.productId,
+    });
     return { ok: false, error: "Falha ao excluir o produto." };
   }
 
@@ -111,7 +116,7 @@ export async function deleteProduct(
     images.map(async ({ url }) => {
       const path = extractStoragePath("productImages", url);
       if (!path) {
-        console.warn("[delete-product] URL fora do bucket esperado:", url);
+        logger.warn("product.delete.url_outside_bucket", { url });
         return;
       }
       await deleteFromStorage({ bucket: "productImages", path });

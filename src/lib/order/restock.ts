@@ -29,8 +29,8 @@
  *    pode ultrapassar o valor original — o lojista pode ter aumentado
  *    capacidade depois. Apenas `+=` direto via expressão SQL.
  *  - **Log defensivo**: se um UPDATE retorna 0 rows (ex: variant deletada),
- *    apenas `console.warn` — não falha. Caso raro, mas possível em fluxos
- *    de soft-delete futuros.
+ *    apenas `logger.warn` (eventos `restock.partial_miss_*`) — não falha.
+ *    Caso raro, mas possível em fluxos de soft-delete futuros.
  */
 import { and, eq, inArray, sql } from "drizzle-orm";
 
@@ -39,6 +39,7 @@ import {
   productTable,
   productVariantTable,
 } from "@/db/schema";
+import { logger } from "@/lib/logger";
 import type { Tx } from "@/lib/tenant";
 
 interface RestockOrderItem {
@@ -157,7 +158,7 @@ export async function restockOrderItems(
         // UPDATE (race extremamente improvável dentro da mesma tx), ou
         // caller passou storeId errado (defesa em profundidade).
         partialMisses += 1;
-        console.warn(`[restock] partial: variant UPDATE retornou 0 rows`, {
+        logger.warn("restock.partial_miss_variant", {
           orderId,
           storeId,
           productId: item.productId,
@@ -183,7 +184,7 @@ export async function restockOrderItems(
         .returning({ id: productTable.id });
       if (updated.length === 0) {
         partialMisses += 1;
-        console.warn(`[restock] partial: product UPDATE retornou 0 rows`, {
+        logger.warn("restock.partial_miss_product", {
           orderId,
           storeId,
           productId: item.productId,

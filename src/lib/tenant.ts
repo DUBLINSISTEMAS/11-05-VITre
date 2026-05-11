@@ -15,6 +15,7 @@
 import { sql } from "drizzle-orm";
 
 import { db, serviceDb } from "@/db";
+import { logger } from "@/lib/logger";
 
 export const ANON_USER_ID = "anonymous";
 
@@ -54,6 +55,6 @@ export async function withServiceRole<T>(
   reason: string,
   fn: (tx: Tx) => Promise<T>,
 ): Promise<T> {
-  console.warn(`[service_role] bypass RLS — reason: ${reason}`);
+  logger.warn("tenant.service_role_bypass", { reason });
   return fn(serviceDb as unknown as Tx);
 }

@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 
 import { productTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
   RateLimitError,
@@ -106,7 +107,10 @@ export async function saveAndCreateNext(
     }
     return { ok: true, nextProductId: row.id };
   } catch (e) {
-    console.error("[save-and-create-next] insert next falhou", e);
+    logger.error("product.save_and_create_next.insert_failed", {
+      err: e,
+      storeId: store.id,
+    });
     return {
       ok: false,
       error: "Produto salvo, mas não conseguimos abrir um novo.",

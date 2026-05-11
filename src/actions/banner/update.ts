@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 
 import { bannerTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
   RateLimitError,
@@ -73,7 +74,11 @@ export async function updateBanner(
 
     if (!row) return { ok: false, error: "Banner não encontrado." };
   } catch (e) {
-    console.error("[update-banner] update falhou", e);
+    logger.error("banner.update_failed", {
+      err: e,
+      storeId: store.id,
+      bannerId: parsed.data.bannerId,
+    });
     return { ok: false, error: "Falha ao salvar banner." };
   }
 

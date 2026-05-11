@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 
 import { categoryTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
   RateLimitError,
@@ -86,7 +87,11 @@ export async function removeCategoryImage(
         );
     });
   } catch (e) {
-    console.error("[remove-category-image] db update falhou", e);
+    logger.error("category.remove_image.db_update_failed", {
+      err: e,
+      storeId: store.id,
+      categoryId: parsed.data.categoryId,
+    });
     return { ok: false, error: "Falha ao remover imagem." };
   }
 

@@ -108,7 +108,11 @@ export async function uploadStoreImage(
       contentType: compressed.contentType,
     });
   } catch (e) {
-    console.error("[upload-store-image] storage falhou", e);
+    logger.error("upload.store.storage_failed", {
+      err: e,
+      storeId: store.id,
+      kind,
+    });
     return { ok: false, error: "Falha no upload. Tente em instantes." };
   }
 
@@ -127,7 +131,11 @@ export async function uploadStoreImage(
         .where(eq(storeTable.id, store.id));
     });
   } catch (e) {
-    console.error("[upload-store-image] db update falhou", e);
+    logger.error("upload.store.db_update_failed", {
+      err: e,
+      storeId: store.id,
+      kind,
+    });
     // Best-effort cleanup do upload novo (DB rejeitou; não vamos manter órfão)
     const newPath = extractStoragePath("storeLogos", publicUrl);
     if (newPath) {

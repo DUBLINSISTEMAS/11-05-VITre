@@ -108,7 +108,10 @@ export async function uploadBanner(
       contentType: compressed.contentType,
     });
   } catch (e) {
-    console.error("[upload-banner] storage falhou", e);
+    logger.error("banner.upload.storage_failed", {
+      err: e,
+      storeId: store.id,
+    });
     return { ok: false, error: "Falha no upload. Tente em instantes." };
   }
 
@@ -154,7 +157,10 @@ export async function uploadBanner(
         error: `Limite de ${MAX_BANNERS_PER_STORE} banners por loja atingido.`,
       };
     }
-    console.error("[upload-banner] db insert falhou", e);
+    logger.error("banner.upload.db_insert_failed", {
+      err: e,
+      storeId: store.id,
+    });
     return { ok: false, error: "Falha ao salvar banner." };
   } finally {
     // Cleanup best-effort do .webp órfão quando o INSERT falha — não

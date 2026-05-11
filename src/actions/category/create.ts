@@ -7,6 +7,7 @@ import { headers } from "next/headers";
 import { categoryTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getConstraintName, isUniqueViolation } from "@/lib/db-errors";
+import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
   RateLimitError,
@@ -154,7 +155,10 @@ export async function createCategory(
         };
       }
     }
-    console.error("[create-category] insert falhou", e);
+    logger.error("category.create.insert_failed", {
+      err: e,
+      storeId: store.id,
+    });
     return { ok: false, error: "Falha ao criar categoria." };
   }
 

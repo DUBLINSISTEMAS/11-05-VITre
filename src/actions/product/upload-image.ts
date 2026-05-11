@@ -135,7 +135,11 @@ export async function uploadProductImage(
       contentType: compressed.contentType,
     });
   } catch (e) {
-    console.error("[upload-image] storage falhou", e);
+    logger.error("product.upload_image.storage_failed", {
+      err: e,
+      storeId: store.id,
+      productId: parsedProductId,
+    });
     return { ok: false, error: "Falha no upload. Tente novamente em instantes." };
   }
 
@@ -197,7 +201,11 @@ export async function uploadProductImage(
         error: "Conflito ao salvar. Tente enviar a imagem novamente.",
       };
     }
-    console.error("[upload-image] db insert falhou", e);
+    logger.error("product.upload_image.db_insert_failed", {
+      err: e,
+      storeId: store.id,
+      productId: parsedProductId,
+    });
     return { ok: false, error: "Falha ao salvar imagem." };
   } finally {
     // Cleanup best-effort: se DB rejeitou (limite, unique, qualquer erro),

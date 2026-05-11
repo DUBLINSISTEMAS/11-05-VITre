@@ -18,6 +18,8 @@
  */
 import { nanoid } from "nanoid";
 
+import { logger } from "@/lib/logger";
+
 import { supabaseService } from "./server";
 
 export const BUCKETS = {
@@ -90,9 +92,11 @@ export async function deleteFromStorage({
     .remove([path]);
 
   if (error) {
-    console.warn(
-      `[storage] delete falhou em ${BUCKETS[bucket]}/${path}: ${error.message}`,
-    );
+    logger.warn("storage.delete_failed", {
+      bucket: BUCKETS[bucket],
+      path,
+      message: error.message,
+    });
   }
 }
 

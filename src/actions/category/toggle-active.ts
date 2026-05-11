@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 
 import { categoryTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
   RateLimitError,
@@ -73,7 +74,10 @@ export async function toggleCategoryActive(
 
     return { ok: true, isActive: row.isActive };
   } catch (e) {
-    console.error("[toggle-category-active] falhou", e);
+    logger.error("category.toggle_active_failed", {
+      err: e,
+      categoryId: parsed.data.categoryId,
+    });
     return { ok: false, error: "Falha ao atualizar categoria." };
   }
 }

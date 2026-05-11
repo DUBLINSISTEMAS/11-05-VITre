@@ -104,8 +104,11 @@ test("restockOrderItems loga quando reposição parcial (variant deletada — ca
   const restockSource = loadRestockSource();
   // Se variantId no orderItem aponta pra variant deletada, o UPDATE retorna
   // 0 rows. Logar pra investigação posterior — não falhar (cenário raro mas
-  // possível com soft-delete eventual).
-  assert.match(restockSource, /console\.warn/);
+  // possível com soft-delete eventual). Bloco 2.2 migrou console.warn →
+  // logger.warn estruturado com eventos namespaced.
+  assert.match(restockSource, /logger\.warn/);
+  assert.match(restockSource, /restock\.partial_miss_variant/);
+  assert.match(restockSource, /restock\.partial_miss_product/);
 });
 
 test("restockOrderItems usa tipos rigorosos (Tx + sem any)", () => {

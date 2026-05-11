@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 
 import { productTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
   RateLimitError,
@@ -91,7 +92,10 @@ export async function toggleProductActive(
       return { ok: true } as const;
     });
   } catch (e) {
-    console.error("[toggle-active] update falhou", e);
+    logger.error("product.toggle_active_failed", {
+      err: e,
+      productId: parsed.data.productId,
+    });
     return { ok: false, error: "Falha ao atualizar status." };
   }
 

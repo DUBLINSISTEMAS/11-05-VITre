@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 
 import { storeTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
   RateLimitError,
@@ -71,7 +72,11 @@ export async function removeStoreImage(input: {
         .where(eq(storeTable.id, store.id));
     });
   } catch (e) {
-    console.error("[remove-store-image] db update falhou", e);
+    logger.error("store.remove_image.db_update_failed", {
+      err: e,
+      storeId: store.id,
+      kind,
+    });
     return { ok: false, error: "Falha ao remover imagem." };
   }
 

@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 
 import { productImageTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
   RateLimitError,
@@ -82,9 +83,10 @@ export async function deleteProductImage(input: {
   if (path) {
     await deleteFromStorage({ bucket: "productImages", path });
   } else {
-    console.warn(
-      `[delete-image] URL não pertence ao bucket ${BUCKETS.productImages}: ${image.url}`,
-    );
+    logger.warn("product.delete_image.url_outside_bucket", {
+      bucket: BUCKETS.productImages,
+      url: image.url,
+    });
   }
 
   await withTenant(store.id, session.user.id, async (tx) => {

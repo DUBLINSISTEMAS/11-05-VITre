@@ -126,7 +126,11 @@ export async function uploadCategoryImage(
       contentType: compressed.contentType,
     });
   } catch (e) {
-    console.error("[upload-category-image] storage falhou", e);
+    logger.error("category.upload_image.storage_failed", {
+      err: e,
+      storeId: store.id,
+      categoryId,
+    });
     return { ok: false, error: "Falha no upload. Tente em instantes." };
   }
 
@@ -145,7 +149,11 @@ export async function uploadCategoryImage(
         );
     });
   } catch (e) {
-    console.error("[upload-category-image] db update falhou", e);
+    logger.error("category.upload_image.db_update_failed", {
+      err: e,
+      storeId: store.id,
+      categoryId,
+    });
     const newPath = extractStoragePath("categoryImages", publicUrl);
     if (newPath) {
       await deleteFromStorage({ bucket: "categoryImages", path: newPath });

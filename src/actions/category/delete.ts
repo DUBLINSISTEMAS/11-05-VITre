@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 
 import { categoryTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
   RateLimitError,
@@ -97,7 +98,11 @@ export async function deleteCategory(
       return { ok: true } as const;
     });
   } catch (e) {
-    console.error("[delete-category] delete falhou", e);
+    logger.error("category.delete_failed", {
+      err: e,
+      storeId: store.id,
+      categoryId: parsed.data.categoryId,
+    });
     return { ok: false, error: "Falha ao excluir categoria." };
   }
 

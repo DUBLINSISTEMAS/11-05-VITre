@@ -11,6 +11,7 @@ import {
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getConstraintName, isUniqueViolation } from "@/lib/db-errors";
+import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
   RateLimitError,
@@ -250,7 +251,11 @@ export async function updateProduct(
         };
       }
     }
-    console.error("[update-product] transaction falhou", e);
+    logger.error("product.update.tx_failed", {
+      err: e,
+      storeId: store.id,
+      productId: data.productId,
+    });
     return { ok: false, error: "Falha ao salvar. Tente novamente." };
   }
 

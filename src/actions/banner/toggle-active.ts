@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 
 import { bannerTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
   RateLimitError,
@@ -71,7 +72,10 @@ export async function toggleBannerActive(
 
     return { ok: true, isActive: row.isActive };
   } catch (e) {
-    console.error("[toggle-banner-active] falhou", e);
+    logger.error("banner.toggle_active_failed", {
+      err: e,
+      bannerId: parsed.data.bannerId,
+    });
     return { ok: false, error: "Falha ao atualizar banner." };
   }
 }

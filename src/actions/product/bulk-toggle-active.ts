@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 
 import { productTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
   RateLimitError,
@@ -108,7 +109,12 @@ export async function bulkToggleProductsActive(
       return { updated: updated.length, skippedDrafts };
     });
   } catch (e) {
-    console.error("[bulk-toggle-active] update falhou", e);
+    logger.error("product.bulk_toggle_active_failed", {
+      err: e,
+      storeId: store.id,
+      count: productIds.length,
+      isActive,
+    });
     return { ok: false, error: "Falha ao atualizar produtos." };
   }
 

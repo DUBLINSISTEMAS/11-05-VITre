@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 
 import { productImageTable, productTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
   RateLimitError,
@@ -106,7 +107,10 @@ export async function createDraftProduct(): Promise<CreateDraftProductResult> {
       return { ok: true, productId: row.id } as const;
     });
   } catch (e) {
-    console.error("[create-draft] insert falhou", e);
+    logger.error("product.create_draft.insert_failed", {
+      err: e,
+      storeId: store.id,
+    });
     return { ok: false, error: "Falha ao criar rascunho do produto." };
   }
 }

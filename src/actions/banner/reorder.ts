@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 
 import { bannerTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
   RateLimitError,
@@ -80,7 +81,10 @@ export async function reorderBanners(
       return { ok: true } as const;
     });
   } catch (e) {
-    console.error("[reorder-banners] transaction falhou", e);
+    logger.error("banner.reorder_failed", {
+      err: e,
+      storeId: store.id,
+    });
     return { ok: false, error: "Falha ao reordenar." };
   }
 
