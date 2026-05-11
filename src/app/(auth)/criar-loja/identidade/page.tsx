@@ -190,7 +190,7 @@ export default function CriarLojaIdentidadePage() {
                 <Input
                   autoComplete="organization"
                   autoFocus
-                  placeholder="Ex: Sandra Brito Collection"
+                  placeholder="Ex: Atelier Maria"
                   disabled={isPending}
                   aria-invalid={!!form.formState.errors.name}
                   className="h-11"

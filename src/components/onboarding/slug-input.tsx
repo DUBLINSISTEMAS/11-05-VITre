@@ -101,7 +101,7 @@ export function SlugInput({
           autoCapitalize="off"
           autoCorrect="off"
           spellCheck={false}
-          placeholder="sandra-brito"
+          placeholder="atelier-maria"
           value={value}
           disabled={disabled}
           onChange={(e) => onChange(sanitize(e.target.value))}
@@ -138,7 +138,7 @@ export function SlugInput({
 function labelFor(s: Status): string {
   switch (s.kind) {
     case "idle":
-      return "Use letras minúsculas, números e hífen. Ex: sandra-brito";
+      return "Use letras minúsculas, números e hífen. Ex: atelier-maria";
     case "checking":
       return "Verificando disponibilidade...";
     case "ok":
