@@ -74,9 +74,11 @@ export const checkSlugSchema = z.object({
 export type CheckSlugInput = z.infer<typeof checkSlugSchema>;
 
 /**
- * Schema do form de configurações da loja. Edita TODOS os campos textuais
- * de `storeTable` exceto `slug`, `ownerId`, `logoUrl`, `iconUrl` e
- * timestamps. Slug é fixo (URL pública estável); logos têm upload separado.
+ * Schema do form de configurações da loja. Edita campos textuais de
+ * `storeTable` exceto `slug`, `ownerId`, `logoUrl`, `iconUrl`,
+ * `primaryColor`, `bannerRotationSec` e timestamps. Slug é fixo (URL
+ * pública estável); logos+cor+banner ficaram em Aparência (Onda 3 do
+ * pacote master 2026-05-12).
  */
 export const updateStoreSchema = z.object({
   name: z.string().trim().min(2, "Nome muito curto.").max(80, "Nome muito longo."),
@@ -90,10 +92,6 @@ export const updateStoreSchema = z.object({
     .string()
     .trim()
     .refine(isValidWhatsAppBR, "Número de WhatsApp inválido."),
-  primaryColor: z
-    .string()
-    .trim()
-    .refine(isValidHexColor, "Cor inválida. Use formato #RRGGBB."),
   addressStreet: z.string().trim().max(120).nullable(),
   addressNumber: z.string().trim().max(20).nullable(),
   addressNeighborhood: z.string().trim().max(80).nullable(),
@@ -119,6 +117,18 @@ export const updateStoreSchema = z.object({
     .trim()
     .max(40, "Usuário muito longo (máx 40).")
     .nullable(),
+});
+export type UpdateStoreInput = z.infer<typeof updateStoreSchema>;
+
+/**
+ * Schema do form de Aparência (cor primária + rotação banner).
+ * Logo e ícone têm upload separado (StoreImageUploader). Onda 3.
+ */
+export const updateAppearanceSchema = z.object({
+  primaryColor: z
+    .string()
+    .trim()
+    .refine(isValidHexColor, "Cor inválida. Use formato #RRGGBB."),
   /**
    * Intervalo de rotação do carrossel de banners no storefront.
    * 0 = desligado (mostra só o primeiro banner ativo).
@@ -131,7 +141,7 @@ export const updateStoreSchema = z.object({
       message: "Use 0 (desligado) ou entre 3 e 60 segundos.",
     }),
 });
-export type UpdateStoreInput = z.infer<typeof updateStoreSchema>;
+export type UpdateAppearanceInput = z.infer<typeof updateAppearanceSchema>;
 
 export const uploadStoreImageSchema = z.object({
   kind: z.enum(["logo", "icon"]),

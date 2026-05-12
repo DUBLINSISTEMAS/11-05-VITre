@@ -26,7 +26,6 @@ export default async function ConfiguracoesPage() {
           description: store.description,
           niche: store.niche,
           whatsappNumber: store.whatsappDisplay, // edita formato com máscara
-          primaryColor: store.primaryColor,
           addressStreet: store.addressStreet,
           addressNumber: store.addressNumber,
           addressNeighborhood: store.addressNeighborhood,
@@ -34,9 +33,6 @@ export default async function ConfiguracoesPage() {
           addressState: store.addressState,
           googleMapsUrl: store.googleMapsUrl,
           instagramHandle: store.instagramHandle,
-          logoUrl: store.logoUrl,
-          iconUrl: store.iconUrl,
-          bannerRotationSec: store.bannerRotationSec,
         }}
         storefrontUrl={storefrontUrl}
       />

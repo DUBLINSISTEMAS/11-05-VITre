@@ -93,7 +93,6 @@ export async function updateStore(
           niche: data.niche as typeof storeTable.$inferInsert.niche,
           whatsappNumber: phone.e164,
           whatsappDisplay: phone.display,
-          primaryColor: data.primaryColor,
           addressStreet: emptyToNull(data.addressStreet),
           addressNumber: emptyToNull(data.addressNumber),
           addressNeighborhood: emptyToNull(data.addressNeighborhood),
@@ -103,7 +102,6 @@ export async function updateStore(
             : null,
           googleMapsUrl: emptyToNull(data.googleMapsUrl),
           instagramHandle: emptyToNull(data.instagramHandle),
-          bannerRotationSec: data.bannerRotationSec,
           updatedAt: new Date(),
         })
         .where(eq(storeTable.id, store.id));

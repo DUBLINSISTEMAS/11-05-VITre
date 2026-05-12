@@ -1,3 +1,4 @@
+import { AppearanceForm } from "@/components/admin/appearance-form";
 import { AdminPageHeader } from "@/components/admin/shell/page-header";
 import { ThemeSelector } from "@/components/admin/theme-selector";
 import { requireSession } from "@/lib/auth-server";
@@ -14,15 +15,35 @@ export default async function AparenciaPage() {
     <div className="space-y-4 sm:space-y-6">
       <AdminPageHeader
         title="Aparência"
-        subtitle="Escolha um modelo pronto pra sua vitrine. Cada modelo muda a forma das categorias, o estilo dos cards, o hero e a barra inferior."
+        subtitle="Modelo da vitrine, logo, ícone, cor e como o carrossel de banners se comporta."
       />
 
-      <ThemeSelector
-        currentTheme={{
-          categoryShape: store.categoryShape,
-          productCardStyle: store.productCardStyle,
-          heroStyle: store.heroStyle,
-          bottomNavStyle: store.bottomNavStyle,
+      <section className="space-y-2">
+        <header className="px-1">
+          <h2 className="text-[13.5px] font-semibold tracking-tight">
+            Modelo da vitrine
+          </h2>
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            Cada modelo muda a forma das categorias, o estilo dos cards, o
+            hero e a barra inferior.
+          </p>
+        </header>
+        <ThemeSelector
+          currentTheme={{
+            categoryShape: store.categoryShape,
+            productCardStyle: store.productCardStyle,
+            heroStyle: store.heroStyle,
+            bottomNavStyle: store.bottomNavStyle,
+          }}
+        />
+      </section>
+
+      <AppearanceForm
+        initialData={{
+          primaryColor: store.primaryColor,
+          bannerRotationSec: store.bannerRotationSec,
+          logoUrl: store.logoUrl,
+          iconUrl: store.iconUrl,
         }}
       />
     </div>
