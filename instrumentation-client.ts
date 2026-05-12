@@ -15,8 +15,15 @@
 import * as Sentry from "@sentry/nextjs";
 
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+// Desliga Sentry em `pnpm dev` mesmo com DSN configurado. Warnings de
+// PropTypes (`href undefined`) e RSC boundary do Next 15 turbopack são
+// DEV-only (strippados em prod) e enchiam a cota Free (5k/mês) com
+// ruído que não afeta o usuário final. Override com
+// `NEXT_PUBLIC_SENTRY_FORCE_DEV=1` se precisar debugar localmente.
+const isDev = process.env.NODE_ENV === "development";
+const forceDev = process.env.NEXT_PUBLIC_SENTRY_FORCE_DEV === "1";
 
-if (dsn) {
+if (dsn && (!isDev || forceDev)) {
   Sentry.init({
     dsn,
     environment:

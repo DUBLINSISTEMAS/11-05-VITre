@@ -25,6 +25,17 @@ export function register() {
     // Em prod (Vercel), env var ausente é problema de config, não bug.
     return;
   }
+  // Desliga Sentry em `pnpm dev` mesmo com DSN configurado.
+  // Warnings de PropTypes / RSC boundary do Next 15 turbopack são DEV-only
+  // (strippados em prod) e enchiam a cota Free (5k/mês) com ruído que não
+  // afeta o usuário final. Override com `SENTRY_FORCE_DEV=1` se precisar
+  // debugar localmente.
+  if (
+    process.env.NODE_ENV === "development" &&
+    process.env.SENTRY_FORCE_DEV !== "1"
+  ) {
+    return;
+  }
 
   const baseConfig: Sentry.NodeOptions = {
     dsn,
