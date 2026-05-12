@@ -119,6 +119,17 @@ export const updateStoreSchema = z.object({
     .trim()
     .max(40, "Usuário muito longo (máx 40).")
     .nullable(),
+  /**
+   * Intervalo de rotação do carrossel de banners no storefront.
+   * 0 = desligado (mostra só o primeiro banner ativo).
+   * 3-60s = rotação automática. Default 5s no schema.
+   */
+  bannerRotationSec: z
+    .number()
+    .int("Use um número inteiro.")
+    .refine((v) => v === 0 || (v >= 3 && v <= 60), {
+      message: "Use 0 (desligado) ou entre 3 e 60 segundos.",
+    }),
 });
 export type UpdateStoreInput = z.infer<typeof updateStoreSchema>;
 

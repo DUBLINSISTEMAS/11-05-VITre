@@ -6,6 +6,7 @@ import { relations } from "drizzle-orm";
 import {
   boolean,
   index,
+  integer,
   pgEnum,
   pgTable,
   text,
@@ -52,6 +53,11 @@ export const storeTable = pgTable(
     // Tipo `text` em vez de pgEnum pra evitar migration de enum quando
     // adicionarmos novas variants. Aplicação valida em BottomNavVariant.
     bottomNavStyle: text("bottom_nav_style").notNull().default("pill"),
+
+    // Intervalo (em segundos) de rotação automática do carrossel de
+    // banners no storefront. 0 = rotação desligada (mostra só o primeiro).
+    // Range válido (validado em Zod): 0 ou 3-60s. Default 5s.
+    bannerRotationSec: integer("banner_rotation_sec").notNull().default(5),
 
     // Endereço
     addressStreet: text("address_street"),

@@ -1,0 +1,1 @@
+ALTER TABLE "store" ADD COLUMN "banner_rotation_sec" integer DEFAULT 5 NOT NULL;

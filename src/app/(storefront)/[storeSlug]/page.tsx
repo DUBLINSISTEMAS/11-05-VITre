@@ -17,8 +17,8 @@ import { Plus, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { BannerCarousel } from "@/components/storefront/banner-carousel";
 import { CategoryStrip } from "@/components/storefront/category-strip";
-import { HeroCard } from "@/components/storefront/hero-card";
 import { ProductGrid } from "@/components/storefront/product-grid";
 import { PromoStrip } from "@/components/storefront/promo-strip";
 import { Button } from "@/components/ui/button";
@@ -46,7 +46,7 @@ export default async function StoreHomePage({
   const { banners, categoryTree, featured, recent } = homeData;
 
   const isOwner = session?.user?.id === store.ownerId;
-  const heroBanner = banners[0] ?? null;
+  const hasBanner = banners.length > 0;
   const isCatalogEmpty = featured.length === 0 && recent.length === 0;
 
   // Bloco 1 (header "Em destaque"): primeiros 4 destaques
@@ -81,12 +81,12 @@ export default async function StoreHomePage({
 
   return (
     <div className="space-y-[18px]">
-      {heroBanner && (
-        <HeroCard
-          banner={heroBanner}
+      {hasBanner && (
+        <BannerCarousel
+          banners={banners}
           storeSlug={store.slug}
           storeName={store.name}
-          priority
+          rotationSec={store.bannerRotationSec}
         />
       )}
 
@@ -110,7 +110,7 @@ export default async function StoreHomePage({
           products={featuredBlock}
           sectionTitle="Em destaque"
           seeAllHref={`/${store.slug}/destaques`}
-          priorityFirst={!heroBanner}
+          priorityFirst={!hasBanner}
           priorityCount={2}
           variant="overlay"
         />

@@ -36,6 +36,7 @@ export default async function ConfiguracoesPage() {
           instagramHandle: store.instagramHandle,
           logoUrl: store.logoUrl,
           iconUrl: store.iconUrl,
+          bannerRotationSec: store.bannerRotationSec,
         }}
         storefrontUrl={storefrontUrl}
       />

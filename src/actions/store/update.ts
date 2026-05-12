@@ -103,6 +103,7 @@ export async function updateStore(
             : null,
           googleMapsUrl: emptyToNull(data.googleMapsUrl),
           instagramHandle: emptyToNull(data.instagramHandle),
+          bannerRotationSec: data.bannerRotationSec,
           updatedAt: new Date(),
         })
         .where(eq(storeTable.id, store.id));

@@ -45,6 +45,7 @@ export interface StoreConfigInitialData {
   instagramHandle: string | null;
   logoUrl: string | null;
   iconUrl: string | null;
+  bannerRotationSec: number;
 }
 
 interface StoreConfigFormProps {
@@ -89,6 +90,7 @@ export function StoreConfigForm({
       addressState: initialData.addressState ?? "",
       googleMapsUrl: initialData.googleMapsUrl ?? "",
       instagramHandle: initialData.instagramHandle ?? "",
+      bannerRotationSec: initialData.bannerRotationSec,
     },
   });
 
@@ -235,6 +237,49 @@ export function StoreConfigForm({
           {errors.primaryColor?.message ? (
             <p className="text-destructive text-xs">
               {errors.primaryColor.message}
+            </p>
+          ) : null}
+        </div>
+      </FormCard>
+
+      <FormCard
+        title="Banners"
+        description="Como o carrossel de banners aparece na sua vitrine."
+      >
+        <div className="space-y-1.5">
+          <Label htmlFor="banner-rotation">Tempo do carrossel</Label>
+          <Controller
+            name="bannerRotationSec"
+            control={control}
+            render={({ field }) => (
+              <Select
+                value={String(field.value)}
+                onValueChange={(v) => field.onChange(Number(v))}
+                disabled={isPending}
+              >
+                <SelectTrigger
+                  id="banner-rotation"
+                  className="w-full sm:max-w-xs"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">Desligado (mostrar só o primeiro)</SelectItem>
+                  <SelectItem value="3">3 segundos</SelectItem>
+                  <SelectItem value="5">5 segundos (recomendado)</SelectItem>
+                  <SelectItem value="8">8 segundos</SelectItem>
+                  <SelectItem value="12">12 segundos</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          />
+          <p className="text-muted-foreground text-xs">
+            Quanto tempo cada banner aparece antes de trocar pro próximo. Só
+            faz diferença se você tem 2 ou mais banners ativos.
+          </p>
+          {errors.bannerRotationSec?.message ? (
+            <p className="text-destructive text-xs">
+              {errors.bannerRotationSec.message}
             </p>
           ) : null}
         </div>
