@@ -3,6 +3,7 @@
 import {
   ImagePlusIcon,
   Loader2Icon,
+  PencilIcon,
   Trash2Icon,
 } from "lucide-react";
 import Image from "next/image";
@@ -10,7 +11,12 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { deleteProductImage } from "@/actions/product/delete-image";
+import { replaceProductImage } from "@/actions/product/replace-image";
 import { uploadProductImage } from "@/actions/product/upload-image";
+import {
+  blobToWebpFile,
+  ImageEditorDialog,
+} from "@/components/shared/image-editor-dialog";
 import { tempId } from "@/lib/id";
 import {
   compressImageClient,
@@ -62,6 +68,14 @@ export function ImageUploader({
     { id: string; previewUrl: string; phase: "compressing" | "uploading" }[]
   >([]);
   const [isDeleting, startDelete] = useTransition();
+  // Editor inline: lojista clica no lápis do thumbnail e abre crop/zoom/rotate
+  // sobre a imagem JÁ uploaded. Confirma → re-upload substitui blob preservando
+  // id+position+featuredImageId. Fetch da URL atual via blob no client.
+  const [editTarget, setEditTarget] = useState<{
+    imageId: string;
+    file: File;
+  } | null>(null);
+  const [isReplacing, startReplace] = useTransition();
 
   // Ref espelhando o estado para o cleanup ler sempre o valor atual,
   // não a closure do mount (deps `[]` causaria leak em uploads em andamento).
@@ -166,6 +180,64 @@ export function ImageUploader({
     });
   };
 
+  // Abre o editor: baixa a imagem atual como blob pra entregar ao Cropper.
+  // Imagens públicas no Supabase Storage permitem GET anônimo, sem CORS issue
+  // (mesma origem via next/image também, mas aqui precisamos do File raw).
+  const handleEdit = async (img: ProductImageData) => {
+    try {
+      const res = await fetch(img.url);
+      if (!res.ok) throw new Error(`fetch ${res.status}`);
+      const blob = await res.blob();
+      const file = new File([blob], "edit.webp", {
+        type: blob.type || "image/webp",
+      });
+      setEditTarget({ imageId: img.id, file });
+    } catch (e) {
+      logger.error("admin.product_image.load_for_edit_failed", { err: e });
+      toast.error("Não foi possível abrir a imagem para edição.");
+    }
+  };
+
+  const handleEditConfirm = (blob: Blob) => {
+    if (!editTarget) return;
+    const target = editTarget;
+    setEditTarget(null);
+    const file = blobToWebpFile(blob, "edited");
+
+    startReplace(async () => {
+      try {
+        // Passa pelo pipeline de compressão client (consistência com upload).
+        const { file: outFile, compressed } = await compressImageClient(file);
+        if (!compressed) {
+          toast.error(IMAGE_COMPRESSION_FAILED_MESSAGE);
+          return;
+        }
+        const fd = new FormData();
+        fd.append("file", outFile);
+        fd.append("imageId", target.imageId);
+        const result = await replaceProductImage(fd);
+        if (!result.ok) {
+          toast.error(result.error);
+          return;
+        }
+        // Atualiza URL no state preservando id + position.
+        onChange(
+          images.map((img) =>
+            img.id === target.imageId ? { ...img, url: result.url } : img,
+          ),
+        );
+        toast.success("Imagem ajustada.");
+      } catch (e) {
+        if (e instanceof ImageTooLargeError) {
+          toast.error(IMAGE_TOO_LARGE_MESSAGE);
+        } else {
+          logger.error("admin.product_image.replace_failed", { err: e });
+          toast.error("Erro ao salvar. Tente novamente.");
+        }
+      }
+    });
+  };
+
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3">
@@ -186,15 +258,31 @@ export function ImageUploader({
                 CAPA
               </span>
             ) : null}
-            <button
-              type="button"
-              onClick={() => handleDelete(img.id)}
-              disabled={isDeleting || disabled}
-              className="absolute right-1 top-1 flex size-9 items-center justify-center rounded-full bg-black/70 text-white opacity-100 transition hover:bg-black/85 sm:right-1.5 sm:top-1.5 sm:size-7 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
-              aria-label={`Remover imagem ${idx + 1}`}
-            >
-              <Trash2Icon className="size-4 sm:size-3.5" />
-            </button>
+            <div className="absolute right-1 top-1 flex gap-1 sm:right-1.5 sm:top-1.5">
+              <button
+                type="button"
+                onClick={() => handleEdit(img)}
+                disabled={isReplacing || isDeleting || disabled}
+                className="flex size-9 items-center justify-center rounded-full bg-black/70 text-white opacity-100 transition hover:bg-black/85 disabled:opacity-50 sm:size-7 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+                aria-label={`Ajustar imagem ${idx + 1}`}
+              >
+                <PencilIcon className="size-4 sm:size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDelete(img.id)}
+                disabled={isDeleting || isReplacing || disabled}
+                className="flex size-9 items-center justify-center rounded-full bg-black/70 text-white opacity-100 transition hover:bg-black/85 disabled:opacity-50 sm:size-7 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+                aria-label={`Remover imagem ${idx + 1}`}
+              >
+                <Trash2Icon className="size-4 sm:size-3.5" />
+              </button>
+            </div>
+            {isReplacing && editTarget?.imageId === img.id ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                <Loader2Icon className="size-6 animate-spin text-white" />
+              </div>
+            ) : null}
           </div>
         ))}
 
@@ -246,8 +334,17 @@ export function ImageUploader({
 
       <p className="text-muted-foreground text-xs">
         Até {maxImages} imagens. A primeira é a capa do produto. JPG, PNG ou
-        WebP — fotos grandes são otimizadas automaticamente.
+        WebP — fotos grandes são otimizadas automaticamente. Toque no lápis
+        para ajustar enquadramento.
       </p>
+
+      <ImageEditorDialog
+        open={editTarget !== null}
+        imageFile={editTarget?.file ?? null}
+        aspectRatio={1}
+        onConfirm={handleEditConfirm}
+        onCancel={() => setEditTarget(null)}
+      />
     </div>
   );
 }
