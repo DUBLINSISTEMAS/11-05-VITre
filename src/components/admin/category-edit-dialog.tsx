@@ -120,7 +120,7 @@ export function CategoryEditDialog({
           <CategoryImageUploader
             categoryId={category.id}
             currentUrl={category.imageUrl}
-            hint="Imagem redonda exibida no topo da vitrine. JPG, PNG ou WebP — máx 8 MB."
+            hint="Imagem redonda exibida no topo da vitrine. JPG, PNG ou WebP — máx 25 MB (otimizada automaticamente)."
           />
         </div>
 

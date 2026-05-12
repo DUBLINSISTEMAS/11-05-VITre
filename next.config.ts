@@ -77,9 +77,15 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      // Limite canonico de upload. O client tenta comprimir para ~6 MB antes
-      // do FormData; o server rejeita qualquer entrada acima de 8 MB.
-      bodySizeLimit: "8mb",
+      // Pipeline em 2 camadas:
+      //   1. Client aceita arquivo original até 25 MB e comprime no browser
+      //      (`browser-image-compression` → WebP ~2 MB max).
+      //   2. Server recebe sempre ≤4 MB (limite duro do bodySizeLimit) e
+      //      re-comprime com sharp pra WebP 800x800 final.
+      // Margem: 4 MB cobre folga pra payload + FormData overhead. Se o
+      // client falhar e tentar enviar > 4 MB, Next rejeita com 413 antes
+      // mesmo da server action executar.
+      bodySizeLimit: "4mb",
     },
   },
   async headers() {

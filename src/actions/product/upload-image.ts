@@ -38,7 +38,8 @@ const MAX_IMAGES_PER_PRODUCT = 5;
  *
  * Limites enforced server-side:
  * - max 5 imagens por produto
- * - max 8 MB no upload bruto
+ * - max 4 MB pós-compressão client (limite duro do bodySizeLimit do Next).
+ *   Bruto pode ser até 25 MB — comprimido no browser antes do FormData.
  * - mime allowlist
  *
  * Rate limit por userId (lojista na rede da loja com várias funcionárias

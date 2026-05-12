@@ -14,16 +14,18 @@
 import sharp from "sharp";
 
 /**
- * Limite ANTES do sharp. Cobre input pós-compressão CLIENT-SIDE
- * (`src/lib/image-client.ts` comprime no browser para ~6 MB antes de
- * mandar pra server action). 8 MB é o teto canônico de upload do app.
+ * Limite ANTES do sharp. Alinhado com `next.config.ts:bodySizeLimit` ('4mb').
  *
- * Output do sharp é sempre WebP ~100-200 KB (bem abaixo do limite do
- * bucket 4 MB no Supabase). Pipeline em duas camadas:
- *   1. browser-image-compression no client (otimização de transporte)
- *   2. sharp 800x800 WebP 75% no server (gate de qualidade + EXIF strip)
+ * Pipeline em duas camadas:
+ *   1. browser-image-compression no client comprime arquivo bruto (até 25 MB)
+ *      pra WebP ~2 MB antes do FormData (otimização de transporte).
+ *   2. sharp 800x800 WebP 75% no server (gate de qualidade + EXIF strip).
+ *
+ * Server recebe sempre ≤4 MB — se algo subir maior, o body limit do Next
+ * rejeita com 413 antes da action executar. Output do sharp é sempre
+ * WebP ~100-200 KB.
  */
-export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 
 /**
  * MIME types aceitos no upload bruto. sharp converte tudo para WebP no output.
@@ -89,7 +91,10 @@ export async function compressImage(input: Buffer): Promise<CompressedImage> {
 export function validateImageInput(file: File): string | null {
   if (file.size === 0) return "Arquivo vazio.";
   if (file.size > MAX_UPLOAD_BYTES) {
-    return "Imagem muito grande. Tente uma foto menor que 8 MB.";
+    // Em condições normais o client comprime pra <2 MB antes do FormData.
+    // Cair aqui = compressão client falhou ou foi burlada. Mensagem
+    // genérica porque o usuário não tem como acionar diretamente esse path.
+    return "Imagem muito grande após otimização. Tente uma foto diferente.";
   }
   // Mensagem específica para HEIC/HEIF (foto padrão do iPhone)
   if (file.type === "image/heic" || file.type === "image/heif") {

@@ -7,8 +7,14 @@
  *     iPhone (5-8 MB) estoura e retorna 413 antes da action ser invocada.
  *   - Lojista (típico Vitrê) está em 4G de cidade pequena — subir
  *     5 MB é caro. Comprimir pra ~200 KB no celular dela é 25× menos banda.
- *   - Suporta fotos grandes de celular sem precisar mexer em config
- *     server-side.
+ *   - Suporta fotos grandes de celular (até 25 MB) sem precisar mexer em
+ *     config server-side.
+ *
+ * Política de limites (pesquisada: Shopify 20 MB, Nuvemshop 10 MB):
+ *   - Aceita arquivo original ATÉ 25 MB. Acima, rejeita explicitamente
+ *     no client (sem nem tentar comprimir, evita OOM).
+ *   - Comprime alvo: 2 MB / 2400px max (produto). Banner: 1 MB / 2000px.
+ *   - Output sempre WebP (formato final do pipeline).
  *
  * Defesa em profundidade:
  *   - Esta compressão é OTIMIZAÇÃO de transporte, NÃO substitui a do server.
@@ -19,14 +25,6 @@
  *     Web Worker, etc.), o caller mostra erro claro. Não enviamos o original
  *     porque ele pode estourar o bodySizeLimit antes da action executar.
  *
- * Decisões de parâmetros:
- *   - `maxSizeMB: 6` — margem abaixo do limite canonico de 8 MB.
- *   - `maxWidthOrHeight: 1600` — server-side resize pra 800px depois;
- *     1600 dá margem de qualidade pro sharp redimensionar sem artefatos.
- *   - `useWebWorker: true` — não trava UI durante compressão (~2-5s no celular).
- *   - `fileType: "image/webp"` — output já no formato final do pipeline.
- *     Servidor ainda re-comprime (defesa), mas economiza um round-trip.
- *
  * @see ADR-0010 (decisões pré-deploy de imagem) — quando criar.
  */
 import imageCompression, {
@@ -35,9 +33,15 @@ import imageCompression, {
 
 import { clientEnv } from "@/lib/env-client";
 
+/**
+ * Teto absoluto pro arquivo bruto entrando no pipeline client.
+ * Acima disso rejeitamos sem tentar comprimir (OOM risk no celular).
+ */
+export const MAX_RAW_UPLOAD_BYTES = 25 * 1024 * 1024;
+
 const DEFAULT_OPTIONS: ImageCompressionOptions = {
-  maxSizeMB: 6,
-  maxWidthOrHeight: 1600,
+  maxSizeMB: 2,
+  maxWidthOrHeight: 2400,
   useWebWorker: true,
   fileType: "image/webp",
   initialQuality: 0.82,
@@ -54,21 +58,45 @@ export interface CompressClientResult {
   finalSize: number;
 }
 
+/** Mensagem de fallback quando a compressão falha (browser sem suporte etc). */
 export const IMAGE_COMPRESSION_FAILED_MESSAGE =
-  "Não foi possível otimizar essa imagem. Tente uma foto menor que 8 MB.";
+  "Não conseguimos preparar essa imagem. Tente uma foto diferente.";
+
+/** Arquivo bruto acima do teto absoluto. */
+export const IMAGE_TOO_LARGE_MESSAGE =
+  "Imagem muito grande (máximo 25 MB). Tente uma foto menor ou comprima antes de enviar.";
 
 /**
- * Comprime `file` no client. Em caso de erro (browser sem suporte,
- * memória estourada, formato exótico), retorna o arquivo original
- * com `compressed: false` para o caller abortar com mensagem clara.
+ * Erro síncrono: arquivo acima de MAX_RAW_UPLOAD_BYTES. Caller trata e
+ * mostra `IMAGE_TOO_LARGE_MESSAGE` sem rodar a compressão.
+ */
+export class ImageTooLargeError extends Error {
+  readonly originalSize: number;
+  constructor(originalSize: number) {
+    super(IMAGE_TOO_LARGE_MESSAGE);
+    this.name = "ImageTooLargeError";
+    this.originalSize = originalSize;
+  }
+}
+
+/**
+ * Comprime `file` no client. Em caso de erro genérico (browser sem suporte,
+ * memória estourada, formato exótico), retorna o arquivo original com
+ * `compressed: false` — caller aborta com toast claro, sem mandar o original
+ * pra rede (pode estourar bodySizeLimit antes da action executar).
  *
- * Não joga exceção. Nunca.
+ * Lança `ImageTooLargeError` SE o arquivo bruto for maior que 25 MB
+ * (caller mostra mensagem clara antes de tentar comprimir).
  */
 export async function compressImageClient(
   file: File,
   options?: Partial<ImageCompressionOptions>,
 ): Promise<CompressClientResult> {
   const originalSize = file.size;
+
+  if (originalSize > MAX_RAW_UPLOAD_BYTES) {
+    throw new ImageTooLargeError(originalSize);
+  }
 
   try {
     const compressed = await imageCompression(file, {
