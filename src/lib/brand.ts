@@ -4,6 +4,9 @@
  *
  * Decisão: paleta curada (não color picker livre) — evita lojista escolher
  * roxo neon que destrói contraste. Ver ADR-0007.
+ *
+ * Grid 6x2 (12 cores) cobrindo os nichos típicos da plataforma (moda,
+ * joia/semijoia, perfumaria, decoração).
  */
 
 export interface SuggestedColor {
@@ -13,13 +16,17 @@ export interface SuggestedColor {
 
 export const SUGGESTED_PRIMARY_COLORS: readonly SuggestedColor[] = [
   { name: "Azul Vitrê", value: "#1E3FE6" },
-  { name: "Preto", value: "#0A0A0A" },
+  { name: "Vermelho", value: "#DC2626" },
   { name: "Rosa", value: "#E91E63" },
   { name: "Verde", value: "#10B981" },
-  { name: "Vinho", value: "#9F1239" },
-  { name: "Areia", value: "#A38468" },
+  { name: "Dourado", value: "#D4A017" },
+  { name: "Preto", value: "#0A0A0A" },
+  { name: "Branco", value: "#FFFFFF" },
   { name: "Roxo", value: "#7C3AED" },
   { name: "Laranja", value: "#EA580C" },
+  { name: "Turquesa", value: "#14B8A6" },
+  { name: "Areia", value: "#D8B894" },
+  { name: "Marrom", value: "#7C2D12" },
 ] as const;
 
 const HEX_REGEX = /^#[0-9a-f]{6}$/i;

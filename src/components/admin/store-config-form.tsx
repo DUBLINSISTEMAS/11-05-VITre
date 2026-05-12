@@ -156,83 +156,88 @@ export function StoreConfigForm({
         </div>
 
         <div className="space-y-1.5">
-          <Label>Endereço da loja</Label>
+          <Label>Slug (URL)</Label>
           <p className="bg-muted text-muted-foreground rounded-md px-2.5 py-1.5 font-mono text-xs">
             {storefrontUrl}
           </p>
           <p className="text-muted-foreground text-xs">
-            Esse link é fixo. Não dá pra mudar pra não quebrar o que você
-            já mandou pros clientes.
+            Como sua loja aparece no link. Esse endereço é fixo — não dá pra
+            mudar pra não quebrar o que você já mandou pros clientes.
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="store-niche">Nicho</Label>
+          <Controller
+            name="niche"
+            control={control}
+            render={({ field }) => (
+              <Select
+                value={field.value}
+                onValueChange={field.onChange}
+                disabled={isPending}
+              >
+                <SelectTrigger
+                  id="store-niche"
+                  className="w-full sm:max-w-xs"
+                >
+                  <SelectValue placeholder="Escolha um nicho" />
+                </SelectTrigger>
+                <SelectContent>
+                  {NICHE_OPTIONS.map((n) => (
+                    <SelectItem key={n.value} value={n.value}>
+                      {n.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+          <p className="text-muted-foreground text-xs">
+            Ajuda quando criamos sugestões automáticas e indicações.
           </p>
         </div>
       </FormCard>
 
       <FormCard
-        title="Logo e ícone"
-        description="Logo aparece no topo da vitrine. Ícone é a aba do navegador (favicon)."
+        title="Visual"
+        description="Logo, ícone e a cor que destaca a sua vitrine."
       >
         <StoreImageUploader
           kind="logo"
           currentUrl={initialData.logoUrl}
           label="Logo da loja"
-          hint="Recomendado: PNG/WebP transparente, formato horizontal."
+          hint="Aparece no topo da sua loja e no painel admin. Use a versão completa do seu logo (com nome). Recomendado: 400×200 px, fundo transparente, PNG ou WebP."
         />
         <StoreImageUploader
           kind="icon"
           currentUrl={initialData.iconUrl}
           label="Ícone da loja"
-          hint="Recomendado: imagem quadrada, idealmente 256×256px."
+          hint="Aparece na aba do navegador (favicon) e quando alguém compartilha sua loja em redes sociais. Use a versão compacta (só símbolo, sem texto). Recomendado: 512×512 px quadrado, PNG ou WebP."
         />
-      </FormCard>
 
-      <FormCard
-        title="Nicho"
-        description="Ajuda quando criamos sugestões automáticas e indicações."
-      >
-        <Controller
-          name="niche"
-          control={control}
-          render={({ field }) => (
-            <Select
-              value={field.value}
-              onValueChange={field.onChange}
-              disabled={isPending}
-            >
-              <SelectTrigger className="w-full sm:max-w-xs">
-                <SelectValue placeholder="Escolha um nicho" />
-              </SelectTrigger>
-              <SelectContent>
-                {NICHE_OPTIONS.map((n) => (
-                  <SelectItem key={n.value} value={n.value}>
-                    {n.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        />
-      </FormCard>
-
-      <FormCard
-        title="Cor primária"
-        description="A cor que destaca botões, links e elementos da sua vitrine."
-      >
-        <Controller
-          name="primaryColor"
-          control={control}
-          render={({ field }) => (
-            <ColorPicker
-              value={field.value}
-              onChange={field.onChange}
-              disabled={isPending}
-            />
-          )}
-        />
-        {errors.primaryColor?.message ? (
-          <p className="text-destructive text-xs">
-            {errors.primaryColor.message}
+        <div className="space-y-1.5 pt-2">
+          <Label>Cor primária</Label>
+          <p className="text-muted-foreground text-xs">
+            A cor que destaca botões, links e elementos da sua vitrine.
           </p>
-        ) : null}
+          <Controller
+            name="primaryColor"
+            control={control}
+            render={({ field }) => (
+              <ColorPicker
+                value={field.value}
+                onChange={field.onChange}
+                disabled={isPending}
+              />
+            )}
+          />
+          {errors.primaryColor?.message ? (
+            <p className="text-destructive text-xs">
+              {errors.primaryColor.message}
+            </p>
+          ) : null}
+        </div>
       </FormCard>
 
       <FormCard
@@ -288,7 +293,7 @@ export function StoreConfigForm({
       </FormCard>
 
       <FormCard
-        title="Endereço (opcional)"
+        title="Localização (opcional)"
         description="Mostrado na página da vitrine. Útil pra retirada presencial."
       >
         <div className="grid gap-3 sm:grid-cols-[1fr_auto]">

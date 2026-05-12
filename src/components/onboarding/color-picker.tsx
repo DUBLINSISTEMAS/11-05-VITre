@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckIcon } from "lucide-react";
+import { useState } from "react";
 
 import { Input } from "@/components/ui/input";
 import { isValidHexColor, SUGGESTED_PRIMARY_COLORS } from "@/lib/brand";
@@ -14,14 +15,19 @@ interface ColorPickerProps {
 
 /**
  * Paleta sugerida + opção custom hex.
- * Visual: 8 swatches numa grade + input "Outra cor (hex)".
+ * Grid 6x2 de swatches pré-definidos (32x32) + botão "Mais opções"
+ * que revela o input hex pra cor custom. Se o `value` já é custom,
+ * o input vem expandido.
  */
 export function ColorPicker({ value, onChange, disabled }: ColorPickerProps) {
-  const isCustom = !SUGGESTED_PRIMARY_COLORS.some((c) => c.value.toLowerCase() === value.toLowerCase());
+  const isCustom = !SUGGESTED_PRIMARY_COLORS.some(
+    (c) => c.value.toLowerCase() === value.toLowerCase(),
+  );
+  const [showCustom, setShowCustom] = useState(isCustom);
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
+      <div className="grid grid-cols-6 gap-2">
         {SUGGESTED_PRIMARY_COLORS.map((c) => {
           const selected = value.toLowerCase() === c.value.toLowerCase();
           return (
@@ -31,14 +37,15 @@ export function ColorPicker({ value, onChange, disabled }: ColorPickerProps) {
               disabled={disabled}
               onClick={() => onChange(c.value)}
               className={cn(
-                "relative aspect-square rounded-xl border-2 transition-all",
+                "relative size-8 rounded-md border transition-all",
                 selected
-                  ? "border-foreground scale-105 shadow-sm"
-                  : "border-border hover:border-muted-foreground",
+                  ? "ring-2 ring-foreground ring-offset-2 ring-offset-background scale-105 border-transparent"
+                  : "border-border hover:scale-105 hover:border-muted-foreground",
                 disabled && "cursor-not-allowed opacity-50",
               )}
               style={{ backgroundColor: c.value }}
               aria-label={c.name}
+              aria-pressed={selected}
               title={c.name}
             >
               {selected ? (
@@ -55,28 +62,40 @@ export function ColorPicker({ value, onChange, disabled }: ColorPickerProps) {
         })}
       </div>
 
-      <div className="flex items-center gap-2">
-        <label className="text-muted-foreground text-xs">
-          Outra cor (hex)
-        </label>
-        <Input
-          type="text"
-          inputMode="text"
-          autoCapitalize="off"
-          autoCorrect="off"
-          spellCheck={false}
-          placeholder="#RRGGBB"
-          value={isCustom ? value : ""}
+      {showCustom ? (
+        <div className="space-y-1.5">
+          <label htmlFor="color-custom" className="text-muted-foreground text-xs">
+            Cor personalizada (hex)
+          </label>
+          <Input
+            id="color-custom"
+            type="text"
+            inputMode="text"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+            placeholder="#RRGGBB"
+            value={isCustom ? value : ""}
+            disabled={disabled}
+            onChange={(e) => {
+              let v = e.target.value.trim();
+              if (v && !v.startsWith("#")) v = "#" + v;
+              onChange(v);
+            }}
+            aria-invalid={isCustom && value.length > 0 && !isValidHexColor(value)}
+            className="h-9 max-w-[160px] font-mono text-sm"
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
           disabled={disabled}
-          onChange={(e) => {
-            let v = e.target.value.trim();
-            if (v && !v.startsWith("#")) v = "#" + v;
-            onChange(v);
-          }}
-          aria-invalid={isCustom && value.length > 0 && !isValidHexColor(value)}
-          className="h-9 max-w-[140px] font-mono text-sm"
-        />
-      </div>
+          onClick={() => setShowCustom(true)}
+          className="text-primary text-xs font-medium hocus:underline disabled:opacity-50"
+        >
+          Mais opções →
+        </button>
+      )}
     </div>
   );
 }
