@@ -14,12 +14,14 @@
  * usamos valores menores direto. Botões "voltar" usam router.back() com
  * fallback opcional via prop `backHref` (SSR-safe pra cold-loads).
  */
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft, Search, ShoppingBag } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { useSacolaDrawerTrigger } from "@/components/storefront/sacola-drawer";
 import type { Store } from "@/db/schema";
+import { useCart } from "@/hooks/use-cart";
 
 type HomeProps = {
   variant?: "home";
@@ -123,8 +125,41 @@ function HomeVariant({ store }: { store: Store }) {
         >
           <Search className="size-5" strokeWidth={1.6} />
         </Link>
+
+        <SacolaButton />
       </div>
     </header>
+  );
+}
+
+/**
+ * Botão sticky de sacola no header — atalho rápido sem precisar rolar
+ * até o bottom-nav. Funciona em mobile e desktop. Click abre o drawer
+ * de preview da sacola.
+ */
+function SacolaButton() {
+  const drawer = useSacolaDrawerTrigger();
+  const { count, isHydrated } = useCart();
+
+  return (
+    <button
+      type="button"
+      onClick={drawer.open}
+      aria-label={
+        count > 0 ? `Sacola com ${count} ${count === 1 ? "item" : "itens"}` : "Sacola"
+      }
+      className="relative inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-foreground outline-none transition-colors hover:bg-gray-200 focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <ShoppingBag className="size-5" strokeWidth={1.6} />
+      {isHydrated && count > 0 ? (
+        <span
+          aria-hidden
+          className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 font-mono text-[9px] font-semibold leading-none text-background"
+        >
+          {count > 99 ? "99+" : count}
+        </span>
+      ) : null}
+    </button>
   );
 }
 
