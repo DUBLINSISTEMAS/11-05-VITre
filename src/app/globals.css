@@ -257,6 +257,13 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
+  /*
+   * prefers-reduced-motion: reduce — usuário pediu pra desligar animações
+   * (Windows "Mostrar animações", macOS "Reduzir movimento"). Zerando aqui
+   * globalmente cobre 100% dos componentes (Dialog, Sheet, drawer categorias)
+   * sem cada um precisar verificar. Centralizar tokens de duração em
+   * src/lib/motion-tokens.ts pra manter consistência.
+   */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
