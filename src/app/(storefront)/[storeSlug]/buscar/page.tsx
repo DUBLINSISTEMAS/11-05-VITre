@@ -24,6 +24,7 @@ import {
 import { getCategoryTree } from "@/lib/storefront/categories-loader";
 import { searchProducts } from "@/lib/storefront/search-loader";
 import { getStoreBySlug } from "@/lib/storefront/store-loader";
+import type { ProductCardVariant } from "@/lib/storefront/themes";
 
 const PAGE_SIZE = 24;
 
@@ -176,6 +177,7 @@ export default async function SearchPage({
               products={result.items}
               priorityFirst
               priorityCount={4}
+              variant={store.productCardStyle as ProductCardVariant}
             />
             {result.pageCount > 1 && (
               <Pagination

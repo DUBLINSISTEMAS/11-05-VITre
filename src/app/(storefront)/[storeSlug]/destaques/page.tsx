@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ProductGrid } from "@/components/storefront/product-grid";
 import { getFeaturedProducts } from "@/lib/storefront/products-loader";
 import { getStoreBySlug } from "@/lib/storefront/store-loader";
+import type { ProductCardVariant } from "@/lib/storefront/themes";
 
 export const metadata: Metadata = {
   title: "Destaques",
@@ -45,6 +46,7 @@ export default async function FeaturedProductsPage({
           products={products}
           priorityFirst
           priorityCount={2}
+          variant={store.productCardStyle as ProductCardVariant}
         />
       )}
     </div>

@@ -26,6 +26,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ActiveBanner } from "@/lib/storefront/banners-loader";
+import type { HeroVariant } from "@/lib/storefront/themes";
 import { cn } from "@/lib/utils";
 
 import { HeroCard } from "./hero-card";
@@ -36,6 +37,8 @@ interface BannerCarouselProps {
   storeName: string;
   /** Segundos entre cada banner. 0 = desligado. */
   rotationSec: number;
+  /** Variant do HeroCard interno (vem de `store.heroStyle`). */
+  heroVariant?: HeroVariant;
 }
 
 const SWIPE_THRESHOLD_PX = 50;
@@ -45,6 +48,7 @@ export function BannerCarousel({
   storeSlug,
   storeName,
   rotationSec,
+  heroVariant = "cover",
 }: BannerCarouselProps) {
   // Caminho rápido: 1 banner ou rotação desligada → HeroCard puro.
   if (banners.length <= 1 || rotationSec === 0) {
@@ -55,6 +59,7 @@ export function BannerCarousel({
         banner={single}
         storeSlug={storeSlug}
         storeName={storeName}
+        variant={heroVariant}
         priority
       />
     );
@@ -66,6 +71,7 @@ export function BannerCarousel({
       storeSlug={storeSlug}
       storeName={storeName}
       rotationSec={rotationSec}
+      heroVariant={heroVariant}
     />
   );
 }
@@ -75,6 +81,7 @@ function CarouselInner({
   storeSlug,
   storeName,
   rotationSec,
+  heroVariant = "cover",
 }: BannerCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -164,6 +171,7 @@ function CarouselInner({
               banner={banner}
               storeSlug={storeSlug}
               storeName={storeName}
+              variant={heroVariant}
               priority={idx === 0}
             />
           </div>

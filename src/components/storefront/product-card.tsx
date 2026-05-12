@@ -3,16 +3,23 @@
 /**
  * ProductCard — fiel ao canvas-referencia (canvas-v1).
  *
- * Duas variants:
+ * Dois eixos ortogonais:
  *
- *   "overlay" (default) — sem borda, foto em aspect-3/4 com radius 10,
- *   abaixo: SKU mono → nome → preço. Densidade alta para grids
- *   editoriais. Tag PROMO/NOVO em badge mono branco com texto carvão.
+ *   `layout` (decisão de página — onde o card aparece)
+ *     - "overlay" (default) — sem borda, foto em aspect-3/4 com radius 10,
+ *       texto abaixo, densidade alta para grids editoriais.
+ *     - "card" — bordered, foto em aspect-3/4, texto em container
+ *       interno padded.
  *
- *   "card" — bordered, foto em aspect-3/4 (sem padding), texto em
- *   container interno. Tag invertida (carvão com texto branco).
+ *   `variant` (decisão de tema — densidade visual escolhida pelo lojista)
+ *     - "standard" (default) — canvas-v1 atual.
+ *     - "minimal"  — fontes menores, SEM SKU, SEM tag de badge. Pegada
+ *                    premium discreta. Casa com preset Boutique.
+ *     - "bold"     — fontes maiores, nome em semibold, ring extra no
+ *                    card, tag sempre invertida (foreground/background).
+ *                    Pegada vibrante. Casa com preset Bazar.
  *
- * Sizes do canvas (mantidos pixel a pixel):
+ * Sizes do canvas (mantidos pixel a pixel em "standard"):
  *   - SKU: 9px mono tracking 0.4 cor gray-400
  *   - Nome: 12px font-medium leading 1.25 tracking -0.2
  *   - Preço: 13px font-mono tabular-nums semibold
@@ -27,6 +34,7 @@ import { FavoriteButton } from "@/components/storefront/favorite-button";
 import { formatBRL, getEffectivePrice, hasActivePromo } from "@/lib/pricing";
 import type { ProductCardData } from "@/lib/storefront/_shared";
 import { t } from "@/lib/storefront/i18n";
+import type { ProductCardVariant } from "@/lib/storefront/themes";
 import { cn } from "@/lib/utils";
 
 export interface ProductCardProps {
@@ -34,12 +42,61 @@ export interface ProductCardProps {
   storeSlug: string;
   priority?: boolean;
   className?: string;
-  /** Layout: "overlay" (sem borda) ou "card" (bordered). */
-  variant?: "overlay" | "card";
+  /** Layout (decisão de página): "overlay" (sem borda) ou "card" (bordered). */
+  layout?: "overlay" | "card";
+  /** Variant (decisão de tema): "standard" | "minimal" | "bold". */
+  variant?: ProductCardVariant;
 }
 
 const CARD_IMAGE_SIZES =
   "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw";
+
+interface VariantTokens {
+  showSku: boolean;
+  showTag: boolean;
+  tagInverted: boolean;
+  nameClass: string;
+  nameClassCard: string;
+  priceSize: "sm" | "md";
+  cardRingClass: string;
+  overlayRingClass: string;
+}
+
+const VARIANT_TOKENS: Record<ProductCardVariant, VariantTokens> = {
+  standard: {
+    showSku: true,
+    showTag: true,
+    tagInverted: false,
+    nameClass:
+      "text-[12px] font-medium leading-[1.25] tracking-[-0.2px] text-foreground",
+    nameClassCard: "text-[11.5px] font-medium leading-[1.25] text-foreground",
+    priceSize: "md",
+    cardRingClass: "border border-border",
+    overlayRingClass: "",
+  },
+  minimal: {
+    showSku: false,
+    showTag: false,
+    tagInverted: false,
+    nameClass: "text-[11px] font-medium leading-[1.3] text-foreground",
+    nameClassCard: "text-[11px] font-medium leading-[1.25] text-foreground",
+    priceSize: "sm",
+    cardRingClass: "border border-border/50",
+    overlayRingClass: "",
+  },
+  bold: {
+    showSku: true,
+    showTag: true,
+    tagInverted: true,
+    nameClass:
+      "text-[13px] font-semibold leading-[1.2] tracking-[-0.2px] text-foreground",
+    nameClassCard:
+      "text-[12.5px] font-semibold leading-[1.2] text-foreground",
+    priceSize: "md",
+    cardRingClass: "border-2 border-foreground/15",
+    overlayRingClass: "ring-1 ring-foreground/10",
+  },
+};
 
 /** Deriva um identificador curto mono pra exibição (slot SKU do canvas). */
 function deriveSku(id: string): string {
@@ -51,7 +108,8 @@ export function ProductCard({
   storeSlug,
   priority = false,
   className,
-  variant = "overlay",
+  layout = "overlay",
+  variant = "standard",
 }: ProductCardProps) {
   const now = new Date();
   const isOnPromo = hasActivePromo(product, now);
@@ -60,14 +118,17 @@ export function ProductCard({
     product.trackStock &&
     (product.stockQuantity === null || product.stockQuantity <= 0);
 
+  const tokens = VARIANT_TOKENS[variant];
+
   // Tag canvas: PROMO se em promoção; NOVO se isFeatured e não promo.
-  const tag = isOnPromo
+  const rawTag = isOnPromo
     ? "PROMO"
     : product.isFeatured && !isOnPromo
       ? "NOVO"
       : null;
+  const tag = tokens.showTag ? rawTag : null;
 
-  const sku = deriveSku(product.id);
+  const sku = tokens.showSku ? deriveSku(product.id) : null;
 
   const favoriteInput = {
     productId: product.id,
@@ -77,11 +138,12 @@ export function ProductCard({
     priceCents: effectivePrice,
   };
 
-  if (variant === "card") {
+  if (layout === "card") {
     return (
       <article
         className={cn(
-          "group relative flex flex-col overflow-hidden rounded-xl border border-border bg-background",
+          "group relative flex flex-col overflow-hidden rounded-xl bg-background",
+          tokens.cardRingClass,
           className,
         )}
       >
@@ -99,9 +161,11 @@ export function ProductCard({
             radiusClass=""
           />
           {tag && (
-            <span className="absolute top-2 left-2 rounded-[4px] bg-foreground px-1.5 py-[3px] font-mono text-[9px] font-semibold tracking-wide text-background">
-              {tag}
-            </span>
+            <TagBadge
+              label={tag}
+              inverted={tokens.tagInverted}
+              defaultInverted // card layout: tag default já é invertida (bg-foreground)
+            />
           )}
         </Link>
 
@@ -110,14 +174,14 @@ export function ProductCard({
           prefetch={false}
           className="flex flex-col gap-1 p-2.5 outline-none"
         >
-          <h3 className="line-clamp-2 text-[11.5px] font-medium leading-[1.25] text-foreground">
+          <h3 className={cn("line-clamp-2", tokens.nameClassCard)}>
             {product.name}
           </h3>
           <PriceBlock
             effectivePrice={effectivePrice}
             basePrice={product.basePriceInCents}
             isOnPromo={isOnPromo}
-            size="sm"
+            size={tokens.priceSize}
           />
         </Link>
 
@@ -133,7 +197,14 @@ export function ProductCard({
 
   // overlay (default canvas)
   return (
-    <article className={cn("group relative flex flex-col gap-1.5", className)}>
+    <article
+      className={cn(
+        "group relative flex flex-col gap-1.5",
+        tokens.overlayRingClass &&
+          cn("rounded-[10px] p-1", tokens.overlayRingClass),
+        className,
+      )}
+    >
       <Link
         href={`/${storeSlug}/produto/${product.slug}`}
         prefetch={false}
@@ -148,29 +219,31 @@ export function ProductCard({
           radiusClass="rounded-[10px]"
         />
         {tag && (
-          <span className="absolute top-2 left-2 rounded-[4px] bg-background px-1.5 py-[3px] font-mono text-[9px] font-semibold tracking-wide text-foreground">
-            {tag}
-          </span>
+          <TagBadge
+            label={tag}
+            inverted={tokens.tagInverted}
+            defaultInverted={false} // overlay layout: tag default é branca com texto carvão
+          />
         )}
       </Link>
 
-      <span className="font-mono text-[9px] tracking-[0.4px] text-gray-400">
-        {sku}
-      </span>
+      {sku && (
+        <span className="font-mono text-[9px] tracking-[0.4px] text-gray-400">
+          {sku}
+        </span>
+      )}
       <Link
         href={`/${storeSlug}/produto/${product.slug}`}
         prefetch={false}
         className="block outline-none"
       >
-        <h3 className="line-clamp-2 text-[12px] font-medium leading-[1.25] tracking-[-0.2px] text-foreground">
-          {product.name}
-        </h3>
+        <h3 className={cn("line-clamp-2", tokens.nameClass)}>{product.name}</h3>
       </Link>
       <PriceBlock
         effectivePrice={effectivePrice}
         basePrice={product.basePriceInCents}
         isOnPromo={isOnPromo}
-        size="md"
+        size={tokens.priceSize}
       />
 
       <FavoriteButton
@@ -180,6 +253,32 @@ export function ProductCard({
         showParticles
       />
     </article>
+  );
+}
+
+function TagBadge({
+  label,
+  inverted,
+  defaultInverted,
+}: {
+  label: string;
+  inverted: boolean;
+  defaultInverted: boolean;
+}) {
+  // Resolve final inversion: variant override pode forçar invertida (bold),
+  // senão usa o padrão do layout.
+  const isInverted = inverted || defaultInverted;
+  return (
+    <span
+      className={cn(
+        "absolute left-2 top-2 rounded-[4px] px-1.5 py-[3px] font-mono text-[9px] font-semibold tracking-wide",
+        isInverted
+          ? "bg-foreground text-background"
+          : "bg-background text-foreground",
+      )}
+    >
+      {label}
+    </span>
   );
 }
 

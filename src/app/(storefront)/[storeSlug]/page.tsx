@@ -26,6 +26,11 @@ import { getSessionOrNull } from "@/lib/auth-server";
 import { hasActivePromo } from "@/lib/pricing";
 import { getHomePageData } from "@/lib/storefront/home-loader";
 import { getStoreBySlug } from "@/lib/storefront/store-loader";
+import type {
+  CategoryShape,
+  HeroVariant,
+  ProductCardVariant,
+} from "@/lib/storefront/themes";
 
 export default async function StoreHomePage({
   params,
@@ -87,6 +92,7 @@ export default async function StoreHomePage({
           storeSlug={store.slug}
           storeName={store.name}
           rotationSec={store.bannerRotationSec}
+          heroVariant={store.heroStyle as HeroVariant}
         />
       )}
 
@@ -100,6 +106,7 @@ export default async function StoreHomePage({
           <CategoryStrip
             storeSlug={store.slug}
             categories={categoryTree}
+            shape={store.categoryShape as CategoryShape}
           />
         </section>
       )}
@@ -112,7 +119,8 @@ export default async function StoreHomePage({
           seeAllHref={`/${store.slug}/destaques`}
           priorityFirst={!hasBanner}
           priorityCount={2}
-          variant="overlay"
+          layout="overlay"
+          variant={store.productCardStyle as ProductCardVariant}
         />
       )}
 
@@ -128,7 +136,8 @@ export default async function StoreHomePage({
         <ProductGrid
           storeSlug={store.slug}
           products={moreBlock}
-          variant="overlay"
+          layout="overlay"
+          variant={store.productCardStyle as ProductCardVariant}
         />
       )}
 

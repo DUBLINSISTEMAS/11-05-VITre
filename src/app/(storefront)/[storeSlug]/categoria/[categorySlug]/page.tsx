@@ -30,6 +30,7 @@ import {
   type ProductSort,
 } from "@/lib/storefront/products-loader";
 import { getStoreBySlug } from "@/lib/storefront/store-loader";
+import type { ProductCardVariant } from "@/lib/storefront/themes";
 
 interface PageParams {
   storeSlug: string;
@@ -172,6 +173,7 @@ export default async function CategoryPage({
               products={result.items}
               priorityFirst
               priorityCount={1}
+              variant={store.productCardStyle as ProductCardVariant}
             />
             <Pagination
               currentPage={result.page}

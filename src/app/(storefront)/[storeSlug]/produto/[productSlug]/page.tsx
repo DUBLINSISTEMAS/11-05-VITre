@@ -15,6 +15,7 @@ import { getEffectivePrice } from "@/lib/pricing";
 import { getProductBySlug } from "@/lib/storefront/products-loader";
 import { getRelatedProducts } from "@/lib/storefront/related-products-loader";
 import { getStoreBySlug } from "@/lib/storefront/store-loader";
+import type { ProductCardVariant } from "@/lib/storefront/themes";
 
 interface PageParams {
   storeSlug: string;
@@ -132,7 +133,8 @@ export default async function ProductPage({
                 <ProductCard
                   product={p}
                   storeSlug={store.slug}
-                  variant="overlay"
+                  layout="overlay"
+                  variant={store.productCardStyle as ProductCardVariant}
                 />
               </div>
             ))}

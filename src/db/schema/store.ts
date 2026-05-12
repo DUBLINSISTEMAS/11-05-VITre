@@ -59,6 +59,16 @@ export const storeTable = pgTable(
     // Range válido (validado em Zod): 0 ou 3-60s. Default 5s.
     bannerRotationSec: integer("banner_rotation_sec").notNull().default(5),
 
+    // Eixos de tema (Onda C / Themes v1). Valores válidos:
+    //   categoryShape: "rounded" (default) | "square" | "circle"
+    //   productCardStyle: "standard" (default) | "minimal" | "bold"
+    //   heroStyle: "cover" (default) | "split" | "minimal"
+    // CHECK constraints aplicados em supabase/sql/16_theme_check_constraints.sql.
+    // Defaults batem com canvas-v1 = preset "vitre-clean" (zero regressão pós-deploy).
+    categoryShape: text("category_shape").notNull().default("rounded"),
+    productCardStyle: text("product_card_style").notNull().default("standard"),
+    heroStyle: text("hero_style").notNull().default("cover"),
+
     // Endereço
     addressStreet: text("address_street"),
     addressNumber: text("address_number"),

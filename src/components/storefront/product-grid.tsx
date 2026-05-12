@@ -6,11 +6,15 @@
  *   - Direita opcional: count mono OU link "Ver todos →" cor da loja
  *
  * Grid mobile-first canvas:
- *   - 2 colunas
- *   - Column gap 14px, row gap 18px
+ *   - 2 colunas, column gap 14px, row gap 18px
+ * Desktop scaling: 3 col tablet, 4 col desktop, 5 col xl.
  *
- * Desktop scaling (não está no canvas, mas mantém consistência):
- *   - 3 col tablet (sm) com gap maior, 4 col desktop (lg)
+ * Tematização (Onda C — Themes v1):
+ *   - `layout` (decisão de página): "overlay" ou "card" — passado pra
+ *     cada ProductCard. Antes esse prop chamava-se `variant`; o rename
+ *     libera o nome `variant` pro eixo de tema.
+ *   - `variant` (decisão de tema): "standard" | "minimal" | "bold" —
+ *     vem de `store.productCardStyle`, propagado pra cada ProductCard.
  *
  * Server-component-friendly (sem "use client").
  */
@@ -18,6 +22,7 @@ import Link from "next/link";
 
 import { ProductCard } from "@/components/storefront/product-card";
 import type { ProductCardData } from "@/lib/storefront/_shared";
+import type { ProductCardVariant } from "@/lib/storefront/themes";
 import { cn } from "@/lib/utils";
 
 export interface ProductGridProps {
@@ -32,8 +37,10 @@ export interface ProductGridProps {
   /** Aplica `priority` nos primeiros N cards (above-the-fold). */
   priorityFirst?: boolean;
   priorityCount?: number;
-  /** Layout dos cards. */
-  variant?: "overlay" | "card";
+  /** Layout dos cards (decisão de página). Default "overlay". */
+  layout?: "overlay" | "card";
+  /** Variant dos cards (decisão de tema). Default "standard". */
+  variant?: ProductCardVariant;
   className?: string;
 }
 
@@ -45,7 +52,8 @@ export function ProductGrid({
   count,
   priorityFirst = false,
   priorityCount = 1,
-  variant = "overlay",
+  layout = "overlay",
+  variant = "standard",
   className,
 }: ProductGridProps) {
   if (products.length === 0) return null;
@@ -94,6 +102,7 @@ export function ProductGrid({
             product={product}
             storeSlug={storeSlug}
             priority={priorityFirst && idx < priorityCount}
+            layout={layout}
             variant={variant}
           />
         ))}
