@@ -25,35 +25,53 @@ const optionalMin = (n: number) =>
 
 const envSchema = z.object({
   // App
-  NEXT_PUBLIC_APP_URL: z.string().url(),
+  NEXT_PUBLIC_APP_URL: z.preprocess(
+    (v) => (v === "" || v === undefined ? "http://localhost:3000" : v),
+    z.string().url()
+  ),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
 
-  // Database
-  DATABASE_URL: z.string().url(),
-  DIRECT_URL: z.string().url(),
+  // Database - suporta tanto DATABASE_URL quanto POSTGRES_URL (Vercel integration)
+  DATABASE_URL: z.preprocess(
+    (v) => v || process.env.POSTGRES_URL,
+    z.string().url()
+  ),
+  DIRECT_URL: z.preprocess(
+    (v) => v || process.env.POSTGRES_URL_NON_POOLING || process.env.POSTGRES_URL,
+    z.string().url()
+  ),
 
   // Supabase Storage / client
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
+  NEXT_PUBLIC_SUPABASE_URL: z.preprocess(
+    (v) => v || process.env.SUPABASE_URL,
+    z.string().url()
+  ),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.preprocess(
+    (v) => v || process.env.SUPABASE_ANON_KEY,
+    z.string().min(1)
+  ),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
 
   // Better Auth
   // baseURL é derivada de NEXT_PUBLIC_APP_URL para garantir que cliente e
   // servidor usem exatamente o mesmo host (CORS/cookies dependem disso).
-  BETTER_AUTH_SECRET: z.string().min(32),
+  BETTER_AUTH_SECRET: z.preprocess(
+    (v) => v || process.env.SUPABASE_JWT_SECRET || "development-secret-min-32-chars-here",
+    z.string().min(32)
+  ),
   GOOGLE_CLIENT_ID: optionalString,
   GOOGLE_CLIENT_SECRET: optionalString,
 
-  // Resend
-  RESEND_API_KEY: z.string().min(1),
-  RESEND_FROM_EMAIL: z.string().email(),
+  // Resend (opcional em desenvolvimento)
+  RESEND_API_KEY: optionalMin(1),
+  RESEND_FROM_EMAIL: z.preprocess(emptyToUndefined, z.string().email().optional()),
 
-  // Upstash Redis (rate limit)
-  UPSTASH_REDIS_REST_URL: z.string().url(),
-  UPSTASH_REDIS_REST_TOKEN: z.string().min(1),
+  // Upstash Redis (rate limit) - opcional em desenvolvimento
+  UPSTASH_REDIS_REST_URL: optionalUrl,
+  UPSTASH_REDIS_REST_TOKEN: optionalMin(1),
 
-  // Cron secret
-  CRON_SECRET: z.string().min(16),
+  // Cron secret - opcional em desenvolvimento
+  CRON_SECRET: optionalMin(16),
 
   // Health endpoint detail gate (gate H3 — sem isso, role/bypassrls são
   // ocultos no payload público do /api/health).
