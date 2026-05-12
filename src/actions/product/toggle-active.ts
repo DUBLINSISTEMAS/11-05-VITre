@@ -102,7 +102,6 @@ export async function toggleProductActive(
   if (!result.ok) return result;
 
   revalidatePath("/admin/produtos");
-  revalidatePath(`/admin/produtos/${parsed.data.productId}/editar`);
   revalidateTag(`store-${store.slug}`);
 
   return { ok: true, isActive: parsed.data.isActive };

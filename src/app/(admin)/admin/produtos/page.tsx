@@ -264,7 +264,7 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
         subtitle={renderCountLabel(total, hasFilters)}
         actions={
           <Button asChild>
-            <Link href="/admin/produtos/novo">
+            <Link href="/admin/produtos?novo=1" scroll={false}>
               <PlusIcon /> <span className="hidden sm:inline">Novo produto</span>
             </Link>
           </Button>
@@ -326,7 +326,7 @@ function EmptyState() {
         quiser que apareça pros seus clientes.
       </p>
       <Button asChild className="mt-2">
-        <Link href="/admin/produtos/novo">
+        <Link href="/admin/produtos?novo=1" scroll={false}>
           <PlusIcon /> Cadastrar primeiro produto
         </Link>
       </Button>

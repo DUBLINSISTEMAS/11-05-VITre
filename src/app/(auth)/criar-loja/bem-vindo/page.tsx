@@ -169,7 +169,7 @@ const NEXT_STEPS = [
     t: "Adicione 5 produtos",
     s: "Vitrines com pelo menos 5 produtos vendem 3× mais nos primeiros 30 dias.",
     cta: "Cadastrar produto",
-    href: "/admin/produtos/novo",
+    href: "/admin/produtos?novo=1",
   },
   {
     n: "02",

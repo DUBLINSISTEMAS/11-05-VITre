@@ -171,7 +171,7 @@ export async function replaceProductImage(
     await deleteFromStorage({ bucket: "productImages", path: oldPath });
   }
 
-  revalidatePath(`/admin/produtos/${existing.productId}/editar`);
+  revalidatePath("/admin/produtos");
   revalidateTag(`store-${store.slug}`);
 
   return { ok: true, id: imageId, url: publicUrl };

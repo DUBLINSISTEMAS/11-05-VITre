@@ -180,7 +180,7 @@ export async function uploadProductImage(
     });
     dbInsertSucceeded = true;
 
-    revalidatePath(`/admin/produtos/${parsedProductId}/editar`);
+    revalidatePath("/admin/produtos");
     revalidateTag(`store-${store.slug}`);
 
     return {

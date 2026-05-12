@@ -100,7 +100,7 @@ export async function deleteProductImage(input: {
       );
   });
 
-  revalidatePath(`/admin/produtos/${image.productId}/editar`);
+  revalidatePath("/admin/produtos");
   revalidateTag(`store-${store.slug}`);
 
   return { ok: true };

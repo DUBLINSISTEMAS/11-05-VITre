@@ -265,7 +265,6 @@ export async function updateProduct(
 
   // 9. Invalida caches: admin (lista) + storefront público
   revalidatePath("/admin/produtos");
-  revalidatePath(`/admin/produtos/${data.productId}/editar`);
   revalidateTag(`store-${store.slug}`);
 
   return { ok: true, productId: data.productId, slug: stepResult.nextSlug };

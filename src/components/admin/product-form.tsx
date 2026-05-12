@@ -75,6 +75,22 @@ interface ProductFormProps {
    * faz sentido pra produto novo.
    */
   isDraft: boolean;
+  /**
+   * Callback chamado após save bem-sucedido. Quando fornecido, o form NÃO
+   * navega via router — o pai decide (Onda 5: ProductDialog usa pra fechar
+   * modal ou trocar pro próximo draft).
+   * - `nextProductId` vem preenchido quando o usuário clicou "Salvar e
+   *   adicionar outro" — pai deve trocar o productId do form pra esse.
+   * - Quando ausente, foi save comum.
+   * Sem callback fornecido, mantém comportamento legado (router.refresh /
+   * router.replace pra /editar).
+   */
+  onAfterSave?: (opts: { nextProductId?: string }) => void;
+  /**
+   * Indica que o form vive dentro de um Dialog. Ajusta sticky save mobile
+   * pra ficar no fim do conteúdo do dialog em vez de fixed na viewport.
+   */
+  inDialog?: boolean;
 }
 
 /**
@@ -96,6 +112,8 @@ export function ProductForm({
   initialData,
   categories,
   isDraft,
+  onAfterSave,
+  inDialog = false,
 }: ProductFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -159,7 +177,11 @@ export function ProductForm({
             return;
           }
           toast.success("Produto salvo.");
-          router.refresh();
+          if (onAfterSave) {
+            onAfterSave({});
+          } else {
+            router.refresh();
+          }
           return;
         }
 
@@ -174,7 +196,11 @@ export function ProductForm({
         toast.success(
           `Produto cadastrado. Pronto pro próximo. (${count} ${count === 1 ? "nesta série" : "nesta série"})`,
         );
-        router.replace(`/admin/produtos/${result.nextProductId}/editar`);
+        if (onAfterSave) {
+          onAfterSave({ nextProductId: result.nextProductId });
+        } else {
+          router.replace(`/admin/produtos/${result.nextProductId}/editar`);
+        }
       } finally {
         submittingRef.current = false;
       }
@@ -502,13 +528,22 @@ export function ProductForm({
         </div>
       ) : null}
 
+      {/* Save mobile — dentro de Dialog vira sticky relativo ao container;
+          fora, fixed na viewport acima do bottom nav. */}
       <div
         className={cn(
-          "surface-elevated fixed inset-x-0 z-50 px-4 py-3 lg:hidden",
+          "surface-elevated z-50 px-4 py-3 lg:hidden",
+          inDialog
+            ? "sticky bottom-0 -mx-4 mt-4 sm:-mx-5"
+            : "fixed inset-x-0",
         )}
-        style={{
-          bottom: "calc(env(safe-area-inset-bottom) + 3.5rem + 0.25rem)",
-        }}
+        style={
+          inDialog
+            ? undefined
+            : {
+                bottom: "calc(env(safe-area-inset-bottom) + 3.5rem + 0.25rem)",
+              }
+        }
       >
         <Button
           type="submit"

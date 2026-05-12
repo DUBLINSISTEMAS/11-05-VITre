@@ -15,15 +15,18 @@ import {
   PackageIcon,
   SparklesIcon,
 } from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatPriceLabel, hasActivePromo } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
 import { BulkActionsToolbar } from "./bulk-actions-toolbar";
+import {
+  ProductDialog,
+  type ProductDialogState,
+} from "./product-dialog";
 
 export interface ProductTableRow {
   id: string;
@@ -45,11 +48,30 @@ export interface ProductsTableProps {
 
 export function ProductsTable({ products }: ProductsTableProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [dialog, setDialog] = useState<ProductDialogState>({ mode: "closed" });
+
+  // Abre dialog em modo "create" via query param ?novo=1, limpando o param.
+  // Permite que botões em outras telas (welcome-card, products/page header)
+  // disparem o modal só linkando pra /admin/produtos?novo=1.
+  useEffect(() => {
+    if (searchParams.get("novo") === "1" && dialog.mode === "closed") {
+      setDialog({ mode: "create" });
+      const next = new URLSearchParams(searchParams);
+      next.delete("novo");
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    }
+  }, [searchParams, dialog.mode, pathname, router]);
 
   const allIds = useMemo(() => products.map((p) => p.id), [products]);
   const allSelected = allIds.length > 0 && selectedIds.size === allIds.length;
   const partialSelected = selectedIds.size > 0 && !allSelected;
+
+  const openEdit = (id: string) =>
+    setDialog({ mode: "edit", productId: id });
 
   const toggleOne = (id: string, checked: boolean) => {
     setSelectedIds((prev) => {
@@ -119,9 +141,9 @@ export function ProductsTable({ products }: ProductsTableProps) {
                     onCheckedChange={(c) => toggleOne(p.id, c === true)}
                   />
                 </span>
-                <Link
-                  href={`/admin/produtos/${p.id}/editar`}
-                  prefetch
+                <button
+                  type="button"
+                  onClick={() => openEdit(p.id)}
                   className="bg-muted relative block size-12 shrink-0 overflow-hidden rounded-md"
                   aria-label={`Editar ${p.name || "rascunho"}`}
                 >
@@ -137,11 +159,11 @@ export function ProductsTable({ products }: ProductsTableProps) {
                       <PackageIcon className="text-muted-foreground size-4" />
                     </span>
                   )}
-                </Link>
-                <Link
-                  href={`/admin/produtos/${p.id}/editar`}
-                  prefetch
-                  className="hocus:text-primary min-w-0 truncate text-[13px] font-medium text-foreground transition-colors"
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openEdit(p.id)}
+                  className="hocus:text-primary min-w-0 truncate text-left text-[13px] font-medium text-foreground transition-colors"
                 >
                   {isDraft ? (
                     <span className="text-muted-foreground italic">
@@ -150,7 +172,7 @@ export function ProductsTable({ products }: ProductsTableProps) {
                   ) : (
                     p.name
                   )}
-                </Link>
+                </button>
                 <span className="font-mono text-[11.5px] text-muted-foreground">
                   {skuPlaceholder}
                 </span>
@@ -172,14 +194,14 @@ export function ProductsTable({ products }: ProductsTableProps) {
                   quantity={p.stockQuantity}
                   isDraft={isDraft}
                 />
-                <Link
-                  href={`/admin/produtos/${p.id}/editar`}
-                  prefetch
+                <button
+                  type="button"
+                  onClick={() => openEdit(p.id)}
                   aria-label="Abrir"
                   className="hocus:bg-accent flex size-7 items-center justify-center rounded-md text-muted-foreground"
                 >
                   <MoreVerticalIcon className="size-4" />
-                </Link>
+                </button>
               </li>
             );
           })}
@@ -205,10 +227,10 @@ export function ProductsTable({ products }: ProductsTableProps) {
                   checked={isSelected}
                   onCheckedChange={(c) => toggleOne(p.id, c === true)}
                 />
-                <Link
-                  href={`/admin/produtos/${p.id}/editar`}
-                  prefetch
-                  className="flex flex-1 items-center gap-3"
+                <button
+                  type="button"
+                  onClick={() => openEdit(p.id)}
+                  className="flex flex-1 items-center gap-3 text-left"
                 >
                   <div className="bg-muted relative size-16 shrink-0 overflow-hidden rounded-lg sm:size-20">
                     {p.cover ? (
@@ -251,7 +273,7 @@ export function ProductsTable({ products }: ProductsTableProps) {
                       ) : null}
                     </div>
                   </div>
-                </Link>
+                </button>
               </div>
             </li>
           );
@@ -263,6 +285,11 @@ export function ProductsTable({ products }: ProductsTableProps) {
         selectedIds={Array.from(selectedIds)}
         onClear={clearSelection}
         onMutated={handleMutated}
+      />
+
+      <ProductDialog
+        state={dialog}
+        onClose={() => setDialog({ mode: "closed" })}
       />
     </div>
   );
