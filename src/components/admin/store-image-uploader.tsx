@@ -12,6 +12,10 @@ import { toast } from "sonner";
 
 import { removeStoreImage } from "@/actions/store/remove-image";
 import { uploadStoreImage } from "@/actions/store/upload-image";
+import {
+  blobToWebpFile,
+  ImageEditorDialog,
+} from "@/components/shared/image-editor-dialog";
 import { Button } from "@/components/ui/button";
 import {
   compressImageClient,
@@ -54,8 +58,15 @@ export function StoreImageUploader({
   const [phase, setPhase] = useState<"idle" | "preparing" | "uploading">(
     "idle",
   );
+  // Editor obrigatório (logo + ícone usam aspect 1:1).
+  const [editorFile, setEditorFile] = useState<File | null>(null);
 
   const displayUrl = previewUrl ?? currentUrl;
+
+  // Lojista escolheu arquivo no <input file/> — abre editor antes de upload.
+  const onPickFile = (file: File) => {
+    setEditorFile(file);
+  };
 
   const handleFile = (file: File) => {
     const blobUrl = URL.createObjectURL(file);
@@ -191,7 +202,24 @@ export function StoreImageUploader({
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
-          if (file) handleFile(file);
+          if (file) onPickFile(file);
+        }}
+      />
+
+      <ImageEditorDialog
+        open={editorFile !== null}
+        imageFile={editorFile}
+        aspectRatio={1}
+        onConfirm={(blob) => {
+          const baseName = editorFile?.name ?? "image";
+          const out = blobToWebpFile(blob, baseName);
+          setEditorFile(null);
+          handleFile(out);
+          if (inputRef.current) inputRef.current.value = "";
+        }}
+        onCancel={() => {
+          setEditorFile(null);
+          if (inputRef.current) inputRef.current.value = "";
         }}
       />
     </div>

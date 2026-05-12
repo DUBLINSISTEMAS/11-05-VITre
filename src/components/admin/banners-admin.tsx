@@ -20,6 +20,10 @@ import { reorderBanners } from "@/actions/banner/reorder";
 import { toggleBannerActive } from "@/actions/banner/toggle-active";
 import { uploadBanner } from "@/actions/banner/upload";
 import {
+  blobToWebpFile,
+  ImageEditorDialog,
+} from "@/components/shared/image-editor-dialog";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -70,6 +74,8 @@ export function BannersAdmin({ banners, maxBanners }: BannersAdminProps) {
     "idle",
   );
   const inputRef = useRef<HTMLInputElement>(null);
+  // Editor obrigatório (banner usa aspect 16/9).
+  const [editorFile, setEditorFile] = useState<File | null>(null);
 
   const sorted = [...banners].sort((a, b) => a.position - b.position);
   const canAddMore = sorted.length < maxBanners;
@@ -220,7 +226,23 @@ export function BannersAdmin({ banners, maxBanners }: BannersAdminProps) {
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
-          if (file) handleUpload(file);
+          if (file) setEditorFile(file);
+        }}
+      />
+
+      <ImageEditorDialog
+        open={editorFile !== null}
+        imageFile={editorFile}
+        aspectRatio={16 / 9}
+        onConfirm={(blob) => {
+          const baseName = editorFile?.name ?? "banner";
+          const out = blobToWebpFile(blob, baseName);
+          setEditorFile(null);
+          handleUpload(out);
+        }}
+        onCancel={() => {
+          setEditorFile(null);
+          if (inputRef.current) inputRef.current.value = "";
         }}
       />
 
