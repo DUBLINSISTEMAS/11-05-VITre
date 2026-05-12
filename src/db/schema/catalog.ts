@@ -214,11 +214,21 @@ export const productVariantTable = pgTable(
     // CSS color (hex/oklch/rgb) — só usado quando axis="color".
     // Ex: "oklch(0.85 0.02 80)", "#1E3FE6", "rgb(231,200,170)".
     colorHex: text("color_hex"),
+    // Foto destacada por variante (padrão Shopify): quando cliente
+    // seleciona essa variação no PDP, a galeria principal scrolla pra
+    // essa imagem. NULL = usa primeira imagem do produto (padrão).
+    // ON DELETE SET NULL: se a foto for removida, variante volta a
+    // mostrar a foto padrão sem quebrar.
+    featuredImageId: uuid("featured_image_id").references(
+      () => productImageTable.id,
+      { onDelete: "set null" },
+    ),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => ({
     productIdx: index("variant_product_idx").on(t.productId),
     storeIdx: index("variant_store_idx").on(t.storeId),
+    featuredImageIdx: index("variant_featured_image_idx").on(t.featuredImageId),
   }),
 );
 

@@ -211,6 +211,7 @@ export async function updateProduct(
             // arrastar valor antigo se lojista trocou tamanho ↔ cor.
             axis: v.axis,
             colorHex: v.axis === "color" ? v.colorHex : null,
+            featuredImageId: v.featuredImageId,
           })
           .where(
             and(
@@ -232,6 +233,7 @@ export async function updateProduct(
             trackStock: v.stockQuantity !== null,
             axis: v.axis,
             colorHex: v.axis === "color" ? v.colorHex : null,
+            featuredImageId: v.featuredImageId,
           })),
         );
       }

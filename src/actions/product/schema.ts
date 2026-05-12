@@ -82,6 +82,14 @@ export const variantInputSchema = z
      * "oklch(0.85 0.02 80 / 0.95)" com folga).
      */
     colorHex: optionalTrimmedString(64, "Cor"),
+    /**
+     * Foto destacada da variante (padrão Shopify): quando cliente
+     * seleciona essa variação no PDP, galeria scrolla pra essa imagem.
+     * NULL = usa primeira imagem do produto (padrão).
+     */
+    featuredImageId: z
+      .union([z.string().uuid(), z.null()])
+      .default(null),
   })
   .refine(
     (v) =>
