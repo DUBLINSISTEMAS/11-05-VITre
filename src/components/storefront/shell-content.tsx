@@ -12,6 +12,7 @@ import type { CSSProperties } from "react";
 
 import { BottomNav, type BottomNavVariant } from "@/components/storefront/bottom-nav";
 import { CategoriesSidebar } from "@/components/storefront/categories-sidebar";
+import { DesktopHeader } from "@/components/storefront/desktop-header";
 import { StoreFooter } from "@/components/storefront/store-footer";
 import { StoreHeader } from "@/components/storefront/store-header";
 import type { Store } from "@/db/schema";
@@ -80,7 +81,13 @@ export function ShellContent({
       tree={categoryTree}
       brandStyle={brandStyle}
     >
-      {!hideShellHeader && <StoreHeader store={store} />}
+      {/* Desktop header: sempre visível em ≥lg (Onda 6). */}
+      <DesktopHeader store={store} categories={categoryTree} />
+
+      {/* Mobile header: respeita logic de hideShellHeader original. */}
+      <div className="lg:hidden">
+        {!hideShellHeader && <StoreHeader store={store} />}
+      </div>
 
       <main id="main" className={mainClass}>
         {children}
@@ -89,12 +96,14 @@ export function ShellContent({
       {/* Footer informativo da loja — só na página /sobre. */}
       {isAboutPage && <StoreFooter store={store} />}
 
-      {/* Bottom nav - variant lê do store (canvas-v1): pill | rule | glass. */}
+      {/* Bottom nav: lg:hidden (desktop usa ícones no DesktopHeader). */}
       {!hideBottomNav && (
-        <BottomNav
-          storeSlug={store.slug}
-          variant={store.bottomNavStyle as BottomNavVariant}
-        />
+        <div className="lg:hidden">
+          <BottomNav
+            storeSlug={store.slug}
+            variant={store.bottomNavStyle as BottomNavVariant}
+          />
+        </div>
       )}
     </CategoriesSidebar>
   );

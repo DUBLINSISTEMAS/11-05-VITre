@@ -84,6 +84,8 @@ export function ProductGrid({
           // desktop scaling
           "sm:grid-cols-3 sm:gap-x-4 sm:gap-y-5",
           "lg:grid-cols-4 lg:gap-x-5 lg:gap-y-6",
+          // wide desktop: 5 cols (Onda 6 — aproveita tela full HD+).
+          "xl:grid-cols-5",
         )}
       >
         {products.map((product, idx) => (
