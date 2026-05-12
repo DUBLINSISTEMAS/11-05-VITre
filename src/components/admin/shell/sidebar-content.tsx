@@ -46,6 +46,8 @@ export interface SidebarContentProps {
   storeName: string;
   storeSlug: string;
   primaryColor: string;
+  /** Logo da loja (URL Supabase). Renderiza no topo do switcher se presente. */
+  logoUrl: string | null;
   /** Callback opcional pra fechar drawer mobile ao navegar. */
   onNavigate?: () => void;
 }
@@ -56,6 +58,7 @@ export function SidebarContent({
   storeName,
   storeSlug,
   primaryColor,
+  logoUrl,
   onNavigate,
 }: SidebarContentProps) {
   const pathname = usePathname();
@@ -68,6 +71,7 @@ export function SidebarContent({
           storeName={storeName}
           storeSlug={storeSlug}
           primaryColor={primaryColor}
+          logoUrl={logoUrl}
         />
       </div>
 

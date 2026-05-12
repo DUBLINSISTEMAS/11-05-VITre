@@ -29,6 +29,7 @@ export default async function AdminLayout({
       storeName={store.name}
       storeSlug={store.slug}
       primaryColor={store.primaryColor}
+      logoUrl={store.logoUrl}
     >
       {children}
     </AdminShell>
