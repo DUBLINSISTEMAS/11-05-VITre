@@ -27,6 +27,7 @@ import {
   createContext,
   type CSSProperties,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -70,12 +71,28 @@ export function SacolaDrawer({
   children,
 }: SacolaDrawerProps) {
   const [open, setOpen] = useState(false);
+  const [recentLineKey, setRecentLineKey] = useState<string | null>(null);
   const { state, count, subtotalCents, isHydrated } = useCart();
 
   const value = useMemo<DrawerContextValue>(
     () => ({ open: () => setOpen(true), close: () => setOpen(false) }),
     [],
   );
+
+  // Auto-open on addItem: escuta evento global do use-cart e abre o drawer.
+  // Padrão Shopify/Nuvemshop — cliente vê confirmação visual imediata.
+  useEffect(() => {
+    function handler(e: Event) {
+      const detail = (e as CustomEvent<{ lineKey?: string }>).detail;
+      const key = detail?.lineKey ?? null;
+      setOpen(true);
+      setRecentLineKey(key);
+      // Highlight desaparece após 1.5s (alinhado com toast).
+      window.setTimeout(() => setRecentLineKey(null), 1500);
+    }
+    window.addEventListener("vitre:cart-added", handler);
+    return () => window.removeEventListener("vitre:cart-added", handler);
+  }, []);
 
   const checkoutHref = `/${storeSlug}/sacola`;
   const isEmpty = isHydrated && count === 0;
@@ -114,14 +131,17 @@ export function SacolaDrawer({
                 />
               ) : (
                 <ul className="divide-border divide-y" role="list">
-                  {state.items.map((item) => (
-                    <li
-                      key={`${item.productId}:${item.variantId ?? "_"}`}
-                      className="py-3 first:pt-0 last:pb-0"
-                    >
-                      <PreviewRow item={item} />
-                    </li>
-                  ))}
+                  {state.items.map((item) => {
+                    const key = `${item.productId}:${item.variantId ?? "_"}`;
+                    return (
+                      <li
+                        key={key}
+                        className="py-3 first:pt-0 last:pb-0"
+                      >
+                        <PreviewRow item={item} highlighted={recentLineKey === key} />
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>
@@ -139,7 +159,7 @@ export function SacolaDrawer({
                   className="h-11 w-full rounded-xl text-[14px] font-semibold"
                 >
                   <Link href={checkoutHref} onClick={() => setOpen(false)}>
-                    Ver sacola completa
+                    Finalizar pedido
                   </Link>
                 </Button>
                 <button
@@ -160,13 +180,19 @@ export function SacolaDrawer({
 
 interface PreviewRowProps {
   item: import("@/lib/cart/types").CartItem;
+  highlighted?: boolean;
 }
 
-function PreviewRow({ item }: PreviewRowProps) {
+function PreviewRow({ item, highlighted = false }: PreviewRowProps) {
   const lineTotal = item.cachedPriceCents * item.quantity;
 
   return (
-    <div className="flex gap-3">
+    <div
+      className={
+        "flex gap-3 transition-colors " +
+        (highlighted ? "-mx-2 rounded-md bg-success-soft/40 px-2 py-1" : "")
+      }
+    >
       <div className="bg-muted relative size-14 shrink-0 overflow-hidden rounded-lg">
         {item.imageUrl ? (
           <Image
@@ -191,6 +217,11 @@ function PreviewRow({ item }: PreviewRowProps) {
             {item.variantName}
           </p>
         )}
+        {highlighted ? (
+          <span className="mt-0.5 inline-flex w-fit items-center rounded-sm bg-success/10 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.4px] text-success">
+            Adicionado
+          </span>
+        ) : null}
       </div>
       <div className="flex shrink-0 flex-col items-end gap-1">
         <span className="text-muted-foreground font-mono text-[10px]">

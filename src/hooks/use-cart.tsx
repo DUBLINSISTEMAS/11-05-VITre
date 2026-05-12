@@ -95,6 +95,15 @@ export function CartProvider({ storeSlug, children }: CartProviderProps) {
       const items = addItemToItems(prev.items, payload);
       return { ...prev, items, savedAt: new Date().toISOString() };
     });
+    // Sinaliza pra UI (minicart drawer) abrir automaticamente após add.
+    // Evento custom evita acoplar use-cart com sacola-drawer; qualquer
+    // listener interessado (ex: animação de feedback) pode reagir.
+    if (typeof window !== "undefined") {
+      const lineKey = `${input.productId}:${input.variantId ?? "_"}`;
+      window.dispatchEvent(
+        new CustomEvent("vitre:cart-added", { detail: { lineKey } }),
+      );
+    }
   }, []);
 
   const removeItem = useCallback(
