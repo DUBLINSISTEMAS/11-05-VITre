@@ -3,6 +3,7 @@ import {
   ImageIcon,
   type LucideIcon,
   PackageIcon,
+  PaletteIcon,
   ReceiptIcon,
   SettingsIcon,
   StoreIcon,
@@ -73,6 +74,12 @@ export const ADMIN_NAV_ITEMS: readonly AdminNavEntry[] = [
         icon: ReceiptIcon,
       },
     ],
+  },
+  {
+    kind: "link",
+    href: "/admin/aparencia",
+    label: "Aparência",
+    icon: PaletteIcon,
   },
   {
     kind: "link",

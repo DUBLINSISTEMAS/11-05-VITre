@@ -142,3 +142,13 @@ export const removeStoreImageSchema = z.object({
   kind: z.enum(["logo", "icon"]),
 });
 export type RemoveStoreImageInput = z.infer<typeof removeStoreImageSchema>;
+
+/**
+ * Schema da action `applyTheme` — Onda C.
+ * `presetId` deve bater com uma chave de THEME_PRESETS. Lista hardcoded
+ * aqui pra evitar import cíclico (themes.ts é client-safe).
+ */
+export const applyThemeSchema = z.object({
+  presetId: z.enum(["vitre-clean", "boutique", "bazar"]),
+});
+export type ApplyThemeInput = z.infer<typeof applyThemeSchema>;
