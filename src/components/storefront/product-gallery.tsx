@@ -32,9 +32,19 @@ import { cn } from "@/lib/utils";
 export interface ProductGalleryProps {
   images: ProductImage[];
   productName: string;
+  /**
+   * Imagem a ser destacada (rolada para o slide visível). Quando muda,
+   * a galeria scrolla pra essa foto. Usado pela seleção de variante
+   * no PDP (Onda 4 — Shopify-style featured image por variant).
+   */
+  activeFeaturedImageId?: string | null;
 }
 
-export function ProductGallery({ images, productName }: ProductGalleryProps) {
+export function ProductGallery({
+  images,
+  productName,
+  activeFeaturedImageId,
+}: ProductGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const slideRefs = useRef<Array<HTMLElement | null>>([]);
@@ -72,6 +82,17 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
     }
     setActiveIndex(idx);
   }, []);
+
+  // Onda 4: quando a variante selecionada tem `featuredImageId`, rola a
+  // galeria pra essa foto. activeFeaturedImageId=null não dispara (mantém
+  // a foto atual em vez de voltar ao slide 0).
+  useEffect(() => {
+    if (!activeFeaturedImageId) return;
+    const idx = images.findIndex((img) => img.id === activeFeaturedImageId);
+    if (idx < 0 || idx === activeIndex) return;
+    scrollTo(idx);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFeaturedImageId, images]);
 
   if (images.length === 0) {
     return (

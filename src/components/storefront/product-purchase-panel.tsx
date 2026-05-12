@@ -57,6 +57,13 @@ export interface ProductPurchasePanelProps {
   product: ProductDetail;
   /** Slug da loja — usado pelo botão "Adicionar e voltar pra loja". */
   storeSlug: string;
+  /**
+   * Variante selecionada (controlado pelo parent pra coordenar com a
+   * gallery — quando a variante tem `featuredImageId`, a gallery rola
+   * pra foto correspondente). Quando ausente, usa estado interno.
+   */
+  selectedVariantId?: string | null;
+  onSelectVariant?: (variantId: string | null) => void;
 }
 
 const META_FIELDS = [
@@ -69,9 +76,22 @@ const META_FIELDS = [
 export function ProductPurchasePanel({
   product,
   storeSlug,
+  selectedVariantId: controlledVariantId,
+  onSelectVariant,
 }: ProductPurchasePanelProps) {
   const router = useRouter();
-  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [internalVariantId, setInternalVariantId] = useState<string | null>(null);
+  // Controlled vs uncontrolled: parent pode passar selectedVariantId pra
+  // coordenar com a galeria (Onda 4); senão usa state interno.
+  const selectedVariantId =
+    controlledVariantId !== undefined ? controlledVariantId : internalVariantId;
+  const setSelectedVariantId = useCallback(
+    (id: string | null) => {
+      if (onSelectVariant) onSelectVariant(id);
+      else setInternalVariantId(id);
+    },
+    [onSelectVariant],
+  );
   const [recentlyAdded, setRecentlyAdded] = useState(false);
 
   const { addItem } = useCart();
