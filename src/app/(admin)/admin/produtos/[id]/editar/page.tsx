@@ -1,18 +1,11 @@
 import { and, asc, eq } from "drizzle-orm";
-import { MoreVerticalIcon, PackageIcon, StoreIcon } from "lucide-react";
+import { PackageIcon, StoreIcon } from "lucide-react";
 import { notFound } from "next/navigation";
 
-import { DeleteProductDialog } from "@/components/admin/delete-product-dialog";
+import { ProductActionsMenu } from "@/components/admin/product-actions-menu";
 import { ProductForm } from "@/components/admin/product-form";
 import { ProductPublishToggle } from "@/components/admin/product-publish-toggle";
 import { AdminPageHeader } from "@/components/admin/shell/page-header";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   categoryTable,
   productImageTable,
@@ -110,27 +103,10 @@ export default async function EditarProdutoPage({
               isActive={product.isActive}
               disabled={isDraft}
             />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Mais opções">
-                  <MoreVerticalIcon />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DeleteProductDialog
-                  productId={product.id}
-                  productName={product.name}
-                  trigger={
-                    <DropdownMenuItem
-                      variant="destructive"
-                      onSelect={(e) => e.preventDefault()}
-                    >
-                      Excluir produto
-                    </DropdownMenuItem>
-                  }
-                />
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <ProductActionsMenu
+              productId={product.id}
+              productName={product.name}
+            />
           </>
         }
       />
