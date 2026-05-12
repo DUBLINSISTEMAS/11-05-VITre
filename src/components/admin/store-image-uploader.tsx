@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import {
   compressImageClient,
   IMAGE_COMPRESSION_FAILED_MESSAGE,
+  IMAGE_TOO_LARGE_MESSAGE,
+  ImageTooLargeError,
 } from "@/lib/image-client";
 import { logger } from "@/lib/logger";
 import { cn } from "@/lib/utils";
@@ -49,12 +51,16 @@ export function StoreImageUploader({
   const inputRef = useRef<HTMLInputElement>(null);
   const [isPending, startTransition] = useTransition();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [phase, setPhase] = useState<"idle" | "preparing" | "uploading">(
+    "idle",
+  );
 
   const displayUrl = previewUrl ?? currentUrl;
 
   const handleFile = (file: File) => {
     const blobUrl = URL.createObjectURL(file);
     setPreviewUrl(blobUrl);
+    setPhase("preparing");
 
     startTransition(async () => {
       try {
@@ -63,6 +69,7 @@ export function StoreImageUploader({
           toast.error(IMAGE_COMPRESSION_FAILED_MESSAGE);
           return;
         }
+        setPhase("uploading");
         const formData = new FormData();
         formData.append("file", outFile);
         formData.append("kind", kind);
@@ -75,15 +82,19 @@ export function StoreImageUploader({
           kind === "logo" ? "Logo atualizado." : "Ícone atualizado.",
         );
       } catch (e) {
-        // Captura throw inesperado (RateLimitError não-tratado, Next body limit,
-        // Upstash offline). Sem catch, useTransition engole e toast nunca aparece.
-        logger.error("admin.store_image.upload_failed", { err: e, kind });
-        toast.error(
-          "Falha no upload. Verifique sua conexão e tente novamente.",
-        );
+        if (e instanceof ImageTooLargeError) {
+          toast.error(IMAGE_TOO_LARGE_MESSAGE);
+        } else {
+          // Captura throw inesperado (RateLimitError não-tratado, Next body
+          // limit, Upstash offline). Sem catch, useTransition engole e toast
+          // nunca aparece.
+          logger.error("admin.store_image.upload_failed", { err: e, kind });
+          toast.error("Erro ao enviar. Verifique sua conexão.");
+        }
       } finally {
         URL.revokeObjectURL(blobUrl);
         setPreviewUrl(null);
+        setPhase("idle");
         if (inputRef.current) inputRef.current.value = "";
       }
     });
@@ -100,7 +111,7 @@ export function StoreImageUploader({
         toast.success(kind === "logo" ? "Logo removido." : "Ícone removido.");
       } catch (e) {
         logger.error("admin.store_image.remove_failed", { err: e, kind });
-        toast.error("Falha ao remover. Tente novamente.");
+        toast.error("Não foi possível remover. Tente de novo em alguns segundos.");
       }
     });
   };
@@ -134,8 +145,11 @@ export function StoreImageUploader({
             </div>
           )}
           {isPending ? (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Loader2Icon className="text-foreground size-5 animate-spin" />
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/40">
+              <Loader2Icon className="size-5 animate-spin text-white" />
+              <span className="text-[9.5px] font-medium uppercase tracking-wider text-white/90">
+                {phase === "preparing" ? "Preparando" : "Enviando"}
+              </span>
             </div>
           ) : null}
         </div>

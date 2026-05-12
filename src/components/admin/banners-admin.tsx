@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useRef, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { deleteBanner } from "@/actions/banner/delete";
@@ -34,6 +34,8 @@ import { Button } from "@/components/ui/button";
 import {
   compressImageClient,
   IMAGE_COMPRESSION_FAILED_MESSAGE,
+  IMAGE_TOO_LARGE_MESSAGE,
+  ImageTooLargeError,
 } from "@/lib/image-client";
 import { logger } from "@/lib/logger";
 import { cn } from "@/lib/utils";
@@ -64,22 +66,29 @@ interface BannersAdminProps {
 export function BannersAdmin({ banners, maxBanners }: BannersAdminProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [phase, setPhase] = useState<"idle" | "preparing" | "uploading">(
+    "idle",
+  );
   const inputRef = useRef<HTMLInputElement>(null);
 
   const sorted = [...banners].sort((a, b) => a.position - b.position);
   const canAddMore = sorted.length < maxBanners;
 
   const handleUpload = (file: File) => {
+    setPhase("preparing");
     startTransition(async () => {
       try {
         // Banner usa proporção wide (1600x600 sugerida) — limites mais largos.
+        // maxSizeMB: 1 (display-only, não precisa de detalhe de produto).
         const { file: outFile, compressed } = await compressImageClient(file, {
+          maxSizeMB: 1,
           maxWidthOrHeight: 2000,
         });
         if (!compressed) {
           toast.error(IMAGE_COMPRESSION_FAILED_MESSAGE);
           return;
         }
+        setPhase("uploading");
         const formData = new FormData();
         formData.append("file", outFile);
         const r = await uploadBanner(formData);
@@ -90,12 +99,17 @@ export function BannersAdmin({ banners, maxBanners }: BannersAdminProps) {
         toast.success("Banner enviado.");
         router.refresh();
       } catch (e) {
-        // Captura throw inesperado (RateLimitError não-tratado, Next body limit,
-        // Upstash offline). Sem catch, useTransition engole e toast nunca aparece.
-        logger.error("admin.banner.upload_failed", { err: e });
-        toast.error(
-          "Falha no upload. Verifique sua conexão e tente novamente.",
-        );
+        if (e instanceof ImageTooLargeError) {
+          toast.error(IMAGE_TOO_LARGE_MESSAGE);
+        } else {
+          // Captura throw inesperado (RateLimitError não-tratado, Next body
+          // limit, Upstash offline). Sem catch, useTransition engole e toast
+          // nunca aparece.
+          logger.error("admin.banner.upload_failed", { err: e });
+          toast.error("Erro ao enviar. Verifique sua conexão.");
+        }
+      } finally {
+        setPhase("idle");
       }
     });
     if (inputRef.current) inputRef.current.value = "";
@@ -180,9 +194,13 @@ export function BannersAdmin({ banners, maxBanners }: BannersAdminProps) {
             <UploadIcon className="text-muted-foreground size-6" />
           )}
           <span className="text-sm font-medium">
-            {sorted.length === 0
-              ? "Enviar primeiro banner"
-              : "Enviar outro banner"}
+            {isPending
+              ? phase === "preparing"
+                ? "Preparando imagem…"
+                : "Enviando…"
+              : sorted.length === 0
+                ? "Enviar primeiro banner"
+                : "Enviar outro banner"}
           </span>
           <span className="text-muted-foreground text-xs">
             JPG, PNG ou WebP. Recomendado 1600×600px.

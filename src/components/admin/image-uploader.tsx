@@ -15,6 +15,8 @@ import { tempId } from "@/lib/id";
 import {
   compressImageClient,
   IMAGE_COMPRESSION_FAILED_MESSAGE,
+  IMAGE_TOO_LARGE_MESSAGE,
+  ImageTooLargeError,
 } from "@/lib/image-client";
 import { logger } from "@/lib/logger";
 import { cn } from "@/lib/utils";
@@ -132,10 +134,13 @@ export function ImageUploader({
           onChange(current);
         }
       } catch (e) {
-        logger.error("admin.product_image.upload_failed", { err: e });
-        toast.error(
-          "Falha no upload. Verifique sua conexão e tente novamente.",
-        );
+        // ImageTooLargeError: arquivo bruto > 25 MB, rejeitado no client.
+        if (e instanceof ImageTooLargeError) {
+          toast.error(IMAGE_TOO_LARGE_MESSAGE);
+        } else {
+          logger.error("admin.product_image.upload_failed", { err: e });
+          toast.error("Erro ao enviar. Verifique sua conexão.");
+        }
       } finally {
         setPendingPreviews((prev) => {
           const found = prev.find((p) => p.id === previewId);
@@ -207,7 +212,7 @@ export function ImageUploader({
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/40">
               <Loader2Icon className="size-6 animate-spin text-white" />
               <span className="text-[10px] font-medium uppercase tracking-wider text-white/90">
-                {p.phase === "compressing" ? "Otimizando" : "Enviando"}
+                {p.phase === "compressing" ? "Preparando" : "Enviando"}
               </span>
             </div>
           </div>
