@@ -10,8 +10,11 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_CLASSES: Record<string, string> = {
   awaiting_whatsapp: "bg-warning-soft text-warning-foreground ring-warning/30",
-  confirmed: "bg-primary/10 text-primary ring-primary/20",
-  fulfilled: "bg-success-soft text-success ring-success/30",
+  // Onda 4 (2026-05-12): founder pediu verde fixo pra "Confirmado".
+  // Confirmado vira success-soft (verde claro com texto verde escuro).
+  // Fulfilled segue verde também mas com leve variação visual via opacity.
+  confirmed: "bg-success-soft text-success ring-success/40",
+  fulfilled: "bg-success/15 text-success ring-success/30",
   canceled: "bg-destructive-soft text-destructive ring-destructive/30",
   expired: "bg-muted text-muted-foreground ring-border",
 };

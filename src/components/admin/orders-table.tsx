@@ -1,15 +1,20 @@
-// Lista de pedidos do admin (canvas-v1 admin Lote 3 — Onda 6).
+"use client";
+
+// Lista de pedidos do admin (Onda 4 do pacote master 2026-05-12).
 //
-// - Desktop (lg+): tabela densa canvas-style. 6 colunas:
-//     # (shortCode mono) · Cliente · Total · Data · Status · →
-//   Header monospace uppercase 10.5px. Cada <tr> é um Link clicável inteiro.
-// - Mobile (<lg): mantém divide-y de cards visuais (UX touch atual).
-//
-// Sem state local — pedidos não têm bulk actions. Server component puro.
+// Mudanças vs canvas-v1 anterior:
+//  - Cada linha é um <button> que abre OrderDetailDialog (não navega mais
+//    pra /admin/pedidos/[id], rota deletada).
+//  - Densidade aumentada: padding reduzido, mobile virou row densa em
+//    vez de card grande.
+//  - Status badge mantém amarelo (aguardando) + verde (confirmado) — cores
+//    aplicadas via STATUS_CLASSES no OrderStatusBadge.
+
 import { ChevronRightIcon } from "lucide-react";
-import Link from "next/link";
+import { useState } from "react";
 
 import type { ORDER_STATUS_VALUES } from "@/actions/order/schema";
+import { OrderDetailDialog } from "@/components/admin/order-detail-dialog";
 import { OrderStatusBadge } from "@/components/admin/order-status-badge";
 import { formatRelativeDate } from "@/lib/format";
 import { formatBRL } from "@/lib/pricing";
@@ -31,13 +36,15 @@ export interface OrdersTableProps {
 }
 
 export function OrdersTable({ orders }: OrdersTableProps) {
+  const [openOrderId, setOpenOrderId] = useState<string | null>(null);
+
   return (
     <>
       {/* Desktop: tabela densa */}
       <div className="bg-card hidden overflow-hidden rounded-xl border shadow-sm lg:block">
         <div
           role="rowgroup"
-          className="text-eyebrow bg-muted/50 grid grid-cols-[120px_minmax(0,1.4fr)_minmax(0,140px)_minmax(0,140px)_120px_40px] items-center gap-4 border-b px-4 py-3"
+          className="text-eyebrow bg-muted/50 grid grid-cols-[110px_minmax(0,1.4fr)_minmax(0,130px)_minmax(0,130px)_120px_32px] items-center gap-4 border-b px-4 py-2.5"
         >
           <span>#</span>
           <span>Cliente</span>
@@ -50,21 +57,21 @@ export function OrdersTable({ orders }: OrdersTableProps) {
         <ul className="divide-border divide-y">
           {orders.map((o) => (
             <li key={o.id}>
-              <Link
-                href={`/admin/pedidos/${o.id}`}
-                prefetch
-                className="hocus:bg-accent/40 group grid grid-cols-[120px_minmax(0,1.4fr)_minmax(0,140px)_minmax(0,140px)_120px_40px] items-center gap-4 px-4 py-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
+              <button
+                type="button"
+                onClick={() => setOpenOrderId(o.id)}
+                className="hocus:bg-accent/40 group grid w-full grid-cols-[110px_minmax(0,1.4fr)_minmax(0,130px)_minmax(0,130px)_120px_32px] items-center gap-4 px-4 py-2.5 text-left text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
               >
-                <span className="font-mono text-[13px] font-medium tabular-nums">
+                <span className="font-mono text-[12.5px] font-medium tabular-nums">
                   {o.shortCode}
                 </span>
                 <span className="min-w-0 truncate font-medium">
                   {o.customerName}
                 </span>
-                <span className="font-mono tabular-nums">
+                <span className="font-mono text-[13px] tabular-nums">
                   {formatBRL(o.totalInCents)}
                 </span>
-                <span className="text-muted-foreground text-[13px]">
+                <span className="text-muted-foreground text-[12.5px]">
                   {formatRelativeDate(o.createdAt)}
                 </span>
                 <span>
@@ -76,29 +83,29 @@ export function OrdersTable({ orders }: OrdersTableProps) {
                 >
                   <ChevronRightIcon className="size-4" />
                 </span>
-              </Link>
+              </button>
             </li>
           ))}
         </ul>
       </div>
 
-      {/* Mobile: lista de cards (UX touch) */}
-      <ul className="divide-border divide-y rounded-xl border lg:hidden">
+      {/* Mobile: rows compactas (4.1 — densidade) */}
+      <ul className="divide-border divide-y overflow-hidden rounded-xl border bg-card lg:hidden">
         {orders.map((o) => (
           <li key={o.id}>
-            <Link
-              href={`/admin/pedidos/${o.id}`}
-              prefetch
-              className="hocus:bg-accent/40 group flex items-center gap-3 p-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 sm:p-4"
+            <button
+              type="button"
+              onClick={() => setOpenOrderId(o.id)}
+              className="hocus:bg-accent/40 group flex w-full items-center gap-2.5 px-3 py-2.5 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
             >
-              <div className="bg-muted flex size-12 shrink-0 items-center justify-center rounded-lg font-mono text-sm font-semibold tabular-nums sm:size-14 sm:text-base">
+              <div className="bg-muted flex size-9 shrink-0 items-center justify-center rounded-md font-mono text-[11px] font-semibold tabular-nums">
                 {o.shortCode}
               </div>
-              <div className="min-w-0 flex-1 space-y-0.5">
-                <p className="truncate text-sm font-medium sm:text-base">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13.5px] font-medium leading-tight">
                   {o.customerName}
                 </p>
-                <p className="text-muted-foreground truncate text-xs">
+                <p className="text-muted-foreground mt-0.5 truncate text-[11.5px] leading-tight">
                   <span className="font-mono tabular-nums">
                     {formatBRL(o.totalInCents)}
                   </span>{" "}
@@ -108,10 +115,17 @@ export function OrdersTable({ orders }: OrdersTableProps) {
               <div className="shrink-0">
                 <OrderStatusBadge status={o.status} />
               </div>
-            </Link>
+            </button>
           </li>
         ))}
       </ul>
+
+      <OrderDetailDialog
+        orderId={openOrderId}
+        onOpenChange={(open) => {
+          if (!open) setOpenOrderId(null);
+        }}
+      />
     </>
   );
 }
