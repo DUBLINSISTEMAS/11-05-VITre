@@ -3,17 +3,19 @@
 /**
  * ProductDialog - modal de criação/edição de produto.
  *
- * Cria/carrega o produto sob demanda e nunca deixa o dialog preso em loading:
- * falhas inesperadas das server actions viram estado de erro renderizável.
+ * Edição carrega produto existente. Criação abre instantaneamente com dados
+ * vazios e só cria draft no primeiro save, evitando rascunhos fantasmas.
  */
 import { Loader2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
+import type { ComponentProps } from "react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { createDraftProduct } from "@/actions/product/create-draft";
+import { createProductFromValues } from "@/actions/product/create-from-values";
 import {
   loadProductDetail,
+  loadProductFormOptions,
   type ProductDetail,
 } from "@/actions/product/load-detail";
 import { ProductActionsMenu } from "@/components/admin/product-actions-menu";
@@ -37,6 +39,8 @@ interface ProductDialogProps {
   onClose: () => void;
 }
 
+const NEW_PRODUCT_ID = "new-product";
+
 export function ProductDialog({ state, onClose }: ProductDialogProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -52,19 +56,39 @@ export function ProductDialog({ state, onClose }: ProductDialogProps) {
     }
 
     let cancelled = false;
-
     setData(null);
     setError(null);
+
+    if (state.mode === "create") {
+      setLoading(true);
+      void (async () => {
+        try {
+          const options = await loadProductFormOptions();
+          if (cancelled) return;
+          if (!options.ok) {
+            setError(options.error);
+            return;
+          }
+          setData(createEmptyProduct(null, options.categories));
+        } catch (e) {
+          if (cancelled) return;
+          console.error("product_dialog.options_failed", e);
+          setError("Falha ao abrir o cadastro. Tente novamente.");
+          toast.error("Falha ao abrir o cadastro. Tente novamente.");
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }
+
     setLoading(true);
 
     void (async () => {
       try {
-        const productId =
-          state.mode === "edit" ? state.productId : await ensureDraftId();
-        if (cancelled) return;
-        if (!productId) return;
-
-        const res = await loadProductDetail(productId);
+        const res = await loadProductDetail(state.productId);
         if (cancelled) return;
         if (!res.ok) {
           setError(res.error);
@@ -81,23 +105,13 @@ export function ProductDialog({ state, onClose }: ProductDialogProps) {
       }
     })();
 
-    async function ensureDraftId(): Promise<string | null> {
-      const draft = await createDraftProduct();
-      if (cancelled) return null;
-      if (!draft.ok) {
-        setError(draft.error);
-        toast.error(draft.error);
-        return null;
-      }
-      return draft.productId;
-    }
-
     return () => {
       cancelled = true;
     };
   }, [state]);
 
   const isOpen = state.mode !== "closed";
+  const product = data;
 
   const reloadProduct = async (productId: string) => {
     setLoading(true);
@@ -128,15 +142,23 @@ export function ProductDialog({ state, onClose }: ProductDialogProps) {
         if (!open) onClose();
       }}
     >
-      <DialogContent className="flex h-[92vh] max-w-5xl flex-col gap-0 overflow-hidden p-0 sm:rounded-2xl">
-        {loading || (!data && !error) ? (
+      <DialogContent className="flex h-[96dvh] w-[calc(100vw-1rem)] max-w-[1600px] flex-col gap-0 overflow-hidden border-white/10 p-0 shadow-2xl sm:rounded-3xl lg:h-[92dvh] lg:w-[min(1500px,calc(100vw-3rem))] xl:w-[min(1540px,94vw)]">
+        {loading || (state.mode === "edit" && !data && !error) ? (
           <DialogLoading />
         ) : error ? (
           <DialogError message={error} />
-        ) : data ? (
+        ) : product ? (
           <DialogReady
-            product={data}
+            product={product}
+            onCreateProduct={state.mode === "create" ? createProductFromValues : undefined}
             onAfterSave={(opts) => {
+              if (opts.continueCreating) {
+                setData((current) =>
+                  current ? createEmptyProduct(null, current.categories) : current,
+                );
+                router.refresh();
+                return;
+              }
               if (opts.nextProductId) {
                 void reloadProduct(opts.nextProductId);
                 router.refresh();
@@ -150,6 +172,34 @@ export function ProductDialog({ state, onClose }: ProductDialogProps) {
       </DialogContent>
     </Dialog>
   );
+}
+
+function createEmptyProduct(
+  productId: string | null,
+  categories: ProductDetail["categories"],
+): ProductDetail {
+  return {
+    id: productId ?? NEW_PRODUCT_ID,
+    name: "",
+    description: "",
+    basePriceInCents: 0,
+    promoPriceInCents: null,
+    promoStartsAt: null,
+    promoEndsAt: null,
+    categoryId: null,
+    trackStock: false,
+    stockQuantity: null,
+    isActive: false,
+    isFeatured: false,
+    composition: null,
+    modeling: null,
+    lining: null,
+    washing: null,
+    slug: "draft-new-product",
+    images: [],
+    variants: [],
+    categories,
+  };
 }
 
 function DialogLoading() {
@@ -181,45 +231,53 @@ function DialogError({ message }: { message: string }) {
 
 function DialogReady({
   product,
+  onCreateProduct,
   onAfterSave,
 }: {
   product: ProductDetail;
-  onAfterSave: (opts: { nextProductId?: string }) => void;
+  onCreateProduct?: ComponentProps<typeof ProductForm>["onCreateProduct"];
+  onAfterSave: (opts: { nextProductId?: string; continueCreating?: boolean }) => void;
 }) {
   const isDraft = !product.name.trim() || product.slug.startsWith("draft-");
   const headerTitle = isDraft ? "Novo produto" : product.name;
+  const persisted = product.id !== NEW_PRODUCT_ID;
 
   return (
     <>
-      <DialogHeader className="sticky top-0 z-10 flex flex-row items-center gap-3 border-b bg-card/95 px-5 py-3 backdrop-blur sm:px-6">
+      <DialogHeader className="sticky top-0 z-10 flex flex-row items-center gap-3 border-b bg-card/95 px-5 py-3 backdrop-blur sm:px-6 lg:px-8 lg:py-5">
         <div className="min-w-0 flex-1">
-          <DialogTitle className="truncate text-base font-semibold sm:text-lg">
+          <DialogTitle className="truncate text-base font-semibold sm:text-lg lg:text-xl">
             {headerTitle}
           </DialogTitle>
           <DialogDescription className="text-xs">
             {isDraft
-              ? "Rascunho - preencha nome e preço, depois marque Visível."
+              ? "Preencha nome e preço. O produto só vira rascunho ao salvar."
               : "Edite os dados e clique em Salvar."}
           </DialogDescription>
         </div>
         <div className="flex shrink-0 items-center gap-1 pr-7">
-          <ProductPublishToggle
-            productId={product.id}
-            isActive={product.isActive}
-            disabled={isDraft}
-          />
-          <ProductActionsMenu
-            productId={product.id}
-            productName={product.name}
-          />
+          {persisted ? (
+            <>
+              <ProductPublishToggle
+                productId={product.id}
+                isActive={product.isActive}
+                disabled={isDraft}
+              />
+              <ProductActionsMenu
+                productId={product.id}
+                productName={product.name}
+              />
+            </>
+          ) : null}
         </div>
       </DialogHeader>
 
-      <div className="flex-1 overflow-y-auto bg-background px-4 py-4 sm:px-5">
+      <div className="flex-1 overflow-y-auto bg-muted/20 px-4 py-4 sm:px-5 lg:px-8 lg:py-6 xl:px-10">
         <ProductForm
           key={product.id}
           isDraft={isDraft}
           categories={product.categories}
+          onCreateProduct={onCreateProduct}
           onAfterSave={onAfterSave}
           inDialog
           initialData={{

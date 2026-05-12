@@ -13,7 +13,6 @@ import {
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import { saveAndCreateNext } from "@/actions/product/save-and-create-next";
 import {
   productFormSchema,
   type ProductFormValues,
@@ -85,7 +84,14 @@ interface ProductFormProps {
    * Sem callback fornecido, mantém comportamento legado (router.refresh /
    * router.replace pra /editar).
    */
-  onAfterSave?: (opts: { nextProductId?: string }) => void;
+  onAfterSave?: (opts: { nextProductId?: string; continueCreating?: boolean }) => void;
+  /**
+   * Cria produto sob demanda no fluxo de novo produto. A função recebe valores
+   * válidos do form e deve persistir produto + variantes em uma única ação.
+   */
+  onCreateProduct?: (
+    values: ProductFormValues,
+  ) => Promise<{ ok: true; productId: string } | { ok: false; error: string; fieldErrors?: Record<string, string> }>;
   /**
    * Indica que o form vive dentro de um Dialog. Ajusta sticky save mobile
    * pra ficar no fim do conteúdo do dialog em vez de fixed na viewport.
@@ -105,7 +111,7 @@ interface ProductFormProps {
  * `isActive` continua FORA do form — toggle no header da página via action
  * separada (publish/pause). `images` fora do RHF — gerenciadas em state
  * local + actions de upload/delete em tempo real. Lógica de submit (RHF +
- * useTransition + ref síncrona contra duplo-clique + saveAndCreateNext)
+ * Proteção contra duplo submit por ref síncrona, além de useTransition.
  * preservada do estado anterior.
  */
 export function ProductForm({
@@ -113,6 +119,7 @@ export function ProductForm({
   categories,
   isDraft,
   onAfterSave,
+  onCreateProduct,
   inDialog = false,
 }: ProductFormProps) {
   const router = useRouter();
@@ -167,15 +174,16 @@ export function ProductForm({
 
     startTransition(async () => {
       try {
-        const payload = { productId: initialData.productId, ...values };
+        const result = onCreateProduct
+          ? await onCreateProduct(values)
+          : await updateProduct({ productId: initialData.productId, ...values });
+        if (!result.ok) {
+          applyFieldErrors(result.fieldErrors);
+          toast.error(result.error);
+          return;
+        }
 
         if (submitMode === "save") {
-          const result = await updateProduct(payload);
-          if (!result.ok) {
-            applyFieldErrors(result.fieldErrors);
-            toast.error(result.error);
-            return;
-          }
           toast.success("Produto salvo.");
           if (onAfterSave) {
             onAfterSave({});
@@ -185,24 +193,13 @@ export function ProductForm({
           return;
         }
 
-        const result = await saveAndCreateNext(payload);
-        if (!result.ok) {
-          applyFieldErrors(result.fieldErrors);
-          toast.error(result.error);
-          return;
-        }
-
         const count = bumpSessionCounter();
         toast.success(
           `Produto cadastrado. Pronto pro próximo. (${count} ${count === 1 ? "nesta série" : "nesta série"})`,
         );
         if (onAfterSave) {
-          onAfterSave({ nextProductId: result.nextProductId });
+          onAfterSave({ continueCreating: true });
         } else {
-          // Fallback legado — rota /editar foi deletada na Onda 5, então
-          // só refresh. Em prática esse branch nunca roda hoje (único
-          // consumer, ProductDialog, sempre passa onAfterSave). Mantido
-          // pra não quebrar consumers externos hipotéticos.
           router.refresh();
         }
       } finally {
@@ -228,20 +225,24 @@ export function ProductForm({
       // Padding-bottom em mobile pra conteúdo não ficar atrás do sticky
       // save (1 botão ~3.5rem + py-3 + bottom nav 3.5rem + safe-area
       // ~1.25rem ≈ 9rem).
-      className="pb-36 lg:pb-4"
+      className="mx-auto max-w-[1360px] pb-36 lg:pb-4"
     >
-      <div className="grid gap-4 lg:grid-cols-3 lg:items-start">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start xl:grid-cols-[minmax(0,1fr)_400px]">
         {/* === Coluna esquerda (lg col-span-2) === */}
-        <div className="space-y-4 lg:col-span-2">
+        <div className="space-y-4">
           <FormCard
             title="Mídia"
-            description="A primeira foto vira a capa. Tire pelo celular ou escolha da galeria."
+            description={
+              onCreateProduct
+                ? "Salve o produto primeiro para liberar o envio de fotos."
+                : "A primeira foto vira a capa. Tire pelo celular ou escolha da galeria."
+            }
           >
             <ImageUploader
               productId={initialData.productId}
               images={images}
               onChange={handleImagesChange}
-              disabled={isPending}
+              disabled={isPending || !!onCreateProduct}
             />
           </FormCard>
 
@@ -393,7 +394,7 @@ export function ProductForm({
         </div>
 
         {/* === Coluna direita (lg col-span-1, sticky) === */}
-        <div className="space-y-4 lg:sticky lg:top-4 lg:col-span-1">
+        <div className="space-y-4 lg:sticky lg:top-5">
           <FormCard title="Status">
             <Controller
               name="isFeatured"
@@ -584,7 +585,7 @@ interface FormCardProps {
 
 function FormCard({ title, description, children }: FormCardProps) {
   return (
-    <section className="bg-card flex flex-col gap-4 rounded-xl border p-4 shadow-sm sm:p-5">
+    <section className="bg-card flex flex-col gap-4 rounded-2xl border p-4 shadow-sm sm:p-5 xl:p-6">
       <header className="space-y-0.5">
         <h2 className="text-[13.5px] font-semibold tracking-tight text-foreground">
           {title}

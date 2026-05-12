@@ -6,11 +6,12 @@ import {
   Share2Icon,
   StoreIcon,
 } from "lucide-react";
-import Link from "next/link";
 import { useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+
+import { ProductCreateButton } from "./product-create-button";
 
 export interface WelcomeCardProps {
   storeName: string;
@@ -72,11 +73,9 @@ export function WelcomeCard({ storeName, storeUrl }: WelcomeCardProps) {
       </p>
 
       <div className="grid gap-2 sm:grid-cols-3">
-        <Button asChild size="lg">
-          <Link href="/admin/produtos?novo=1" scroll={false}>
-            <PackagePlusIcon /> Cadastrar produto
-          </Link>
-        </Button>
+        <ProductCreateButton size="lg">
+          <PackagePlusIcon /> Cadastrar produto
+        </ProductCreateButton>
         <Button asChild size="lg" variant="outline">
           <a href={storeUrl} target="_blank" rel="noopener noreferrer">
             <ExternalLinkIcon /> Ver minha vitrine

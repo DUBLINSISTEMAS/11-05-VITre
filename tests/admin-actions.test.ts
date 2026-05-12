@@ -70,3 +70,42 @@ test("store creation inserts store and initial categories in one transaction", (
   assert.match(action, /set_config\('app\.current_store_id', \$\{created\.id\}, true\)/);
   assert.doesNotMatch(action, /withTenant\(newStore\.id/);
 });
+
+test("new product modal opens client-side without creating a draft on open", () => {
+  const dialog = readFileSync("src/components/admin/product-dialog.tsx", "utf8");
+  const createButton = readFileSync("src/components/admin/product-create-button.tsx", "utf8");
+  const productsPage = readFileSync("src/app/(admin)/admin/produtos/page.tsx", "utf8");
+  const welcomeCard = readFileSync("src/components/admin/welcome-card.tsx", "utf8");
+  const form = readFileSync("src/components/admin/product-form.tsx", "utf8");
+  const uploader = readFileSync("src/components/admin/image-uploader.tsx", "utf8");
+
+  assert.match(createButton, /setDialog\(\{ mode: "create" \}\)/);
+  assert.match(dialog, /state\.mode === "create"/);
+  assert.match(dialog, /createEmptyProduct\(null, options\.categories\)/);
+  assert.match(dialog, /onCreateProduct=\{state\.mode === "create" \? createProductFromValues : undefined\}/);
+  assert.match(form, /onAfterSave\(\{ continueCreating: true \}\)/);
+  assert.doesNotMatch(form, /saveAndCreateNext/);
+  assert.match(form, /disabled=\{isPending \|\| !!onCreateProduct\}/);
+  assert.match(dialog, /createProductFromValues/);
+  assert.doesNotMatch(dialog, /createDraftProduct/);
+  assert.doesNotMatch(uploader, /onEnsureProductId/);
+  assert.doesNotMatch(uploader, /createDraftProduct/);
+  assert.doesNotMatch(
+    dialog,
+    /state\.mode === "edit" \? state\.productId : await ensureDraftId\(\)/,
+  );
+  assert.doesNotMatch(productsPage, /href="\/admin\/produtos\?novo=1"/);
+  assert.doesNotMatch(welcomeCard, /href="\/admin\/produtos\?novo=1"/);
+});
+
+test("appearance preview can be embedded only by same-origin admin iframe", () => {
+  const config = readFileSync("next.config.ts", "utf8");
+
+  assert.match(config, /source: "\/admin\/aparencia\/preview\/:path\*"/);
+  assert.match(config, /"frame-ancestors 'self'"/);
+  assert.match(config, /key: "X-Frame-Options",\s*value: "SAMEORIGIN"/);
+  assert.match(config, /source: "\/:path\*"/);
+  assert.match(config, /headers: GLOBAL_SECURITY_HEADERS/);
+  assert.match(config, /const GLOBAL_SECURITY_HEADERS = SECURITY_HEADERS/);
+  assert.doesNotMatch(config, /SECURITY_HEADERS\.filter/);
+});

@@ -43,6 +43,34 @@ export type LoadProductDetailResult =
   | { ok: true; product: ProductDetail }
   | { ok: false; error: string };
 
+export async function loadProductFormOptions(): Promise<
+  | { ok: true; categories: CategoryOption[] }
+  | { ok: false; error: string }
+> {
+  const requestHeaders = await headers();
+  const session = await auth.api.getSession({ headers: requestHeaders });
+  if (!session?.user) {
+    return { ok: false, error: "Sessão expirada." };
+  }
+
+  const store = await getCurrentStore(session.user.id);
+  if (!store) return { ok: false, error: "Loja não encontrada." };
+
+  const categories = await withTenant(store.id, session.user.id, async (tx) => {
+    return await tx
+      .select({
+        id: categoryTable.id,
+        name: categoryTable.name,
+        parentId: categoryTable.parentId,
+      })
+      .from(categoryTable)
+      .where(eq(categoryTable.storeId, store.id))
+      .orderBy(asc(categoryTable.name));
+  });
+
+  return { ok: true, categories };
+}
+
 /**
  * Carrega detalhe completo de produto sob demanda — usado pelo ProductDialog
  * (Onda 5, 2026-05-12). Substitui a rota /admin/produtos/[id]/editar quanto

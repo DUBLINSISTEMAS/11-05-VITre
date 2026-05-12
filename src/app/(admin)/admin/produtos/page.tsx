@@ -15,11 +15,11 @@ import {
 } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { PackageIcon, PlusIcon, SearchXIcon } from "lucide-react";
-import Link from "next/link";
 import { Suspense } from "react";
 import { z } from "zod";
 
 import type { CategoryOption } from "@/components/admin/category-dialog";
+import { ProductCreateButton } from "@/components/admin/product-create-button";
 import { ProductCreateGate } from "@/components/admin/product-create-gate";
 import { ProductsErrorToast } from "@/components/admin/products-error-toast";
 import { ProductsFilters } from "@/components/admin/products-filters";
@@ -30,7 +30,6 @@ import {
 } from "@/components/admin/products-table";
 import { AdminPageHeader } from "@/components/admin/shell/page-header";
 import { Pagination } from "@/components/common/pagination";
-import { Button } from "@/components/ui/button";
 import {
   categoryTable,
   productImageTable,
@@ -263,13 +262,7 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
       <AdminPageHeader
         title="Produtos"
         subtitle={renderCountLabel(total, hasFilters)}
-        actions={
-          <Button asChild>
-            <Link href="/admin/produtos?novo=1" scroll={false}>
-              <PlusIcon /> <span className="hidden sm:inline">Novo produto</span>
-            </Link>
-          </Button>
-        }
+        actions={<ProductCreateButton />}
       />
 
       {/* Suspense boundary obrigatório: ambos componentes usam useSearchParams().
@@ -333,11 +326,9 @@ function EmptyState() {
         Cadastre seu primeiro produto. Depois você pode publicar quando
         quiser que apareça pros seus clientes.
       </p>
-      <Button asChild className="mt-2">
-        <Link href="/admin/produtos?novo=1" scroll={false}>
-          <PlusIcon /> Cadastrar primeiro produto
-        </Link>
-      </Button>
+      <ProductCreateButton className="mt-2">
+        <PlusIcon /> Cadastrar primeiro produto
+      </ProductCreateButton>
     </div>
   );
 }

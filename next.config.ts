@@ -66,6 +66,24 @@ const SECURITY_HEADERS = [
   },
 ];
 
+const PREVIEW_SECURITY_HEADERS = SECURITY_HEADERS.map((header) => {
+  if (header.key === "Content-Security-Policy") {
+    return {
+      key: header.key,
+      value: header.value.replace(
+        "frame-ancestors 'none'",
+        "frame-ancestors 'self'",
+      ),
+    };
+  }
+  if (header.key === "X-Frame-Options") {
+    return { key: "X-Frame-Options", value: "SAMEORIGIN" };
+  }
+  return header;
+});
+
+const GLOBAL_SECURITY_HEADERS = SECURITY_HEADERS;
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
@@ -91,8 +109,12 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        source: "/admin/aparencia/preview/:path*",
+        headers: PREVIEW_SECURITY_HEADERS,
+      },
+      {
         source: "/:path*",
-        headers: SECURITY_HEADERS,
+        headers: GLOBAL_SECURITY_HEADERS,
       },
     ];
   },
