@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronDownIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { ChevronDownIcon, ImageIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import Image from "next/image";
 import { useId, useState } from "react";
 
 import type { VariantAxis } from "@/actions/product/schema";
@@ -37,6 +38,18 @@ export interface VariantData {
    * axis="size" (ver action update.ts).
    */
   colorHex: string;
+  /**
+   * Foto destacada por variante (padrão Shopify). NULL = usa primeira
+   * imagem do produto. Quando cliente seleciona essa variante no PDP,
+   * galeria principal scrolla pra essa imagem.
+   */
+  featuredImageId: string | null;
+}
+
+/** Imagem do produto exibida no selector de foto destacada. */
+export interface VariantImageOption {
+  id: string;
+  url: string;
 }
 
 interface VariantEditorProps {
@@ -44,6 +57,11 @@ interface VariantEditorProps {
   onChange: (value: VariantData[]) => void;
   disabled?: boolean;
   maxVariants?: number;
+  /**
+   * Imagens já uploaded do produto. Quando vazio, selector de foto
+   * destacada não aparece (lojista precisa subir foto antes).
+   */
+  productImages?: VariantImageOption[];
 }
 
 const DEFAULT_MAX = 20;
@@ -60,6 +78,7 @@ export function VariantEditor({
   onChange,
   disabled,
   maxVariants = DEFAULT_MAX,
+  productImages = [],
 }: VariantEditorProps) {
   const [expanded, setExpanded] = useState(value.length > 0);
   const panelId = useId();
@@ -73,6 +92,7 @@ export function VariantEditor({
       stockQuantity: null,
       axis: "size",
       colorHex: "",
+      featuredImageId: null,
     };
     onChange([...value, newVariant]);
     setExpanded(true);
@@ -131,6 +151,7 @@ export function VariantEditor({
                 variant={variant}
                 index={idx}
                 disabled={disabled}
+                productImages={productImages}
                 onUpdate={(patch) => updateVariant(idx, patch)}
                 onRemove={() => removeVariant(idx)}
               />
@@ -163,6 +184,7 @@ interface VariantRowProps {
   variant: VariantData;
   index: number;
   disabled?: boolean;
+  productImages: VariantImageOption[];
   onUpdate: (patch: Partial<VariantData>) => void;
   onRemove: () => void;
 }
@@ -175,6 +197,7 @@ function VariantRow({
   variant,
   index,
   disabled,
+  productImages,
   onUpdate,
   onRemove,
 }: VariantRowProps) {
@@ -311,6 +334,63 @@ function VariantRow({
           </div>
         ) : null}
       </div>
+
+      {productImages.length > 0 ? (
+        <div className="mt-3 space-y-1.5">
+          <Label className="text-xs">Foto destacada (opcional)</Label>
+          <p className="text-muted-foreground text-[11px] leading-relaxed">
+            Quando o cliente selecionar essa variação, essa foto vai
+            aparecer em destaque na galeria.
+          </p>
+          <div className="flex flex-wrap gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => onUpdate({ featuredImageId: null })}
+              disabled={disabled}
+              aria-pressed={variant.featuredImageId === null}
+              className={cn(
+                "bg-muted text-muted-foreground hocus:bg-muted/80 flex h-12 w-12 shrink-0 items-center justify-center rounded-md border-2 text-[9.5px] font-medium tracking-wide uppercase transition-colors",
+                variant.featuredImageId === null
+                  ? "border-foreground"
+                  : "border-transparent",
+                disabled && "cursor-not-allowed opacity-50",
+              )}
+            >
+              <ImageIcon className="size-4" aria-hidden />
+            </button>
+            {productImages.map((img) => {
+              const selected = variant.featuredImageId === img.id;
+              return (
+                <button
+                  key={img.id}
+                  type="button"
+                  onClick={() =>
+                    onUpdate({ featuredImageId: selected ? null : img.id })
+                  }
+                  disabled={disabled}
+                  aria-pressed={selected}
+                  aria-label="Selecionar como foto destacada"
+                  className={cn(
+                    "relative h-12 w-12 shrink-0 overflow-hidden rounded-md border-2 transition-all",
+                    selected
+                      ? "border-foreground"
+                      : "border-transparent hover:border-muted-foreground/40",
+                    disabled && "cursor-not-allowed opacity-50",
+                  )}
+                >
+                  <Image
+                    src={img.url}
+                    alt=""
+                    width={48}
+                    height={48}
+                    className="size-full object-cover"
+                  />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

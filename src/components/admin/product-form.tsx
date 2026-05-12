@@ -134,6 +134,7 @@ export function ProductForm({
         stockQuantity: v.stockQuantity,
         axis: v.axis,
         colorHex: v.colorHex ?? "",
+        featuredImageId: v.featuredImageId ?? null,
       })),
     },
   });
@@ -351,6 +352,10 @@ export function ProductForm({
                   value={field.value as VariantData[]}
                   onChange={(next: VariantInput[]) => field.onChange(next)}
                   disabled={isPending}
+                  productImages={images.map((img) => ({
+                    id: img.id,
+                    url: img.url,
+                  }))}
                 />
               )}
             />

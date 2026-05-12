@@ -67,6 +67,7 @@ export default async function EditarProdutoPage({
         stockQuantity: productVariantTable.stockQuantity,
         axis: productVariantTable.axis,
         colorHex: productVariantTable.colorHex,
+        featuredImageId: productVariantTable.featuredImageId,
       })
       .from(productVariantTable)
       .where(eq(productVariantTable.productId, id))
@@ -167,6 +168,7 @@ export default async function EditarProdutoPage({
             axis: v.axis,
             // Form representa colorHex como string ("" = vazio); banco null.
             colorHex: v.colorHex ?? "",
+            featuredImageId: v.featuredImageId,
           })),
           images,
         }}
