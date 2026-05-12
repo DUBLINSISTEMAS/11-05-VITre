@@ -60,7 +60,9 @@ export function ProductDialog({ state, onClose }: ProductDialogProps) {
   const [data, setData] = useState<ProductDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset ao fechar.
+  // Reset + lazy load com guard de cancelamento.
+  // Se usuário fecha ou troca o productId enquanto load está em curso, o
+  // resultado tardio NÃO sobrescreve o state atual.
   useEffect(() => {
     if (state.mode === "closed") {
       setData(null);
@@ -70,14 +72,18 @@ export function ProductDialog({ state, onClose }: ProductDialogProps) {
     setData(null);
     setError(null);
 
+    let cancelled = false;
+
     startLoading(async () => {
       const productId =
         state.mode === "edit"
           ? state.productId
           : await ensureDraftId();
+      if (cancelled) return;
       if (!productId) return; // erro já tratado em ensureDraftId
 
       const res = await loadProductDetail(productId);
+      if (cancelled) return;
       if (!res.ok) {
         setError(res.error);
         return;
@@ -87,6 +93,7 @@ export function ProductDialog({ state, onClose }: ProductDialogProps) {
 
     async function ensureDraftId(): Promise<string | null> {
       const draft = await createDraftProduct();
+      if (cancelled) return null;
       if (!draft.ok) {
         setError(draft.error);
         toast.error(draft.error);
@@ -94,6 +101,10 @@ export function ProductDialog({ state, onClose }: ProductDialogProps) {
       }
       return draft.productId;
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [state]);
 
   const isOpen = state.mode !== "closed";

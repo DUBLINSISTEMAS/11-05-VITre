@@ -199,7 +199,11 @@ export function ProductForm({
         if (onAfterSave) {
           onAfterSave({ nextProductId: result.nextProductId });
         } else {
-          router.replace(`/admin/produtos/${result.nextProductId}/editar`);
+          // Fallback legado — rota /editar foi deletada na Onda 5, então
+          // só refresh. Em prática esse branch nunca roda hoje (único
+          // consumer, ProductDialog, sempre passa onAfterSave). Mantido
+          // pra não quebrar consumers externos hipotéticos.
+          router.refresh();
         }
       } finally {
         submittingRef.current = false;

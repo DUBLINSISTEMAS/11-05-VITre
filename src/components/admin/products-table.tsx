@@ -15,8 +15,8 @@ import {
   PackageIcon,
   SparklesIcon,
 } from "lucide-react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatPriceLabel, hasActivePromo } from "@/lib/pricing";
@@ -48,23 +48,12 @@ export interface ProductsTableProps {
 
 export function ProductsTable({ products }: ProductsTableProps) {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [dialog, setDialog] = useState<ProductDialogState>({ mode: "closed" });
 
-  // Abre dialog em modo "create" via query param ?novo=1, limpando o param.
-  // Permite que botões em outras telas (welcome-card, products/page header)
-  // disparem o modal só linkando pra /admin/produtos?novo=1.
-  useEffect(() => {
-    if (searchParams.get("novo") === "1" && dialog.mode === "closed") {
-      setDialog({ mode: "create" });
-      const next = new URLSearchParams(searchParams);
-      next.delete("novo");
-      const qs = next.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    }
-  }, [searchParams, dialog.mode, pathname, router]);
+  // Nota: o handling de `?novo=1` mora em <ProductCreateGate> dentro do
+  // page.tsx — esse gate monta sempre (mesmo com lista vazia / EmptyState).
+  // Aqui só lidamos com edit do click em linha/card.
 
   const allIds = useMemo(() => products.map((p) => p.id), [products]);
   const allSelected = allIds.length > 0 && selectedIds.size === allIds.length;

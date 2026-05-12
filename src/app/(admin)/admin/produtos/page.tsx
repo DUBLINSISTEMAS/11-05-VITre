@@ -20,6 +20,7 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import type { CategoryOption } from "@/components/admin/category-dialog";
+import { ProductCreateGate } from "@/components/admin/product-create-gate";
 import { ProductsErrorToast } from "@/components/admin/products-error-toast";
 import { ProductsFilters } from "@/components/admin/products-filters";
 import { ProductsStatusTabs } from "@/components/admin/products-status-tabs";
@@ -302,6 +303,13 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
           />
         </>
       )}
+
+      {/* Captura ?novo=1 e abre modal — sempre montado, independente
+          do estado da lista (resolve FAIL do verifier Onda 5). Suspense
+          obrigatório porque o gate usa useSearchParams. */}
+      <Suspense fallback={null}>
+        <ProductCreateGate />
+      </Suspense>
     </div>
   );
 }
