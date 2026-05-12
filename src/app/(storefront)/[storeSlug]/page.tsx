@@ -92,13 +92,10 @@ export default async function StoreHomePage({
 
       {categoryTree.length > 0 && (
         <section className="space-y-2">
-          <header className="flex items-baseline justify-between">
+          <header>
             <h2 className="text-sm font-semibold tracking-[-0.3px] text-foreground">
               Categorias
             </h2>
-            <span className="font-mono text-[9.5px] text-gray-500">
-              {String(categoryTree.length).padStart(2, "0")}
-            </span>
           </header>
           <CategoryStrip
             storeSlug={store.slug}
