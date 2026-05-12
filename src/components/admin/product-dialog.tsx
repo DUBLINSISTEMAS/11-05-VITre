@@ -1,31 +1,14 @@
 "use client";
 
 /**
- * ProductDialog — modal de criação/edição de produto (Onda 5, 2026-05-12).
+ * ProductDialog - modal de criação/edição de produto.
  *
- * Substitui as rotas /admin/produtos/novo e /admin/produtos/[id]/editar.
- * Founder pediu: "Toda a interação acontece dentro do modal".
- *
- * Modos:
- *  - `mode="create"` (productId=null): chama createDraftProduct() ao abrir
- *    pra obter um id (mesmo padrão da rota antiga, mas sem RSC side-effect
- *    no prefetch — só dispara em onClick explícito). Aceita reaproveitamento
- *    de draft recente sem imagens (ver create-draft.ts).
- *  - `mode="edit"` (productId fornecido): chama loadProductDetail(id).
- *
- * Save flow (via onAfterSave do ProductForm):
- *  - Save comum → fecha dialog + router.refresh()
- *  - "Salvar e adicionar outro" → mantém dialog aberto, troca productId
- *    pro próximo draft retornado por saveAndCreateNext, recarrega dados.
- *
- * Layout:
- *  - max-w-5xl + h-[92vh] + overflow-y-auto interno
- *  - Header sticky: título + ProductPublishToggle + ProductActionsMenu
- *  - Body scrollable com ProductForm inDialog
+ * Cria/carrega o produto sob demanda e nunca deixa o dialog preso em loading:
+ * falhas inesperadas das server actions viram estado de erro renderizável.
  */
 import { Loader2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { createDraftProduct } from "@/actions/product/create-draft";
@@ -56,40 +39,47 @@ interface ProductDialogProps {
 
 export function ProductDialog({ state, onClose }: ProductDialogProps) {
   const router = useRouter();
-  const [loading, startLoading] = useTransition();
+  const [loading, setLoading] = useState(false);
   const [data, setData] = useState<ProductDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset + lazy load com guard de cancelamento.
-  // Se usuário fecha ou troca o productId enquanto load está em curso, o
-  // resultado tardio NÃO sobrescreve o state atual.
   useEffect(() => {
     if (state.mode === "closed") {
       setData(null);
       setError(null);
+      setLoading(false);
       return;
     }
-    setData(null);
-    setError(null);
 
     let cancelled = false;
 
-    startLoading(async () => {
-      const productId =
-        state.mode === "edit"
-          ? state.productId
-          : await ensureDraftId();
-      if (cancelled) return;
-      if (!productId) return; // erro já tratado em ensureDraftId
+    setData(null);
+    setError(null);
+    setLoading(true);
 
-      const res = await loadProductDetail(productId);
-      if (cancelled) return;
-      if (!res.ok) {
-        setError(res.error);
-        return;
+    void (async () => {
+      try {
+        const productId =
+          state.mode === "edit" ? state.productId : await ensureDraftId();
+        if (cancelled) return;
+        if (!productId) return;
+
+        const res = await loadProductDetail(productId);
+        if (cancelled) return;
+        if (!res.ok) {
+          setError(res.error);
+          return;
+        }
+        setData(res.product);
+      } catch (e) {
+        if (cancelled) return;
+        console.error("product_dialog.load_failed", e);
+        setError("Falha ao abrir o produto. Tente novamente.");
+        toast.error("Falha ao abrir o produto. Tente novamente.");
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setData(res.product);
-    });
+    })();
 
     async function ensureDraftId(): Promise<string | null> {
       const draft = await createDraftProduct();
@@ -109,6 +99,28 @@ export function ProductDialog({ state, onClose }: ProductDialogProps) {
 
   const isOpen = state.mode !== "closed";
 
+  const reloadProduct = async (productId: string) => {
+    setLoading(true);
+    setError(null);
+    setData(null);
+
+    try {
+      const res = await loadProductDetail(productId);
+      if (!res.ok) {
+        setError(res.error);
+        toast.error(res.error);
+        return;
+      }
+      setData(res.product);
+    } catch (e) {
+      console.error("product_dialog.reload_failed", e);
+      setError("Falha ao carregar o próximo produto.");
+      toast.error("Falha ao carregar o próximo produto.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Dialog
       open={isOpen}
@@ -126,19 +138,10 @@ export function ProductDialog({ state, onClose }: ProductDialogProps) {
             product={data}
             onAfterSave={(opts) => {
               if (opts.nextProductId) {
-                // "Salvar e adicionar outro" — recarrega com novo draft.
-                startLoading(async () => {
-                  const res = await loadProductDetail(opts.nextProductId!);
-                  if (!res.ok) {
-                    setError(res.error);
-                    return;
-                  }
-                  setData(res.product);
-                });
+                void reloadProduct(opts.nextProductId);
                 router.refresh();
                 return;
               }
-              // Save comum — fecha modal.
               onClose();
               router.refresh();
             }}
@@ -153,13 +156,13 @@ function DialogLoading() {
   return (
     <>
       <DialogHeader className="border-b px-5 py-4 sm:px-6">
-        <DialogTitle className="sr-only">Carregando produto…</DialogTitle>
+        <DialogTitle className="sr-only">Carregando produto...</DialogTitle>
         <DialogDescription className="sr-only">
           Aguardando dados do produto.
         </DialogDescription>
       </DialogHeader>
       <div className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
-        <Loader2Icon className="size-4 animate-spin" /> Carregando…
+        <Loader2Icon className="size-4 animate-spin" /> Carregando...
       </div>
     </>
   );
@@ -195,7 +198,7 @@ function DialogReady({
           </DialogTitle>
           <DialogDescription className="text-xs">
             {isDraft
-              ? "Rascunho — preencha nome e preço, depois marque “Visível”."
+              ? "Rascunho - preencha nome e preço, depois marque Visível."
               : "Edite os dados e clique em Salvar."}
           </DialogDescription>
         </div>
@@ -214,6 +217,7 @@ function DialogReady({
 
       <div className="flex-1 overflow-y-auto bg-background px-4 py-4 sm:px-5">
         <ProductForm
+          key={product.id}
           isDraft={isDraft}
           categories={product.categories}
           onAfterSave={onAfterSave}
