@@ -172,10 +172,10 @@ export function CategoriesSidebar({
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className="text-sm font-semibold text-foreground block">
-                    All Products
+                    Todos os produtos
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    Explore everything
+                    Veja tudo da vitrine
                   </span>
                 </div>
                 <ChevronRight className="size-4 text-muted-foreground group-hover:text-foreground transition-colors" />
