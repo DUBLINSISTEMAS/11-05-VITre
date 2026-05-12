@@ -36,9 +36,9 @@ export function CategoryPills({ storeSlug, categories }: CategoryPillsProps) {
   return (
     <section aria-label="Categorias" className="py-2">
       <div className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {/* All pill */}
+        {/* "Tudo" pill — volta pra home da vitrine */}
         <PillLink href={`/${storeSlug}`} isActive={isHome} prefetch>
-          All
+          Tudo
         </PillLink>
 
         {/* Category pills */}

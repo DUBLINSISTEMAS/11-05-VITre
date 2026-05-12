@@ -110,6 +110,10 @@ export function CategoriesSidebar({
           className="w-[85vw] max-w-[340px] flex flex-col gap-0 p-0 bg-white border-r-0 shadow-2xl"
           style={brandStyle}
           aria-describedby={undefined}
+          // Level 1 (drilledRoot=null) usa o X automático do SheetContent.
+          // Level 2 (drilledRoot≠null) usa só a ChevronLeft "Voltar" — esconde
+          // o X pra não duplicar (founder pediu em 2026-05-12).
+          showCloseButton={drilledRoot === null}
         >
           {/* Header - Clean and minimal */}
           <SheetHeader className="px-6 py-5 border-b border-gray-100/80">
@@ -137,7 +141,7 @@ export function CategoriesSidebar({
                     {store.name}
                   </SheetTitle>
                   <SheetDescription className="text-xs text-muted-foreground text-left mt-0.5">
-                    {drilledRoot ? drilledRoot.name : "Browse categories"}
+                    {drilledRoot ? drilledRoot.name : "Navegar categorias"}
                   </SheetDescription>
                 </div>
               </div>
@@ -199,10 +203,10 @@ export function CategoriesSidebar({
                       <Grid3X3 className="size-7 text-gray-400" />
                     </div>
                     <p className="text-muted-foreground text-sm font-medium">
-                      No categories yet
+                      Sem categorias ainda
                     </p>
                     <p className="text-muted-foreground/60 text-xs mt-1">
-                      Categories will appear here
+                      As categorias aparecerão aqui
                     </p>
                   </div>
                 ) : (
@@ -318,9 +322,9 @@ export function CategoriesSidebar({
                         <Grid3X3 className="size-4 text-background" />
                       </div>
                       <div className="flex-1">
-                        <span className="block text-foreground">View all in {drilledRoot.name}</span>
+                        <span className="block text-foreground">Ver tudo em {drilledRoot.name}</span>
                         <span className="text-xs text-muted-foreground font-normal">
-                          {drilledRoot.children.length} subcategories
+                          {drilledRoot.children.length} subcategoria{drilledRoot.children.length === 1 ? "" : "s"}
                         </span>
                       </div>
                     </Link>

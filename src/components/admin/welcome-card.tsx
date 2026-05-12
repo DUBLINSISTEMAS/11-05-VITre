@@ -73,7 +73,7 @@ export function WelcomeCard({ storeName, storeUrl }: WelcomeCardProps) {
 
       <div className="grid gap-2 sm:grid-cols-3">
         <Button asChild size="lg">
-          <Link href="/admin/produtos/novo" prefetch>
+          <Link href="/admin/produtos/novo">
             <PackagePlusIcon /> Cadastrar produto
           </Link>
         </Button>

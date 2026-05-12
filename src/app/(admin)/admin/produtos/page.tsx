@@ -326,7 +326,7 @@ function EmptyState() {
         quiser que apareça pros seus clientes.
       </p>
       <Button asChild className="mt-2">
-        <Link href="/admin/produtos/novo" prefetch>
+        <Link href="/admin/produtos/novo">
           <PlusIcon /> Cadastrar primeiro produto
         </Link>
       </Button>
