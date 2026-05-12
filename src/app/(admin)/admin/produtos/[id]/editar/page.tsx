@@ -1,6 +1,5 @@
 import { and, asc, eq } from "drizzle-orm";
-import { MoreVerticalIcon } from "lucide-react";
-import Link from "next/link";
+import { MoreVerticalIcon, PackageIcon, StoreIcon } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { DeleteProductDialog } from "@/components/admin/delete-product-dialog";
@@ -98,15 +97,11 @@ export default async function EditarProdutoPage({
     <div className="space-y-4">
       <AdminPageHeader
         title={headerTitle}
-        subtitle={
-          <Link
-            href="/admin/produtos"
-            prefetch
-            className="hocus:text-foreground inline-flex items-center gap-1 transition-colors"
-          >
-            ← Produtos
-          </Link>
-        }
+        breadcrumb={[
+          { label: "Sua Loja", icon: StoreIcon },
+          { label: "Produtos", icon: PackageIcon, href: "/admin/produtos" },
+          { label: isDraft ? "Novo" : product.name },
+        ]}
         actions={
           <>
             <ProductPublishToggle
