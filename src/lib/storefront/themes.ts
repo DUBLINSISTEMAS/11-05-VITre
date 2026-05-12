@@ -50,10 +50,10 @@ export const THEME_PRESETS = {
     id: "boutique",
     name: "Boutique",
     description:
-      "Categorias em círculo, cards minimalistas e hero em split (imagem + texto lado a lado). Pegada premium discreta, ótimo pra joia, semijoia e moda autoral.",
+      "Categorias em círculo, cards minimalistas e hero com imagem em destaque. Pegada premium discreta, ótimo pra joia, semijoia e moda autoral.",
     categoryShape: "circle",
     productCardStyle: "minimal",
-    heroStyle: "split",
+    heroStyle: "cover",
     bottomNavStyle: "rule",
   },
   bazar: {
