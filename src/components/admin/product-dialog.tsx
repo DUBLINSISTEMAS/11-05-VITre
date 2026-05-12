@@ -142,7 +142,7 @@ export function ProductDialog({ state, onClose }: ProductDialogProps) {
         if (!open) onClose();
       }}
     >
-      <DialogContent className="flex h-[96dvh] w-[calc(100vw-1rem)] max-w-[1600px] flex-col gap-0 overflow-hidden border-white/10 p-0 shadow-2xl sm:rounded-3xl lg:h-[92dvh] lg:w-[min(1500px,calc(100vw-3rem))] xl:w-[min(1540px,94vw)]">
+      <DialogContent className="flex h-[100dvh] w-full max-w-none flex-col gap-0 overflow-hidden rounded-none border-white/10 p-0 shadow-2xl sm:h-[90dvh] sm:max-h-[900px] sm:w-[calc(100vw-2rem)] sm:max-w-4xl sm:rounded-2xl md:max-w-5xl lg:h-[92dvh] lg:max-h-[1000px] lg:max-w-6xl xl:max-w-7xl">
         {loading || (state.mode === "edit" && !data && !error) ? (
           <DialogLoading />
         ) : error ? (
@@ -244,18 +244,18 @@ function DialogReady({
 
   return (
     <>
-      <DialogHeader className="sticky top-0 z-10 flex flex-row items-center gap-3 border-b bg-card/95 px-5 py-3 backdrop-blur sm:px-6 lg:px-8 lg:py-5">
+      <DialogHeader className="sticky top-0 z-10 flex shrink-0 flex-row items-center gap-2 border-b bg-card/95 px-4 py-3 backdrop-blur sm:gap-3 sm:px-6 lg:px-8 lg:py-4">
         <div className="min-w-0 flex-1">
-          <DialogTitle className="truncate text-base font-semibold sm:text-lg lg:text-xl">
+          <DialogTitle className="truncate text-sm font-semibold sm:text-base lg:text-lg">
             {headerTitle}
           </DialogTitle>
-          <DialogDescription className="text-xs">
+          <DialogDescription className="hidden text-xs sm:block">
             {isDraft
               ? "Preencha nome e preço. O produto só vira rascunho ao salvar."
               : "Edite os dados e clique em Salvar."}
           </DialogDescription>
         </div>
-        <div className="flex shrink-0 items-center gap-1 pr-7">
+        <div className="flex shrink-0 items-center gap-1 pr-8 sm:pr-6">
           {persisted ? (
             <>
               <ProductPublishToggle
@@ -272,7 +272,7 @@ function DialogReady({
         </div>
       </DialogHeader>
 
-      <div className="flex-1 overflow-y-auto bg-muted/20 px-4 py-4 sm:px-5 lg:px-8 lg:py-6 xl:px-10">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-muted/20 px-3 py-4 sm:px-5 lg:px-8 lg:py-6">
         <ProductForm
           key={product.id}
           isDraft={isDraft}

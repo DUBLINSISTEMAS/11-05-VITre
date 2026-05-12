@@ -224,8 +224,8 @@ export function ProductForm({
       onSubmit={handleSubmit(onSubmit)}
       // Padding-bottom em mobile pra conteúdo não ficar atrás do sticky
       // save (1 botão ~3.5rem + py-3 + bottom nav 3.5rem + safe-area
-      // ~1.25rem ≈ 9rem).
-      className="mx-auto max-w-[1360px] pb-36 lg:pb-4"
+      // ~1.25rem ≈ 9rem). No dialog, o sticky bottom já cuida disso.
+      className="mx-auto max-w-[1360px] pb-20 lg:pb-4"
     >
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start xl:grid-cols-[minmax(0,1fr)_400px]">
         {/* === Coluna esquerda (lg col-span-2) === */}
@@ -537,9 +537,9 @@ export function ProductForm({
           fora, fixed na viewport acima do bottom nav. */}
       <div
         className={cn(
-          "surface-elevated z-50 px-4 py-3 lg:hidden",
+          "surface-elevated z-50 px-3 py-3 lg:hidden sm:px-4",
           inDialog
-            ? "sticky bottom-0 -mx-4 mt-4 sm:-mx-5"
+            ? "sticky bottom-0 -mx-3 mt-4 border-t bg-card/95 backdrop-blur sm:-mx-5"
             : "fixed inset-x-0",
         )}
         style={
