@@ -49,7 +49,7 @@ export function ProductDetailView({ product, store }: ProductDetailViewProps) {
           />
         </div>
 
-        <ProductPurchasePanel product={product} />
+        <ProductPurchasePanel product={product} storeSlug={store.slug} />
       </div>
 
       {/* Desktop layout */}
@@ -58,7 +58,7 @@ export function ProductDetailView({ product, store }: ProductDetailViewProps) {
           <ProductGallery images={product.images} productName={product.name} />
         </div>
         <div className="relative flex flex-col py-4">
-          <ProductPurchasePanel product={product} />
+          <ProductPurchasePanel product={product} storeSlug={store.slug} />
         </div>
       </div>
     </article>

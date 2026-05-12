@@ -37,6 +37,7 @@
  * descrição colapsável (canvas mostra completa), sem framer-motion.
  */
 import { Heart } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 
 import { useToast } from "@/components/storefront/toast";
@@ -54,6 +55,8 @@ import { cn } from "@/lib/utils";
 
 export interface ProductPurchasePanelProps {
   product: ProductDetail;
+  /** Slug da loja — usado pelo botão "Adicionar e voltar pra loja". */
+  storeSlug: string;
 }
 
 const META_FIELDS = [
@@ -63,7 +66,11 @@ const META_FIELDS = [
   ["LAVAGEM", "washing"],
 ] as const;
 
-export function ProductPurchasePanel({ product }: ProductPurchasePanelProps) {
+export function ProductPurchasePanel({
+  product,
+  storeSlug,
+}: ProductPurchasePanelProps) {
+  const router = useRouter();
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [recentlyAdded, setRecentlyAdded] = useState(false);
 
@@ -155,6 +162,14 @@ export function ProductPurchasePanel({ product }: ProductPurchasePanelProps) {
     setRecentlyAdded(true);
     setTimeout(() => setRecentlyAdded(false), 1500);
   }, [addItem, addToast, ctaDisabled, product, selectedVariant]);
+
+  // "Adicionar e voltar pra loja": atalho pra quem está comprando vários
+  // itens e quer manter o fluxo de descoberta sem ficar preso no PDP.
+  const handleAddAndContinue = useCallback(() => {
+    if (ctaDisabled) return;
+    handleAddToCart();
+    router.push(`/${storeSlug}`);
+  }, [ctaDisabled, handleAddToCart, router, storeSlug]);
 
   const isFav = isHydrated && isFavorite(product.id);
 
@@ -337,41 +352,59 @@ export function ProductPurchasePanel({ product }: ProductPurchasePanelProps) {
       {/* Sticky CTA — canvas linhas 342-353 */}
       <div
         className={cn(
-          "fixed inset-x-0 bottom-0 z-30 flex items-center gap-2 border-t border-border bg-background px-3.5 py-3",
+          "fixed inset-x-0 bottom-0 z-30 flex flex-col gap-1.5 border-t border-border bg-background px-3.5 py-3",
           "lg:relative lg:px-0 lg:py-4",
         )}
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
-        {/* Heart button 44×44 rounded-12 (canvas é "save" mas reuso favoritos) */}
-        <button
-          type="button"
-          onClick={handleToggleFavorite}
-          aria-label={isFav ? "Remover dos favoritos" : "Adicionar aos favoritos"}
-          aria-pressed={isFav}
-          className="inline-flex size-11 shrink-0 items-center justify-center rounded-[12px] border border-border bg-background text-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <Heart
-            className={cn("size-5", isFav && "fill-rose-500 text-rose-500")}
-            strokeWidth={1.6}
-          />
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Heart button 44×44 rounded-12 (canvas é "save" mas reuso favoritos) */}
+          <button
+            type="button"
+            onClick={handleToggleFavorite}
+            aria-label={isFav ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+            aria-pressed={isFav}
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-[12px] border border-border bg-background text-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Heart
+              className={cn("size-5", isFav && "fill-rose-500 text-rose-500")}
+              strokeWidth={1.6}
+            />
+          </button>
 
-        {/* Add-to-cart 44 rounded-12 bg-foreground */}
+          {/* Add-to-cart 44 rounded-12 bg-foreground */}
+          <button
+            type="button"
+            onClick={handleAddToCart}
+            disabled={ctaDisabled && !recentlyAdded}
+            className={cn(
+              "inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-[12px] border-0 text-[13.5px] font-semibold outline-none transition-colors",
+              "focus-visible:ring-2 focus-visible:ring-ring",
+              ctaDisabled && !recentlyAdded
+                ? "cursor-not-allowed bg-gray-200 text-gray-400"
+                : recentlyAdded
+                  ? "bg-success text-success-foreground"
+                  : "bg-foreground text-background hover:bg-foreground/90 active:bg-foreground/85",
+            )}
+          >
+            {ctaLabel}
+          </button>
+        </div>
+
+        {/* Secundário: adiciona e volta pra loja, evita ficar preso no PDP. */}
         <button
           type="button"
-          onClick={handleAddToCart}
+          onClick={handleAddAndContinue}
           disabled={ctaDisabled && !recentlyAdded}
           className={cn(
-            "inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-[12px] border-0 text-[13.5px] font-semibold outline-none transition-colors",
+            "h-8 w-full rounded-md text-[11.5px] font-medium outline-none transition-colors",
             "focus-visible:ring-2 focus-visible:ring-ring",
             ctaDisabled && !recentlyAdded
-              ? "cursor-not-allowed bg-gray-200 text-gray-400"
-              : recentlyAdded
-                ? "bg-success text-success-foreground"
-                : "bg-foreground text-background hover:bg-foreground/90 active:bg-foreground/85",
+              ? "cursor-not-allowed text-gray-300"
+              : "text-muted-foreground hocus:text-foreground hocus:underline",
           )}
         >
-          {ctaLabel}
+          Adicionar e voltar pra loja
         </button>
       </div>
     </>
