@@ -14,13 +14,20 @@
  * Sem confirmação destrutiva: a aplicação é reversível (basta clicar em
  * outro preset). Sem destruir produtos/categorias.
  */
-import { CheckIcon, Loader2Icon, SparklesIcon } from "lucide-react";
+import { CheckIcon, EyeIcon, Loader2Icon, SparklesIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { applyTheme } from "@/actions/store/apply-theme";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   detectActivePreset,
   THEME_PRESET_IDS,
@@ -44,6 +51,7 @@ export function ThemeSelector({ currentTheme }: ThemeSelectorProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [applyingId, setApplyingId] = useState<ThemePresetId | null>(null);
+  const [previewingId, setPreviewingId] = useState<ThemePresetId | null>(null);
 
   const activePresetId = detectActivePreset(currentTheme);
 
@@ -116,28 +124,89 @@ export function ThemeSelector({ currentTheme }: ThemeSelectorProps) {
                   </p>
                 </header>
 
-                <Button
-                  type="button"
-                  variant={isActive ? "outline" : "default"}
-                  onClick={() => onApply(id)}
-                  disabled={isPending || isActive}
-                  className="mt-auto"
-                >
-                  {isApplying ? (
-                    <>
-                      <Loader2Icon className="animate-spin" /> Aplicando…
-                    </>
-                  ) : isActive ? (
-                    "Modelo atual"
-                  ) : (
-                    "Aplicar modelo"
-                  )}
-                </Button>
+                <div className="mt-auto flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPreviewingId(id)}
+                    disabled={isPending}
+                    className="flex-1"
+                  >
+                    <EyeIcon /> Visualizar
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={isActive ? "outline" : "default"}
+                    onClick={() => onApply(id)}
+                    disabled={isPending || isActive}
+                    className="flex-1"
+                  >
+                    {isApplying ? (
+                      <>
+                        <Loader2Icon className="animate-spin" /> Aplicando…
+                      </>
+                    ) : isActive ? (
+                      "Em uso"
+                    ) : (
+                      "Aplicar"
+                    )}
+                  </Button>
+                </div>
               </div>
             </article>
           );
         })}
       </div>
+
+      {/* Dialog fullscreen com iframe live do tema */}
+      <Dialog
+        open={previewingId !== null}
+        onOpenChange={(open) => {
+          if (!open) setPreviewingId(null);
+        }}
+      >
+        <DialogContent className="flex h-[92vh] max-w-[420px] flex-col gap-0 overflow-hidden p-0 sm:rounded-2xl">
+          <DialogHeader className="border-b px-4 py-3">
+            <DialogTitle className="text-sm font-semibold">
+              {previewingId ? THEME_PRESETS[previewingId].name : "Preview"}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Veja como sua vitrine fica com este modelo antes de aplicar.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden bg-muted">
+            {previewingId ? (
+              <iframe
+                key={previewingId}
+                src={`/admin/aparencia/preview/${previewingId}`}
+                title={`Preview do modelo ${THEME_PRESETS[previewingId].name}`}
+                className="block size-full border-0"
+              />
+            ) : null}
+          </div>
+          <div className="border-t bg-card px-4 py-3">
+            <Button
+              type="button"
+              className="w-full"
+              disabled={
+                isPending || previewingId === activePresetId
+              }
+              onClick={() => {
+                if (!previewingId) return;
+                const idToApply = previewingId;
+                setPreviewingId(null);
+                onApply(idToApply);
+              }}
+            >
+              {previewingId === activePresetId
+                ? "Este modelo já está aplicado"
+                : "Aplicar este modelo"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <p className="text-xs text-muted-foreground">
         Trocar de modelo é seguro e não afeta seus produtos, categorias ou
