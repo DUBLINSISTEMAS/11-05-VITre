@@ -332,7 +332,7 @@ export function ImageUploader({
         onChange={(e) => handleFiles(e.target.files)}
       />
 
-      <p className="text-muted-foreground text-xs">
+      <p className="text-muted-foreground break-words text-xs">
         Até {maxImages} imagens. A primeira é a capa do produto. JPG, PNG ou
         WebP — fotos grandes são otimizadas automaticamente. Toque no lápis
         para ajustar enquadramento.

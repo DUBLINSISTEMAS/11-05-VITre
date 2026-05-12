@@ -229,7 +229,7 @@ export function ProductForm({
     >
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start xl:grid-cols-[minmax(0,1fr)_400px]">
         {/* === Coluna esquerda (lg col-span-2) === */}
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <FormCard
             title="Mídia"
             description={
@@ -394,7 +394,7 @@ export function ProductForm({
         </div>
 
         {/* === Coluna direita (lg col-span-1, sticky) === */}
-        <div className="space-y-4 lg:sticky lg:top-5">
+        <div className="min-w-0 space-y-4 lg:sticky lg:top-5">
           <FormCard title="Status">
             <Controller
               name="isFeatured"
@@ -585,7 +585,7 @@ interface FormCardProps {
 
 function FormCard({ title, description, children }: FormCardProps) {
   return (
-    <section className="bg-card flex flex-col gap-4 rounded-2xl border p-4 shadow-sm sm:p-5 xl:p-6">
+    <section className="bg-card flex min-w-0 flex-col gap-4 overflow-hidden rounded-2xl border p-4 shadow-sm sm:p-5 xl:p-6">
       <header className="space-y-0.5">
         <h2 className="text-[13.5px] font-semibold tracking-tight text-foreground">
           {title}
@@ -596,7 +596,7 @@ function FormCard({ title, description, children }: FormCardProps) {
           </p>
         ) : null}
       </header>
-      <div className="flex flex-col gap-3">{children}</div>
+      <div className="flex min-w-0 flex-col gap-3">{children}</div>
     </section>
   );
 }

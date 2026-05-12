@@ -142,7 +142,7 @@ export function ProductDialog({ state, onClose }: ProductDialogProps) {
         if (!open) onClose();
       }}
     >
-      <DialogContent className="flex h-[100dvh] w-full max-w-none flex-col gap-0 overflow-hidden rounded-none border-white/10 p-0 shadow-2xl sm:h-[90dvh] sm:max-h-[900px] sm:w-[calc(100vw-2rem)] sm:max-w-4xl sm:rounded-2xl md:max-w-5xl lg:h-[92dvh] lg:max-h-[1000px] lg:max-w-6xl xl:max-w-7xl">
+      <DialogContent className="!fixed !inset-0 !top-0 !left-0 !translate-x-0 !translate-y-0 flex h-[100dvh] w-full max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 bg-background p-0 shadow-2xl sm:!inset-auto sm:!top-[50%] sm:!left-[50%] sm:!-translate-x-1/2 sm:!-translate-y-1/2 sm:h-[90dvh] sm:max-h-[900px] sm:w-[calc(100vw-2rem)] sm:max-w-4xl sm:rounded-2xl sm:border md:max-w-5xl lg:h-[92dvh] lg:max-h-[1000px] lg:max-w-6xl xl:max-w-7xl">
         {loading || (state.mode === "edit" && !data && !error) ? (
           <DialogLoading />
         ) : error ? (
@@ -272,7 +272,7 @@ function DialogReady({
         </div>
       </DialogHeader>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-muted/20 px-3 py-4 sm:px-5 lg:px-8 lg:py-6">
+      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-muted/20 px-3 py-4 sm:px-5 lg:px-8 lg:py-6">
         <ProductForm
           key={product.id}
           isDraft={isDraft}
