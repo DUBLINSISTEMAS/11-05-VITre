@@ -33,10 +33,21 @@ export interface ProductImageData {
   position: number;
 }
 
+/** Imagem pendente (apenas em memória, ainda não foi salva no servidor) */
+export interface PendingImageData {
+  tempId: string;
+  file: File;
+  previewUrl: string;
+}
+
 interface ImageUploaderProps {
-  productId: string;
+  /** ID do produto. Quando null/undefined, opera em modo de criação (imagens locais). */
+  productId: string | null | undefined;
   images: ProductImageData[];
   onChange: (images: ProductImageData[]) => void;
+  /** Imagens pendentes (modo de criação). */
+  pendingImages?: PendingImageData[];
+  onPendingChange?: (images: PendingImageData[]) => void;
   maxImages?: number;
   disabled?: boolean;
 }
@@ -60,9 +71,13 @@ export function ImageUploader({
   productId,
   images,
   onChange,
+  pendingImages = [],
+  onPendingChange,
   maxImages = DEFAULT_MAX,
   disabled,
 }: ImageUploaderProps) {
+  // Modo de criação: productId é null/undefined, imagens são armazenadas localmente
+  const isCreateMode = !productId;
   const inputRef = useRef<HTMLInputElement>(null);
   const [pendingPreviews, setPendingPreviews] = useState<
     { id: string; previewUrl: string; phase: "compressing" | "uploading" }[]
@@ -92,7 +107,7 @@ export function ImageUploader({
     };
   }, []);
 
-  const totalCount = images.length + pendingPreviews.length;
+  const totalCount = images.length + pendingImages.length + pendingPreviews.length;
   const canAdd = totalCount < maxImages && !disabled;
 
   const handleFiles = async (files: FileList | null) => {
@@ -107,9 +122,40 @@ export function ImageUploader({
       );
     }
 
-    // Acumula resultados localmente: se chamássemos `onChange([...images, ...])`
-    // dentro do loop, `images` (closure do início do handler) sobrescreveria
-    // os uploads anteriores quando 2+ fotos são enviadas de uma vez.
+    // Modo de criação: armazena arquivos localmente sem upload
+    if (isCreateMode) {
+      const newPending: PendingImageData[] = [];
+      for (const file of filesToUpload) {
+        try {
+          // Comprime antes de armazenar
+          const { file: outFile, compressed } = await compressImageClient(file);
+          if (!compressed) {
+            toast.error(IMAGE_COMPRESSION_FAILED_MESSAGE);
+            continue;
+          }
+          const id = tempId();
+          newPending.push({
+            tempId: id,
+            file: outFile,
+            previewUrl: URL.createObjectURL(outFile),
+          });
+        } catch (e) {
+          if (e instanceof ImageTooLargeError) {
+            toast.error(IMAGE_TOO_LARGE_MESSAGE);
+          } else {
+            logger.error("admin.product_image.compress_failed", { err: e });
+            toast.error("Erro ao processar imagem.");
+          }
+        }
+      }
+      if (newPending.length > 0 && onPendingChange) {
+        onPendingChange([...pendingImages, ...newPending]);
+      }
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
+
+    // Modo normal: upload imediato para o servidor
     let current = images;
     for (const file of filesToUpload) {
       const previewId = tempId();
@@ -135,7 +181,7 @@ export function ImageUploader({
 
         const formData = new FormData();
         formData.append("file", outFile);
-        formData.append("productId", productId);
+        formData.append("productId", productId!);
 
         const result = await uploadProductImage(formData);
         if (!result.ok) {
@@ -178,6 +224,15 @@ export function ImageUploader({
       onChange(images.filter((img) => img.id !== imageId));
       toast.success("Imagem removida.");
     });
+  };
+
+  const handleDeletePending = (tempIdToDelete: string) => {
+    if (!onPendingChange) return;
+    const toDelete = pendingImages.find((p) => p.tempId === tempIdToDelete);
+    if (toDelete) {
+      URL.revokeObjectURL(toDelete.previewUrl);
+    }
+    onPendingChange(pendingImages.filter((p) => p.tempId !== tempIdToDelete));
   };
 
   // Abre o editor: baixa a imagem atual como blob pra entregar ao Cropper.
@@ -286,6 +341,38 @@ export function ImageUploader({
           </div>
         ))}
 
+        {/* Imagens pendentes (modo de criação) */}
+        {pendingImages.map((p, idx) => (
+          <div
+            key={p.tempId}
+            className="group bg-muted relative aspect-[3/4] overflow-hidden rounded-xl border"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={p.previewUrl}
+              alt={`Imagem ${images.length + idx + 1}`}
+              className="size-full object-cover"
+            />
+            {images.length === 0 && idx === 0 ? (
+              <span className="bg-foreground text-background absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.04em]">
+                CAPA
+              </span>
+            ) : null}
+            <div className="absolute right-1 top-1 flex gap-1 sm:right-1.5 sm:top-1.5">
+              <button
+                type="button"
+                onClick={() => handleDeletePending(p.tempId)}
+                disabled={disabled}
+                className="flex size-9 items-center justify-center rounded-full bg-black/70 text-white opacity-100 transition hover:bg-black/85 disabled:opacity-50 sm:size-7 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+                aria-label={`Remover imagem ${images.length + idx + 1}`}
+              >
+                <Trash2Icon className="size-4 sm:size-3.5" />
+              </button>
+            </div>
+          </div>
+        ))}
+
+        {/* Previews de upload em andamento (modo de edição) */}
         {pendingPreviews.map((p) => (
           <div
             key={p.id}

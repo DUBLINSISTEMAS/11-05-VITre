@@ -39,7 +39,7 @@ import {
   CategoryDialog,
   type CategoryOption,
 } from "./category-dialog";
-import { ImageUploader, type ProductImageData } from "./image-uploader";
+import { ImageUploader, type PendingImageData, type ProductImageData } from "./image-uploader";
 import { PriceInput } from "./price-input";
 import { StockInput } from "./stock-input";
 import { type VariantData,VariantEditor } from "./variant-editor";
@@ -87,10 +87,12 @@ interface ProductFormProps {
   onAfterSave?: (opts: { nextProductId?: string; continueCreating?: boolean }) => void;
   /**
    * Cria produto sob demanda no fluxo de novo produto. A função recebe valores
-   * válidos do form e deve persistir produto + variantes em uma única ação.
+   * válidos do form e arquivos de imagem pendentes, e deve persistir produto +
+   * variantes + imagens em uma única ação.
    */
   onCreateProduct?: (
     values: ProductFormValues,
+    pendingImages: File[],
   ) => Promise<{ ok: true; productId: string } | { ok: false; error: string; fieldErrors?: Record<string, string> }>;
   /**
    * Indica que o form vive dentro de um Dialog. Ajusta sticky save mobile
@@ -127,6 +129,7 @@ export function ProductForm({
   const submittingRef = useRef(false);
 
   const [images, setImages] = useState<ProductImageData[]>(initialData.images);
+  const [pendingImages, setPendingImages] = useState<PendingImageData[]>([]);
   const [localCategories, setLocalCategories] =
     useState<CategoryOption[]>(categories);
 
@@ -175,7 +178,7 @@ export function ProductForm({
     startTransition(async () => {
       try {
         const result = onCreateProduct
-          ? await onCreateProduct(values)
+          ? await onCreateProduct(values, pendingImages.map((p) => p.file))
           : await updateProduct({ productId: initialData.productId, ...values });
         if (!result.ok) {
           applyFieldErrors(result.fieldErrors);
@@ -217,6 +220,10 @@ export function ProductForm({
 
   const handleImagesChange = useCallback((next: ProductImageData[]) => {
     setImages(next);
+  }, []);
+
+  const handlePendingImagesChange = useCallback((next: PendingImageData[]) => {
+    setPendingImages(next);
   }, []);
 
   return (
@@ -320,21 +327,16 @@ export function ProductForm({
             </div>
           </FormCard>
 
-          {/* Imagens - após nome e preço */}
-          <FormCard
-            title="Imagens"
-            description={
-              onCreateProduct
-                ? "Salve o produto primeiro para adicionar fotos."
-                : undefined
-            }
-          >
+          {/* Imagens */}
+          <FormCard title="Imagens">
             <ImageUploader
-              productId={initialData.productId}
+              productId={onCreateProduct ? null : initialData.productId}
               images={images}
               onChange={handleImagesChange}
-              disabled={isPending || !!onCreateProduct}
-              maxImages={inDialog ? 3 : 5}
+              pendingImages={pendingImages}
+              onPendingChange={handlePendingImagesChange}
+              disabled={isPending}
+              maxImages={inDialog ? 4 : 5}
             />
           </FormCard>
 

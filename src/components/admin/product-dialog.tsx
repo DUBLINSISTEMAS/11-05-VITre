@@ -150,7 +150,7 @@ export function ProductDialog({ state, onClose }: ProductDialogProps) {
         ) : product ? (
           <DialogReady
             product={product}
-            onCreateProduct={state.mode === "create" ? createProductFromValues : undefined}
+            onCreateProduct={state.mode === "create" ? (values, images) => createProductFromValues(values, images) : undefined}
             onAfterSave={(opts) => {
               if (opts.continueCreating) {
                 setData((current) =>
