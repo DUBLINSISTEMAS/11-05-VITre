@@ -299,11 +299,11 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
         </>
       )}
 
-      {/* Captura ?novo=1 e abre modal — sempre montado, independente
-          do estado da lista (resolve FAIL do verifier Onda 5). Suspense
-          obrigatório porque o gate usa useSearchParams. */}
+      {/* Captura ?novo=1 e ?editar=<id>, monta o ProductDialog único.
+          Categorias vêm do SSR (já fetchamos acima) pra modal abrir
+          instantâneo — sem round-trip de loadProductFormOptions. */}
       <Suspense fallback={null}>
-        <ProductCreateGate />
+        <ProductCreateGate initialCategories={filterCategories} />
       </Suspense>
     </div>
   );

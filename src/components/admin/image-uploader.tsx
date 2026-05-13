@@ -33,10 +33,34 @@ export interface ProductImageData {
   position: number;
 }
 
+/**
+ * Foto anexada no client mas ainda sem `productId` no DB. Usada no
+ * fluxo de criação: lojista anexa fotos antes de salvar o produto, e
+ * elas só viram registros reais após `createProductFromValues` retornar
+ * o id. Padrão Shopify/Nuvem Shop.
+ */
+export interface StagedImageFile {
+  id: string;
+  file: File;
+  previewUrl: string;
+}
+
+type ImageUploaderMode = "server" | "staged";
+
 interface ImageUploaderProps {
   productId: string;
   images: ProductImageData[];
   onChange: (images: ProductImageData[]) => void;
+  /**
+   * - `server` (default): faz upload imediato pro Supabase Storage
+   *   usando `productId`. Usado em modo edit (produto persistido).
+   * - `staged`: guarda Files em memória do client. Caller submete via
+   *   `flushStagedUploads` após criar o produto. Usado em modo create.
+   */
+  mode?: ImageUploaderMode;
+  /** Items aguardando submit. Obrigatório em `mode="staged"`. */
+  stagedFiles?: StagedImageFile[];
+  onStagedChange?: (files: StagedImageFile[]) => void;
   maxImages?: number;
   disabled?: boolean;
 }
@@ -60,9 +84,13 @@ export function ImageUploader({
   productId,
   images,
   onChange,
+  mode = "server",
+  stagedFiles = [],
+  onStagedChange,
   maxImages = DEFAULT_MAX,
   disabled,
 }: ImageUploaderProps) {
+  const isStaged = mode === "staged";
   const inputRef = useRef<HTMLInputElement>(null);
   const [pendingPreviews, setPendingPreviews] = useState<
     { id: string; previewUrl: string; phase: "compressing" | "uploading" }[]
@@ -102,7 +130,11 @@ export function ImageUploader({
     imagesRef.current = images;
   }, [images]);
 
-  const totalCount = images.length + pendingPreviews.length;
+  // Em staged mode, items aguardam submit; em server mode, items são
+  // pendingPreviews (uploading) + images (persistidos).
+  const totalCount = isStaged
+    ? stagedFiles.length
+    : images.length + pendingPreviews.length;
   const canAdd = totalCount < maxImages && !disabled;
 
   const handleFiles = async (files: FileList | null) => {
@@ -117,6 +149,41 @@ export function ImageUploader({
       );
     }
 
+    // ===== MODE: STAGED =====
+    // Em criação, só comprime e segura File[] localmente. Upload acontece
+    // após createProductFromValues retornar productId real, controlado
+    // pelo ProductForm via flushStagedUploads.
+    if (isStaged) {
+      const accepted: StagedImageFile[] = [];
+      for (const file of filesToUpload) {
+        try {
+          const { file: outFile, compressed } = await compressImageClient(file);
+          if (!compressed) {
+            toast.error(IMAGE_COMPRESSION_FAILED_MESSAGE);
+            continue;
+          }
+          accepted.push({
+            id: tempId(),
+            file: outFile,
+            previewUrl: URL.createObjectURL(outFile),
+          });
+        } catch (e) {
+          if (e instanceof ImageTooLargeError) {
+            toast.error(IMAGE_TOO_LARGE_MESSAGE);
+          } else {
+            logger.error("admin.product_image.stage_failed", { err: e });
+            toast.error("Erro ao preparar foto. Tente outra.");
+          }
+        }
+      }
+      if (accepted.length > 0 && onStagedChange) {
+        onStagedChange([...stagedFiles, ...accepted]);
+      }
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
+
+    // ===== MODE: SERVER (default — fluxo edit) =====
     // Cada iteração lê `imagesRef.current` (sempre fresh, sync com prop)
     // e adiciona a nova foto. Assim, delete ocorrido DURANTE o upload
     // não é sobrescrito. Antes era `let current = images` (closure stale).
@@ -189,6 +256,13 @@ export function ImageUploader({
     });
   };
 
+  const handleStagedRemove = (id: string) => {
+    if (!onStagedChange) return;
+    const found = stagedFiles.find((s) => s.id === id);
+    if (found) URL.revokeObjectURL(found.previewUrl);
+    onStagedChange(stagedFiles.filter((s) => s.id !== id));
+  };
+
   // Abre o editor: baixa a imagem atual como blob pra entregar ao Cropper.
   // Imagens públicas no Supabase Storage permitem GET anônimo, sem CORS issue
   // (mesma origem via next/image também, mas aqui precisamos do File raw).
@@ -250,7 +324,39 @@ export function ImageUploader({
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3">
-        {images.map((img, idx) => (
+        {/* Staged tiles — só aparecem em mode="staged" (criação). */}
+        {isStaged
+          ? stagedFiles.map((s, idx) => (
+              <div
+                key={s.id}
+                className="group bg-muted relative aspect-[3/4] overflow-hidden rounded-xl border"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={s.previewUrl}
+                  alt={`Foto ${idx + 1}`}
+                  className="size-full object-cover"
+                />
+                {idx === 0 ? (
+                  <span className="bg-foreground text-background absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.04em]">
+                    CAPA
+                  </span>
+                ) : null}
+                <div className="absolute right-1 top-1 flex gap-1 sm:right-1.5 sm:top-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleStagedRemove(s.id)}
+                    disabled={disabled}
+                    className="flex size-9 items-center justify-center rounded-full bg-black/70 text-white opacity-100 transition hover:bg-black/85 disabled:opacity-50 sm:size-7 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+                    aria-label={`Remover foto ${idx + 1}`}
+                  >
+                    <Trash2Icon className="size-4 sm:size-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))
+          : null}
+        {!isStaged && images.map((img, idx) => (
           <div
             key={img.id}
             className="group bg-muted relative aspect-[3/4] overflow-hidden rounded-xl border"
@@ -295,7 +401,7 @@ export function ImageUploader({
           </div>
         ))}
 
-        {pendingPreviews.map((p) => (
+        {!isStaged && pendingPreviews.map((p) => (
           <div
             key={p.id}
             className="bg-muted relative aspect-[3/4] overflow-hidden rounded-xl border"

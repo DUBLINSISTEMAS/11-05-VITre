@@ -19,6 +19,7 @@ import {
   type VariantInput,
 } from "@/actions/product/schema";
 import { updateProduct } from "@/actions/product/update";
+import { uploadProductImage } from "@/actions/product/upload-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,7 +40,11 @@ import {
   CategoryDialog,
   type CategoryOption,
 } from "./category-dialog";
-import { ImageUploader, type ProductImageData } from "./image-uploader";
+import {
+  ImageUploader,
+  type ProductImageData,
+  type StagedImageFile,
+} from "./image-uploader";
 import { PriceInput } from "./price-input";
 import { StockInput } from "./stock-input";
 import { type VariantData,VariantEditor } from "./variant-editor";
@@ -129,6 +134,11 @@ export function ProductForm({
   const [images, setImages] = useState<ProductImageData[]>(initialData.images);
   const [localCategories, setLocalCategories] =
     useState<CategoryOption[]>(categories);
+  // Fluxo staged (padrão Shopify/Nuvem Shop): em criação, fotos ficam em
+  // memória do client. Após createProductFromValues retornar productId,
+  // ProductForm faz upload em paralelo via flushStagedFiles.
+  const [stagedFiles, setStagedFiles] = useState<StagedImageFile[]>([]);
+  const isCreating = !!onCreateProduct;
 
   const {
     register,
@@ -183,8 +193,57 @@ export function ProductForm({
           return;
         }
 
-        if (submitMode === "save") {
+        // ============================================================
+        // STAGED FLUSH — só em criação, após produto persistido.
+        // Sobe fotos em PARALELO usando productId real. Falhas parciais
+        // não bloqueiam o sucesso do produto; toast comunica o que rolou.
+        // ============================================================
+        const filesToFlush = stagedFiles;
+        let uploadOk = 0;
+        let uploadFail = 0;
+        if (isCreating && filesToFlush.length > 0 && "productId" in result) {
+          const newProductId = result.productId;
+          const uploads = await Promise.allSettled(
+            filesToFlush.map(async (s) => {
+              const fd = new FormData();
+              fd.append("file", s.file);
+              fd.append("productId", newProductId);
+              const r = await uploadProductImage(fd);
+              if (!r.ok) throw new Error(r.error);
+            }),
+          );
+          for (const u of uploads) {
+            if (u.status === "fulfilled") uploadOk += 1;
+            else uploadFail += 1;
+          }
+          filesToFlush.forEach((s) => URL.revokeObjectURL(s.previewUrl));
+          setStagedFiles([]);
+        }
+
+        // Toast contextual: bem-sucedido / parcial / sem fotos.
+        if (isCreating) {
+          if (filesToFlush.length === 0) {
+            toast.success(
+              "Produto salvo. Adicione fotos depois — produtos com foto vendem mais.",
+            );
+          } else if (uploadFail === 0) {
+            toast.success(
+              `Produto salvo com ${uploadOk} ${uploadOk === 1 ? "foto" : "fotos"}.`,
+            );
+          } else if (uploadOk > 0) {
+            toast.warning(
+              `Produto salvo. ${uploadOk} de ${filesToFlush.length} fotos enviadas. Reenvie as que falharam editando o produto.`,
+            );
+          } else {
+            toast.warning(
+              "Produto salvo, mas nenhuma foto subiu. Tente reenviar editando o produto.",
+            );
+          }
+        } else {
           toast.success("Produto salvo.");
+        }
+
+        if (submitMode === "save") {
           if (onAfterSave) {
             onAfterSave({});
           } else {
@@ -195,7 +254,7 @@ export function ProductForm({
 
         const count = bumpSessionCounter();
         toast.success(
-          `Produto cadastrado. Pronto pro próximo. (${count} ${count === 1 ? "nesta série" : "nesta série"})`,
+          `Pronto pro próximo. (${count} ${count === 1 ? "nesta série" : "nesta série"})`,
         );
         if (onAfterSave) {
           onAfterSave({ continueCreating: true });
@@ -232,17 +291,16 @@ export function ProductForm({
         <div className="space-y-4">
           <FormCard
             title="Mídia"
-            description={
-              onCreateProduct
-                ? "Salve o produto primeiro para liberar o envio de fotos."
-                : "A primeira foto vira a capa. Tire pelo celular ou escolha da galeria."
-            }
+            description="A primeira foto vira a capa. Tire pelo celular ou escolha da galeria."
           >
             <ImageUploader
               productId={initialData.productId}
               images={images}
               onChange={handleImagesChange}
-              disabled={isPending || !!onCreateProduct}
+              mode={isCreating ? "staged" : "server"}
+              stagedFiles={stagedFiles}
+              onStagedChange={setStagedFiles}
+              disabled={isPending}
             />
           </FormCard>
 

@@ -10,15 +10,15 @@ import { Loader2Icon } from "lucide-react";
 import { nanoid } from "nanoid";
 import { useRouter } from "next/navigation";
 import type { ComponentProps } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { createProductFromValues } from "@/actions/product/create-from-values";
 import {
   loadProductDetail,
-  loadProductFormOptions,
   type ProductDetail,
 } from "@/actions/product/load-detail";
+import type { CategoryOption } from "@/components/admin/category-dialog";
 import { ProductActionsMenu } from "@/components/admin/product-actions-menu";
 import { ProductForm } from "@/components/admin/product-form";
 import { ProductPublishToggle } from "@/components/admin/product-publish-toggle";
@@ -38,6 +38,13 @@ export type ProductDialogState =
 interface ProductDialogProps {
   state: ProductDialogState;
   onClose: () => void;
+  /**
+   * Categorias pré-fetchadas no SSR pelo page.tsx. Em modo `create`,
+   * o modal abre instantâneo sem chamar loadProductFormOptions.
+   * Em modo `edit`, loadProductDetail traz categorias fresh junto
+   * com o produto, então essa prop é apenas fallback inicial.
+   */
+  initialCategories: CategoryOption[];
 }
 
 /**
@@ -50,11 +57,25 @@ const NEW_PRODUCT_PREFIX = "new-";
 const isNewProductId = (id: string) => id.startsWith(NEW_PRODUCT_PREFIX);
 const generateNewProductId = () => `${NEW_PRODUCT_PREFIX}${nanoid(8)}`;
 
-export function ProductDialog({ state, onClose }: ProductDialogProps) {
+export function ProductDialog({
+  state,
+  onClose,
+  initialCategories,
+}: ProductDialogProps) {
   const router = useRouter();
+  const [, startTransition] = useTransition();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<ProductDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Refresh em background pra não bloquear o close do modal. Sem isso,
+  // após "Salvar" o router.refresh() (~80–500ms RSC roundtrip) deixava
+  // o modal "preso" antes de fechar.
+  const scheduleRefresh = () => {
+    startTransition(() => {
+      router.refresh();
+    });
+  };
 
   // Primitivos derivados pra dep array — usar `[state]` (objeto) refazia
   // `loadProductDetail` a cada `router.refresh()` (mesmo `mode`/`productId`,
@@ -75,25 +96,10 @@ export function ProductDialog({ state, onClose }: ProductDialogProps) {
     setError(null);
 
     if (stateMode === "create") {
-      setLoading(true);
-      void (async () => {
-        try {
-          const options = await loadProductFormOptions();
-          if (cancelled) return;
-          if (!options.ok) {
-            setError(options.error);
-            return;
-          }
-          setData(createEmptyProduct(null, options.categories));
-        } catch (e) {
-          if (cancelled) return;
-          console.error("product_dialog.options_failed", e);
-          setError("Falha ao abrir o cadastro. Tente novamente.");
-          toast.error("Falha ao abrir o cadastro. Tente novamente.");
-        } finally {
-          if (!cancelled) setLoading(false);
-        }
-      })();
+      // Modal abre instantâneo — categorias já vieram via prop SSR.
+      // Sem fetch, sem spinner, form vazio renderiza no mesmo frame.
+      setData(createEmptyProduct(null, initialCategories));
+      setLoading(false);
       return () => {
         cancelled = true;
       };
@@ -125,6 +131,9 @@ export function ProductDialog({ state, onClose }: ProductDialogProps) {
     return () => {
       cancelled = true;
     };
+    // Categorias do SSR não devem refazer o effect quando o pai re-render;
+    // são estáveis na sessão (e re-fetch no edit traz versão fresca).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stateMode, stateProductId]);
 
   const isOpen = state.mode !== "closed";
@@ -180,16 +189,16 @@ export function ProductDialog({ state, onClose }: ProductDialogProps) {
                 setData((current) =>
                   current ? createEmptyProduct(null, current.categories) : current,
                 );
-                router.refresh();
+                scheduleRefresh();
                 return;
               }
               if (opts.nextProductId) {
                 void reloadProduct(opts.nextProductId);
-                router.refresh();
+                scheduleRefresh();
                 return;
               }
               onClose();
-              router.refresh();
+              scheduleRefresh();
             }}
           />
         ) : null}
