@@ -45,6 +45,11 @@ export default async function PublicOrderPage({
   if (!order) notFound();
 
   const baseUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  // PII GATE: /p/[token] é link compartilhável. NÃO pode embedar
+  // customerName/customerNotes na mensagem — quem clicar gera um
+  // wa.me com PII de outro cliente. Mensagem genérica ("Sou cliente.").
+  // Template do lojista é aplicado mesmo aqui — só os placeholders
+  // PII ficam genéricos. Test guard: tests/public-order.test.ts L22.
   const message = buildPublicOrderWhatsAppMessage({
     storeName: order.store.name,
     shortCode: order.shortCode,
@@ -56,6 +61,7 @@ export default async function PublicOrderPage({
       priceInCents: it.priceInCentsSnapshot,
     })),
     totalInCents: order.totalInCents,
+    whatsappTemplate: order.store.whatsappTemplate,
   });
   const whatsappUrl = buildWhatsAppUrl(order.store.whatsappNumber, message);
 

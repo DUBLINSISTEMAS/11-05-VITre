@@ -36,6 +36,7 @@ export interface OrderWithItems extends Order {
     | "primaryColor"
     | "whatsappNumber"
     | "whatsappDisplay"
+    | "whatsappTemplate"
   >;
 }
 
@@ -61,6 +62,7 @@ async function getOrderByColumn(
         primaryColor: true,
         whatsappNumber: true,
         whatsappDisplay: true,
+        whatsappTemplate: true,
       },
     });
     const items = await tx

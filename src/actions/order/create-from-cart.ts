@@ -50,7 +50,7 @@ import { generateShortCode } from "@/lib/shortcode";
 import { ANON_USER_ID, withServiceRole, withTenant } from "@/lib/tenant";
 import { parseWhatsAppBR } from "@/lib/whatsapp-format";
 import {
-  buildOrderMessage,
+  buildOrderMessageFromTemplate,
   buildWhatsAppUrl,
   type WhatsAppItemInput,
 } from "@/lib/whatsapp-message";
@@ -152,6 +152,7 @@ export async function createOrderFromCart(
         const message = await rebuildMessageForExisting(
           tx,
           store.name,
+          store.whatsappTemplate,
           data.customerName,
           existing.id,
           existing.shortCode,
@@ -529,7 +530,8 @@ export async function createOrderFromCart(
         priceInCents: ci.priceInCents,
       }));
 
-      const message = buildOrderMessage({
+      const message = buildOrderMessageFromTemplate({
+        template: store.whatsappTemplate,
         storeName: store.name,
         customerName: data.customerName,
         items: messageItems,
@@ -567,6 +569,7 @@ async function resolveStoreBySlug(
       slug: string;
       name: string;
       whatsappNumber: string;
+      whatsappTemplate: string | null;
     }
   | null
 > {
@@ -579,6 +582,7 @@ async function resolveStoreBySlug(
           slug: storeTable.slug,
           name: storeTable.name,
           whatsappNumber: storeTable.whatsappNumber,
+          whatsappTemplate: storeTable.whatsappTemplate,
         })
         .from(storeTable)
         .where(
@@ -597,6 +601,7 @@ async function resolveStoreBySlug(
 async function rebuildMessageForExisting(
   tx: Parameters<Parameters<typeof withServiceRole>[1]>[0],
   storeName: string,
+  whatsappTemplate: string | null,
   customerName: string,
   orderId: string,
   shortCode: string,
@@ -610,7 +615,8 @@ async function rebuildMessageForExisting(
     .where(eq(orderItemTable.orderId, orderId));
 
   const baseUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
-  return buildOrderMessage({
+  return buildOrderMessageFromTemplate({
+    template: whatsappTemplate,
     storeName,
     customerName,
     items: items.map((it) => ({

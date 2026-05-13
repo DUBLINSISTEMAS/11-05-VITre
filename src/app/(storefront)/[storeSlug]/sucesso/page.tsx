@@ -97,6 +97,9 @@ export default async function SuccessPage({
       priceInCents: it.priceInCentsSnapshot,
     })),
     totalInCents: order.totalInCents,
+    customerName: order.customerName,
+    customerNotes: order.customerNotes,
+    whatsappTemplate: order.store.whatsappTemplate,
   });
   const whatsappUrl = buildWhatsAppUrl(order.store.whatsappNumber, message);
 

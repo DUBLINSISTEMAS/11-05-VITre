@@ -1,7 +1,7 @@
 import { customAlphabet } from "nanoid";
 
 import {
-  buildOrderMessage,
+  buildOrderMessageFromTemplate,
   type WhatsAppItemInput,
 } from "@/lib/whatsapp-message";
 
@@ -21,6 +21,11 @@ export interface PublicOrderMessageInput {
   customerName?: string | null;
   customerPhone?: string | null;
   customerNotes?: string | null;
+  /**
+   * Template custom da loja (campo `store.whatsappTemplate`). Quando
+   * null, builder usa DEFAULT_WHATSAPP_TEMPLATE.
+   */
+  whatsappTemplate?: string | null;
 }
 
 export function generatePublicOrderToken(): string {
@@ -34,14 +39,14 @@ export function buildPublicOrderPath(publicToken: string): string {
 export function buildPublicOrderWhatsAppMessage(
   input: PublicOrderMessageInput,
 ): string {
-  const message = buildOrderMessage({
+  return buildOrderMessageFromTemplate({
+    template: input.whatsappTemplate ?? null,
     storeName: input.storeName,
-    customerName: "cliente",
+    customerName: input.customerName?.trim() || "cliente",
     items: input.items,
     totalInCents: input.totalInCents,
     shortCode: input.shortCode,
     publicUrl: input.publicUrl,
+    customerNotes: input.customerNotes ?? undefined,
   });
-
-  return `${message}\n\nCódigo do pedido: ${input.shortCode}`;
 }

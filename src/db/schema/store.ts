@@ -43,6 +43,11 @@ export const storeTable = pgTable(
     // WhatsApp
     whatsappNumber: text("whatsapp_number").notNull(), // E.164: +5599981757512
     whatsappDisplay: text("whatsapp_display").notNull(), // (99) 98175-7512
+    // Template customizado de mensagem WhatsApp. Quando NULL, usamos o
+    // default do sistema (`DEFAULT_WHATSAPP_TEMPLATE` em lib/whatsapp-
+    // message.ts). Placeholders renderizados: {cliente}, {loja}, {itens},
+    // {total}, {codigo}, {link}, {observacoes}. Limite 2000 chars.
+    whatsappTemplate: text("whatsapp_template"),
 
     // Identidade visual
     logoUrl: text("logo_url"),

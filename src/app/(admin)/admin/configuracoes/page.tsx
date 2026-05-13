@@ -1,5 +1,6 @@
 import { AdminPageHeader } from "@/components/admin/shell/page-header";
 import { StoreConfigForm } from "@/components/admin/store-config-form";
+import { WhatsAppTemplateCard } from "@/components/admin/whatsapp-template-card";
 import { requireSession } from "@/lib/auth-server";
 import { env } from "@/lib/env";
 import { getCurrentStore } from "@/lib/store-context";
@@ -36,6 +37,8 @@ export default async function ConfiguracoesPage() {
         }}
         storefrontUrl={storefrontUrl}
       />
+
+      <WhatsAppTemplateCard initialTemplate={store.whatsappTemplate} />
     </div>
   );
 }
