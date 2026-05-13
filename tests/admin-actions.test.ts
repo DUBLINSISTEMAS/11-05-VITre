@@ -71,31 +71,46 @@ test("store creation inserts store and initial categories in one transaction", (
   assert.doesNotMatch(action, /withTenant\(newStore\.id/);
 });
 
-test("new product modal opens client-side without creating a draft on open", () => {
-  const dialog = readFileSync("src/components/admin/product-dialog.tsx", "utf8");
-  const createButton = readFileSync("src/components/admin/product-create-button.tsx", "utf8");
+test("new product page opens without creating a draft on open", () => {
+  // Migrado 2026-05-12: modal → página dedicada /admin/produtos/novo.
+  // Invariante crítica preservada: produto só persiste no submit
+  // explícito (createProductFromValues), nunca por prefetch ou mount.
+  const novoPage = readFileSync("src/app/(admin)/admin/produtos/novo/page.tsx", "utf8");
+  const novoForm = readFileSync(
+    "src/app/(admin)/admin/produtos/novo/new-product-form.tsx",
+    "utf8",
+  );
+  const createButton = readFileSync(
+    "src/components/admin/product-create-button.tsx",
+    "utf8",
+  );
   const productsPage = readFileSync("src/app/(admin)/admin/produtos/page.tsx", "utf8");
-  const welcomeCard = readFileSync("src/components/admin/welcome-card.tsx", "utf8");
   const form = readFileSync("src/components/admin/product-form.tsx", "utf8");
   const uploader = readFileSync("src/components/admin/image-uploader.tsx", "utf8");
 
-  assert.match(createButton, /setDialog\(\{ mode: "create" \}\)/);
-  assert.match(dialog, /state\.mode === "create"/);
-  assert.match(dialog, /createEmptyProduct\(null, options\.categories\)/);
-  assert.match(dialog, /onCreateProduct=\{state\.mode === "create" \? createProductFromValues : undefined\}/);
+  // Botão "+ Novo produto" usa <Link prefetch>, sem state local nem
+  // setDialog. Sem efeito colateral de criação no mount.
+  assert.match(createButton, /href="\/admin\/produtos\/novo"/);
+  assert.doesNotMatch(createButton, /setDialog/);
+
+  // Página /admin/produtos/novo monta NewProductForm que passa
+  // createProductFromValues — usado apenas no submit do form.
+  assert.match(novoPage, /NewProductForm/);
+  assert.match(novoForm, /createProductFromValues/);
+  assert.match(novoForm, /onCreateProduct=\{createProductFromValues\}/);
+
+  // Fluxo "Salvar e adicionar outro" continua client-only (sem novo fetch).
   assert.match(form, /onAfterSave\(\{ continueCreating: true \}\)/);
   assert.doesNotMatch(form, /saveAndCreateNext/);
-  assert.match(form, /disabled=\{isPending \|\| !!onCreateProduct\}/);
-  assert.match(dialog, /createProductFromValues/);
-  assert.doesNotMatch(dialog, /createDraftProduct/);
+
+  // Uploader nunca chama createDraftProduct nem ensureProductId — fluxo
+  // staged: fotos vivem em memória até submit.
   assert.doesNotMatch(uploader, /onEnsureProductId/);
   assert.doesNotMatch(uploader, /createDraftProduct/);
-  assert.doesNotMatch(
-    dialog,
-    /state\.mode === "edit" \? state\.productId : await ensureDraftId\(\)/,
-  );
+
+  // Página /admin/produtos não tem mais o gate ?novo=1 nem ProductCreateGate.
   assert.doesNotMatch(productsPage, /href="\/admin\/produtos\?novo=1"/);
-  assert.doesNotMatch(welcomeCard, /href="\/admin\/produtos\?novo=1"/);
+  assert.doesNotMatch(productsPage, /ProductCreateGate|ProductDialogGate/);
 });
 
 test("appearance preview can be embedded only by same-origin admin iframe", () => {

@@ -16,7 +16,8 @@ import {
   SparklesIcon,
 } from "lucide-react";
 import Image from "next/image";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
@@ -45,26 +46,20 @@ export interface ProductsTableProps {
 
 export function ProductsTable({ products }: ProductsTableProps) {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // Crítico C1 (auditoria 2026-05-12): <ProductDialog> vive APENAS no
-  // <ProductDialogGate> de page.tsx. Click em linha/card aqui só atualiza
-  // a URL (`?editar=<id>`); o gate ouve o param e abre o dialog. Antes
-  // havia state local + ProductDialog montado também aqui — race de
-  // focus-trap quando empty state ou ?novo=1 estavam ativos.
+  // Click em linha/card agora navega via <Link prefetch> pra
+  // /admin/produtos/[id] — Next 15 baixa o JS da rota antes do click,
+  // abertura ~instantânea. Substitui o antigo gate `?editar=<id>` +
+  // ProductDialog (commit a931aac+). Auditoria 2026-05-12 mostrou que
+  // 800 linhas de form em modal nunca rendem <100ms; página com prefetch
+  // sim, e back nav do Next preserva scroll/cache da lista.
 
   const allIds = useMemo(() => products.map((p) => p.id), [products]);
   const allSelected = allIds.length > 0 && selectedIds.size === allIds.length;
   const partialSelected = selectedIds.size > 0 && !allSelected;
 
-  const openEdit = (id: string) => {
-    const next = new URLSearchParams(searchParams);
-    next.set("editar", id);
-    next.delete("novo");
-    router.push(`${pathname}?${next.toString()}`, { scroll: false });
-  };
+  const editHref = (id: string) => `/admin/produtos/${id}`;
 
   const toggleOne = (id: string, checked: boolean) => {
     setSelectedIds((prev) => {
@@ -134,9 +129,9 @@ export function ProductsTable({ products }: ProductsTableProps) {
                     onCheckedChange={(c) => toggleOne(p.id, c === true)}
                   />
                 </span>
-                <button
-                  type="button"
-                  onClick={() => openEdit(p.id)}
+                <Link
+                  href={editHref(p.id)}
+                  prefetch
                   className="bg-muted relative block size-12 shrink-0 overflow-hidden rounded-md"
                   aria-label={`Editar ${p.name || "rascunho"}`}
                 >
@@ -153,10 +148,10 @@ export function ProductsTable({ products }: ProductsTableProps) {
                       <PackageIcon className="text-muted-foreground size-4" />
                     </span>
                   )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openEdit(p.id)}
+                </Link>
+                <Link
+                  href={editHref(p.id)}
+                  prefetch
                   className="hocus:text-primary min-w-0 truncate text-left text-[13px] font-medium text-foreground transition-colors"
                 >
                   {isDraft ? (
@@ -166,7 +161,7 @@ export function ProductsTable({ products }: ProductsTableProps) {
                   ) : (
                     p.name
                   )}
-                </button>
+                </Link>
                 <span className="font-mono text-[11.5px] text-muted-foreground">
                   {skuPlaceholder}
                 </span>
@@ -193,14 +188,14 @@ export function ProductsTable({ products }: ProductsTableProps) {
                     direto o dialog de edit. Trocado pra PencilIcon + "Editar"
                     pra UX explícita. Ações destrutivas/publish ficam em
                     <ProductActionsMenu /> no header do dialog. */}
-                <button
-                  type="button"
-                  onClick={() => openEdit(p.id)}
+                <Link
+                  href={editHref(p.id)}
+                  prefetch
                   aria-label={`Editar ${p.name || "rascunho"}`}
                   className="hocus:bg-accent flex size-7 items-center justify-center rounded-md text-muted-foreground"
                 >
                   <PencilIcon className="size-4" />
-                </button>
+                </Link>
               </li>
             );
           })}
@@ -226,9 +221,9 @@ export function ProductsTable({ products }: ProductsTableProps) {
                   checked={isSelected}
                   onCheckedChange={(c) => toggleOne(p.id, c === true)}
                 />
-                <button
-                  type="button"
-                  onClick={() => openEdit(p.id)}
+                <Link
+                  href={editHref(p.id)}
+                  prefetch
                   className="flex flex-1 items-center gap-3 text-left"
                 >
                   <div className="bg-muted relative size-16 shrink-0 overflow-hidden rounded-lg sm:size-20">
@@ -273,7 +268,7 @@ export function ProductsTable({ products }: ProductsTableProps) {
                       ) : null}
                     </div>
                   </div>
-                </button>
+                </Link>
               </div>
             </li>
           );

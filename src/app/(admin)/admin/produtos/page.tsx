@@ -20,7 +20,6 @@ import { z } from "zod";
 
 import type { CategoryOption } from "@/components/admin/category-dialog";
 import { ProductCreateButton } from "@/components/admin/product-create-button";
-import { ProductCreateGate } from "@/components/admin/product-create-gate";
 import { ProductsErrorToast } from "@/components/admin/products-error-toast";
 import { ProductsFilters } from "@/components/admin/products-filters";
 import { ProductsStatusTabs } from "@/components/admin/products-status-tabs";
@@ -298,13 +297,6 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
           />
         </>
       )}
-
-      {/* Captura ?novo=1 e ?editar=<id>, monta o ProductDialog único.
-          Categorias vêm do SSR (já fetchamos acima) pra modal abrir
-          instantâneo — sem round-trip de loadProductFormOptions. */}
-      <Suspense fallback={null}>
-        <ProductCreateGate initialCategories={filterCategories} />
-      </Suspense>
     </div>
   );
 }

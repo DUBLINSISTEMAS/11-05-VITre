@@ -172,7 +172,7 @@ function EmptyCatalog({
           vitrine da {storeName}.
         </p>
         <Button asChild className="mt-6 gap-2">
-          <Link href="/admin/produtos?novo=1" scroll={false}>
+          <Link href="/admin/produtos/novo" prefetch>
             <Plus className="size-4" />
             Cadastrar primeiro produto
           </Link>

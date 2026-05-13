@@ -1,0 +1,74 @@
+"use client";
+
+/**
+ * Wrapper client da página /admin/produtos/novo.
+ *
+ * Migra o fluxo de criação do antigo modal pra página dedicada. Page-mode
+ * ganha:
+ *  - prefetch automático via <Link> (botão "+ Novo produto" baixa o JS
+ *    antes do click — abertura percebida instantânea)
+ *  - back navigation cache do Next 15 (router.back() volta pra lista sem
+ *    re-render server)
+ *  - URL `/admin/produtos/novo` compartilhável
+ *
+ * Navegação pós-save:
+ *  - "Salvar" → router.push("/admin/produtos") (volta pra lista)
+ *  - "Salvar e adicionar outro" → bump `resetKey` (remonta ProductForm
+ *    vazio sem navegação)
+ */
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+
+import { createProductFromValues } from "@/actions/product/create-from-values";
+import type { CategoryOption } from "@/components/admin/category-dialog";
+import { ProductForm } from "@/components/admin/product-form";
+
+interface NewProductFormProps {
+  categories: CategoryOption[];
+}
+
+export function NewProductForm({ categories }: NewProductFormProps) {
+  const router = useRouter();
+  const [resetKey, setResetKey] = useState(0);
+
+  return (
+    <ProductForm
+      key={resetKey}
+      isDraft
+      categories={categories}
+      onCreateProduct={createProductFromValues}
+      onAfterSave={(opts) => {
+        if (opts.continueCreating) {
+          // Remonta o form vazio — mesma página, sem round-trip de
+          // navegação. router.refresh() invalida o cache do RSC pra
+          // próxima volta à lista trazer o produto recém-criado.
+          setResetKey((k) => k + 1);
+          router.refresh();
+          return;
+        }
+        router.push("/admin/produtos");
+        router.refresh();
+      }}
+      initialData={{
+        // productId efêmero — qualquer string serve, ProductForm não
+        // chama uploadProductImage até persistir o produto (mode="staged").
+        productId: "new",
+        name: "",
+        description: "",
+        basePriceInCents: 0,
+        promoPriceInCents: null,
+        categoryId: null,
+        trackStock: false,
+        stockQuantity: null,
+        isActive: true,
+        isFeatured: false,
+        composition: null,
+        modeling: null,
+        lining: null,
+        washing: null,
+        variants: [],
+        images: [],
+      }}
+    />
+  );
+}

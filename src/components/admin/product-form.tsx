@@ -34,7 +34,6 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 
 import {
   CategoryDialog,
@@ -80,16 +79,13 @@ interface ProductFormProps {
    */
   isDraft: boolean;
   /**
-   * Callback chamado após save bem-sucedido. Quando fornecido, o form NÃO
-   * navega via router — o pai decide (Onda 5: ProductDialog usa pra fechar
-   * modal ou trocar pro próximo draft).
-   * - `nextProductId` vem preenchido quando o usuário clicou "Salvar e
-   *   adicionar outro" — pai deve trocar o productId do form pra esse.
-   * - Quando ausente, foi save comum.
-   * Sem callback fornecido, mantém comportamento legado (router.refresh /
-   * router.replace pra /editar).
+   * Callback chamado após save bem-sucedido. O pai decide pra onde ir.
+   * - `continueCreating` true → usuário clicou "Salvar e adicionar outro".
+   *   Pai deve remontar o form vazio (ex: bump key).
+   * - Sem flag → save comum. Pai navega ou refresh conforme contexto
+   *   (página /novo → push pra lista; página /[id] → refresh).
    */
-  onAfterSave?: (opts: { nextProductId?: string; continueCreating?: boolean }) => void;
+  onAfterSave?: (opts: { continueCreating?: boolean }) => void;
   /**
    * Cria produto sob demanda no fluxo de novo produto. A função recebe valores
    * válidos do form e deve persistir produto + variantes em uma única ação.
@@ -97,11 +93,6 @@ interface ProductFormProps {
   onCreateProduct?: (
     values: ProductFormValues,
   ) => Promise<{ ok: true; productId: string } | { ok: false; error: string; fieldErrors?: Record<string, string> }>;
-  /**
-   * Indica que o form vive dentro de um Dialog. Ajusta sticky save mobile
-   * pra ficar no fim do conteúdo do dialog em vez de fixed na viewport.
-   */
-  inDialog?: boolean;
 }
 
 /**
@@ -125,7 +116,6 @@ export function ProductForm({
   isDraft,
   onAfterSave,
   onCreateProduct,
-  inDialog = false,
 }: ProductFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -592,26 +582,15 @@ export function ProductForm({
       </div>
 
       {/*
-        Save mobile sticky — único bloco. Em criação (isDraft), empilha
-        "Salvar e adicionar outro" acima do "Salvar" pra fluxo Shopify
-        sem duplicar botão na página (auditoria K3 2026-05-12).
-        - dentro de Dialog: sticky relativo ao container
-        - fora de Dialog: fixed na viewport acima do bottom nav
+        Save mobile sticky — fixed na viewport, acima do admin bottom nav.
+        Em criação (isDraft), empilha "Salvar e adicionar outro" acima do
+        "Salvar" pra fluxo Shopify sem duplicar botão (auditoria K3).
       */}
       <div
-        className={cn(
-          "surface-elevated z-50 flex flex-col gap-2 px-4 py-3 lg:hidden",
-          inDialog
-            ? "sticky bottom-0 -mx-4 mt-4 sm:-mx-5"
-            : "fixed inset-x-0",
-        )}
-        style={
-          inDialog
-            ? undefined
-            : {
-                bottom: "calc(env(safe-area-inset-bottom) + 3.5rem + 0.25rem)",
-              }
-        }
+        className="surface-elevated fixed inset-x-0 z-50 flex flex-col gap-2 px-4 py-3 lg:hidden"
+        style={{
+          bottom: "calc(env(safe-area-inset-bottom) + 3.5rem + 0.25rem)",
+        }}
       >
         {isDraft ? (
           <Button
