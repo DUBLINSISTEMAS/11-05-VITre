@@ -11,6 +11,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   unique,
@@ -281,3 +282,57 @@ export const bannerRelations = relations(bannerTable, ({ one }) => ({
 
 export type Banner = typeof bannerTable.$inferSelect;
 export type NewBanner = typeof bannerTable.$inferInsert;
+
+// =====================================================================
+// ProductRelated
+// Curadoria manual de "Você pode gostar também" — Onda 4 (2026-05-13).
+// Quando vazia pro produto, loader cai pro auto-pick (mesma categoria
+// → mais recentes da loja). Quando preenchida, manual ganha 100%.
+//
+// PK composta (productId, relatedProductId) garante par único.
+// storeId redundante mas necessário pra RLS via withTenant.
+// =====================================================================
+export const productRelatedTable = pgTable(
+  "product_related",
+  {
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => storeTable.id, { onDelete: "cascade" }),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => productTable.id, { onDelete: "cascade" }),
+    relatedProductId: uuid("related_product_id")
+      .notNull()
+      .references(() => productTable.id, { onDelete: "cascade" }),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.productId, t.relatedProductId] }),
+    storeIdx: index("product_related_store_idx").on(t.storeId),
+    productIdx: index("product_related_product_idx").on(t.productId, t.position),
+  }),
+);
+
+export const productRelatedRelations = relations(
+  productRelatedTable,
+  ({ one }) => ({
+    store: one(storeTable, {
+      fields: [productRelatedTable.storeId],
+      references: [storeTable.id],
+    }),
+    product: one(productTable, {
+      fields: [productRelatedTable.productId],
+      references: [productTable.id],
+      relationName: "product_related_owner",
+    }),
+    related: one(productTable, {
+      fields: [productRelatedTable.relatedProductId],
+      references: [productTable.id],
+      relationName: "product_related_target",
+    }),
+  }),
+);
+
+export type ProductRelated = typeof productRelatedTable.$inferSelect;
+export type NewProductRelated = typeof productRelatedTable.$inferInsert;

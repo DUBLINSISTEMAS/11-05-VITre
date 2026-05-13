@@ -10,11 +10,11 @@
  * Cache: invalidado via tag `store-${slug}` em qualquer mutação do
  * catálogo (consistência com demais loaders).
  */
-import { and, desc, eq, ne, notInArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, notInArray, sql } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 import { cache } from "react";
 
-import { productTable } from "@/db/schema";
+import { productRelatedTable, productTable } from "@/db/schema";
 import {
   attachPrimaryImage,
   type ProductCardData,
@@ -37,7 +37,45 @@ async function loadRelatedFromDb(
   return withTenant(storeId, null, async (tx) => {
     let related: (typeof productTable.$inferSelect)[] = [];
 
-    // 1. Mesma categoria, ordem aleatória.
+    // 1. CURADORIA MANUAL — lojista escolheu N produtos relacionados
+    //    no admin. Tem prioridade total: se há manual, NÃO complementa
+    //    com auto-pick (lojista quer controle). Ordem = `position`.
+    const manualRows = await tx
+      .select({
+        id: productRelatedTable.relatedProductId,
+        position: productRelatedTable.position,
+      })
+      .from(productRelatedTable)
+      .where(
+        and(
+          eq(productRelatedTable.storeId, storeId),
+          eq(productRelatedTable.productId, excludeProductId),
+        ),
+      )
+      .orderBy(asc(productRelatedTable.position))
+      .limit(limit);
+
+    if (manualRows.length > 0) {
+      const manualIds = manualRows.map((r) => r.id);
+      const manualProducts = await tx
+        .select()
+        .from(productTable)
+        .where(
+          and(
+            eq(productTable.storeId, storeId),
+            eq(productTable.isActive, true),
+            inArray(productTable.id, manualIds),
+          ),
+        );
+      // Mantém ordem do manualIds (banco não garante ordem por inArray).
+      const byId = new Map(manualProducts.map((p) => [p.id, p]));
+      related = manualIds
+        .map((id) => byId.get(id))
+        .filter((p): p is typeof productTable.$inferSelect => Boolean(p));
+      return attachPrimaryImage(tx, storeId, related);
+    }
+
+    // 2. AUTO — mesma categoria, ordem aleatória.
     if (categoryId) {
       related = await tx
         .select()
@@ -54,7 +92,7 @@ async function loadRelatedFromDb(
         .limit(limit);
     }
 
-    // 2. Fallback: mais recentes da loja, excluindo já trazidos.
+    // 3. FALLBACK — mais recentes da loja, excluindo já trazidos.
     if (related.length < limit) {
       const alreadyIds = [excludeProductId, ...related.map((p) => p.id)];
       const fillCount = limit - related.length;

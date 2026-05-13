@@ -1,13 +1,18 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, ne } from "drizzle-orm";
 import { HomeIcon, PackageIcon } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { ProductActionsMenu } from "@/components/admin/product-actions-menu";
 import { ProductPublishToggle } from "@/components/admin/product-publish-toggle";
+import {
+  RelatedProductsCard,
+  type RelatedPickerItem,
+} from "@/components/admin/related-products-card";
 import { AdminPageHeader } from "@/components/admin/shell/page-header";
 import {
   categoryTable,
   productImageTable,
+  productRelatedTable,
   productTable,
   productVariantTable,
 } from "@/db/schema";
@@ -71,12 +76,75 @@ export default async function EditProdutoPage({ params }: EditProdutoPageProps) 
       .where(eq(categoryTable.storeId, store.id))
       .orderBy(asc(categoryTable.position), asc(categoryTable.name));
 
-    return { product, images, variants, categories };
+    // Curadoria manual atual de "Você pode gostar também".
+    const relatedRows = await tx
+      .select({ id: productRelatedTable.relatedProductId })
+      .from(productRelatedTable)
+      .where(
+        and(
+          eq(productRelatedTable.storeId, store.id),
+          eq(productRelatedTable.productId, id),
+        ),
+      )
+      .orderBy(asc(productRelatedTable.position));
+
+    // Catálogo de candidatos (ativos da loja, exceto o atual). Inclui
+    // capa pra preview no picker. ≤ catálogo típico é pequeno
+    // (≤200 produtos), passar tudo no SSR + filtragem client é OK.
+    const candidates = await tx
+      .select({
+        id: productTable.id,
+        name: productTable.name,
+      })
+      .from(productTable)
+      .where(
+        and(
+          eq(productTable.storeId, store.id),
+          eq(productTable.isActive, true),
+          ne(productTable.id, id),
+        ),
+      )
+      .orderBy(asc(productTable.name));
+
+    // Capas das candidatas (posicao 0). Map separado pra evitar JOIN.
+    const candidateIds = candidates.map((c) => c.id);
+    const covers: Array<{ productId: string; url: string }> =
+      candidateIds.length > 0
+        ? await tx
+            .select({
+              productId: productImageTable.productId,
+              url: productImageTable.url,
+            })
+            .from(productImageTable)
+            .where(
+              and(
+                eq(productImageTable.storeId, store.id),
+                eq(productImageTable.position, 0),
+              ),
+            )
+        : [];
+    const coverByProduct = new Map(covers.map((c) => [c.productId, c.url]));
+
+    const candidatesWithCover: RelatedPickerItem[] = candidates.map((c) => ({
+      id: c.id,
+      name: c.name,
+      cover: coverByProduct.get(c.id) ?? null,
+    }));
+
+    return {
+      product,
+      images,
+      variants,
+      categories,
+      relatedIds: relatedRows.map((r) => r.id),
+      candidatesWithCover,
+    };
   });
 
   if (!result) notFound();
 
-  const { product, images, variants, categories } = result;
+  const { product, images, variants, categories, relatedIds, candidatesWithCover } =
+    result;
   const isDraft =
     !product.name.trim() || product.slug.startsWith("draft-");
   const headerTitle = isDraft ? "Rascunho sem nome" : product.name;
@@ -108,6 +176,12 @@ export default async function EditProdutoPage({ params }: EditProdutoPageProps) 
             />
           </>
         }
+      />
+
+      <RelatedProductsCard
+        productId={product.id}
+        initialRelatedIds={relatedIds}
+        candidates={candidatesWithCover}
       />
 
       <EditProductForm
