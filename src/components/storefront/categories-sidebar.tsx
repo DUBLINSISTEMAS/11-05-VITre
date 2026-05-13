@@ -166,8 +166,8 @@ export function CategoriesSidebar({
           {!drilledRoot && (
             <div className="px-4 py-3 border-b border-gray-100/80 bg-gray-50/50">
               <Link
-                href={baseHref}
-                prefetch
+                href={`${baseHref}/buscar`}
+                prefetch={false}
                 onClick={() => handleOpenChange(false)}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-muted hover:bg-gray-200/80 transition-colors group"
               >
@@ -179,7 +179,7 @@ export function CategoriesSidebar({
                     Todos os produtos
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    Veja tudo da vitrine
+                    Explorar a vitrine completa
                   </span>
                 </div>
                 <ChevronRight className="size-4 text-muted-foreground group-hover:text-foreground transition-colors" />

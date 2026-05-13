@@ -250,6 +250,23 @@
   * {
     border-color: var(--color-border);
   }
+  /*
+   * Mobile scroll hardening — corrige "tela joga pra cima" / artefatos
+   * de overscroll no iOS/Android (banda branca no topo durante o bounce,
+   * pull-to-refresh acidental, scroll chaining quando drawer/modal aberto).
+   *
+   * - background-color no html: elimina o flash branco no bounce iOS
+   *   (Safari mostra a cor do <html>, não do <body>, no overscroll).
+   * - overscroll-behavior-y: none impede pull-to-refresh + scroll
+   *   chaining; combina com o lock interno de Sheet/Dialog Radix.
+   * - text-size-adjust: 100% evita o iOS auto-bump de fontes em landscape.
+   */
+  html {
+    background-color: var(--color-background);
+    overscroll-behavior-y: none;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
