@@ -142,7 +142,7 @@ export function ProductDialog({ state, onClose }: ProductDialogProps) {
         if (!open) onClose();
       }}
     >
-      <DialogContent className="!fixed !inset-0 !top-0 !left-0 !translate-x-0 !translate-y-0 flex h-[100dvh] w-full max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 bg-background p-0 shadow-2xl sm:!inset-auto sm:!top-[50%] sm:!left-[50%] sm:!-translate-x-1/2 sm:!-translate-y-1/2 sm:h-[90dvh] sm:max-h-[900px] sm:w-[calc(100vw-2rem)] sm:max-w-4xl sm:rounded-2xl sm:border md:max-w-5xl lg:h-[92dvh] lg:max-h-[1000px] lg:max-w-6xl xl:max-w-7xl">
+      <DialogContent className="flex h-[100dvh] w-full max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 bg-background p-0 shadow-2xl data-[state=open]:slide-in-from-bottom-4 sm:h-auto sm:max-h-[90dvh] sm:w-[calc(100vw-2rem)] sm:max-w-2xl sm:rounded-2xl sm:border md:max-w-3xl">
         {loading || (state.mode === "edit" && !data && !error) ? (
           <DialogLoading />
         ) : error ? (
@@ -244,18 +244,18 @@ function DialogReady({
 
   return (
     <>
-      <DialogHeader className="sticky top-0 z-10 flex shrink-0 flex-row items-center gap-2 border-b bg-card/95 px-4 py-3 backdrop-blur sm:gap-3 sm:px-6 lg:px-8 lg:py-4">
+      <DialogHeader className="sticky top-0 z-10 flex shrink-0 flex-row items-center gap-3 border-b bg-background px-4 py-3 sm:px-6">
         <div className="min-w-0 flex-1">
-          <DialogTitle className="truncate text-sm font-semibold sm:text-base lg:text-lg">
+          <DialogTitle className="text-base font-semibold sm:text-lg">
             {headerTitle}
           </DialogTitle>
-          <DialogDescription className="hidden text-xs sm:block">
+          <DialogDescription className="text-xs text-muted-foreground">
             {isDraft
               ? "Preencha nome e preço. O produto só vira rascunho ao salvar."
               : "Edite os dados e clique em Salvar."}
           </DialogDescription>
         </div>
-        <div className="flex shrink-0 items-center gap-1 pr-8 sm:pr-6">
+        <div className="flex shrink-0 items-center gap-1">
           {persisted ? (
             <>
               <ProductPublishToggle
@@ -272,7 +272,7 @@ function DialogReady({
         </div>
       </DialogHeader>
 
-      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-muted/20 px-3 py-4 sm:px-5 lg:px-8 lg:py-6">
+      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5">
         <ProductForm
           key={product.id}
           isDraft={isDraft}

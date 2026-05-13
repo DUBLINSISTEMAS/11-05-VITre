@@ -225,30 +225,21 @@ export function ProductForm({
       // Padding-bottom em mobile pra conteúdo não ficar atrás do sticky
       // save (1 botão ~3.5rem + py-3 + bottom nav 3.5rem + safe-area
       // ~1.25rem ≈ 9rem). No dialog, o sticky bottom já cuida disso.
-      className="mx-auto max-w-[1360px] pb-20 lg:pb-4"
+      className={cn(
+        "mx-auto pb-20 lg:pb-4",
+        inDialog ? "max-w-2xl" : "max-w-[1360px]"
+      )}
     >
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start xl:grid-cols-[minmax(0,1fr)_400px]">
-        {/* === Coluna esquerda (lg col-span-2) === */}
+      <div className={cn(
+        "grid gap-4",
+        !inDialog && "lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start xl:grid-cols-[minmax(0,1fr)_400px]"
+      )}>
+        {/* === Coluna esquerda (ou única quando inDialog) === */}
         <div className="min-w-0 space-y-4">
-          <FormCard
-            title="Mídia"
-            description={
-              onCreateProduct
-                ? "Salve o produto primeiro para liberar o envio de fotos."
-                : "A primeira foto vira a capa. Tire pelo celular ou escolha da galeria."
-            }
-          >
-            <ImageUploader
-              productId={initialData.productId}
-              images={images}
-              onChange={handleImagesChange}
-              disabled={isPending || !!onCreateProduct}
-            />
-          </FormCard>
-
-          <FormCard title="Identidade">
+          {/* Nome e Descrição - sempre primeiro */}
+          <FormCard title="Informações básicas">
             <div className="space-y-1.5">
-              <Label htmlFor="product-name">Nome</Label>
+              <Label htmlFor="product-name">Nome do produto</Label>
               <Input
                 id="product-name"
                 placeholder="Ex: Vestido midi preto"
@@ -266,7 +257,7 @@ export function ProductForm({
               <Textarea
                 id="product-description"
                 placeholder="Detalhes, medidas, material…"
-                rows={4}
+                rows={inDialog ? 3 : 4}
                 disabled={isPending}
                 aria-invalid={!!errors.description}
                 {...register("description")}
@@ -279,46 +270,7 @@ export function ProductForm({
             </div>
           </FormCard>
 
-          <FormCard
-            title="Detalhes"
-            description="Aparecem na ficha do produto. Tudo opcional."
-          >
-            <div className="grid gap-3 sm:grid-cols-2">
-              <MetaField
-                id="product-composition"
-                label="Composição"
-                placeholder="Ex: 100% linho"
-                error={errors.composition?.message}
-                disabled={isPending}
-                {...register("composition")}
-              />
-              <MetaField
-                id="product-modeling"
-                label="Modelagem"
-                placeholder="Ex: Evasê midi"
-                error={errors.modeling?.message}
-                disabled={isPending}
-                {...register("modeling")}
-              />
-              <MetaField
-                id="product-lining"
-                label="Forro"
-                placeholder="Ex: Não possui"
-                error={errors.lining?.message}
-                disabled={isPending}
-                {...register("lining")}
-              />
-              <MetaField
-                id="product-washing"
-                label="Lavagem"
-                placeholder="Ex: À mão"
-                error={errors.washing?.message}
-                disabled={isPending}
-                {...register("washing")}
-              />
-            </div>
-          </FormCard>
-
+          {/* Preço - segundo campo essencial */}
           <FormCard title="Preço">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -353,7 +305,7 @@ export function ProductForm({
                       id="product-promo-price"
                       value={field.value}
                       onChange={field.onChange}
-                      placeholder="Sem promoção"
+                      placeholder="Opcional"
                       disabled={isPending}
                       aria-invalid={!!errors.promoPriceInCents}
                     />
@@ -366,152 +318,242 @@ export function ProductForm({
                 ) : null}
               </div>
             </div>
-            <p className="text-muted-foreground text-xs">
-              A promoção fica ativa enquanto preenchida. Para parar, limpe o campo.
-            </p>
           </FormCard>
 
+          {/* Imagens - após nome e preço */}
           <FormCard
-            title="Variantes"
-            description="Use quando o mesmo produto tem opções (P/M/G, cores)."
+            title="Imagens"
+            description={
+              onCreateProduct
+                ? "Salve o produto primeiro para adicionar fotos."
+                : undefined
+            }
           >
-            <Controller
-              name="variants"
-              control={control}
-              render={({ field }) => (
-                <VariantEditor
-                  value={field.value as VariantData[]}
-                  onChange={(next: VariantInput[]) => field.onChange(next)}
-                  disabled={isPending}
-                  productImages={images.map((img) => ({
-                    id: img.id,
-                    url: img.url,
-                  }))}
-                />
-              )}
+            <ImageUploader
+              productId={initialData.productId}
+              images={images}
+              onChange={handleImagesChange}
+              disabled={isPending || !!onCreateProduct}
+              maxImages={inDialog ? 3 : 5}
             />
           </FormCard>
+
+          {/* Categoria - simplificado quando no dialog */}
+          {inDialog ? (
+            <FormCard title="Categoria">
+              <Controller
+                name="categoryId"
+                control={control}
+                render={({ field }) => (
+                  <CategoryField
+                    value={field.value}
+                    onChange={field.onChange}
+                    categories={localCategories}
+                    disabled={isPending}
+                    onCategoryCreated={(c) => {
+                      const next: CategoryOption = {
+                        id: c.id,
+                        name: c.name,
+                        parentId: c.parentId,
+                      };
+                      setLocalCategories((prev) => [...prev, next]);
+                      field.onChange(c.id);
+                    }}
+                  />
+                )}
+              />
+            </FormCard>
+          ) : null}
+
+          {/* Detalhes - oculto no dialog para simplificar */}
+          {!inDialog ? (
+            <FormCard
+              title="Detalhes"
+              description="Aparecem na ficha do produto. Tudo opcional."
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                <MetaField
+                  id="product-composition"
+                  label="Composição"
+                  placeholder="Ex: 100% linho"
+                  error={errors.composition?.message}
+                  disabled={isPending}
+                  {...register("composition")}
+                />
+                <MetaField
+                  id="product-modeling"
+                  label="Modelagem"
+                  placeholder="Ex: Evasê midi"
+                  error={errors.modeling?.message}
+                  disabled={isPending}
+                  {...register("modeling")}
+                />
+                <MetaField
+                  id="product-lining"
+                  label="Forro"
+                  placeholder="Ex: Não possui"
+                  error={errors.lining?.message}
+                  disabled={isPending}
+                  {...register("lining")}
+                />
+                <MetaField
+                  id="product-washing"
+                  label="Lavagem"
+                  placeholder="Ex: À mão"
+                  error={errors.washing?.message}
+                  disabled={isPending}
+                  {...register("washing")}
+                />
+              </div>
+            </FormCard>
+          ) : null}
+
+          {/* Variantes - oculto no dialog para simplificar */}
+          {!inDialog ? (
+            <FormCard
+              title="Variantes"
+              description="Use quando o mesmo produto tem opções (P/M/G, cores)."
+            >
+              <Controller
+                name="variants"
+                control={control}
+                render={({ field }) => (
+                  <VariantEditor
+                    value={field.value as VariantData[]}
+                    onChange={(next: VariantInput[]) => field.onChange(next)}
+                    disabled={isPending}
+                    productImages={images.map((img) => ({
+                      id: img.id,
+                      url: img.url,
+                    }))}
+                  />
+                )}
+              />
+            </FormCard>
+          ) : null}
         </div>
 
-        {/* === Coluna direita (lg col-span-1, sticky) === */}
-        <div className="min-w-0 space-y-4 lg:sticky lg:top-5">
-          <FormCard title="Status">
-            <Controller
-              name="isFeatured"
-              control={control}
-              render={({ field }) => (
-                <ToggleRow
-                  id="product-featured"
-                  label="Em destaque"
-                  description="Aparece em primeiro na vitrine."
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                  disabled={isPending}
-                />
-              )}
-            />
-            <Controller
-              name="trackStock"
-              control={control}
-              render={({ field: trackField }) => (
-                <Controller
-                  name="stockQuantity"
-                  control={control}
-                  render={({ field: qtyField }) => (
-                    <StockInput
-                      value={{
-                        trackStock: trackField.value,
-                        stockQuantity: qtyField.value,
-                      }}
-                      onChange={(next) => {
-                        trackField.onChange(next.trackStock);
-                        qtyField.onChange(next.stockQuantity);
-                      }}
-                      disabled={isPending}
-                    />
-                  )}
-                />
-              )}
-            />
-            {errors.stockQuantity?.message ? (
-              <p className="text-destructive text-xs">
-                {errors.stockQuantity.message}
-              </p>
-            ) : null}
-          </FormCard>
+        {/* === Coluna direita (lg col-span-1, sticky) - oculta no dialog === */}
+        {!inDialog ? (
+          <div className="min-w-0 space-y-4 lg:sticky lg:top-5">
+            <FormCard title="Status">
+              <Controller
+                name="isFeatured"
+                control={control}
+                render={({ field }) => (
+                  <ToggleRow
+                    id="product-featured"
+                    label="Em destaque"
+                    description="Aparece em primeiro na vitrine."
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    disabled={isPending}
+                  />
+                )}
+              />
+              <Controller
+                name="trackStock"
+                control={control}
+                render={({ field: trackField }) => (
+                  <Controller
+                    name="stockQuantity"
+                    control={control}
+                    render={({ field: qtyField }) => (
+                      <StockInput
+                        value={{
+                          trackStock: trackField.value,
+                          stockQuantity: qtyField.value,
+                        }}
+                        onChange={(next) => {
+                          trackField.onChange(next.trackStock);
+                          qtyField.onChange(next.stockQuantity);
+                        }}
+                        disabled={isPending}
+                      />
+                    )}
+                  />
+                )}
+              />
+              {errors.stockQuantity?.message ? (
+                <p className="text-destructive text-xs">
+                  {errors.stockQuantity.message}
+                </p>
+              ) : null}
+            </FormCard>
 
-          <FormCard
-            title="Organização"
-            description="Categoria que agrupa esse produto na vitrine."
-          >
-            <Controller
-              name="categoryId"
-              control={control}
-              render={({ field }) => (
-                <CategoryField
-                  value={field.value}
-                  onChange={field.onChange}
-                  categories={localCategories}
-                  disabled={isPending}
-                  onCategoryCreated={(c) => {
-                    const next: CategoryOption = {
-                      id: c.id,
-                      name: c.name,
-                      parentId: c.parentId,
-                    };
-                    setLocalCategories((prev) => [...prev, next]);
-                    field.onChange(c.id);
-                  }}
-                />
-              )}
-            />
-          </FormCard>
-
-          {/* Save desktop: dentro da coluna direita pra ficar sticky junto. */}
-          <div className="hidden flex-col gap-2 lg:flex">
-            <Button
-              type="submit"
-              disabled={isPending || !isDirty}
-              onClick={() => setSubmitMode("save")}
-              className="w-full"
-              size="lg"
+            <FormCard
+              title="Organização"
+              description="Categoria que agrupa esse produto na vitrine."
             >
-              {isPending && submitMode === "save" ? (
-                <>
-                  <Loader2Icon className="animate-spin" /> Salvando…
-                </>
-              ) : (
-                <>
-                  <SaveIcon /> Salvar
-                </>
-              )}
-            </Button>
-            {isDraft ? (
+              <Controller
+                name="categoryId"
+                control={control}
+                render={({ field }) => (
+                  <CategoryField
+                    value={field.value}
+                    onChange={field.onChange}
+                    categories={localCategories}
+                    disabled={isPending}
+                    onCategoryCreated={(c) => {
+                      const next: CategoryOption = {
+                        id: c.id,
+                        name: c.name,
+                        parentId: c.parentId,
+                      };
+                      setLocalCategories((prev) => [...prev, next]);
+                      field.onChange(c.id);
+                    }}
+                  />
+                )}
+              />
+            </FormCard>
+
+            {/* Save desktop: dentro da coluna direita pra ficar sticky junto. */}
+            <div className="hidden flex-col gap-2 lg:flex">
               <Button
                 type="submit"
-                variant="outline"
                 disabled={isPending || !isDirty}
-                onClick={() => setSubmitMode("saveAndContinue")}
+                onClick={() => setSubmitMode("save")}
                 className="w-full"
+                size="lg"
               >
-                {isPending && submitMode === "saveAndContinue" ? (
+                {isPending && submitMode === "save" ? (
                   <>
                     <Loader2Icon className="animate-spin" /> Salvando…
                   </>
                 ) : (
                   <>
-                    <PlusCircleIcon /> Salvar e adicionar outro
+                    <SaveIcon /> Salvar
                   </>
                 )}
               </Button>
-            ) : null}
+              {isDraft ? (
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={isPending || !isDirty}
+                  onClick={() => setSubmitMode("saveAndContinue")}
+                  className="w-full"
+                >
+                  {isPending && submitMode === "saveAndContinue" ? (
+                    <>
+                      <Loader2Icon className="animate-spin" /> Salvando…
+                    </>
+                  ) : (
+                    <>
+                      <PlusCircleIcon /> Salvar e adicionar outro
+                    </>
+                  )}
+                </Button>
+              ) : null}
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
 
       {/* Save mobile: sticky bottom acima do bottom nav. "+ adicionar outro"
-          inline acima quando draft. */}
-      {isDraft ? (
+          inline acima quando draft. Apenas fora do dialog. */}
+      {isDraft && !inDialog ? (
         <div className="flex justify-center pt-4 lg:hidden">
           <Button
             type="submit"
@@ -533,41 +575,77 @@ export function ProductForm({
         </div>
       ) : null}
 
-      {/* Save mobile — dentro de Dialog vira sticky relativo ao container;
-          fora, fixed na viewport acima do bottom nav. */}
-      <div
-        className={cn(
-          "surface-elevated z-50 px-3 py-3 lg:hidden sm:px-4",
-          inDialog
-            ? "sticky bottom-0 -mx-3 mt-4 border-t bg-card/95 backdrop-blur sm:-mx-5"
-            : "fixed inset-x-0",
-        )}
-        style={
-          inDialog
-            ? undefined
-            : {
-                bottom: "calc(env(safe-area-inset-bottom) + 3.5rem + 0.25rem)",
-              }
-        }
-      >
-        <Button
-          type="submit"
-          disabled={isPending || !isDirty}
-          onClick={() => setSubmitMode("save")}
-          className="w-full"
-          size="lg"
-        >
-          {isPending && submitMode === "save" ? (
-            <>
-              <Loader2Icon className="animate-spin" /> Salvando…
-            </>
-          ) : (
-            <>
-              <SaveIcon /> Salvar
-            </>
+      {/* Save button - posicionamento diferente dependendo do contexto */}
+      {inDialog ? (
+        // No dialog: botões no final do formulário, sempre visíveis
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <Button
+            type="submit"
+            disabled={isPending || !isDirty}
+            onClick={() => setSubmitMode("save")}
+            className="w-full sm:w-auto"
+            size="lg"
+          >
+            {isPending && submitMode === "save" ? (
+              <>
+                <Loader2Icon className="animate-spin" /> Salvando…
+              </>
+            ) : (
+              <>
+                <SaveIcon /> Salvar produto
+              </>
+            )}
+          </Button>
+          {isDraft ? (
+            <Button
+              type="submit"
+              variant="outline"
+              disabled={isPending || !isDirty}
+              onClick={() => setSubmitMode("saveAndContinue")}
+              className="w-full sm:w-auto"
+            >
+              {isPending && submitMode === "saveAndContinue" ? (
+                <>
+                  <Loader2Icon className="animate-spin" /> Salvando…
+                </>
+              ) : (
+                <>
+                  <PlusCircleIcon /> Salvar e adicionar outro
+                </>
+              )}
+            </Button>
+          ) : null}
+        </div>
+      ) : (
+        // Fora do dialog: sticky/fixed no mobile, hidden no desktop (usa coluna direita)
+        <div
+          className={cn(
+            "surface-elevated z-50 px-3 py-3 lg:hidden sm:px-4",
+            "fixed inset-x-0",
           )}
-        </Button>
-      </div>
+          style={{
+            bottom: "calc(env(safe-area-inset-bottom) + 3.5rem + 0.25rem)",
+          }}
+        >
+          <Button
+            type="submit"
+            disabled={isPending || !isDirty}
+            onClick={() => setSubmitMode("save")}
+            className="w-full"
+            size="lg"
+          >
+            {isPending && submitMode === "save" ? (
+              <>
+                <Loader2Icon className="animate-spin" /> Salvando…
+              </>
+            ) : (
+              <>
+                <SaveIcon /> Salvar
+              </>
+            )}
+          </Button>
+        </div>
+      )}
     </form>
   );
 }
