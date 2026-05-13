@@ -86,7 +86,6 @@ function CarouselInner({
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const total = banners.length;
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartXRef = useRef<number | null>(null);
 
   const goTo = useCallback(
@@ -99,7 +98,14 @@ function CarouselInner({
   const goNext = useCallback(() => goTo(activeIndex + 1), [goTo, activeIndex]);
   const goPrev = useCallback(() => goTo(activeIndex - 1), [goTo, activeIndex]);
 
-  // Autoplay. Respeita prefers-reduced-motion.
+  // Autoplay via setInterval — simples e robusto. Cleanup roda a cada
+  // mudança de isPaused/rotationSec/total, evitando vazamento.
+  //
+  // Antes era setTimeout encadeado com `activeIndex` no dep array; o
+  // pattern funciona em teoria mas dependia de cada tick agendar o
+  // próximo. Qualquer pause-on-touch que não fechasse (ex.: touchend
+  // disparado fora do alvo no mobile) deixava o slide parado pra sempre.
+  // setInterval fire-and-forget é o padrão Embla/Swiper.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const reduce = window.matchMedia(
@@ -107,14 +113,12 @@ function CarouselInner({
     ).matches;
     if (reduce || isPaused) return;
 
-    timerRef.current = setTimeout(() => {
+    const id = window.setInterval(() => {
       setActiveIndex((i) => (i + 1) % total);
     }, rotationSec * 1000);
 
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [activeIndex, isPaused, rotationSec, total]);
+    return () => window.clearInterval(id);
+  }, [isPaused, rotationSec, total]);
 
   // Pause quando aba fica inativa (mais respeitoso com bateria/CPU).
   useEffect(() => {
@@ -126,18 +130,21 @@ function CarouselInner({
 
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartXRef.current = e.touches[0]?.clientX ?? null;
-    setIsPaused(true);
   };
   const onTouchEnd = (e: React.TouchEvent) => {
     const start = touchStartXRef.current;
     touchStartXRef.current = null;
-    setIsPaused(false);
     if (start === null) return;
     const end = e.changedTouches[0]?.clientX ?? start;
     const delta = end - start;
     if (Math.abs(delta) < SWIPE_THRESHOLD_PX) return;
     if (delta < 0) goNext();
     else goPrev();
+  };
+  // touchcancel pode disparar quando o sistema interrompe o gesto
+  // (ex.: notificação cobrindo a tela). Garante reset do ref.
+  const onTouchCancel = () => {
+    touchStartXRef.current = null;
   };
 
   return (
@@ -149,6 +156,7 @@ function CarouselInner({
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchCancel}
     >
       {/* Live region anuncia mudança pra screen reader. */}
       <p className="sr-only" aria-live="polite" aria-atomic="true">

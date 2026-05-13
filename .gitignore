@@ -64,3 +64,4 @@ next-env.d.ts
 
 # referencias visuais (screenshots locais do founder pra refator de UI)
 /referencia de painel admin/
+.claude/

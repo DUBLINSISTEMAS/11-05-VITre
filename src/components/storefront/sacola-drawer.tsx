@@ -96,7 +96,6 @@ export function SacolaDrawer({
 
   const checkoutHref = `/${storeSlug}/sacola`;
   const isEmpty = isHydrated && count === 0;
-  const counterLabel = count === 1 ? "1 ITEM" : `${count} ITENS`;
 
   return (
     <DrawerContext.Provider value={value}>
@@ -107,15 +106,15 @@ export function SacolaDrawer({
           className="bg-background flex w-full max-w-sm flex-col gap-0 p-0"
           style={brandStyle}
         >
-          <SheetHeader className="border-border flex-row items-baseline justify-between border-b px-5 py-4">
+          {/*
+            Header só com "Sacola". O counter "{N} ITENS" foi removido
+            em 2026-05-13: founder considerou ruidoso e redundante com
+            o total no footer e o badge no botão da sacola.
+          */}
+          <SheetHeader className="border-border border-b px-5 py-4">
             <SheetTitle className="text-[18px] font-semibold tracking-tight">
               Sacola
             </SheetTitle>
-            {isHydrated && !isEmpty ? (
-              <span className="font-mono text-[10px] uppercase tracking-[0.5px] text-muted-foreground">
-                {counterLabel}
-              </span>
-            ) : null}
           </SheetHeader>
 
           <div className="flex min-h-0 flex-1 flex-col">

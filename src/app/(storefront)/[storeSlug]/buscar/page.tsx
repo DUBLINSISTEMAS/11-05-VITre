@@ -107,12 +107,17 @@ export default async function SearchPage({
                 className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
                 aria-hidden
               />
+              {/*
+                text-base (16px) no mobile evita zoom automático do iOS
+                Safari quando o input ganha foco. md:text-sm volta pra
+                14px no desktop onde o zoom não acontece.
+              */}
               <input
                 type="search"
                 name="q"
                 defaultValue={q}
                 placeholder="Buscar produtos..."
-                className="h-12 w-full rounded-xl bg-gray-100 pl-12 pr-10 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:bg-gray-200/80 focus:ring-2 focus:ring-ring"
+                className="h-12 w-full rounded-xl bg-gray-100 pl-12 pr-10 text-base outline-none transition-colors placeholder:text-muted-foreground focus:bg-gray-200/80 focus:ring-2 focus:ring-ring md:text-sm"
                 aria-label="Buscar produtos"
                 autoComplete="off"
                 enterKeyHint="search"

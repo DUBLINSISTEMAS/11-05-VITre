@@ -83,7 +83,6 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
   useEffect(() => setStoreLoaded(true), []);
 
   const isEmpty = isHydrated && count === 0;
-  const counterLabel = count === 1 ? "1 ITEM" : `${count} ITENS`;
   const storeFirstName = store.name.split(" ")[0] ?? store.name;
 
   const onSubmit = (data: CustomerInput) => {
@@ -170,11 +169,15 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
 
   return (
     <>
+      {/*
+        Removido `counter="{N} ITENS"` em 2026-05-13 — founder
+        considerou ruidoso. O total no footer + badge no botão da sacola
+        já comunicam quantidade.
+      */}
       <StoreHeader
         variant="sticky-title"
         store={store}
         title="Sua sacola"
-        counter={counterLabel}
       />
 
       <form
