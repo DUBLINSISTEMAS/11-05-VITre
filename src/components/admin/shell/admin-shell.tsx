@@ -23,15 +23,24 @@ export interface AdminShellProps extends AdminSidebarProps {
  */
 export function AdminShell({ children, ...userProps }: AdminShellProps) {
   return (
-    <div className="relative min-h-dvh bg-[#F3F4F6]">
+    <div className="relative min-h-dvh bg-[#F3F4F6] print:bg-white">
       <div className="lg:flex">
-        <AdminSidebar {...userProps} />
+        {/*
+          data-admin-chrome: usado pelo CSS print de /admin/pedidos/[id]/imprimir
+          pra ocultar sidebar + mobile header. main fica e renderiza
+          só o pedido imprimível.
+        */}
+        <div data-admin-chrome>
+          <AdminSidebar {...userProps} />
+        </div>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <MobileHeader {...userProps} />
+          <div data-admin-chrome>
+            <MobileHeader {...userProps} />
+          </div>
 
-          <main className="flex-1 px-4 pt-4 pb-12 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 lg:pb-12">
-            <div className="mx-auto w-full max-w-7xl space-y-4 sm:space-y-5">
+          <main className="flex-1 px-4 pt-4 pb-12 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 lg:pb-12 print:px-0 print:py-0">
+            <div className="mx-auto w-full max-w-7xl space-y-4 sm:space-y-5 print:max-w-none print:space-y-0">
               {children}
             </div>
           </main>

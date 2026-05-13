@@ -1,6 +1,11 @@
 "use client";
 
-import { Loader2Icon, MessageCircleIcon, PhoneIcon } from "lucide-react";
+import {
+  Loader2Icon,
+  MessageCircleIcon,
+  PhoneIcon,
+  PrinterIcon,
+} from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 
 import {
@@ -233,6 +238,20 @@ function OrderDetailContent({ order }: { order: OrderDetail }) {
         <section className="space-y-3 rounded-xl border bg-card p-4">
           <h3 className="text-[13.5px] font-semibold tracking-tight">Ações</h3>
           <OrderStatusActions orderId={order.id} status={order.status} />
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="w-full"
+          >
+            <a
+              href={`/admin/pedidos/${order.id}/imprimir`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <PrinterIcon /> Imprimir pedido
+            </a>
+          </Button>
         </section>
       </div>
     </>
