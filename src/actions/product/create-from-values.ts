@@ -3,8 +3,9 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { headers } from "next/headers";
 
-import { productTable, productVariantTable } from "@/db/schema";
+import { productImageTable, productTable, productVariantTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { compressImage } from "@/lib/image";
 import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
@@ -13,6 +14,10 @@ import {
 } from "@/lib/rate-limit";
 import { generateUniqueProductSlug } from "@/lib/slug-uniqueness";
 import { getCurrentStore } from "@/lib/store-context";
+import {
+  generateProductImageFilename,
+  uploadToStorage,
+} from "@/lib/supabase/storage";
 import { withTenant } from "@/lib/tenant";
 
 import {
@@ -24,8 +29,13 @@ export type CreateProductFromValuesResult =
   | { ok: true; productId: string }
   | { ok: false; error: string; fieldErrors?: Record<string, string> };
 
+/**
+ * Cria um produto com todos os dados do formulário e faz upload das imagens.
+ * Recebe os arquivos de imagem via FormData ou diretamente como Files.
+ */
 export async function createProductFromValues(
   input: ProductFormValues,
+  imageFiles: File[] = [],
 ): Promise<CreateProductFromValuesResult> {
   const requestHeaders = await headers();
   const session = await auth.api.getSession({ headers: requestHeaders });
@@ -110,6 +120,46 @@ export async function createProductFromValues(
     });
 
     if (!row) return { ok: false, error: "Falha ao criar produto." };
+
+    // Upload das imagens após criar o produto
+    if (imageFiles.length > 0) {
+      const uploadPromises = imageFiles.map(async (file, index) => {
+        try {
+          const buffer = Buffer.from(await file.arrayBuffer());
+          const compressed = await compressImage(buffer);
+          
+          const filename = generateProductImageFilename();
+          const path = `${store.id}/${row.id}/${filename}`;
+          
+          const publicUrl = await uploadToStorage({
+            bucket: "productImages",
+            path,
+            buffer: compressed.buffer,
+            contentType: compressed.contentType,
+          });
+
+          // Insere no banco
+          await withTenant(store.id, userId, async (tx) => {
+            await tx.insert(productImageTable).values({
+              storeId: store.id,
+              productId: row.id,
+              url: publicUrl,
+              position: index,
+            });
+          });
+        } catch (e) {
+          logger.error("product.create.image_upload_failed", {
+            err: e,
+            storeId: store.id,
+            productId: row.id,
+            index,
+          });
+          // Não falha a criação do produto por causa de imagem
+        }
+      });
+
+      await Promise.allSettled(uploadPromises);
+    }
 
     revalidatePath("/admin/produtos");
     revalidateTag(`store-${store.slug}`);

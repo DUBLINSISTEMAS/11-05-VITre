@@ -13,9 +13,12 @@ const resend = new Resend(env.RESEND_API_KEY);
 
 const VITRE_PRIMARY = "#1E3FE6";
 
+// Fallback para desenvolvimento quando RESEND_FROM_EMAIL não está configurado
+const FROM_EMAIL = env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
+
 if (
   process.env.NODE_ENV === "production" &&
-  env.RESEND_FROM_EMAIL.endsWith("@resend.dev")
+  FROM_EMAIL.endsWith("@resend.dev")
 ) {
   logger.warn("email.using_resend_dev_in_prod", {
     note:
@@ -36,7 +39,7 @@ export async function sendVerificationEmail({
 }: SendVerificationEmailInput) {
   const firstName = name?.split(" ")[0] ?? "";
   const result = await resend.emails.send({
-    from: `Vitrê <${env.RESEND_FROM_EMAIL}>`,
+    from: `Vitrê <${FROM_EMAIL}>`,
     to,
     subject: "Confirme seu e-mail no Vitrê",
     html: buildEmailHtml({
@@ -66,7 +69,7 @@ export async function sendPasswordResetEmail({
 }: SendPasswordResetEmailInput) {
   const firstName = name?.split(" ")[0];
   const result = await resend.emails.send({
-    from: `Vitrê <${env.RESEND_FROM_EMAIL}>`,
+    from: `Vitrê <${FROM_EMAIL}>`,
     to,
     subject: "Redefinir sua senha no Vitrê",
     html: buildEmailHtml({
