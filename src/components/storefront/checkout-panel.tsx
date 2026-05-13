@@ -109,7 +109,12 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
       });
 
       if (result.ok && result.publicToken) {
-        router.push(`/${store.slug}/sucesso?token=${result.publicToken}`);
+        // `auto=1` aciona o handoff automático na /sucesso — usuário
+        // é redirecionado pro WhatsApp do lojista após 2.5s sem precisar
+        // clicar em nada. Onda 5 do pacote master 2026-05-13.
+        router.push(
+          `/${store.slug}/sucesso?token=${result.publicToken}&auto=1`,
+        );
         return;
       }
 

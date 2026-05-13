@@ -30,8 +30,9 @@ import { z } from "zod";
 
 import { SuccessClearCart } from "@/components/storefront/success-clear-cart";
 import { SuccessCtas } from "@/components/storefront/success-ctas";
+import { WhatsAppAutoHandoff } from "@/components/storefront/whatsapp-auto-handoff";
 import { env } from "@/lib/env";
-import { searchTextSchema } from "@/lib/page-search-params";
+import { boolFlagSchema, searchTextSchema } from "@/lib/page-search-params";
 import { formatBRL } from "@/lib/pricing";
 import { buildPublicOrderWhatsAppMessage } from "@/lib/public-order";
 import { getOrderByPublicToken } from "@/lib/storefront/order-loader";
@@ -49,6 +50,10 @@ interface PageParams {
 
 const sucessoSearchSchema = z.object({
   token: searchTextSchema,
+  // `auto=1` chega vindo do checkout — dispara redirect automático
+  // pro WhatsApp após 2.5s. Ausente em links compartilhados / volta
+  // pelo histórico (que só mostram a confirmação).
+  auto: boolFlagSchema,
 });
 
 // Mapeamento status → label PT-BR (canvas usa "Aguardando contato"
@@ -70,7 +75,7 @@ export default async function SuccessPage({
 }) {
   const [{ storeSlug }, sp] = await Promise.all([params, searchParams]);
 
-  const { token } = sucessoSearchSchema.parse(sp);
+  const { token, auto } = sucessoSearchSchema.parse(sp);
   if (!token) redirect(`/${storeSlug}/sacola`);
 
   const [store, order] = await Promise.all([
@@ -99,9 +104,22 @@ export default async function SuccessPage({
   const itemsLabel = `${itemCount} ${itemCount === 1 ? "item" : "itens"}`;
   const statusLabel = STATUS_LABELS[order.status] ?? order.status;
 
+  // Auto-handoff só dispara quando:
+  //  (a) Checkout passou `?auto=1` (não vindo de back/link compartilhado).
+  //  (b) Pedido ainda não foi aberto no WhatsApp — evita re-redirect se
+  //      lojista voltar à página depois.
+  const shouldAutoHandoff = auto && !order.whatsappOpenedAt;
+
   return (
     <div className="mx-auto flex min-h-[calc(100dvh-3rem)] w-full max-w-md flex-col px-6 pb-6 pt-[90px]">
       <SuccessClearCart />
+
+      {shouldAutoHandoff ? (
+        <WhatsAppAutoHandoff
+          publicToken={order.publicToken}
+          whatsappUrl={whatsappUrl}
+        />
+      ) : null}
 
       {/* Check icon — 88×88 success-soft */}
       <span
