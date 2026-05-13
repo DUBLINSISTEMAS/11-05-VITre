@@ -92,6 +92,16 @@ export function ImageUploader({
     };
   }, []);
 
+  // Auditoria I7 (2026-05-12): ref sempre apontando pra `images` mais
+  // atual permite que uploads em sequência leiam o estado fresh, sem
+  // sobrescrever delete que aconteceu durante upload. Sem isso, deletar
+  // foto B enquanto F1 sobe fazia onChange final reescrever array
+  // incluindo B (closure stale do `images` no início do handler).
+  const imagesRef = useRef(images);
+  useEffect(() => {
+    imagesRef.current = images;
+  }, [images]);
+
   const totalCount = images.length + pendingPreviews.length;
   const canAdd = totalCount < maxImages && !disabled;
 
@@ -107,10 +117,9 @@ export function ImageUploader({
       );
     }
 
-    // Acumula resultados localmente: se chamássemos `onChange([...images, ...])`
-    // dentro do loop, `images` (closure do início do handler) sobrescreveria
-    // os uploads anteriores quando 2+ fotos são enviadas de uma vez.
-    let current = images;
+    // Cada iteração lê `imagesRef.current` (sempre fresh, sync com prop)
+    // e adiciona a nova foto. Assim, delete ocorrido DURANTE o upload
+    // não é sobrescrito. Antes era `let current = images` (closure stale).
     for (const file of filesToUpload) {
       const previewId = tempId();
       const previewUrl = URL.createObjectURL(file);
@@ -141,11 +150,11 @@ export function ImageUploader({
         if (!result.ok) {
           toast.error(result.error);
         } else {
-          current = [
-            ...current,
+          const next = [
+            ...imagesRef.current,
             { id: result.id, url: result.url, position: result.position },
           ];
-          onChange(current);
+          onChange(next);
         }
       } catch (e) {
         // ImageTooLargeError: arquivo bruto > 25 MB, rejeitado no client.

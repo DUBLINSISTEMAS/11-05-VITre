@@ -1,6 +1,6 @@
 "use server";
 
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, sql } from "drizzle-orm";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { headers } from "next/headers";
 
@@ -146,13 +146,22 @@ export async function uploadProductImage(
   }
 
   // 9. Insere no DB com transação (limite de 5 + alocação de position atômicas)
-  // Race-safe: dois uploads simultâneos vão ler counts diferentes;
-  // o segundo vai ver o primeiro já inserido e calcular position correta.
-  // Em caso raro de conflict (`product_image_product_position_unique`), retornamos
-  // erro útil ao caller (UI pode tentar de novo).
+  //
+  // Auditoria I9 (2026-05-12): antes, dois uploads simultâneos faziam
+  // `SELECT count` ao mesmo tempo e ambos liam o mesmo valor → INSERT
+  // racing pra position N. Unique constraint salvava mas client via
+  // "Conflito ao salvar". Solução: `pg_advisory_xact_lock` por productId
+  // serializa inserts dentro da janela da transação. Hashtext mapeia o
+  // UUID pra bigint (chave do advisory lock); colisão de hash é OK,
+  // serializa demais — só não permite paralelizar inserts no mesmo
+  // produto, que é o que queremos.
   let dbInsertSucceeded = false;
   try {
     const inserted = await withTenant(store.id, userId, async (tx) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${parsedProductId}))`,
+      );
+
       const [{ value: existing }] = await tx
         .select({ value: count() })
         .from(productImageTable)

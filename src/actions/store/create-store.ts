@@ -9,7 +9,7 @@ import { logger } from "@/lib/logger";
 import { NICHE_CATEGORIES, type NicheValue } from "@/lib/niche-categories";
 import { checkRateLimit, getClientIp, RateLimitError, rateLimits } from "@/lib/rate-limit";
 import { generateSlug, isReservedSlug, isValidSlugFormat } from "@/lib/slug";
-import { withTenant } from "@/lib/tenant";
+import { OWNER_SCOPE_SENTINEL, withTenant } from "@/lib/tenant";
 import { parseWhatsAppBR } from "@/lib/whatsapp-format";
 
 import {
@@ -60,11 +60,12 @@ export async function createStore(input: CreateStoreInput): Promise<CreateStoreR
     return { ok: false, error: "Endereço da loja inválido." };
   }
 
-  // Bootstrap: passa pelo GUC `app.current_user_id` (storeId vazio).
-  // Policy `store_owner_access` permite SELECT/INSERT desde que owner_id
-  // bata; `store_public_read_active` complementa pra detectar slug em uso
-  // por loja ativa de outro owner.
-  const slugTaken = await withTenant("", userId, async (tx) =>
+  // Bootstrap: passa pelo GUC `app.current_user_id`; storeId é o sentinela
+  // UUID-zeros (não há store ainda). Policy `store_owner_access` permite
+  // SELECT/INSERT desde que owner_id bata; `store_public_read_active`
+  // complementa pra detectar slug em uso por loja ativa de outro owner.
+  // Ver `OWNER_SCOPE_SENTINEL` em tenant.ts.
+  const slugTaken = await withTenant(OWNER_SCOPE_SENTINEL, userId, async (tx) =>
     tx.query.storeTable.findFirst({
       where: eq(storeTable.slug, parsed.slug),
       columns: { id: true },
@@ -78,7 +79,7 @@ export async function createStore(input: CreateStoreInput): Promise<CreateStoreR
   }
 
   // Garantir que esse user ainda não tem loja (Fase 1: 1 user = 1 loja).
-  const existingStore = await withTenant("", userId, async (tx) =>
+  const existingStore = await withTenant(OWNER_SCOPE_SENTINEL, userId, async (tx) =>
     tx.query.storeTable.findFirst({
       where: eq(storeTable.ownerId, userId),
       columns: { id: true, slug: true },
@@ -104,7 +105,7 @@ export async function createStore(input: CreateStoreInput): Promise<CreateStoreR
   // Store + categorias rodam na MESMA transação. Se o INSERT das categorias
   // falhar, o INSERT da store também é desfeito pelo rollback do Drizzle.
   try {
-    await withTenant("", userId, async (tx) => {
+    await withTenant(OWNER_SCOPE_SENTINEL, userId, async (tx) => {
       const [created] = await tx
         .insert(storeTable)
         .values({
@@ -116,7 +117,8 @@ export async function createStore(input: CreateStoreInput): Promise<CreateStoreR
           whatsappDisplay: phone.display,
           primaryColor: parsed.primaryColor,
           addressCity: parsed.addressCity || null,
-          addressState: (parsed.addressState || "").toUpperCase() || null,
+          // K4: schema já uppercase'ou; aqui só decidimos "" → null.
+          addressState: parsed.addressState || null,
         })
         .returning();
 

@@ -7,6 +7,7 @@
  * vazios e só cria draft no primeiro save, evitando rascunhos fantasmas.
  */
 import { Loader2Icon } from "lucide-react";
+import { nanoid } from "nanoid";
 import { useRouter } from "next/navigation";
 import type { ComponentProps } from "react";
 import { useEffect, useState } from "react";
@@ -39,7 +40,15 @@ interface ProductDialogProps {
   onClose: () => void;
 }
 
-const NEW_PRODUCT_ID = "new-product";
+/**
+ * Prefixo do id efêmero pra produto-novo (não persistido). Cada abertura
+ * de "criar produto" — incluindo o reset após "salvar e adicionar outro"
+ * — gera `new-${nanoid()}`. Mudar a cada reset garante que a `key` do
+ * <ProductForm /> mude e o RHF resete defaultValues.
+ */
+const NEW_PRODUCT_PREFIX = "new-";
+const isNewProductId = (id: string) => id.startsWith(NEW_PRODUCT_PREFIX);
+const generateNewProductId = () => `${NEW_PRODUCT_PREFIX}${nanoid(8)}`;
 
 export function ProductDialog({ state, onClose }: ProductDialogProps) {
   const router = useRouter();
@@ -47,8 +56,14 @@ export function ProductDialog({ state, onClose }: ProductDialogProps) {
   const [data, setData] = useState<ProductDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Primitivos derivados pra dep array — usar `[state]` (objeto) refazia
+  // `loadProductDetail` a cada `router.refresh()` (mesmo `mode`/`productId`,
+  // referência nova). Crítico C3 da auditoria 2026-05-12.
+  const stateMode = state.mode;
+  const stateProductId = state.mode === "edit" ? state.productId : null;
+
   useEffect(() => {
-    if (state.mode === "closed") {
+    if (stateMode === "closed") {
       setData(null);
       setError(null);
       setLoading(false);
@@ -59,7 +74,7 @@ export function ProductDialog({ state, onClose }: ProductDialogProps) {
     setData(null);
     setError(null);
 
-    if (state.mode === "create") {
+    if (stateMode === "create") {
       setLoading(true);
       void (async () => {
         try {
@@ -84,11 +99,13 @@ export function ProductDialog({ state, onClose }: ProductDialogProps) {
       };
     }
 
+    // stateMode === "edit" — stateProductId é garantidamente string aqui.
+    if (!stateProductId) return;
     setLoading(true);
 
     void (async () => {
       try {
-        const res = await loadProductDetail(state.productId);
+        const res = await loadProductDetail(stateProductId);
         if (cancelled) return;
         if (!res.ok) {
           setError(res.error);
@@ -108,7 +125,7 @@ export function ProductDialog({ state, onClose }: ProductDialogProps) {
     return () => {
       cancelled = true;
     };
-  }, [state]);
+  }, [stateMode, stateProductId]);
 
   const isOpen = state.mode !== "closed";
   const product = data;
@@ -142,7 +159,14 @@ export function ProductDialog({ state, onClose }: ProductDialogProps) {
         if (!open) onClose();
       }}
     >
-      <DialogContent className="flex h-[96dvh] w-[calc(100vw-1rem)] max-w-[1600px] flex-col gap-0 overflow-hidden border-white/10 p-0 shadow-2xl sm:rounded-3xl lg:h-[92dvh] lg:w-[min(1500px,calc(100vw-3rem))] xl:w-[min(1540px,94vw)]">
+      {/*
+        IMPORTANTE: `sm:max-w-[1600px]` é obrigatório.
+        `DialogContent` base aplica `sm:max-w-lg` (32rem) que vence em
+        qualquer viewport ≥640px porque `twMerge` não conflita base
+        com variantes (`max-w-` vs `sm:max-w-` são utilities diferentes).
+        Sem o `sm:` aqui o modal fica preso em ~512px no desktop inteiro.
+      */}
+      <DialogContent className="flex h-[96dvh] w-[calc(100vw-1rem)] max-w-none flex-col gap-0 overflow-hidden border-white/10 p-0 shadow-2xl sm:max-w-[1600px] sm:rounded-3xl lg:h-[92dvh] lg:w-[min(1500px,calc(100vw-3rem))] xl:w-[min(1540px,94vw)]">
         {loading || (state.mode === "edit" && !data && !error) ? (
           <DialogLoading />
         ) : error ? (
@@ -179,7 +203,10 @@ function createEmptyProduct(
   categories: ProductDetail["categories"],
 ): ProductDetail {
   return {
-    id: productId ?? NEW_PRODUCT_ID,
+    // Id efêmero `new-${nanoid()}` muda a cada chamada — força <ProductForm>
+    // a resetar quando o pai chama createEmptyProduct novamente após
+    // "salvar e adicionar outro" (key={product.id} no DialogReady).
+    id: productId ?? generateNewProductId(),
     name: "",
     description: "",
     basePriceInCents: 0,
@@ -189,13 +216,18 @@ function createEmptyProduct(
     categoryId: null,
     trackStock: false,
     stockQuantity: null,
-    isActive: false,
+    // Default Shopify/Nuvem Shop: produto salvo aparece na vitrine.
+    // Lojista que quer rascunho desliga o toggle "Visível na loja"
+    // dentro do card Status antes de salvar.
+    isActive: true,
     isFeatured: false,
     composition: null,
     modeling: null,
     lining: null,
     washing: null,
-    slug: "draft-new-product",
+    // Slug placeholder estável só pra TypeScript; nunca persiste —
+    // generateUniqueProductSlug é chamado no insert.
+    slug: "",
     images: [],
     variants: [],
     categories,
@@ -238,9 +270,10 @@ function DialogReady({
   onCreateProduct?: ComponentProps<typeof ProductForm>["onCreateProduct"];
   onAfterSave: (opts: { nextProductId?: string; continueCreating?: boolean }) => void;
 }) {
-  const isDraft = !product.name.trim() || product.slug.startsWith("draft-");
+  // Em criação o id começa com "new-" (efêmero). Em edição o id é UUID real.
+  const persisted = !isNewProductId(product.id);
+  const isDraft = !persisted;
   const headerTitle = isDraft ? "Novo produto" : product.name;
-  const persisted = product.id !== NEW_PRODUCT_ID;
 
   return (
     <>

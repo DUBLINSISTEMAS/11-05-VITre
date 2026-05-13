@@ -123,13 +123,22 @@ export function enumWithDefault<T extends readonly string[]>(
 }
 
 /**
- * `?id=uuid` — string trimada não-vazia, ou null. Não valida formato
- * UUID strict (Postgres rejeita malformado no WHERE com erro tratável).
+ * `?id=uuid` — string trimada não-vazia, ou null.
+ *
+ * Auditoria I10 (2026-05-12): valida formato UUID (qualquer versão).
+ * Antes, malformed `?categoryId=foo` chegava no WHERE e Postgres lançava
+ * `invalid input syntax for type uuid` → 500 + Sentry noise. Agora vira
+ * `null` silencioso (sem filtro), comportamento previsível pra clientes
+ * que mexem na URL manualmente.
  */
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export const idOrNullSchema = z
   .string()
   .optional()
   .transform((v) => {
     const t = v?.trim();
-    return t ? t : null;
+    if (!t) return null;
+    return UUID_REGEX.test(t) ? t : null;
   });

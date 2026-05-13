@@ -8,9 +8,9 @@ import { toast } from "sonner";
  * Lê `?erro=...` da URL e dispara um toast vermelho, depois limpa o param
  * sem reload.
  *
- * Existe pra fechar o silêncio do fluxo `/admin/produtos/novo` quando
- * `createDraftProduct()` falha e redireciona pra lista com a mensagem
- * em query string. Antes desse componente, o erro era engolido.
+ * Hoje cobre erros vindos de actions que ainda redirecionam pra lista
+ * com mensagem em query string (delete via menu, bulk falhando antes
+ * do toast). Mantido genérico — qualquer action pode passar `?erro=...`.
  *
  * Convenção CLAUDE.md #9: deve ser embrulhado em `<Suspense>` no caller
  * (useSearchParams() força client + Suspense em Next 15).

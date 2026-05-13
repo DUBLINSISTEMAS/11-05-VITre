@@ -396,6 +396,30 @@ export function ProductForm({
         {/* === Coluna direita (lg col-span-1, sticky) === */}
         <div className="space-y-4 lg:sticky lg:top-5">
           <FormCard title="Status">
+            {/*
+              Em criação (`isDraft`), o switch isActive entra no form via Controller —
+              produto salva já visível na vitrine por default (padrão Shopify).
+              Em edição o instant-toggle vive no header (<ProductPublishToggle/>)
+              pra publicar/pausar sem reabrir o form inteiro, então ocultamos
+              aqui pra não duplicar controle nem confundir lojista.
+            */}
+            {isDraft ? (
+              <Controller
+                name="isActive"
+                control={control}
+                render={({ field }) => (
+                  <ToggleRow
+                    id="product-active"
+                    label="Visível na loja"
+                    description="Se desligado, o produto fica como rascunho — só você vê."
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    disabled={isPending}
+                  />
+                )}
+              />
+            ) : null}
+
             <Controller
               name="isFeatured"
               control={control}
@@ -509,10 +533,29 @@ export function ProductForm({
         </div>
       </div>
 
-      {/* Save mobile: sticky bottom acima do bottom nav. "+ adicionar outro"
-          inline acima quando draft. */}
-      {isDraft ? (
-        <div className="flex justify-center pt-4 lg:hidden">
+      {/*
+        Save mobile sticky — único bloco. Em criação (isDraft), empilha
+        "Salvar e adicionar outro" acima do "Salvar" pra fluxo Shopify
+        sem duplicar botão na página (auditoria K3 2026-05-12).
+        - dentro de Dialog: sticky relativo ao container
+        - fora de Dialog: fixed na viewport acima do bottom nav
+      */}
+      <div
+        className={cn(
+          "surface-elevated z-50 flex flex-col gap-2 px-4 py-3 lg:hidden",
+          inDialog
+            ? "sticky bottom-0 -mx-4 mt-4 sm:-mx-5"
+            : "fixed inset-x-0",
+        )}
+        style={
+          inDialog
+            ? undefined
+            : {
+                bottom: "calc(env(safe-area-inset-bottom) + 3.5rem + 0.25rem)",
+              }
+        }
+      >
+        {isDraft ? (
           <Button
             type="submit"
             variant="outline"
@@ -530,26 +573,8 @@ export function ProductForm({
               </>
             )}
           </Button>
-        </div>
-      ) : null}
+        ) : null}
 
-      {/* Save mobile — dentro de Dialog vira sticky relativo ao container;
-          fora, fixed na viewport acima do bottom nav. */}
-      <div
-        className={cn(
-          "surface-elevated z-50 px-4 py-3 lg:hidden",
-          inDialog
-            ? "sticky bottom-0 -mx-4 mt-4 sm:-mx-5"
-            : "fixed inset-x-0",
-        )}
-        style={
-          inDialog
-            ? undefined
-            : {
-                bottom: "calc(env(safe-area-inset-bottom) + 3.5rem + 0.25rem)",
-              }
-        }
-      >
         <Button
           type="submit"
           disabled={isPending || !isDirty}

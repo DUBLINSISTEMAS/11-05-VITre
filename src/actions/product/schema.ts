@@ -146,21 +146,35 @@ const productFormFieldsSchema = z.object({
   variants: z.array(variantInputSchema).max(20, "Máximo de 20 variantes."),
 });
 
+// ⚠️ MANTENHA SINCRONIZADO: estes 2 refines aparecem em
+// `productFormSchema` E `updateProductSchema`. Auditoria K1 (2026-05-12)
+// tentou centralizar num helper genérico, mas Zod v4 não exporta
+// `ZodEffects` como nome simples — a tipagem do helper engole inferência
+// e quebra `z.input<>`/`z.output<>` nos callers. Duplicação ficou como
+// trade-off aceito; checklist quando alterar: confira AMBOS.
+const PROMO_LESS_THAN_BASE = (v: {
+  basePriceInCents: number;
+  promoPriceInCents: number | null;
+}) =>
+  v.promoPriceInCents === null ||
+  v.promoPriceInCents < v.basePriceInCents;
+const PROMO_LESS_THAN_BASE_MSG: { message: string; path: string[] } = {
+  message: "Preço promocional precisa ser menor que o preço normal.",
+  path: ["promoPriceInCents"],
+};
+const STOCK_REQUIRED_WHEN_TRACKED = (v: {
+  trackStock: boolean;
+  stockQuantity: number | null;
+}) => !v.trackStock || v.stockQuantity !== null;
+const STOCK_REQUIRED_MSG: { message: string; path: string[] } = {
+  message: "Informe a quantidade em estoque.",
+  path: ["stockQuantity"],
+};
+
 /** Schema do form (sem `productId`) — usado pelo RHF no client. */
 export const productFormSchema = productFormFieldsSchema
-  .refine(
-    (v) =>
-      v.promoPriceInCents === null ||
-      v.promoPriceInCents < v.basePriceInCents,
-    {
-      message: "Preço promocional precisa ser menor que o preço normal.",
-      path: ["promoPriceInCents"],
-    },
-  )
-  .refine((v) => !v.trackStock || v.stockQuantity !== null, {
-    message: "Informe a quantidade em estoque.",
-    path: ["stockQuantity"],
-  });
+  .refine(PROMO_LESS_THAN_BASE, PROMO_LESS_THAN_BASE_MSG)
+  .refine(STOCK_REQUIRED_WHEN_TRACKED, STOCK_REQUIRED_MSG);
 /**
  * RHF: defaultValues = INPUT (pré-transform — `composition` é string `""`).
  * Server: data = OUTPUT (pós-transform — `composition` é `string|null`).
@@ -169,22 +183,12 @@ export const productFormSchema = productFormFieldsSchema
 export type ProductFormValues = z.input<typeof productFormFieldsSchema>;
 export type ProductFormOutput = z.output<typeof productFormFieldsSchema>;
 
-/** Schema da action — adiciona `productId` e reaplica refines. */
+/** Schema da action — adiciona `productId` e reaplica refines (ver nota
+ *  acima sobre duplicação intencional). */
 export const updateProductSchema = productFormFieldsSchema
   .extend({ productId: z.string().uuid() })
-  .refine(
-    (v) =>
-      v.promoPriceInCents === null ||
-      v.promoPriceInCents < v.basePriceInCents,
-    {
-      message: "Preço promocional precisa ser menor que o preço normal.",
-      path: ["promoPriceInCents"],
-    },
-  )
-  .refine((v) => !v.trackStock || v.stockQuantity !== null, {
-    message: "Informe a quantidade em estoque.",
-    path: ["stockQuantity"],
-  });
+  .refine(PROMO_LESS_THAN_BASE, PROMO_LESS_THAN_BASE_MSG)
+  .refine(STOCK_REQUIRED_WHEN_TRACKED, STOCK_REQUIRED_MSG);
 /**
  * Tipo do INPUT da action (pré-Zod-parse). Usamos `z.input<>` porque a action
  * faz `safeParse` internamente — defaults (`axis: "size"`) e transforms

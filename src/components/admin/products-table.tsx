@@ -11,11 +11,12 @@
 // `<BulkActionsToolbar>` sticky bottom dentro do card de listagem.
 // `onMutated` (do toolbar) limpa seleção e força re-render via router.refresh.
 import {
-  MoreVerticalIcon,
   PackageIcon,
+  PencilIcon,
   SparklesIcon,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,10 +24,6 @@ import { formatPriceLabel, hasActivePromo } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
 import { BulkActionsToolbar } from "./bulk-actions-toolbar";
-import {
-  ProductDialog,
-  type ProductDialogState,
-} from "./product-dialog";
 
 export interface ProductTableRow {
   id: string;
@@ -48,19 +45,26 @@ export interface ProductsTableProps {
 
 export function ProductsTable({ products }: ProductsTableProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [dialog, setDialog] = useState<ProductDialogState>({ mode: "closed" });
 
-  // Nota: o handling de `?novo=1` mora em <ProductCreateGate> dentro do
-  // page.tsx — esse gate monta sempre (mesmo com lista vazia / EmptyState).
-  // Aqui só lidamos com edit do click em linha/card.
+  // Crítico C1 (auditoria 2026-05-12): <ProductDialog> vive APENAS no
+  // <ProductDialogGate> de page.tsx. Click em linha/card aqui só atualiza
+  // a URL (`?editar=<id>`); o gate ouve o param e abre o dialog. Antes
+  // havia state local + ProductDialog montado também aqui — race de
+  // focus-trap quando empty state ou ?novo=1 estavam ativos.
 
   const allIds = useMemo(() => products.map((p) => p.id), [products]);
   const allSelected = allIds.length > 0 && selectedIds.size === allIds.length;
   const partialSelected = selectedIds.size > 0 && !allSelected;
 
-  const openEdit = (id: string) =>
-    setDialog({ mode: "edit", productId: id });
+  const openEdit = (id: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("editar", id);
+    next.delete("novo");
+    router.push(`${pathname}?${next.toString()}`, { scroll: false });
+  };
 
   const toggleOne = (id: string, checked: boolean) => {
     setSelectedIds((prev) => {
@@ -137,11 +141,12 @@ export function ProductsTable({ products }: ProductsTableProps) {
                   aria-label={`Editar ${p.name || "rascunho"}`}
                 >
                   {p.cover ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={p.cover}
                       alt=""
-                      className="size-full object-cover"
+                      fill
+                      sizes="48px"
+                      className="object-cover"
                     />
                   ) : (
                     <span className="flex size-full items-center justify-center">
@@ -183,13 +188,18 @@ export function ProductsTable({ products }: ProductsTableProps) {
                   quantity={p.stockQuantity}
                   isDraft={isDraft}
                 />
+                {/* Auditoria I2 (2026-05-12): antes era kebab MoreVerticalIcon
+                    + aria-label "Abrir" — sugeria menu contextual que abria
+                    direto o dialog de edit. Trocado pra PencilIcon + "Editar"
+                    pra UX explícita. Ações destrutivas/publish ficam em
+                    <ProductActionsMenu /> no header do dialog. */}
                 <button
                   type="button"
                   onClick={() => openEdit(p.id)}
-                  aria-label="Abrir"
+                  aria-label={`Editar ${p.name || "rascunho"}`}
                   className="hocus:bg-accent flex size-7 items-center justify-center rounded-md text-muted-foreground"
                 >
-                  <MoreVerticalIcon className="size-4" />
+                  <PencilIcon className="size-4" />
                 </button>
               </li>
             );
@@ -223,11 +233,12 @@ export function ProductsTable({ products }: ProductsTableProps) {
                 >
                   <div className="bg-muted relative size-16 shrink-0 overflow-hidden rounded-lg sm:size-20">
                     {p.cover ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <Image
                         src={p.cover}
                         alt=""
-                        className="size-full object-cover"
+                        fill
+                        sizes="(max-width: 640px) 64px, 80px"
+                        className="object-cover"
                       />
                     ) : (
                       <div className="flex size-full items-center justify-center">
@@ -274,11 +285,6 @@ export function ProductsTable({ products }: ProductsTableProps) {
         selectedIds={Array.from(selectedIds)}
         onClear={clearSelection}
         onMutated={handleMutated}
-      />
-
-      <ProductDialog
-        state={dialog}
-        onClose={() => setDialog({ mode: "closed" })}
       />
     </div>
   );

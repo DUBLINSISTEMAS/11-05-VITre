@@ -39,10 +39,15 @@ export const createStoreSchema = z.object({
     .trim()
     .refine(isValidHexColor, "Cor inválida. Use formato #RRGGBB."),
   addressCity: z.string().trim().max(80).optional().or(z.literal("")),
+  // Auditoria K4 (2026-05-12): normaliza pra UPPERCASE no schema
+  // (`MA`/`ma`/` ma ` → `MA`). Antes a action fazia `.toUpperCase()` no
+  // próprio insert; centralizar no schema garante mesma forma em todo
+  // caller (create + update + futuro import) e elimina drift.
   addressState: z
     .string()
     .trim()
     .max(2, "Use 2 letras (ex: MA)")
+    .toUpperCase()
     .optional()
     .or(z.literal("")),
   /**
@@ -100,8 +105,9 @@ export const updateStoreSchema = z.object({
     .string()
     .trim()
     .max(2, "Use 2 letras (ex: MA).")
+    .toUpperCase()
     .nullable()
-    .refine((v) => v === null || v === "" || /^[A-Za-z]{2}$/.test(v), {
+    .refine((v) => v === null || v === "" || /^[A-Z]{2}$/.test(v), {
       message: "Use 2 letras (ex: MA).",
     }),
   googleMapsUrl: z

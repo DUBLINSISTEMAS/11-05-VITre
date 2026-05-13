@@ -103,20 +103,21 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
   }
 
   // ---- Status conditions (separadas pra permitir count por aba) ----
+  // Aba "Todos" (s === null) exclui rascunhos por padrão — drafts órfãos
+  // (legado pré-fix d0c5804 + escapes) só aparecem quando lojista clica
+  // na aba "Rascunho" explicitamente. Antes, drafts apareciam misturados
+  // e o lojista via "produto fantasma" surgindo do nada na lista.
+  const NOT_DRAFT: SQL[] = [
+    sql`${productTable.slug} not like 'draft-%'`,
+    sql`btrim(${productTable.name}) <> ''`,
+  ];
+
   const statusConditions = (s: StatusFilter | null): SQL[] => {
     if (s === "active") {
-      return [
-        eq(productTable.isActive, true),
-        sql`${productTable.slug} not like 'draft-%'`,
-        sql`btrim(${productTable.name}) <> ''`,
-      ];
+      return [eq(productTable.isActive, true), ...NOT_DRAFT];
     }
     if (s === "inactive") {
-      return [
-        eq(productTable.isActive, false),
-        sql`${productTable.slug} not like 'draft-%'`,
-        sql`btrim(${productTable.name}) <> ''`,
-      ];
+      return [eq(productTable.isActive, false), ...NOT_DRAFT];
     }
     if (s === "draft") {
       return [
@@ -127,9 +128,10 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
       return [
         eq(productTable.trackStock, true),
         eq(productTable.stockQuantity, 0),
+        ...NOT_DRAFT,
       ];
     }
-    return [];
+    return NOT_DRAFT;
   };
 
   const whereClause = and(...baseConditions, ...statusConditions(statusFilter));

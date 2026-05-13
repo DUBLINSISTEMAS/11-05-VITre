@@ -13,7 +13,7 @@
  * Sem rate limit dedicado (baixo volume + idempotente). Bucket
  * `publicApi` cobre flood improvável de bots.
  */
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import { z } from "zod";
 
@@ -76,11 +76,20 @@ export async function markWhatsAppOpened(input: {
 
     if (!order) return { ok: false };
 
+    // Auditoria I4 (2026-05-12): só marca `whatsappOpenedAt` em pedidos
+    // em estado relevante. Antes, click após `canceled`/`expired` ainda
+    // gravava timestamp e poluía analytics ("99% dos pedidos abriram
+    // WhatsApp" incluindo expirados).
     await withTenant(order.storeId, ANON_USER_ID, async (tx) => {
       await tx
         .update(orderTable)
         .set({ whatsappOpenedAt: new Date() })
-        .where(eq(orderTable.publicToken, parsed.data.publicToken));
+        .where(
+          and(
+            eq(orderTable.publicToken, parsed.data.publicToken),
+            inArray(orderTable.status, ["awaiting_whatsapp", "confirmed"]),
+          ),
+        );
     });
     return { ok: true };
   } catch (err) {

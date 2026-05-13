@@ -216,13 +216,22 @@ export const listProducts = cache(
       if (categoryIds === null) return null;
     }
 
+    // BYPASS cache quando filtro depende de tempo (`promoOnly` usa `now()`
+    // server-side). Crítico C2 da auditoria 2026-05-12: `unstable_cache`
+    // congela `now()` por TTL=5min, então promo que expirou às 10:00:00
+    // continuaria aparecendo até 10:05. Volume baixo (URL `?promo=1` é
+    // descoberta), uncached é aceitável; sub-50ms na maioria das lojas.
+    if (params.promoOnly) {
+      return loadProductsFromDb(params, categoryIds);
+    }
+
     const cacheKey = [
       "storefront-products",
       params.storeId,
       params.categorySlug ?? "all",
       String(params.priceMinCents ?? ""),
       String(params.priceMaxCents ?? ""),
-      params.promoOnly ? "promo" : "all-promo",
+      "all-promo",
       params.sort ?? "relevance",
       String(params.page ?? 1),
       String(params.limit ?? DEFAULT_PRODUCT_LIMIT),

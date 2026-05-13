@@ -1,48 +1,69 @@
 "use client";
 
 /**
- * ProductCreateGate — captura `?novo=1` na URL e abre o ProductDialog
- * em modo create. Monta independentemente do estado da lista (vazia ou
- * não), garantindo que botões de empty state e onboarding também
- * disparem o modal.
+ * ProductDialogGate — fonte única do <ProductDialog> em /admin/produtos.
  *
- * Onda 5 fix pós-verifier (2026-05-12): o useEffect que lia `?novo=1`
- * vivia em ProductsTable, que não monta quando produtos.length === 0 —
- * quebrava o fluxo "Cadastrar primeiro produto". Verifier marcou FAIL
- * crítico. Solução: subir esse consumer pra um componente que mora no
- * page.tsx e sempre monta.
+ * Estado vive na URL (search params), não em useState local:
+ *   - `?novo=1`        → abre dialog em modo CREATE
+ *   - `?editar=<id>`   → abre dialog em modo EDIT do produto `id`
  *
- * ProductsTable continua dono do dialog de EDIT (precisa do state local
- * pra mapear click→productId). Aqui só CREATE.
+ * Por que URL state?
+ * - Antes (Onda 5), três sites separados montavam <ProductDialog>:
+ *   ProductCreateGate (lê ?novo=1), ProductCreateButton (state local),
+ *   ProductsTable (state local). Cada um com seu focus-trap; clicar
+ *   "Novo produto" no header DEPOIS de chegar via `?novo=1` abria DOIS
+ *   dialogs simultâneos (radix permite), trap saltava entre eles.
+ *   Crítico C1 da auditoria 2026-05-12.
+ * - Lifted-to-URL é a forma idiomática Next 15: páginas server, dialogs
+ *   linkáveis (founder pode mandar `/admin/produtos?editar=xxx`), zero
+ *   coupling entre os botões consumidores e o dialog.
+ *
+ * Quem usa:
+ * - `ProductCreateButton` (header + empty state) → `router.push("?novo=1")`
+ * - `ProductsTable` (click em linha/card)         → `router.push("?editar=<id>")`
+ * - Este gate monta o <ProductDialog> uma única vez no page.tsx.
  */
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useMemo } from "react";
 
 import {
   ProductDialog,
   type ProductDialogState,
 } from "./product-dialog";
 
-export function ProductCreateGate() {
+const QUERY_KEY_CREATE = "novo";
+const QUERY_KEY_EDIT = "editar";
+
+export function ProductDialogGate() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [dialog, setDialog] = useState<ProductDialogState>({ mode: "closed" });
 
-  useEffect(() => {
-    if (searchParams.get("novo") === "1" && dialog.mode === "closed") {
-      setDialog({ mode: "create" });
-      const next = new URLSearchParams(searchParams);
-      next.delete("novo");
-      const qs = next.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  const state = useMemo<ProductDialogState>(() => {
+    if (searchParams.get(QUERY_KEY_CREATE) === "1") {
+      return { mode: "create" };
     }
-  }, [searchParams, dialog.mode, pathname, router]);
+    const editId = searchParams.get(QUERY_KEY_EDIT);
+    if (editId && editId.length > 0) {
+      return { mode: "edit", productId: editId };
+    }
+    return { mode: "closed" };
+  }, [searchParams]);
 
-  return (
-    <ProductDialog
-      state={dialog}
-      onClose={() => setDialog({ mode: "closed" })}
-    />
-  );
+  const handleClose = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.delete(QUERY_KEY_CREATE);
+    next.delete(QUERY_KEY_EDIT);
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams]);
+
+  return <ProductDialog state={state} onClose={handleClose} />;
 }
+
+/**
+ * Compat alias — código antigo importa `ProductCreateGate`. Mantemos
+ * o mesmo símbolo apontando pro novo gate até refatorar consumidores.
+ * @deprecated Use `ProductDialogGate`.
+ */
+export const ProductCreateGate = ProductDialogGate;

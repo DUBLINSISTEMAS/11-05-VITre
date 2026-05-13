@@ -168,8 +168,35 @@ export async function createOrderFromCart(
       }
 
       // 5. Carregar produtos + variantes
-      const productIds = Array.from(new Set(data.items.map((i) => i.productId)));
-      const variantIds = data.items
+      //
+      // Auditoria I6 (2026-05-12): agrega items duplicados por
+      // (productId, variantId) ANTES de validar estoque. Sem isso, se o
+      // payload tinha 2 entries do mesmo produto/variante (cliente
+      // espertinho, bug no client, replay attack), o decremento de
+      // estoque rodava 2x — `pg` driver não dedupe nada.
+      const aggregatedKey = (p: string, v: string | null) =>
+        `${p}|${v ?? ""}`;
+      const aggregated = new Map<
+        string,
+        { productId: string; variantId: string | null; quantity: number }
+      >();
+      for (const it of data.items) {
+        const k = aggregatedKey(it.productId, it.variantId);
+        const cur = aggregated.get(k);
+        if (cur) {
+          cur.quantity += it.quantity;
+        } else {
+          aggregated.set(k, {
+            productId: it.productId,
+            variantId: it.variantId,
+            quantity: it.quantity,
+          });
+        }
+      }
+      const inputItems = Array.from(aggregated.values());
+
+      const productIds = Array.from(new Set(inputItems.map((i) => i.productId)));
+      const variantIds = inputItems
         .map((i) => i.variantId)
         .filter((v): v is string => v !== null);
       const uniqueVariantIds = Array.from(new Set(variantIds));
@@ -229,7 +256,7 @@ export async function createOrderFromCart(
       }> = [];
       let totalInCents = 0;
 
-      for (const item of data.items) {
+      for (const item of inputItems) {
         const product = productById.get(item.productId);
         if (!product) {
           outOfStock.push(item.productId);
@@ -336,6 +363,15 @@ export async function createOrderFromCart(
       let createdShortCode: string | null = null;
       let createdPublicToken: string | null = null;
       let lastError: unknown = null;
+      // Auditoria I1 (2026-05-12): captura erros "soft" do inner tx
+      // (OutOfStock detectado pelo UPDATE com `gte`) sem fazer `return`
+      // de dentro do try-catch dentro do callback. Antes, o return
+      // interno completava o callback externo do withTenant, que então
+      // committa o outer tx — funcional, mas frágil porque qualquer
+      // mutação futura adicionada antes do inner tx ficaria committed
+      // mesmo após erro. Agora: set softFailure, break do loop, return
+      // ÚNICO ao final do callback.
+      let softFailure: CreateOrderResult | null = null;
 
       for (let attempt = 0; attempt < MAX_SHORTCODE_RETRIES; attempt += 1) {
         const candidate = generateShortCode();
@@ -435,13 +471,14 @@ export async function createOrderFromCart(
         } catch (err: unknown) {
           lastError = err;
           if (err instanceof OutOfStockError) {
-            return {
+            softFailure = {
               ok: false,
               errorCode: "OUT_OF_STOCK",
               errorMessage:
                 "Algum item não tem mais estoque suficiente. Atualize a sacola.",
               outOfStockProductIds: [err.productId],
             };
+            break;
           }
           const msg = err instanceof Error ? err.message : String(err);
           if (msg.includes("order_short_code_unique") || msg.includes("short_code")) {
@@ -468,6 +505,8 @@ export async function createOrderFromCart(
           throw err;
         }
       }
+
+      if (softFailure) return softFailure;
 
       if (!createdOrderId || !createdShortCode || !createdPublicToken) {
         return {

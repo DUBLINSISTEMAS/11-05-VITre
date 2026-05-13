@@ -1,4 +1,4 @@
-import { and, count, desc, eq, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { ReceiptIcon, SearchXIcon } from "lucide-react";
 import { Suspense } from "react";
 import { z } from "zod";
@@ -42,15 +42,24 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
     status: statusFilter,
     page,
   } = pedidosSearchSchema.parse(await searchParams);
-  const q = rawQ.toUpperCase();
+  const q = rawQ.trim();
 
   const conditions: SQL[] = [eq(orderTable.storeId, store.id)];
   if (statusFilter) {
     conditions.push(eq(orderTable.status, statusFilter));
   }
   if (q) {
-    // shortCode é unique global; matching exato por loja garante isolamento.
-    conditions.push(eq(orderTable.shortCode, q));
+    // Auditoria I3 (2026-05-12): antes era `eq(shortCode, q.toUpperCase())`,
+    // que perdia matches parciais (`b54f` em vez de `B54F12`) e ignorava
+    // nome do cliente. Agora: prefixo case-insensitive no shortCode OU
+    // substring no nome. Escape de wildcards (`%` / `_`) pra evitar
+    // injeção de pattern.
+    const safeQ = q.replace(/[\\%_]/g, "\\$&");
+    const condition = or(
+      ilike(orderTable.shortCode, `${safeQ}%`),
+      ilike(orderTable.customerName, `%${safeQ}%`),
+    );
+    if (condition) conditions.push(condition);
   }
   const whereClause = and(...conditions);
 

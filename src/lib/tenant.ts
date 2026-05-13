@@ -20,6 +20,23 @@ import { logger } from "@/lib/logger";
 export const ANON_USER_ID = "anonymous";
 
 /**
+ * Sentinela UUID pra `storeId` quando o caller ainda não conhece o tenant.
+ *
+ * Casos: bootstrap (`getCurrentStore` resolve loja a partir do user),
+ * `markWhatsAppOpened` (busca pedido por shortCode antes de conhecer a loja),
+ * `createStore` (lojista criando primeira loja — ainda não há store row).
+ *
+ * Por que NÃO string vazia? `app.current_store_id` é lido por policies RLS.
+ * Hoje só usamos comparação direta como string, mas qualquer policy futura
+ * que faça `current_setting(...)::uuid` quebraria com `""` (invalid UUID
+ * syntax). UUID-zeros é sintaticamente válido, impossível de colidir com
+ * id real (nanoid + uuid_generate_v7 não geram zeros), e fácil de filtrar
+ * em logs.
+ */
+export const OWNER_SCOPE_SENTINEL =
+  "00000000-0000-0000-0000-000000000000";
+
+/**
  * Tipo do client Drizzle dentro de uma transação. Exporta pra que callers
  * tipem helpers que recebem `tx` sem indireções (`Parameters<...>[0]`).
  */

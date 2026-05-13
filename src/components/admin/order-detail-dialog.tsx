@@ -63,7 +63,13 @@ export function OrderDetailDialog({
 
   return (
     <Dialog open={orderId !== null} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto p-0 sm:rounded-2xl">
+      {/*
+        `sm:max-w-3xl` (não `max-w-3xl`) é obrigatório: DialogContent base
+        do shadcn aplica `sm:max-w-lg` (512px) que vence em ≥640px sem o
+        prefixo `sm:` aqui — twMerge não dedupa base vs variante. Mesma
+        pegadinha do ProductDialog. Ver memory `shadcn-dialog-base-sm-maxw-lg-gotcha`.
+      */}
+      <DialogContent className="max-h-[90vh] max-w-none overflow-y-auto p-0 sm:max-w-3xl sm:rounded-2xl">
         {isLoading || (!data && !error) ? (
           <DialogShellLoading />
         ) : error ? (
