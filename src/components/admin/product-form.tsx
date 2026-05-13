@@ -134,7 +134,7 @@ export function ProductForm({
     register,
     handleSubmit,
     control,
-    formState: { errors, isDirty },
+    formState: { errors },
     setError,
   } = useForm<ProductFormValues>({
     resolver: zodResolver(productFormSchema),
@@ -543,7 +543,7 @@ export function ProductForm({
           <div className="hidden flex-col gap-2 lg:flex">
             <Button
               type="submit"
-              disabled={isPending || !isDirty}
+              disabled={isPending}
               onClick={() => setSubmitMode("save")}
               className="w-full"
               size="lg"
@@ -562,7 +562,7 @@ export function ProductForm({
               <Button
                 type="submit"
                 variant="outline"
-                disabled={isPending || !isDirty}
+                disabled={isPending}
                 onClick={() => setSubmitMode("saveAndContinue")}
                 className="w-full"
               >
@@ -596,7 +596,7 @@ export function ProductForm({
           <Button
             type="submit"
             variant="outline"
-            disabled={isPending || !isDirty}
+            disabled={isPending}
             onClick={() => setSubmitMode("saveAndContinue")}
             className="w-full"
           >
@@ -614,7 +614,7 @@ export function ProductForm({
 
         <Button
           type="submit"
-          disabled={isPending || !isDirty}
+          disabled={isPending}
           onClick={() => setSubmitMode("save")}
           className="w-full"
           size="lg"
