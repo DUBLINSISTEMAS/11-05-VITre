@@ -5,8 +5,8 @@ import { notFound } from "next/navigation";
 import { ProductActionsMenu } from "@/components/admin/product-actions-menu";
 import { ProductPublishToggle } from "@/components/admin/product-publish-toggle";
 import {
-  RelatedProductsCard,
   type RelatedPickerItem,
+  RelatedProductsCard,
 } from "@/components/admin/related-products-card";
 import { AdminPageHeader } from "@/components/admin/shell/page-header";
 import {

@@ -109,7 +109,7 @@ export function RelatedProductsCard({
             Produtos relacionados
           </h2>
           <p className="text-muted-foreground text-[11.5px] leading-relaxed">
-            Aparecem como "Você pode gostar também" na página deste produto.
+            Aparecem como &ldquo;Você pode gostar também&rdquo; na página deste produto.
             Sem seleção, mostramos automaticamente.
           </p>
         </div>
