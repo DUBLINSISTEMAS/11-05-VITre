@@ -2,15 +2,16 @@
  * Loader de produtos relacionados — usado no PDP ("Você pode gostar também").
  *
  * Estratégia:
- *  1. Busca produtos da MESMA categoria (excluindo o atual), ordem aleatória.
- *  2. Se vier menos que `limit`, completa com os mais recentes da loja
- *     (também excluindo o atual e os já trazidos).
- *  3. Anexa a primeira imagem usando `attachPrimaryImage`.
+ *  1. Prioriza curadoria MANUAL do lojista.
+ *  2. Se os manuais válidos forem menos que `limit`, completa com produtos
+ *     da MESMA categoria (excluindo o atual e os manuais já trazidos).
+ *  3. Se ainda faltar, completa com os mais recentes da loja.
+ *  4. Anexa a primeira imagem usando `attachPrimaryImage`.
  *
  * Cache: invalidado via tag `store-${slug}` em qualquer mutação do
  * catálogo (consistência com demais loaders).
  */
-import { and, asc, desc, eq, inArray, ne, notInArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, notInArray } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 import { cache } from "react";
 
@@ -38,8 +39,8 @@ async function loadRelatedFromDb(
     let related: (typeof productTable.$inferSelect)[] = [];
 
     // 1. CURADORIA MANUAL — lojista escolheu N produtos relacionados
-    //    no admin. Tem prioridade total: se há manual, NÃO complementa
-    //    com auto-pick (lojista quer controle). Ordem = `position`.
+    //    no admin. Manuais válidos aparecem primeiro; se vierem menos que
+    //    `limit`, completamos com auto-pick para não deixar o PDP sem cross-sell.
     const manualRows = await tx
       .select({
         id: productRelatedTable.relatedProductId,
@@ -72,12 +73,13 @@ async function loadRelatedFromDb(
       related = manualIds
         .map((id) => byId.get(id))
         .filter((p): p is typeof productTable.$inferSelect => Boolean(p));
-      return attachPrimaryImage(tx, storeId, related);
     }
 
-    // 2. AUTO — mesma categoria, ordem aleatória.
-    if (categoryId) {
-      related = await tx
+    const excludedIds = [excludeProductId, ...related.map((p) => p.id)];
+
+    // 2. AUTO — mesma categoria, produtos mais recentes primeiro.
+    if (categoryId && related.length < limit) {
+      const categoryRelated = await tx
         .select()
         .from(productTable)
         .where(
@@ -85,11 +87,12 @@ async function loadRelatedFromDb(
             eq(productTable.storeId, storeId),
             eq(productTable.categoryId, categoryId),
             eq(productTable.isActive, true),
-            ne(productTable.id, excludeProductId),
+            notInArray(productTable.id, excludedIds),
           ),
         )
-        .orderBy(sql`RANDOM()`)
-        .limit(limit);
+        .orderBy(desc(productTable.createdAt))
+        .limit(limit - related.length);
+      related = [...related, ...categoryRelated];
     }
 
     // 3. FALLBACK — mais recentes da loja, excluindo já trazidos.

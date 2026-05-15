@@ -14,7 +14,7 @@
  *  - Save explícito (não embute no submit do ProductForm — separação de
  *    domínio: mídia/preço/variantes vs curadoria de recomendação).
  */
-import { GripVerticalIcon, PackageIcon, PlusIcon, XIcon } from "lucide-react";
+import { PackageIcon, PlusIcon, XIcon } from "lucide-react";
 import Image from "next/image";
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -109,8 +109,8 @@ export function RelatedProductsCard({
             Produtos relacionados
           </h2>
           <p className="text-muted-foreground text-[11.5px] leading-relaxed">
-            Aparecem como &ldquo;Você pode gostar também&rdquo; na página deste produto.
-            Sem seleção, mostramos automaticamente.
+            Ordem manual: os selecionados aparecem primeiro. Se faltar produto,
+            a vitrine completa automaticamente com itens da mesma categoria.
           </p>
         </div>
         <span className="font-mono text-[10.5px] uppercase tracking-[0.5px] text-muted-foreground">
@@ -126,10 +126,6 @@ export function RelatedProductsCard({
               key={item.id}
               className="bg-muted/30 group flex items-center gap-3 rounded-lg border border-transparent px-2 py-2 hover:border-border"
             >
-              <GripVerticalIcon
-                className="text-muted-foreground/50 size-4 shrink-0"
-                aria-hidden
-              />
               <span className="font-mono text-[10px] text-muted-foreground w-5 tabular-nums">
                 {idx + 1}
               </span>

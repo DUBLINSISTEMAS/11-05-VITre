@@ -1,4 +1,4 @@
-import { and, asc, eq, ne } from "drizzle-orm";
+import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import { HomeIcon, PackageIcon } from "lucide-react";
 import { notFound } from "next/navigation";
 
@@ -120,6 +120,7 @@ export default async function EditProdutoPage({ params }: EditProdutoPageProps) 
               and(
                 eq(productImageTable.storeId, store.id),
                 eq(productImageTable.position, 0),
+                inArray(productImageTable.productId, candidateIds),
               ),
             )
         : [];

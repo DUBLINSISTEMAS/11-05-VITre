@@ -10,9 +10,9 @@
 --   - Habilita RLS na tabela product_related.
 --   - Tenant isolation pelo GUC `app.current_store_id` (mesmo padrão das
 --     demais tabelas de catálogo).
---   - Leitura pública via SELECT (storefront mostra "Você pode gostar
---     também" anonimamente). Tabela em si não vaza PII — só pares de
---     UUIDs ligando produtos da mesma loja.
+--   - Leitura pública mediada pelo mesmo tenant GUC usado pelos loaders
+--     server-side do storefront. Não use `USING (true)` aqui: mesmo sem PII,
+--     curadoria de vitrine é dado multi-tenant.
 -- =====================================================================
 
 ALTER TABLE product_related ENABLE ROW LEVEL SECURITY;
@@ -25,4 +25,4 @@ CREATE POLICY product_related_tenant_isolation ON product_related
 DROP POLICY IF EXISTS product_related_public_read ON product_related;
 CREATE POLICY product_related_public_read ON product_related
   FOR SELECT
-  USING (true);
+  USING (store_id = NULLIF(current_setting('app.current_store_id', true), '')::uuid);

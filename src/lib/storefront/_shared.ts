@@ -5,7 +5,7 @@
  * são funções uncached (sem `unstable_cache`) e tipos cuja API é interna.
  * O loader público correspondente envolve estes helpers com cache.
  */
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 import type { Product } from "@/db/schema";
 import { productImageTable } from "@/db/schema";
@@ -32,6 +32,7 @@ export interface ProductCardData
 /**
  * Anexa a 1ª imagem (position=0) a uma lista de produtos.
  * Faz 1 query agregada IN (...) em vez de N+1.
+ * Filtra `position = 0` no banco para não carregar imagens secundárias.
  *
  * Dívida conhecida: carrega todas as imagens dos N produtos e descarta
  * todas menos a primeira em memória. Aceitável até centenas de produtos.
@@ -58,9 +59,9 @@ export async function attachPrimaryImage(
       and(
         eq(productImageTable.storeId, storeId),
         inArray(productImageTable.productId, productIds),
+        eq(productImageTable.position, 0),
       ),
-    )
-    .orderBy(asc(productImageTable.position));
+    );
 
   const firstByProduct = new Map<string, { url: string; alt: string | null }>();
   for (const img of images) {
