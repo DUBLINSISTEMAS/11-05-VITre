@@ -146,7 +146,7 @@ const productFormFieldsSchema = z.object({
   variants: z.array(variantInputSchema).max(20, "Máximo de 20 variantes."),
 });
 
-// ⚠️ MANTENHA SINCRONIZADO: estes 2 refines aparecem em
+// ⚠️ MANTENHA SINCRONIZADO: estes 4 refines aparecem em
 // `productFormSchema` E `updateProductSchema`. Auditoria K1 (2026-05-12)
 // tentou centralizar num helper genérico, mas Zod v4 não exporta
 // `ZodEffects` como nome simples — a tipagem do helper engole inferência
@@ -170,11 +170,30 @@ const STOCK_REQUIRED_MSG: { message: string; path: string[] } = {
   message: "Informe a quantidade em estoque.",
   path: ["stockQuantity"],
 };
+const ACTIVE_REQUIRES_PRICE = (v: {
+  isActive: boolean;
+  basePriceInCents: number;
+}) => !v.isActive || v.basePriceInCents > 0;
+const ACTIVE_REQUIRES_PRICE_MSG: { message: string; path: string[] } = {
+  message: "Informe um preço maior que zero para publicar.",
+  path: ["basePriceInCents"],
+};
+const SINGLE_VARIANT_AXIS = (v: { variants: Array<{ axis: VariantAxis }> }) => {
+  if (v.variants.length <= 1) return true;
+  const firstAxis = v.variants[0]?.axis;
+  return v.variants.every((variant) => variant.axis === firstAxis);
+};
+const SINGLE_VARIANT_AXIS_MSG: { message: string; path: string[] } = {
+  message: "Use apenas um tipo de variante por produto: tamanho ou cor.",
+  path: ["variants"],
+};
 
 /** Schema do form (sem `productId`) — usado pelo RHF no client. */
 export const productFormSchema = productFormFieldsSchema
   .refine(PROMO_LESS_THAN_BASE, PROMO_LESS_THAN_BASE_MSG)
-  .refine(STOCK_REQUIRED_WHEN_TRACKED, STOCK_REQUIRED_MSG);
+  .refine(STOCK_REQUIRED_WHEN_TRACKED, STOCK_REQUIRED_MSG)
+  .refine(ACTIVE_REQUIRES_PRICE, ACTIVE_REQUIRES_PRICE_MSG)
+  .refine(SINGLE_VARIANT_AXIS, SINGLE_VARIANT_AXIS_MSG);
 /**
  * RHF: defaultValues = INPUT (pré-transform — `composition` é string `""`).
  * Server: data = OUTPUT (pós-transform — `composition` é `string|null`).
@@ -188,7 +207,9 @@ export type ProductFormOutput = z.output<typeof productFormFieldsSchema>;
 export const updateProductSchema = productFormFieldsSchema
   .extend({ productId: z.string().uuid() })
   .refine(PROMO_LESS_THAN_BASE, PROMO_LESS_THAN_BASE_MSG)
-  .refine(STOCK_REQUIRED_WHEN_TRACKED, STOCK_REQUIRED_MSG);
+  .refine(STOCK_REQUIRED_WHEN_TRACKED, STOCK_REQUIRED_MSG)
+  .refine(ACTIVE_REQUIRES_PRICE, ACTIVE_REQUIRES_PRICE_MSG)
+  .refine(SINGLE_VARIANT_AXIS, SINGLE_VARIANT_AXIS_MSG);
 /**
  * Tipo do INPUT da action (pré-Zod-parse). Usamos `z.input<>` porque a action
  * faz `safeParse` internamente — defaults (`axis: "size"`) e transforms

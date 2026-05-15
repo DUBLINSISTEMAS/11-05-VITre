@@ -56,6 +56,9 @@ export function BulkActionsToolbar({
       if (isActive && result.skippedDrafts > 0) {
         message += ` ${result.skippedDrafts} rascunho${result.skippedDrafts === 1 ? "" : "s"} pulado${result.skippedDrafts === 1 ? "" : "s"} — termine de cadastrar antes de publicar.`;
       }
+      if (isActive && result.skippedWithoutPrice > 0) {
+        message += ` ${result.skippedWithoutPrice} produto${result.skippedWithoutPrice === 1 ? "" : "s"} sem preço pulado${result.skippedWithoutPrice === 1 ? "" : "s"}.`;
+      }
       toast.success(message);
       onMutated();
     });

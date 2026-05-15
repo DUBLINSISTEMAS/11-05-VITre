@@ -21,7 +21,12 @@ import {
 } from "./schema";
 
 export type BulkToggleActiveResult =
-  | { ok: true; updated: number; skippedDrafts: number }
+  | {
+      ok: true;
+      updated: number;
+      skippedDrafts: number;
+      skippedWithoutPrice: number;
+    }
   | { ok: false; error: string };
 
 /**
@@ -68,13 +73,18 @@ export async function bulkToggleProductsActive(
 
   const { productIds, isActive } = parsed.data;
 
-  type StepResult = { updated: number; skippedDrafts: number };
+  type StepResult = {
+    updated: number;
+    skippedDrafts: number;
+    skippedWithoutPrice: number;
+  };
 
   let result: StepResult;
   try {
     result = await withTenant(store.id, userId, async (tx) => {
-      // Conta candidatos rascunho ANTES do update pra reportar skippedDrafts.
+      // Conta candidatos incompletos ANTES do update pra reportar skips.
       let skippedDrafts = 0;
+      let skippedWithoutPrice = 0;
       if (isActive) {
         const draftRows = await tx
           .select({ value: sql<number>`count(*)::int` })
@@ -87,6 +97,19 @@ export async function bulkToggleProductsActive(
             ),
           );
         skippedDrafts = draftRows[0]?.value ?? 0;
+
+        const noPriceRows = await tx
+          .select({ value: sql<number>`count(*)::int` })
+          .from(productTable)
+          .where(
+            and(
+              eq(productTable.storeId, store.id),
+              inArray(productTable.id, productIds),
+              sql`${productTable.slug} not like 'draft-%' and btrim(${productTable.name}) <> ''`,
+              sql`${productTable.basePriceInCents} <= 0`,
+            ),
+          );
+        skippedWithoutPrice = noPriceRows[0]?.value ?? 0;
       }
 
       const updated = await tx
@@ -100,13 +123,14 @@ export async function bulkToggleProductsActive(
             ...(isActive
               ? [
                   sql`${productTable.slug} not like 'draft-%' and btrim(${productTable.name}) <> ''`,
+                  sql`${productTable.basePriceInCents} > 0`,
                 ]
               : []),
           ),
         )
         .returning({ id: productTable.id });
 
-      return { updated: updated.length, skippedDrafts };
+      return { updated: updated.length, skippedDrafts, skippedWithoutPrice };
     });
   } catch (e) {
     logger.error("product.bulk_toggle_active_failed", {
@@ -125,5 +149,6 @@ export async function bulkToggleProductsActive(
     ok: true,
     updated: result.updated,
     skippedDrafts: result.skippedDrafts,
+    skippedWithoutPrice: result.skippedWithoutPrice,
   };
 }

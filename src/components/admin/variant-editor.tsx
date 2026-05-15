@@ -85,12 +85,13 @@ export function VariantEditor({
 
   const addVariant = () => {
     if (value.length >= maxVariants) return;
+    const inheritedAxis = value[0]?.axis ?? "size";
     const newVariant: VariantData = {
       tempId: tempId(),
       name: "",
       priceInCents: null,
       stockQuantity: null,
-      axis: "size",
+      axis: inheritedAxis,
       colorHex: "",
       featuredImageId: null,
     };
@@ -99,6 +100,18 @@ export function VariantEditor({
   };
 
   const updateVariant = (idx: number, patch: Partial<VariantData>) => {
+    if ("axis" in patch && patch.axis) {
+      const nextAxis = patch.axis;
+      onChange(
+        value.map((v, i) => ({
+          ...v,
+          ...(i === idx ? patch : {}),
+          axis: nextAxis,
+          colorHex: nextAxis === "color" ? v.colorHex : "",
+        })),
+      );
+      return;
+    }
     onChange(value.map((v, i) => (i === idx ? { ...v, ...patch } : v)));
   };
 
@@ -141,7 +154,11 @@ export function VariantEditor({
               opções com preço/estoque diferentes. Ex: P, M, G; Aro 14, 16,
               18; 100ml, 200ml.
             </p>
-          ) : null}
+          ) : (
+            <p className="text-muted-foreground text-xs leading-relaxed">
+              Use apenas um tipo de variante por produto: tamanho ou cor.
+            </p>
+          )}
 
           {value.map((variant, idx) => {
             const key = variant.id ?? variant.tempId ?? `idx-${idx}`;

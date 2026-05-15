@@ -63,18 +63,24 @@ export async function toggleProductActive(
           eq(productTable.id, parsed.data.productId),
           eq(productTable.storeId, store.id),
         ),
-        columns: { id: true, name: true, slug: true },
+        columns: { id: true, name: true, slug: true, basePriceInCents: true },
       });
       if (!product) {
         return { ok: false, error: "Produto não encontrado." } as const;
       }
 
-      // Bloqueia ativação de rascunho não preenchido
+      // Bloqueia ativação de produto incompleto
       if (parsed.data.isActive) {
         if (!product.name.trim() || product.slug.startsWith("draft-")) {
           return {
             ok: false,
             error: "Preencha o produto antes de publicá-lo.",
+          } as const;
+        }
+        if (product.basePriceInCents <= 0) {
+          return {
+            ok: false,
+            error: "Informe um preço maior que zero para publicar.",
           } as const;
         }
       }
