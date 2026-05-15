@@ -11,6 +11,7 @@
  */
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import { z } from "zod";
 
 import {
@@ -101,9 +102,13 @@ test("enumWithDefault: fallback sempre presente", () => {
   assert.equal(schema.parse(undefined), "draft");
 });
 
-test("idOrNullSchema: vazio/whitespace = null", () => {
+test("idOrNullSchema: vazio/whitespace/malformed = null; UUID válido passa", () => {
   assert.equal(idOrNullSchema.parse(undefined), null);
   assert.equal(idOrNullSchema.parse(""), null);
   assert.equal(idOrNullSchema.parse("   "), null);
-  assert.equal(idOrNullSchema.parse(" abc "), "abc");
+  assert.equal(idOrNullSchema.parse(" abc "), null);
+  assert.equal(
+    idOrNullSchema.parse(" 11111111-1111-4111-8111-111111111111 "),
+    "11111111-1111-4111-8111-111111111111",
+  );
 });
