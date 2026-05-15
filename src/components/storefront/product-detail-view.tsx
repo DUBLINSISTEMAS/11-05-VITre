@@ -11,7 +11,6 @@
  *   │  │                       │  │
  *   │  │      ●  ⬤ ⬤ ⬤         │  ProductGallery dots
  *   │  └───────────────────────┘  │
- *   │ SKU                          │
  *   │ Nome                         │
  *   │ R$ ...  −25%                 │  ProductPurchasePanel
  *   │ ...                          │

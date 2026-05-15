@@ -13,14 +13,13 @@
  *
  *   `variant` (decisão de tema — densidade visual escolhida pelo lojista)
  *     - "standard" (default) — canvas-v1 atual.
- *     - "minimal"  — fontes menores, SEM SKU, SEM tag de badge. Pegada
+ *     - "minimal"  — fontes menores, SEM tag de badge. Pegada
  *                    premium discreta. Casa com preset Boutique.
  *     - "bold"     — fontes maiores, nome em semibold, ring extra no
  *                    card, tag sempre invertida (foreground/background).
  *                    Pegada vibrante. Casa com preset Bazar.
  *
  * Sizes do canvas (mantidos pixel a pixel em "standard"):
- *   - SKU: 9px mono tracking 0.4 cor gray-400
  *   - Nome: 12px font-medium leading 1.25 tracking -0.2
  *   - Preço: 13px font-mono tabular-nums semibold
  *   - Was (línea cortada): 10.5px gray-400
@@ -52,7 +51,6 @@ const CARD_IMAGE_SIZES =
   "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw";
 
 interface VariantTokens {
-  showSku: boolean;
   showTag: boolean;
   tagInverted: boolean;
   nameClass: string;
@@ -64,7 +62,6 @@ interface VariantTokens {
 
 const VARIANT_TOKENS: Record<ProductCardVariant, VariantTokens> = {
   standard: {
-    showSku: true,
     showTag: true,
     tagInverted: false,
     nameClass:
@@ -75,7 +72,6 @@ const VARIANT_TOKENS: Record<ProductCardVariant, VariantTokens> = {
     overlayRingClass: "",
   },
   minimal: {
-    showSku: false,
     showTag: false,
     tagInverted: false,
     nameClass: "text-[11px] font-medium leading-[1.3] text-foreground",
@@ -85,7 +81,6 @@ const VARIANT_TOKENS: Record<ProductCardVariant, VariantTokens> = {
     overlayRingClass: "",
   },
   bold: {
-    showSku: true,
     showTag: true,
     tagInverted: true,
     nameClass:
@@ -97,11 +92,6 @@ const VARIANT_TOKENS: Record<ProductCardVariant, VariantTokens> = {
     overlayRingClass: "ring-1 ring-foreground/10",
   },
 };
-
-/** Deriva um identificador curto mono pra exibição (slot SKU do canvas). */
-function deriveSku(id: string): string {
-  return id.slice(0, 8).toUpperCase();
-}
 
 export function ProductCard({
   product,
@@ -127,8 +117,6 @@ export function ProductCard({
       ? "NOVO"
       : null;
   const tag = tokens.showTag ? rawTag : null;
-
-  const sku = tokens.showSku ? deriveSku(product.id) : null;
 
   const favoriteInput = {
     productId: product.id,
@@ -227,11 +215,6 @@ export function ProductCard({
         )}
       </Link>
 
-      {sku && (
-        <span className="font-mono text-[9px] tracking-[0.4px] text-gray-400">
-          {sku}
-        </span>
-      )}
       <Link
         href={`/${storeSlug}/produto/${product.slug}`}
         prefetch={false}

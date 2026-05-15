@@ -276,7 +276,6 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
         <div className="border-border bg-muted/40 mt-5 space-y-2 rounded-xl border p-3.5">
           <Row label="Subtotal" value={formatBRL(subtotalCents)} mono />
           <Row label="Frete" value="A combinar" />
-          <Row label="Desconto" value="—" />
           <hr className="border-border my-2" />
           <div className="flex items-baseline justify-between">
             <span className="text-[12.5px] font-semibold">Total</span>
@@ -425,11 +424,9 @@ function CartItemRow({
             <p className="text-foreground mt-0.5 line-clamp-2 text-[12.5px] font-medium leading-[1.25]">
               {item.productName}
             </p>
-            {item.variantName && (
-              <p className="text-muted-foreground mt-1 text-[10.5px] font-medium">
-                {item.variantName}
-              </p>
-            )}
+            <p className="text-muted-foreground mt-0.5 text-[10.5px]">
+              Entrega, retirada e pagamento são combinados pelo WhatsApp.
+            </p>
           </div>
           <button
             type="button"

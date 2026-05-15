@@ -24,7 +24,10 @@ import { updateWhatsAppTemplate } from "@/actions/store/update-whatsapp-template
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { DEFAULT_WHATSAPP_TEMPLATE } from "@/lib/whatsapp-message";
+import {
+  buildOrderMessageFromTemplate,
+  DEFAULT_WHATSAPP_TEMPLATE,
+} from "@/lib/whatsapp-message";
 
 const PLACEHOLDERS: Array<{ token: string; label: string }> = [
   { token: "{cliente}", label: "nome do cliente" },
@@ -56,6 +59,30 @@ export function WhatsAppTemplateCard({
   const currentNullish = value.trim() === DEFAULT_WHATSAPP_TEMPLATE.trim();
   const savedRendered = savedSnapshot ?? DEFAULT_WHATSAPP_TEMPLATE;
   const isDirty = value !== savedRendered;
+
+  const preview = buildOrderMessageFromTemplate({
+    template: currentNullish ? null : value,
+    storeName: "Sandra Brito Collection",
+    customerName: "Maria",
+    items: [
+      {
+        productName: "Vestido Linho",
+        variantName: "P",
+        quantity: 1,
+        priceInCents: 18990,
+      },
+      {
+        productName: "Brinco Pérola",
+        variantName: null,
+        quantity: 2,
+        priceInCents: 7990,
+      },
+    ],
+    totalInCents: 34970,
+    shortCode: "A7K2",
+    publicUrl: "https://vitre.site/p/exemplo",
+    customerNotes: "Retirar no fim da tarde.",
+  });
 
   const handleSave = () => {
     // Quando lojista voltou ao default, salva como null pra herdar
@@ -125,6 +152,15 @@ export function WhatsAppTemplateCard({
             {p.token}
           </button>
         ))}
+      </div>
+
+      <div className="mt-4 rounded-xl border bg-muted/30 p-3">
+        <div className="mb-2 text-[12px] font-semibold text-foreground">
+          Prévia da mensagem
+        </div>
+        <pre className="whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-muted-foreground">
+          {preview}
+        </pre>
       </div>
 
       <div className="mt-4 flex flex-wrap justify-between gap-2">

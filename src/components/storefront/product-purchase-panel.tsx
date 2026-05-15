@@ -4,12 +4,11 @@
  * Painel de compra do produto — fiel ao canvas-v1 (`_vitre-storefront.jsx:241-358`).
  *
  *  ┌──────────────────────────────────────┐
- *  │ SKU  (mono 9.5px)                    │
  *  │ Nome do produto                       │  display 22px
  *  │ R$ X,XX  R$ Y,YY  −25%               │  preço-row
  *  │ ou 3× de R$ Z,ZZ sem juros           │  sub 11px
  *  ├──────────────────────────────────────┤
- *  │ Tamanho       guia de medidas         │
+ *  │ Tamanho                               │
  *  │ [PP] [P] [M̲] [G] [G̶G̶]                │  pills 46×38 rounded-8
  *  ├──────────────────────────────────────┤
  *  │ Cor — Cru                             │
@@ -36,7 +35,7 @@
  * stepper (qty=1 implícito; cliente ajusta na sacola), sem share, sem
  * descrição colapsável (canvas mostra completa), sem framer-motion.
  */
-import { Heart } from "lucide-react";
+import { CreditCardIcon, Heart, MessageCircleIcon, TruckIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 
@@ -72,6 +71,12 @@ const META_FIELDS = [
   ["FORRO", "lining"],
   ["LAVAGEM", "washing"],
 ] as const;
+
+  const TRUST_ITEMS = [
+    [TruckIcon, "Entrega ou retirada", "Combine direto com a loja."],
+    [CreditCardIcon, "Pagamento combinado", "Sem cobrança pelo site."],
+    [MessageCircleIcon, "Atendimento no WhatsApp", "Tire dúvidas antes de finalizar."],
+  ] as const;
 
 export function ProductPurchasePanel({
   product,
@@ -133,10 +138,6 @@ export function ProductPurchasePanel({
 
   const ctaPrice = getEffectivePrice(product, now); // preço de catálogo (sem variant) pro label do CTA
   const ctaPriceWithVariant = priceState.effectivePriceInCents;
-
-  // SKU placeholder: primeiros 8 chars do ID em uppercase. Quando schema
-  // ganhar campo `sku` dedicado no produto, swap aqui.
-  const sku = product.id.slice(0, 8).toUpperCase();
 
   const discountPercent = priceState.isOnPromo
     ? Math.round((1 - priceState.effectivePriceInCents / priceState.basePriceInCents) * 100)
@@ -228,10 +229,7 @@ export function ProductPurchasePanel({
       <div className="pb-24 lg:pb-0">
         {/* Title block — canvas linhas 261-271 */}
         <div className="px-4 pt-4">
-          <div className="font-mono text-[9.5px] uppercase tracking-[0.5px] text-gray-400">
-            {sku}
-          </div>
-          <h1 className="mt-1.5 text-[22px] font-semibold leading-[1.15] tracking-[-0.5px] text-foreground [text-wrap:pretty]">
+          <h1 className="text-[22px] font-semibold leading-[1.15] tracking-[-0.5px] text-foreground [text-wrap:pretty]">
             {product.name}
           </h1>
           <div className="mt-2.5 flex flex-wrap items-baseline gap-2">
@@ -261,7 +259,6 @@ export function ProductPurchasePanel({
           <div className="px-4 pt-5">
             <div className="mb-2.5 flex items-baseline justify-between">
               <span className="text-[12px] font-semibold text-foreground">Tamanho</span>
-              <span className="font-mono text-[10px] text-gray-500">guia de medidas</span>
             </div>
             <div
               role="radiogroup"
@@ -356,7 +353,7 @@ export function ProductPurchasePanel({
 
         {/* Meta grid — canvas linhas 326-338 */}
         {metaPairs.length > 0 && (
-          <div className="grid grid-cols-2 gap-2 px-4 pt-[18px] pb-6">
+          <div className="grid grid-cols-2 gap-2 px-4 pt-[18px]">
             {metaPairs.map(([label, value]) => (
               <div key={label} className="border-t border-border pt-2">
                 <div className="font-mono text-[9.5px] uppercase tracking-[0.4px] text-gray-400">
@@ -367,6 +364,25 @@ export function ProductPurchasePanel({
             ))}
           </div>
         )}
+
+        {/* Trust block */}
+        <div className="px-4 pt-5 pb-6">
+          <div className="grid gap-2 rounded-xl border border-border bg-muted/30 p-3">
+            {TRUST_ITEMS.map(([Icon, title, description]) => (
+              <div key={title} className="flex gap-2.5">
+                <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+                <div>
+                  <div className="text-[11.5px] font-semibold text-foreground">
+                    {title}
+                  </div>
+                  <div className="text-[10.5px] leading-snug text-muted-foreground">
+                    {description}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Sticky CTA — canvas linhas 342-353 */}
