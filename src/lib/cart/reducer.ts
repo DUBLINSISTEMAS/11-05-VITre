@@ -31,6 +31,14 @@ export function sameCartLine(a: CartLineKey, b: CartLineKey): boolean {
   return a.productId === b.productId && a.variantId === b.variantId;
 }
 
+export function capCartQuantity(
+  quantity: number,
+  stockQty: number | null,
+): number {
+  if (stockQty === null) return quantity;
+  return Math.min(quantity, stockQty);
+}
+
 /**
  * Devolve um novo array de items com `payload` aplicado: agrega quantity
  * se a linha (productId, variantId) já existe; senão, anexa nova linha.
@@ -47,7 +55,11 @@ export function addItemToItems(
     const existing = next[idx];
     next[idx] = {
       ...existing,
-      quantity: existing.quantity + payload.quantity,
+      cachedStockQty: payload.cachedStockQty,
+      quantity: capCartQuantity(
+        existing.quantity + payload.quantity,
+        payload.cachedStockQty,
+      ),
     };
     return next;
   }
@@ -61,7 +73,7 @@ export function addItemToItems(
     imageUrl: payload.imageUrl,
     cachedPriceCents: payload.cachedPriceCents,
     cachedStockQty: payload.cachedStockQty,
-    quantity: payload.quantity,
+    quantity: capCartQuantity(payload.quantity, payload.cachedStockQty),
     addedAt: now.toISOString(),
   };
 

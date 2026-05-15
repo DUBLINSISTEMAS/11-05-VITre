@@ -28,6 +28,7 @@ import {
 import {
   type AddItemPayload,
   addItemToItems,
+  capCartQuantity,
   sameCartLine,
 } from "@/lib/cart/reducer";
 import { clearCart as clearStorage, readCart, writeCart } from "@/lib/cart/storage";
@@ -131,7 +132,11 @@ export function CartProvider({ storeSlug, children }: CartProviderProps) {
         );
         if (idx < 0) return prev;
         const next = [...prev.items];
-        next[idx] = { ...next[idx], quantity: qty };
+        const item = next[idx];
+        next[idx] = {
+          ...item,
+          quantity: capCartQuantity(qty, item.cachedStockQty),
+        };
         return { ...prev, items: next, savedAt: new Date().toISOString() };
       });
     },

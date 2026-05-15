@@ -121,6 +121,45 @@ test("addItemToItems: re-adicionar mesma variante agrega na linha correta", () =
   assert.equal(g!.quantity, 1);
 });
 
+test("addItemToItems: capta quantidade ao estoque conhecido ao re-adicionar", () => {
+  const initial = addItemToItems(
+    [],
+    makeInput({ cachedStockQty: 2, quantity: 1 }),
+  );
+  const next = addItemToItems(
+    initial,
+    makeInput({ cachedStockQty: 2, quantity: 3 }),
+  );
+
+  assert.equal(next.length, 1);
+  assert.equal(next[0].quantity, 2);
+});
+
+test("addItemToItems: capta item novo ao estoque conhecido", () => {
+  const next = addItemToItems(
+    [],
+    makeInput({ cachedStockQty: 2, quantity: 5 }),
+  );
+
+  assert.equal(next.length, 1);
+  assert.equal(next[0].quantity, 2);
+});
+
+test("addItemToItems: atualiza estoque conhecido ao re-adicionar linha existente", () => {
+  const initial = addItemToItems(
+    [],
+    makeInput({ cachedStockQty: 2, quantity: 1 }),
+  );
+  const next = addItemToItems(
+    initial,
+    makeInput({ cachedStockQty: 1, quantity: 1 }),
+  );
+
+  assert.equal(next.length, 1);
+  assert.equal(next[0].cachedStockQty, 1);
+  assert.equal(next[0].quantity, 1);
+});
+
 test("addItemToItems: persiste variantName no item ao criar linha", () => {
   const next = addItemToItems(
     [],
