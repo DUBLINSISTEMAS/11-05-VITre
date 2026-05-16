@@ -8,6 +8,7 @@ import {
   PaletteIcon,
   ReceiptIcon,
   SettingsIcon,
+  ShoppingCartIcon,
   StoreIcon,
   TagIcon,
   UsersIcon,
@@ -46,6 +47,12 @@ export const ADMIN_NAV_ITEMS: readonly AdminNavEntry[] = [
     label: "Painel",
     icon: HomeIcon,
     exact: true,
+  },
+  {
+    kind: "link",
+    href: "/admin/pdv",
+    label: "PDV",
+    icon: ShoppingCartIcon,
   },
   {
     kind: "group",

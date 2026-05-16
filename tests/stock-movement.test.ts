@@ -164,16 +164,23 @@ function loadCreateFromCartSource(): string {
   return readFileSync("src/actions/order/create-from-cart.ts", "utf8");
 }
 
-test("create-from-cart: usa INSERT em stockMovementTable com type 'sale'", () => {
+test("create-from-cart: registra venda via helper recordSaleMovements (Fase 5)", () => {
   const src = loadCreateFromCartSource();
-  assert.match(src, /stockMovementTable/);
-  assert.match(src, /innerTx\.insert\(stockMovementTable\)/);
-  assert.match(src, /movementType:\s*["']sale["']/);
-  assert.match(src, /referenceType:\s*["']order["']/);
+  // Fase 5 (ADR-0016): INSERT batch foi extraído pra helper compartilhado
+  // com PDV (`src/lib/order/record-sale-movements.ts`).
+  assert.match(src, /recordSaleMovements\(/);
+  assert.match(src, /@\/lib\/order\/record-sale-movements/);
 });
 
-test("create-from-cart: delta negativo no sale (saída de estoque)", () => {
-  const src = loadCreateFromCartSource();
+test("record-sale-movements helper: INSERT type='sale' com delta negativo + reference_type='order'", () => {
+  const src = readFileSync(
+    "src/lib/order/record-sale-movements.ts",
+    "utf8",
+  );
+  assert.match(src, /tx\.insert\(stockMovementTable\)/);
+  assert.match(src, /movementType:\s*["']sale["']/);
+  assert.match(src, /referenceType:\s*["']order["']/);
+  // delta negativo (saída de estoque)
   assert.match(src, /quantityDelta:\s*-s\.quantity/);
 });
 

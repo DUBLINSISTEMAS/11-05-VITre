@@ -129,13 +129,14 @@ function OrderDetailContent({
   onCustomerLinkChange: () => void;
 }) {
   const itemCount = order.items.reduce((s, i) => s + i.quantity, 0);
-  const whatsappLink =
-    "https://wa.me/" +
-    order.customerPhone.replace(/^\+/, "") +
-    "?text=" +
-    encodeURIComponent(
-      `Oi ${order.customerName.split(" ")[0] ?? ""}! Estou retornando sobre o pedido ${order.shortCode} 🙂`,
-    );
+  const whatsappLink = order.customerPhone
+    ? "https://wa.me/" +
+      order.customerPhone.replace(/^\+/, "") +
+      "?text=" +
+      encodeURIComponent(
+        `Oi ${order.customerName.split(" ")[0] ?? ""}! Estou retornando sobre o pedido ${order.shortCode} 🙂`,
+      )
+    : null;
 
   return (
     <>
@@ -168,16 +169,24 @@ function OrderDetailContent({
           </h3>
           <div className="flex flex-wrap items-center gap-3 text-sm">
             <PhoneIcon className="size-4 shrink-0 text-muted-foreground" />
-            <span className="font-mono text-[13px]">{order.customerPhone}</span>
-            <Button
-              asChild
-              size="sm"
-              className="bg-whatsapp text-whatsapp-foreground hover:bg-whatsapp-hover ml-auto"
-            >
-              <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-                <MessageCircleIcon /> Abrir conversa
-              </a>
-            </Button>
+            <span className="font-mono text-[13px]">
+              {order.customerPhone ?? (
+                <span className="text-muted-foreground italic">
+                  Sem telefone (balcão)
+                </span>
+              )}
+            </span>
+            {whatsappLink ? (
+              <Button
+                asChild
+                size="sm"
+                className="bg-whatsapp text-whatsapp-foreground hover:bg-whatsapp-hover ml-auto"
+              >
+                <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
+                  <MessageCircleIcon /> Abrir conversa
+                </a>
+              </Button>
+            ) : null}
           </div>
 
           {order.customerNotes ? (

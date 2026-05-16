@@ -25,10 +25,13 @@ export interface OrderTableRow {
   id: string;
   shortCode: string;
   customerName: string;
-  customerPhone: string;
+  /** NULL para venda balcão walk-in (Fase 5 — ADR-0016). */
+  customerPhone: string | null;
   totalInCents: number;
   status: OrderStatus;
   createdAt: Date;
+  /** Fase 5: 'whatsapp' (legado/storefront) ou 'balcao' (PDV). */
+  channel?: "whatsapp" | "balcao";
 }
 
 export interface OrdersTableProps {
@@ -65,8 +68,13 @@ export function OrdersTable({ orders }: OrdersTableProps) {
                 <span className="font-mono text-[12.5px] font-medium tabular-nums">
                   {o.shortCode}
                 </span>
-                <span className="min-w-0 truncate font-medium">
+                <span className="flex min-w-0 items-center gap-1.5 truncate font-medium">
                   {o.customerName}
+                  {o.channel === "balcao" ? (
+                    <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-amber-900">
+                      Balcão
+                    </span>
+                  ) : null}
                 </span>
                 <span className="font-mono text-[13px] tabular-nums">
                   {formatBRL(o.totalInCents)}

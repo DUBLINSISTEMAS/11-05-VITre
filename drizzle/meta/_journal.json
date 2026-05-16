@@ -127,6 +127,13 @@
       "when": 1778907449077,
       "tag": "0017_military_hitman",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1778910937892,
+      "tag": "0018_yielding_earthquake",
+      "breakpoints": true
     }
   ]
 }

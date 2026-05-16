@@ -34,7 +34,7 @@ export interface OrderTimelineProps {
     createdAt: Date;
     whatsappOpenedAt: Date | null;
     confirmedAt: Date | null;
-    expiresAt: Date;
+    expiresAt: Date | null;
   };
 }
 

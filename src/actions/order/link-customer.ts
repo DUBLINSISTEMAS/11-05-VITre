@@ -178,6 +178,17 @@ export async function createAndLinkCustomerFromOrder(input: {
         } as const;
       }
 
+      // Fase 5 (ADR-0016): pedidos balcão walk-in podem ter customerPhone
+      // NULL — sem phone não dá pra deduplicar nem criar cliente "do zero".
+      // Lojista precisa abrir o cadastro manualmente.
+      if (!order.customerPhone) {
+        return {
+          ok: false,
+          error:
+            "Pedido sem telefone — cadastre o cliente diretamente em /admin/clientes.",
+        } as const;
+      }
+
       // Se já existe customer com esse phone na loja, só linka (não cria duplicata)
       const existing = await tx.query.customerTable.findFirst({
         where: and(

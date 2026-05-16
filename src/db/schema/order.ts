@@ -25,6 +25,39 @@ export const orderStatusEnum = pgEnum("order_status", [
   "expired",
 ]);
 
+/**
+ * Canal de origem da venda (Fase 5 — ADR-0016).
+ *   - whatsapp: checkout do storefront público (carrinho → WhatsApp)
+ *   - balcao:   venda registrada no /admin/pdv pelo lojista
+ *
+ * Default 'whatsapp' pra preservar comportamento de pedidos pré-PDV.
+ */
+export const orderChannelEnum = pgEnum("order_channel", [
+  "whatsapp",
+  "balcao",
+]);
+
+/**
+ * Método de pagamento informado pelo lojista no PDV (Fase 5 — ADR-0016).
+ * APENAS metadado — Vitrê não processa cartão; o lojista usa POS físico
+ * próprio e registra aqui o que foi cobrado, pra reconciliação/relatório.
+ *
+ *   - cash:   dinheiro (pode acompanhar cash_received_in_cents pra troco)
+ *   - pix:    transferência PIX
+ *   - debit:  débito (POS físico do lojista)
+ *   - credit: crédito (POS físico do lojista)
+ *   - other:  cheque/fiado/vale — campo notes do pedido cobre detalhes
+ *
+ * NULL para pedidos do canal whatsapp (pagamento combinado no chat).
+ */
+export const orderPaymentMethodEnum = pgEnum("order_payment_method", [
+  "cash",
+  "pix",
+  "debit",
+  "credit",
+  "other",
+]);
+
 // =====================================================================
 // Order
 // =====================================================================
@@ -53,7 +86,12 @@ export const orderTable = pgTable(
     idempotencyKey: text("idempotency_key").notNull(),
 
     customerName: text("customer_name").notNull(),
-    customerPhone: text("customer_phone").notNull(), // E.164
+    /**
+     * E.164 (Fase 5/ADR-0016): nullable pra cobrir venda balcão walk-in
+     * sem cliente vinculado. CHECK do SQL 12 já permite NULL.
+     * Storefront WhatsApp continua exigindo via Zod (action valida).
+     */
+    customerPhone: text("customer_phone"),
     customerNotes: text("customer_notes"),
     /**
      * FK opcional para `customer` (Fase 3 — ADR-0014). NULL para pedidos
@@ -74,9 +112,29 @@ export const orderTable = pgTable(
 
     status: orderStatusEnum("status").notNull().default("awaiting_whatsapp"),
 
+    /**
+     * Canal de origem (Fase 5 — ADR-0016). Default 'whatsapp' preserva
+     * comportamento de pedidos pré-PDV; SQL 26 (CHECK) garante que
+     * `channel='balcao'` exige payment_method NOT NULL.
+     */
+    channel: orderChannelEnum("channel").notNull().default("whatsapp"),
+    /** Fase 5 — apenas metadado. Vitrê não processa cartão. */
+    paymentMethod: orderPaymentMethodEnum("payment_method"),
+    /** Fase 5 — desconto manual no balcão (em centavos). */
+    discountInCents: integer("discount_in_cents"),
+    /** Fase 5 — valor recebido em dinheiro (pra cálculo de troco). */
+    cashReceivedInCents: integer("cash_received_in_cents"),
+
     whatsappOpenedAt: timestamp("whatsapp_opened_at"),
     confirmedAt: timestamp("confirmed_at"),
-    expiresAt: timestamp("expires_at").notNull(),
+    /**
+     * Pedido whatsapp expira se cliente não confirma dentro da janela
+     * configurada. PDV (channel='balcao') nasce status='fulfilled' e
+     * passa expires_at = createdAt (irrelevante mas mantido por hábito
+     * dos call-sites que tocam timestamps; tornar nullable evita CHECK
+     * adicional). Pedido whatsapp continua exigindo Zod no caller.
+     */
+    expiresAt: timestamp("expires_at"),
 
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },

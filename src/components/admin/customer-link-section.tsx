@@ -36,7 +36,7 @@ interface CustomerLinkSectionProps {
   linkedCustomer: LinkedCustomer | null;
   /** Snapshots do pedido (nome/phone que vieram no payload do checkout). */
   snapshotName: string;
-  snapshotPhone: string;
+  snapshotPhone: string | null;
   onChange: () => void;
 }
 
@@ -134,7 +134,7 @@ export function CustomerLinkSection({
 interface UnlinkedSectionProps {
   orderId: string;
   snapshotName: string;
-  snapshotPhone: string;
+  snapshotPhone: string | null;
   onChange: () => void;
 }
 
@@ -217,7 +217,11 @@ function UnlinkedSection({
         <p className="text-muted-foreground text-xs leading-relaxed">
           Vincule a um cliente do seu cadastro pra ter histórico unificado.
           Os dados deste pedido (<span className="font-medium">{snapshotName}</span>{" "}
-          / <span className="font-mono">{snapshotPhone}</span>) ficam
+          {snapshotPhone ? (
+            <>
+              {" "}/ <span className="font-mono">{snapshotPhone}</span>
+            </>
+          ) : null}) ficam
           preservados independente do vínculo.
         </p>
       </header>

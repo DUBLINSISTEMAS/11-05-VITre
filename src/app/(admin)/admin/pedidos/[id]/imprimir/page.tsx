@@ -115,7 +115,7 @@ export default async function ImprimirPedidoPage({
             <dt className="text-black/60">Nome</dt>
             <dd className="font-medium">{order.customerName}</dd>
             <dt className="text-black/60">WhatsApp</dt>
-            <dd className="font-mono">{order.customerPhone}</dd>
+            <dd className="font-mono">{order.customerPhone ?? "—"}</dd>
             {order.customerNotes ? (
               <>
                 <dt className="text-black/60">Observações</dt>

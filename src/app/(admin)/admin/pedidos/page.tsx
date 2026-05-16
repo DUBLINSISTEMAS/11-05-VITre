@@ -20,9 +20,12 @@ import { withTenant } from "@/lib/tenant";
 
 const PAGE_SIZE = 20;
 
+const ORDER_CHANNEL_VALUES = ["whatsapp", "balcao"] as const;
+
 const pedidosSearchSchema = z.object({
   q: searchTextSchema,
   status: enumOrNull(ORDER_STATUS_VALUES),
+  canal: enumOrNull(ORDER_CHANNEL_VALUES),
   page: pageNumberSchema,
 });
 
@@ -40,6 +43,7 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
   const {
     q: rawQ,
     status: statusFilter,
+    canal: channelFilter,
     page,
   } = pedidosSearchSchema.parse(await searchParams);
   const q = rawQ.trim();
@@ -47,6 +51,9 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
   const conditions: SQL[] = [eq(orderTable.storeId, store.id)];
   if (statusFilter) {
     conditions.push(eq(orderTable.status, statusFilter));
+  }
+  if (channelFilter) {
+    conditions.push(eq(orderTable.channel, channelFilter));
   }
   if (q) {
     // Auditoria I3 (2026-05-12): antes era `eq(shortCode, q.toUpperCase())`,
@@ -81,6 +88,7 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
           customerPhone: true,
           totalInCents: true,
           status: true,
+          channel: true,
           createdAt: true,
         },
       });
@@ -93,12 +101,14 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
   );
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const hasFilters = q !== "" || statusFilter !== null;
+  const hasFilters =
+    q !== "" || statusFilter !== null || channelFilter !== null;
 
   const buildHref = (nextPage: number) => {
     const usp = new URLSearchParams();
     if (q) usp.set("q", q);
     if (statusFilter) usp.set("status", statusFilter);
+    if (channelFilter) usp.set("canal", channelFilter);
     if (nextPage > 1) usp.set("page", String(nextPage));
     const qs = usp.toString();
     return qs ? `?${qs}` : "?";

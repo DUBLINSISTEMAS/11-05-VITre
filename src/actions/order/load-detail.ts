@@ -34,7 +34,7 @@ export type OrderDetail = {
   id: string;
   shortCode: string;
   customerName: string;
-  customerPhone: string;
+  customerPhone: string | null;
   customerNotes: string | null;
   customerId: string | null;
   linkedCustomer: OrderDetailLinkedCustomer | null;
@@ -42,7 +42,7 @@ export type OrderDetail = {
   status: (typeof ORDER_STATUS_VALUES)[number];
   whatsappOpenedAt: Date | null;
   confirmedAt: Date | null;
-  expiresAt: Date;
+  expiresAt: Date | null;
   createdAt: Date;
   items: OrderDetailItem[];
 };

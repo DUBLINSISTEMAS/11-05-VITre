@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 
 const STATUS_ALL = "__all__";
+const CHANNEL_ALL = "__all__";
 
 const STATUS_OPTIONS = [
   { value: STATUS_ALL, label: "Todos" },
@@ -23,6 +24,12 @@ const STATUS_OPTIONS = [
   { value: "fulfilled", label: "Cumpridos" },
   { value: "canceled", label: "Cancelados" },
   { value: "expired", label: "Expirados" },
+];
+
+const CHANNEL_OPTIONS = [
+  { value: CHANNEL_ALL, label: "Todos os canais" },
+  { value: "whatsapp", label: "WhatsApp" },
+  { value: "balcao", label: "Balcão (PDV)" },
 ];
 
 /**
@@ -37,6 +44,7 @@ export function OrdersFilters() {
 
   const initialQ = searchParams.get("q") ?? "";
   const status = searchParams.get("status") ?? STATUS_ALL;
+  const canal = searchParams.get("canal") ?? CHANNEL_ALL;
 
   const [q, setQ] = useState(initialQ);
 
@@ -66,6 +74,16 @@ export function OrdersFilters() {
     });
   };
 
+  const updateCanal = (value: string) => {
+    const usp = new URLSearchParams(window.location.search);
+    if (value === CHANNEL_ALL) usp.delete("canal");
+    else usp.set("canal", value);
+    usp.delete("page");
+    startTransition(() => {
+      router.replace(`?${usp.toString()}`, { scroll: false });
+    });
+  };
+
   const clearAll = () => {
     setQ("");
     startTransition(() => {
@@ -73,7 +91,8 @@ export function OrdersFilters() {
     });
   };
 
-  const hasAny = q.trim() !== "" || status !== STATUS_ALL;
+  const hasAny =
+    q.trim() !== "" || status !== STATUS_ALL || canal !== CHANNEL_ALL;
 
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
@@ -102,6 +121,19 @@ export function OrdersFilters() {
             {STATUS_OPTIONS.map((s) => (
               <SelectItem key={s.value} value={s.value}>
                 {s.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={canal} onValueChange={updateCanal}>
+          <SelectTrigger className="w-full min-w-40 sm:w-auto">
+            <SelectValue placeholder="Canal" />
+          </SelectTrigger>
+          <SelectContent>
+            {CHANNEL_OPTIONS.map((c) => (
+              <SelectItem key={c.value} value={c.value}>
+                {c.label}
               </SelectItem>
             ))}
           </SelectContent>

@@ -34,11 +34,11 @@ import {
   productImageTable,
   productTable,
   productVariantTable,
-  stockMovementTable,
   storeTable,
 } from "@/db/schema";
 import { isStockExhausted, resolveStockState } from "@/lib/cart/stock";
 import { env } from "@/lib/env";
+import { recordSaleMovements } from "@/lib/order/record-sale-movements";
 import { getEffectivePrice } from "@/lib/pricing";
 import { generatePublicOrderToken } from "@/lib/public-order";
 import {
@@ -48,7 +48,7 @@ import {
   rateLimits,
 } from "@/lib/rate-limit";
 import { generateShortCode } from "@/lib/shortcode";
-import { ANON_USER_ID, withServiceRole, withTenant } from "@/lib/tenant";
+import { ANON_USER_ID, type Tx, withServiceRole, withTenant } from "@/lib/tenant";
 import { parseWhatsAppBR } from "@/lib/whatsapp-format";
 import {
   buildOrderMessageFromTemplate,
@@ -491,22 +491,16 @@ export async function createOrderFromCart(
               })),
             );
 
-            // Fase 4 (ADR-0015): INSERT stock_movement do tipo `sale`
-            // pra cada item rastreado. Trigger atualiza cache atomicamente
-            // dentro do mesmo COMMIT. Lock advisory já adquirido acima.
-            if (salesToRecord.length > 0) {
-              await innerTx.insert(stockMovementTable).values(
-                salesToRecord.map((s) => ({
-                  storeId: store.id,
-                  productId: s.productId,
-                  variantId: s.variantId,
-                  movementType: "sale" as const,
-                  quantityDelta: -s.quantity,
-                  referenceType: "order",
-                  referenceId: orderRow.id,
-                })),
-              );
-            }
+            // Fase 4 (ADR-0015): INSERT stock_movement do tipo `sale` via
+            // helper compartilhado com PDV (Fase 5/ADR-0016). Trigger
+            // atualiza cache atomicamente; lock advisory já adquirido.
+            // Cast: innerTx é PgTransaction nested; helper aceita Tx
+            // (typeof db) — mesma trick que withTenant usa internamente.
+            await recordSaleMovements(innerTx as unknown as Tx, {
+              storeId: store.id,
+              orderId: orderRow.id,
+              sales: salesToRecord,
+            });
 
             createdOrderId = orderRow.id;
             createdShortCode = candidate;
