@@ -1,5 +1,9 @@
+import { CalculatorIcon } from "lucide-react";
+import Link from "next/link";
+
 import { PdvShell } from "@/components/admin/pdv/pdv-shell";
 import { AdminPageHeader } from "@/components/admin/shell/page-header";
+import { Button } from "@/components/ui/button";
 
 /**
  * PDV / venda balcão (Fase 5 — ADR-0016).
@@ -16,6 +20,14 @@ export default async function PdvPage() {
       <AdminPageHeader
         title="PDV"
         subtitle="Registre uma venda no balcão. Estoque desce automaticamente."
+        actions={
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/admin/pdv/caixa">
+              <CalculatorIcon />
+              Fechar caixa
+            </Link>
+          </Button>
+        }
       />
       <PdvShell />
     </div>

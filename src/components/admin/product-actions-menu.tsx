@@ -16,22 +16,33 @@
 import { MoreVerticalIcon } from "lucide-react";
 
 import { DeleteProductDialog } from "@/components/admin/delete-product-dialog";
+import { StockMovementDialog } from "@/components/admin/stock-movement-dialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+interface VariantOption {
+  id: string;
+  name: string;
+  stockQuantity: number;
+}
 
 interface ProductActionsMenuProps {
   productId: string;
   productName: string;
+  /** Variantes do produto pra preencher o select no dialog de movimentação. */
+  variants: VariantOption[];
 }
 
 export function ProductActionsMenu({
   productId,
   productName,
+  variants,
 }: ProductActionsMenuProps) {
   return (
     <DropdownMenu>
@@ -41,6 +52,17 @@ export function ProductActionsMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <StockMovementDialog
+          productId={productId}
+          productName={productName}
+          variants={variants}
+          trigger={
+            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+              Lançar movimentação
+            </DropdownMenuItem>
+          }
+        />
+        <DropdownMenuSeparator />
         <DeleteProductDialog
           productId={productId}
           productName={productName}

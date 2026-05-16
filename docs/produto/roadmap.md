@@ -19,7 +19,9 @@ Atualizado: 2026-05-16. Cada item é checkbox real (`- [x]` concluído / `- [ ]`
 | 3 | Cadastro de clientes admin ([ADR-0014](../decisoes/0014-customer-admin-vs-storefront.md)) | ✅ concluída 2026-05-16 |
 | 4 | Estoque event-sourced ([ADR-0015](../decisoes/0015-estoque-event-sourced.md)) | ✅ concluída 2026-05-16 |
 | 5 | PDV / balcão ([ADR-0016](../decisoes/0016-pdv-balcao.md)) | ✅ concluída 2026-05-16 |
-| 6 | Empacotamento desktop PWA→Tauri (ADR-0017) | ⏳ próxima |
+| 6 (PWA) | Empacotamento desktop — PWA ([ADR-0017](../decisoes/0017-empacotamento-pwa-tauri.md)) | ✅ concluída 2026-05-16 |
+| 6 (Tauri) | Empacotamento Tauri nativo + impressão térmica ([ADR-0017](../decisoes/0017-empacotamento-pwa-tauri.md)) | 🚫 vetado até dor concreta |
+| — | Suporte remoto AnyDesk ([ADR-0018](../decisoes/0018-suporte-remoto-fora-do-produto.md)) | ✅ runbook operacional, fora do produto |
 | **Roadmap MVP original (superado pelo pivô)** ↓ | | |
 | ~~2~~ | ~~Multi-tenant pleno (signup self-service)~~ | ⏸ pausado |
 | ~~3~~ | ~~Monetização Stripe (Vitrê cobra dos lojistas)~~ | ⏸ pausado |

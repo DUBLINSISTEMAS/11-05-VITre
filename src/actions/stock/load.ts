@@ -1,6 +1,19 @@
 "use server";
 
-import { and, count, desc, eq, gte, ilike, inArray, lte, or, type SQL } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  lte,
+  or,
+  type SQL,
+  sql,
+  sum,
+} from "drizzle-orm";
 
 import {
   productTable,
@@ -138,9 +151,85 @@ export async function listStockMovements(
   });
 }
 
+export interface StockKpis {
+  /** Soma de product.stockQuantity (cache) — saldo atual estimado. */
+  currentTotal: number;
+  /** Soma de deltas positivos no mês corrente (manual_in + sale return + initial). */
+  monthIn: number;
+  /** Soma de deltas negativos no mês corrente (valor absoluto: manual_out + sale). */
+  monthOut: number;
+  /** Contagem de movimentos type=adjustment no mês corrente. */
+  monthAdjustments: number;
+}
+
+/**
+ * Estatísticas de estoque pro topo da página /admin/estoque
+ * (follow-up Fase 4 — ADR-0015).
+ *
+ * Janela "mês corrente" = do dia 1 do mês atual (00:00 local server)
+ * até agora. Servidor Vercel roda em UTC, mas a precisão de mês não
+ * exige tz exata — diferença de até 3h é aceitável pra um KPI.
+ */
+export async function loadStockKpis(): Promise<StockKpis> {
+  const session = await requireSession();
+  const store = await getCurrentStore(session.user.id);
+  if (!store) {
+    return { currentTotal: 0, monthIn: 0, monthOut: 0, monthAdjustments: 0 };
+  }
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  return withTenant(store.id, session.user.id, async (tx) => {
+    // 1) saldo atual via cache (mais barato que ressomar event log inteiro)
+    const totalRow = await tx
+      .select({
+        value: sql<string>`COALESCE(SUM(${productTable.stockQuantity}), 0)`,
+      })
+      .from(productTable)
+      .where(
+        and(
+          eq(productTable.storeId, store.id),
+          eq(productTable.trackStock, true),
+        ),
+      );
+    const currentTotal = Number(totalRow[0]?.value ?? 0);
+
+    // 2) entradas/saídas/ajustes do mês via stock_movement
+    const monthWhere = and(
+      eq(stockMovementTable.storeId, store.id),
+      gte(stockMovementTable.createdAt, monthStart),
+      lte(stockMovementTable.createdAt, now),
+    );
+
+    const inRow = await tx
+      .select({
+        value: sql<string>`COALESCE(SUM(${stockMovementTable.quantityDelta}), 0)`,
+      })
+      .from(stockMovementTable)
+      .where(and(monthWhere, gte(stockMovementTable.quantityDelta, 0)));
+    const monthIn = Number(inRow[0]?.value ?? 0);
+
+    const outRow = await tx
+      .select({
+        value: sql<string>`COALESCE(SUM(${stockMovementTable.quantityDelta}), 0)`,
+      })
+      .from(stockMovementTable)
+      .where(and(monthWhere, lte(stockMovementTable.quantityDelta, -1)));
+    const monthOut = Math.abs(Number(outRow[0]?.value ?? 0));
+
+    const adjRow = await tx
+      .select({ value: count() })
+      .from(stockMovementTable)
+      .where(and(monthWhere, eq(stockMovementTable.movementType, "adjustment")));
+    const monthAdjustments = adjRow[0]?.value ?? 0;
+
+    return { currentTotal, monthIn, monthOut, monthAdjustments };
+  });
+}
+
 // Re-export pra outros lugares que precisarem do tipo
 export type { StockMovement };
-// Avoid unused import warning when gte/lte added later for date filtering
-void gte;
-void lte;
+// Avoid unused import warning
 void or;
+void sum;

@@ -182,7 +182,7 @@ export function PdvShell() {
   const removeItem = (idx: number) =>
     setCart((prev) => prev.filter((_, i) => i !== idx));
 
-  const reset = () => {
+  const reset = useCallback(() => {
     setCart([]);
     setPaymentMethod(null);
     setDiscountInput("");
@@ -190,7 +190,7 @@ export function PdvShell() {
     setNotes("");
     setCustomerId(null);
     setCustomerLabel("");
-  };
+  }, []);
 
   const canSubmit =
     cart.length > 0 &&
@@ -244,6 +244,69 @@ export function PdvShell() {
       }
     });
   };
+
+  // Atalhos de teclado (follow-up Fase 5 — ADR-0016)
+  //
+  // F2 = busca produto, F3 = busca cliente, F4 = finalizar, ESC = limpar.
+  // Refs nas closures (handleSubmit/canSubmit/cart) pra evitar listener
+  // rebind a cada keystroke; dep array só contém o que muda raramente.
+  const handleSubmitRef = useRef(handleSubmit);
+  const canSubmitRef = useRef(canSubmit);
+  const cartLengthRef = useRef(cart.length);
+  useEffect(() => {
+    handleSubmitRef.current = handleSubmit;
+    canSubmitRef.current = canSubmit;
+    cartLengthRef.current = cart.length;
+  });
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Ignora se modifier pressionado — não pisar em atalhos do sistema
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      switch (e.key) {
+        case "F2": {
+          e.preventDefault();
+          const el = document.getElementById(
+            "pdv-product-search",
+          ) as HTMLInputElement | null;
+          el?.focus();
+          el?.select();
+          return;
+        }
+        case "F3": {
+          e.preventDefault();
+          const el = document.getElementById(
+            "pdv-customer-search",
+          ) as HTMLInputElement | null;
+          el?.focus();
+          el?.select();
+          return;
+        }
+        case "F4": {
+          e.preventDefault();
+          if (canSubmitRef.current) handleSubmitRef.current();
+          return;
+        }
+        case "Escape": {
+          // Só zera se foco está no body (fora de inputs) E carrinho > 0
+          // — ESC dentro de um input fecha popovers/dropdowns nativamente.
+          if (
+            document.activeElement === document.body &&
+            cartLengthRef.current > 0
+          ) {
+            e.preventDefault();
+            if (window.confirm("Limpar a venda atual?")) {
+              reset();
+            }
+          }
+          return;
+        }
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [reset]);
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_400px] lg:gap-6">
@@ -360,13 +423,14 @@ export function PdvShell() {
           </div>
 
           <Button
+            id="pdv-submit"
             type="button"
             size="lg"
             disabled={!canSubmit}
             onClick={handleSubmit}
             className="w-full h-12 text-base"
           >
-            {isSubmitting ? "Registrando..." : "Finalizar venda"}
+            {isSubmitting ? "Registrando..." : "Finalizar venda (F4)"}
             <ChevronRightIcon className="size-4" />
           </Button>
 
@@ -437,10 +501,11 @@ function ProductSearchPicker({
           className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
         />
         <Input
+          id="pdv-product-search"
           autoFocus
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar produto por nome..."
+          placeholder="Buscar produto por nome... (F2)"
           className="pl-9 h-12 text-base"
         />
         {q ? (
@@ -759,13 +824,14 @@ function CustomerComboboxLight({
           className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
         />
         <Input
+          id="pdv-customer-search"
           value={q}
           onChange={(e) => {
             setQ(e.target.value);
             setShowResults(true);
           }}
           onFocus={() => setShowResults(true)}
-          placeholder="Buscar por nome ou telefone..."
+          placeholder="Buscar por nome ou telefone... (F3)"
           className="pl-9"
         />
       </div>

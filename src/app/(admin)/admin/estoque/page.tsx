@@ -4,9 +4,11 @@ import { z } from "zod";
 
 import {
   listStockMovements,
+  loadStockKpis,
   type StockMovement,
 } from "@/actions/stock/load";
 import { AdminPageHeader } from "@/components/admin/shell/page-header";
+import { StockKpiCards } from "@/components/admin/stock-kpis";
 import { StockMovementsFilters } from "@/components/admin/stock-movements-filters";
 import { StockMovementsTable } from "@/components/admin/stock-movements-table";
 import { Pagination } from "@/components/common/pagination";
@@ -58,12 +60,15 @@ export default async function EstoquePage({ searchParams }: EstoquePageProps) {
     page,
   } = estoqueSearchSchema.parse(await searchParams);
 
-  const { items, total } = await listStockMovements({
-    q: rawQ.trim() || undefined,
-    movementType: typeFilter,
-    page,
-    pageSize: PAGE_SIZE,
-  });
+  const [{ items, total }, kpis] = await Promise.all([
+    listStockMovements({
+      q: rawQ.trim() || undefined,
+      movementType: typeFilter,
+      page,
+      pageSize: PAGE_SIZE,
+    }),
+    loadStockKpis(),
+  ]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const hasFilters = rawQ.trim() !== "" || typeFilter !== null;
@@ -89,6 +94,8 @@ export default async function EstoquePage({ searchParams }: EstoquePageProps) {
             : `${total} ${total === 1 ? "movimentação" : "movimentações"} registradas`
         }
       />
+
+      <StockKpiCards kpis={kpis} />
 
       <Suspense
         fallback={<div className="bg-muted/30 h-10 animate-pulse rounded-md" />}

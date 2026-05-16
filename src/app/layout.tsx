@@ -3,6 +3,7 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
+import { PwaRegister } from "@/components/pwa-register";
 import { Toaster } from "@/components/ui/sonner";
 import { env } from "@/lib/env";
 import { ReactQueryProvider } from "@/providers/react-query";
@@ -34,8 +35,15 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
+  manifest: "/manifest.webmanifest",
   icons: {
     icon: "/brand/icone-branco.webp",
+    apple: "/icons/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Vitrê",
+    statusBarStyle: "default",
   },
 };
 
@@ -59,6 +67,7 @@ export default function RootLayout({
       >
         <ReactQueryProvider>{children}</ReactQueryProvider>
         <Toaster position="top-center" richColors closeButton />
+        <PwaRegister />
       </body>
     </html>
   );

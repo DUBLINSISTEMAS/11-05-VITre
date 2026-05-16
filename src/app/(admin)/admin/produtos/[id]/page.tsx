@@ -174,6 +174,11 @@ export default async function EditProdutoPage({ params }: EditProdutoPageProps) 
             <ProductActionsMenu
               productId={product.id}
               productName={product.name}
+              variants={variants.map((v) => ({
+                id: v.id,
+                name: v.name,
+                stockQuantity: v.stockQuantity ?? 0,
+              }))}
             />
           </>
         }
