@@ -1,6 +1,8 @@
 # Roadmap — do MVP ao deploy
 
-Atualizado: 2026-05-07. Cada item é checkbox real (`- [x]` concluído / `- [ ]` pendente). Renderiza em GitHub e Obsidian.
+Atualizado: 2026-05-16. Cada item é checkbox real (`- [x]` concluído / `- [ ]` pendente). Renderiza em GitHub e Obsidian.
+
+**Pivô 2026-05-15 ([ADR-0012](../decisoes/0012-pivot-vitre-gestao.md))**: o roadmap "Fase 2 multi-tenant pleno / Fase 3 Stripe / Fase 4+ diferenciação" do MVP original foi superado. As fases 2+ agora pertencem ao pivô Vitrê Gestão (cada uma com ADR antes do código).
 
 | Fase | Escopo | Status |
 |---|---|---|
@@ -11,10 +13,17 @@ Atualizado: 2026-05-07. Cada item é checkbox real (`- [x]` concluído / `- [ ]`
 | 1.4 | Admin: categoria + banner + promoção + configurações | ✅ concluída |
 | 1.5 | Catálogo público + ISR + SEO | ✅ concluída |
 | 1.6 | Carrinho + checkout WhatsApp + Lottie | ✅ concluída |
-| 1.7 | Deploy Vercel + Supabase prod + Cron + seed Sandra | ⏳ pendente |
-| 2 | Multi-tenant pleno (signup self-service, dashboard pedidos) | 🔮 futuro |
-| 3 | Monetização Stripe (Vitrê cobra dos lojistas) | 🔮 futuro |
-| 4+ | Diferenciação (cupom, frete, pontos, subdomínio) | 🔮 futuro |
+| 1.7 | Deploy Vercel + Supabase prod + Cron + seed Sandra | ⏳ pendente (não bloqueia 2+) |
+| **Pivô Vitrê Gestão** ([ADR-0012](../decisoes/0012-pivot-vitre-gestao.md)) ↓ | | |
+| 2 | Pagamento configurável ([ADR-0013](../decisoes/0013-pagamento-configuravel.md)) | ✅ concluída 2026-05-16 |
+| 3 | Cadastro de clientes admin ([ADR-0014](../decisoes/0014-customer-admin-vs-storefront.md)) | ✅ concluída 2026-05-16 |
+| 4 | Estoque event-sourced (ADR-0015) | ⏳ próxima |
+| 5 | PDV / balcão (ADR-0016) | 🔮 futuro |
+| 6 | Empacotamento desktop PWA→Tauri (ADR-0017) | 🔮 futuro |
+| **Roadmap MVP original (superado pelo pivô)** ↓ | | |
+| ~~2~~ | ~~Multi-tenant pleno (signup self-service)~~ | ⏸ pausado |
+| ~~3~~ | ~~Monetização Stripe (Vitrê cobra dos lojistas)~~ | ⏸ pausado |
+| ~~4+~~ | ~~Diferenciação (cupom, frete, pontos, subdomínio)~~ | 🔮 backlog |
 
 ---
 

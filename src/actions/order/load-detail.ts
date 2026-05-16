@@ -3,7 +3,7 @@
 import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 
-import { orderItemTable, orderTable } from "@/db/schema";
+import { customerTable, orderItemTable, orderTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
@@ -19,12 +19,25 @@ export type OrderDetailItem = {
   quantity: number;
 };
 
+/**
+ * Cliente vinculado ao pedido (Fase 3 — ADR-0014). `null` quando o
+ * pedido não tem `customer_id` setado (pedidos antigos do storefront ou
+ * pedidos novos ainda não vinculados manualmente pelo lojista).
+ */
+export type OrderDetailLinkedCustomer = {
+  id: string;
+  name: string;
+  phone: string;
+};
+
 export type OrderDetail = {
   id: string;
   shortCode: string;
   customerName: string;
   customerPhone: string;
   customerNotes: string | null;
+  customerId: string | null;
+  linkedCustomer: OrderDetailLinkedCustomer | null;
   totalInCents: number;
   status: (typeof ORDER_STATUS_VALUES)[number];
   whatsappOpenedAt: Date | null;
@@ -67,6 +80,7 @@ export async function loadOrderDetail(
         customerName: true,
         customerPhone: true,
         customerNotes: true,
+        customerId: true,
         totalInCents: true,
         status: true,
         whatsappOpenedAt: true,
@@ -89,7 +103,19 @@ export async function loadOrderDetail(
       .from(orderItemTable)
       .where(eq(orderItemTable.orderId, orderId));
 
-    return { order, items };
+    let linkedCustomer: OrderDetailLinkedCustomer | null = null;
+    if (order.customerId) {
+      const c = await tx.query.customerTable.findFirst({
+        where: and(
+          eq(customerTable.id, order.customerId),
+          eq(customerTable.storeId, store.id),
+        ),
+        columns: { id: true, name: true, phone: true },
+      });
+      if (c) linkedCustomer = c;
+    }
+
+    return { order, items, linkedCustomer };
   });
 
   if (!result) return { ok: false, error: "Pedido não encontrado." };
@@ -100,6 +126,7 @@ export async function loadOrderDetail(
       ...result.order,
       status: result.order.status as (typeof ORDER_STATUS_VALUES)[number],
       items: result.items,
+      linkedCustomer: result.linkedCustomer,
     },
   };
 }

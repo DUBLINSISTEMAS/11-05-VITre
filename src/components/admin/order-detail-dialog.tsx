@@ -12,6 +12,7 @@ import {
   loadOrderDetail,
   type OrderDetail,
 } from "@/actions/order/load-detail";
+import { CustomerLinkSection } from "@/components/admin/customer-link-section";
 import { OrderStatusActions } from "@/components/admin/order-status-actions";
 import { OrderStatusBadge } from "@/components/admin/order-status-badge";
 import { OrderTimeline } from "@/components/admin/order-timeline";
@@ -46,8 +47,11 @@ export function OrderDetailDialog({
   const [data, setData] = useState<OrderDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, startLoad] = useTransition();
+  // `reloadKey` é incrementado quando o CustomerLinkSection muda o
+  // vínculo — força refetch do detalhe pro modal refletir o novo estado.
+  const [reloadKey, setReloadKey] = useState(0);
 
-  // Carrega quando orderId muda pra um valor não-null.
+  // Carrega quando orderId muda pra um valor não-null OU quando reloadKey muda.
   useEffect(() => {
     if (!orderId) {
       setData(null);
@@ -64,7 +68,7 @@ export function OrderDetailDialog({
       }
       setData(res.order);
     });
-  }, [orderId]);
+  }, [orderId, reloadKey]);
 
   return (
     <Dialog open={orderId !== null} onOpenChange={onOpenChange}>
@@ -80,7 +84,10 @@ export function OrderDetailDialog({
         ) : error ? (
           <DialogShellError message={error} />
         ) : data ? (
-          <OrderDetailContent order={data} />
+          <OrderDetailContent
+            order={data}
+            onCustomerLinkChange={() => setReloadKey((k) => k + 1)}
+          />
         ) : null}
       </DialogContent>
     </Dialog>
@@ -114,7 +121,13 @@ function DialogShellError({ message }: { message: string }) {
   );
 }
 
-function OrderDetailContent({ order }: { order: OrderDetail }) {
+function OrderDetailContent({
+  order,
+  onCustomerLinkChange,
+}: {
+  order: OrderDetail;
+  onCustomerLinkChange: () => void;
+}) {
   const itemCount = order.items.reduce((s, i) => s + i.quantity, 0);
   const whatsappLink =
     "https://wa.me/" +
@@ -176,6 +189,15 @@ function OrderDetailContent({ order }: { order: OrderDetail }) {
             </div>
           ) : null}
         </section>
+
+        {/* Cliente cadastrado (vínculo opcional — Fase 3 / ADR-0014) */}
+        <CustomerLinkSection
+          orderId={order.id}
+          linkedCustomer={order.linkedCustomer}
+          snapshotName={order.customerName}
+          snapshotPhone={order.customerPhone}
+          onChange={onCustomerLinkChange}
+        />
 
         {/* Linha do tempo */}
         <section className="space-y-3 rounded-xl border bg-card p-4">
