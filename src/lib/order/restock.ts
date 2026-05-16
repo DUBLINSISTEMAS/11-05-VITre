@@ -1,43 +1,42 @@
 /**
- * Helper transacional de reposição de estoque (`restockOrderItems`).
+ * Reposição de estoque via `stock_movement` (Fase 4 — ADR-0015).
  *
- * Espelha a lógica de decremento em `src/actions/order/create-from-cart.ts`
- * (linhas ~336-383) MAS no sentido inverso (`+= quantity` em vez de
- * `-= quantity`).
+ * REFACTOR 2026-05-16: antes da Fase 4, este helper fazia
+ * `UPDATE stockQuantity = stockQuantity + qty` direto no
+ * product/product_variant. Agora insere `stock_movement` do tipo `return`
+ * — o trigger SQL `stock_movement_sync_cache` atualiza o cache
+ * automaticamente (ver supabase/sql/24_*). Auditoria automática + base
+ * pra reabertura de pedido sem perder histórico.
  *
- * Usado em duas trilhas:
- *  1. `src/actions/order/update-status.ts` — cancelamento manual via UI admin
- *     em transição `awaiting_whatsapp → canceled` ou `confirmed → canceled`,
- *     e também em `awaiting_whatsapp → expired` (caso o lojista force).
- *  2. `src/app/api/cron/expire-orders/route.ts` — expiração automática de
- *     pedidos `awaiting_whatsapp` cujo `expires_at < now()`.
+ * Usado em:
+ *  1. `src/actions/order/update-status.ts` — cancelamento manual via UI
+ *     em `awaiting_whatsapp → canceled`, `confirmed → canceled`, ou
+ *     `awaiting_whatsapp → expired` forçado pelo lojista.
+ *  2. `src/app/api/cron/expire-orders/route.ts` — expiração automática
+ *     de pedidos `awaiting_whatsapp` cujo `expires_at < now()`.
  *
  * Garantias:
- *  - **Atomicidade controlada pelo caller**: o helper recebe `tx` (de
- *    `@/lib/tenant`) e NÃO abre transação própria. O caller compõe
- *    reposição + UPDATE de status na mesma transação `withTenant`, então
- *    qualquer falha rola tudo back.
- *  - **Variant-first com fallback produto**: se a variante tem
- *    `track_stock = true`, repõe na variante; senão, se o produto tem
- *    `track_stock = true`, repõe no produto; senão, no-op (estoque ilimitado
- *    nos dois lados).
- *  - **Defesa em profundidade**: WHERE inclui `storeId` em todos os UPDATEs.
- *    RLS já bloquearia via GUC `app.current_store_id`, mas double-check
- *    evita estoque "vazar" caso o caller passe um storeId errado por engano.
- *  - **Sem optimistic lock**: ao contrário do decremento (que usa
- *    `gte(stockQuantity, qty)` pra evitar overshoot negativo), reposição
- *    pode ultrapassar o valor original — o lojista pode ter aumentado
- *    capacidade depois. Apenas `+=` direto via expressão SQL.
- *  - **Log defensivo**: se um UPDATE retorna 0 rows (ex: variant deletada),
- *    apenas `logger.warn` (eventos `restock.partial_miss_*`) — não falha.
- *    Caso raro, mas possível em fluxos de soft-delete futuros.
+ *  - Atomicidade controlada pelo caller (recebe `tx`, não abre própria).
+ *    Inserts de movement + UPDATE de status na mesma transação. Trigger
+ *    SQL roda no mesmo commit — invariante "movement persistido => cache
+ *    sincronizado" preservada.
+ *  - Variant-first com fallback produto, mesma regra do decremento.
+ *  - Defesa em profundidade: WHERE inclui `storeId` no SELECT de items
+ *    via JOIN com `order` (já filtrado pelo caller). Movement leva
+ *    `storeId` direto pra RLS check passar.
+ *  - Append-only: NÃO permitimos editar/apagar movements (correção =
+ *    novo movement do tipo `adjustment` reverso).
+ *  - Sem optimistic lock: reposição pode ultrapassar o valor original
+ *    (lojista pode ter aumentado capacidade). Apenas soma direto via
+ *    INSERT + trigger.
  */
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 import {
   orderItemTable,
   productTable,
   productVariantTable,
+  stockMovementTable,
 } from "@/db/schema";
 import { logger } from "@/lib/logger";
 import type { Tx } from "@/lib/tenant";
@@ -51,8 +50,8 @@ interface RestockOrderItem {
 interface RestockSummary {
   /** Total de linhas de orderItem processadas. */
   itemsProcessed: number;
-  /** UPDATEs que retornaram 0 rows (variant/produto inexistente — caso raro). */
-  partialMisses: number;
+  /** Items que viraram no-op (produto+variant sem trackStock). */
+  noopItems: number;
 }
 
 export async function restockOrderItems(
@@ -60,10 +59,6 @@ export async function restockOrderItems(
   orderId: string,
   storeId: string,
 ): Promise<RestockSummary> {
-  // 1. Carrega os items do pedido. RLS garante que só vemos items da loja
-  //    correta via GUC, mas o helper NÃO precisa filtrar storeId aqui pois
-  //    `order_item` não carrega storeId direto — ele herda via JOIN com
-  //    `order`. O caller já validou tenant.
   const items: RestockOrderItem[] = await tx
     .select({
       productId: orderItemTable.productId,
@@ -74,12 +69,10 @@ export async function restockOrderItems(
     .where(eq(orderItemTable.orderId, orderId));
 
   if (items.length === 0) {
-    return { itemsProcessed: 0, partialMisses: 0 };
+    return { itemsProcessed: 0, noopItems: 0 };
   }
 
-  // 2. Carrega TODOS os produtos e variantes em batch (2 queries totais
-  //    em SÉRIE — `pg` deprecou paralelas no mesmo tx). Antes era 2N
-  //    queries seriais; 2 ainda é uma grande melhora.
+  // Carrega produtos + variantes em batch (SÉRIE — pg deprecou paralelas).
   const productIds = Array.from(new Set(items.map((i) => i.productId)));
   const variantIds = items
     .map((i) => i.variantId)
@@ -90,14 +83,10 @@ export async function restockOrderItems(
     .select({
       id: productTable.id,
       trackStock: productTable.trackStock,
-      stockQuantity: productTable.stockQuantity,
     })
     .from(productTable)
     .where(
-      and(
-        eq(productTable.storeId, storeId),
-        inArray(productTable.id, productIds),
-      ),
+      and(eq(productTable.storeId, storeId), inArray(productTable.id, productIds)),
     );
   const variantRows =
     variantIdsUnique.length > 0
@@ -105,7 +94,6 @@ export async function restockOrderItems(
           .select({
             id: productVariantTable.id,
             trackStock: productVariantTable.trackStock,
-            stockQuantity: productVariantTable.stockQuantity,
           })
           .from(productVariantTable)
           .where(
@@ -114,87 +102,54 @@ export async function restockOrderItems(
               inArray(productVariantTable.id, variantIdsUnique),
             ),
           )
-      : ([] as Array<{
-          id: string;
-          trackStock: boolean;
-          stockQuantity: number | null;
-        }>);
+      : ([] as Array<{ id: string; trackStock: boolean }>);
 
   const productById = new Map(productRows.map((p) => [p.id, p]));
   const variantById = new Map(variantRows.map((v) => [v.id, v]));
 
-  // 3. Decide destino de cada item e dispara UPDATEs em SÉRIE dentro
-  //    do tx (`pg` deprecou paralelas no mesmo client).
-  let partialMisses = 0;
+  let noopItems = 0;
 
   for (const item of items) {
     const product = productById.get(item.productId);
     const variant = item.variantId ? variantById.get(item.variantId) : null;
 
-    const shouldRestockVariant = Boolean(
-      variant?.trackStock && variant.stockQuantity !== null,
-    );
-    const shouldRestockProduct = Boolean(
-      !shouldRestockVariant &&
-        product?.trackStock &&
-        product.stockQuantity !== null,
-    );
+    const targetVariantId =
+      variant?.trackStock ? variant.id : null;
+    const writeToProduct =
+      !targetVariantId && product?.trackStock === true;
 
-    if (shouldRestockVariant && variant) {
-      const updated = await tx
-        .update(productVariantTable)
-        .set({
-          stockQuantity: sql`${productVariantTable.stockQuantity} + ${item.quantity}`,
-        })
-        .where(
-          and(
-            eq(productVariantTable.id, variant.id),
-            eq(productVariantTable.storeId, storeId),
-          ),
-        )
-        .returning({ id: productVariantTable.id });
-      if (updated.length === 0) {
-        // Pode acontecer se: variant foi deletada entre carregamento e
-        // UPDATE (race extremamente improvável dentro da mesma tx), ou
-        // caller passou storeId errado (defesa em profundidade).
-        partialMisses += 1;
-        logger.warn("restock.partial_miss_variant", {
-          orderId,
-          storeId,
-          productId: item.productId,
-          variantId: item.variantId,
-          quantity: item.quantity,
-        });
-      }
+    if (!targetVariantId && !writeToProduct) {
+      // Produto sem trackStock e variante sem trackStock — estoque
+      // ilimitado nos dois lados. No-op.
+      noopItems += 1;
       continue;
     }
 
-    if (shouldRestockProduct && product) {
-      const updated = await tx
-        .update(productTable)
-        .set({
-          stockQuantity: sql`${productTable.stockQuantity} + ${item.quantity}`,
-        })
-        .where(
-          and(
-            eq(productTable.id, product.id),
-            eq(productTable.storeId, storeId),
-          ),
-        )
-        .returning({ id: productTable.id });
-      if (updated.length === 0) {
-        partialMisses += 1;
-        logger.warn("restock.partial_miss_product", {
-          orderId,
-          storeId,
-          productId: item.productId,
-          quantity: item.quantity,
-        });
-      }
+    try {
+      await tx.insert(stockMovementTable).values({
+        storeId,
+        productId: item.productId,
+        variantId: targetVariantId,
+        movementType: "return",
+        quantityDelta: item.quantity, // positivo: volta pro estoque
+        referenceType: "order",
+        referenceId: orderId,
+        notes: "Devolução automática por cancelamento/expiração",
+      });
+    } catch (e) {
+      // Caso raro: variant/produto deletado entre carregamento e INSERT
+      // (a FK do movement vira inválida). Log e segue — não bloqueia o
+      // cancelamento do pedido.
+      logger.warn("restock.movement_insert_failed", {
+        err: e,
+        orderId,
+        storeId,
+        productId: item.productId,
+        variantId: item.variantId,
+        quantity: item.quantity,
+      });
     }
-    // else: produto sem trackStock e variante sem trackStock — no-op
-    // (cenário 3 dos testes). Estoque é ilimitado nos dois lados.
   }
 
-  return { itemsProcessed: items.length, partialMisses };
+  return { itemsProcessed: items.length, noopItems };
 }

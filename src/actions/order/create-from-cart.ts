@@ -20,7 +20,7 @@
  * Resposta: { ok, shortCode, whatsappUrl } em caso de sucesso.
  * Erros tipados pra o cliente decidir UX (toast, retry, etc).
  */
-import { and, asc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 import { headers } from "next/headers";
 
@@ -34,6 +34,7 @@ import {
   productImageTable,
   productTable,
   productVariantTable,
+  stockMovementTable,
   storeTable,
 } from "@/db/schema";
 import { isStockExhausted, resolveStockState } from "@/lib/cart/stock";
@@ -380,57 +381,82 @@ export async function createOrderFromCart(
         const publicToken = generatePublicOrderToken();
         try {
           await tx.transaction(async (innerTx) => {
+            // FASE 4 (ADR-0015): decremento via INSERT em stock_movement
+            // do tipo `sale` (trigger SQL atualiza o cache stock_quantity).
+            //
+            // Atomicidade: pg_advisory_xact_lock por entidade alvo
+            // (variant tem prioridade sobre product). Lock é segurado
+            // até COMMIT do tx pai — protege contra checkouts concorrentes
+            // do mesmo produto (oversell).
+            //
+            // Ordem: 1) lock + validar estoque; 2) INSERT order; 3)
+            // INSERT order_items; 4) INSERT movements com referenceId
+            // = orderId. CHECK exige reference_id NOT NULL quando type
+            // = 'order', então movements DEPOIS do order.
+            interface SaleSpec {
+              productId: string;
+              variantId: string | null;
+              quantity: number;
+            }
+            const salesToRecord: SaleSpec[] = [];
+
             for (const ci of computedItems) {
               const product = productById.get(ci.productId);
               const variant = ci.variantId ? variantById.get(ci.variantId) : null;
-              const shouldDecrementVariant = Boolean(
+              const targetVariant = Boolean(
                 variant?.trackStock && variant.stockQuantity !== null,
               );
-              const shouldDecrementProduct = Boolean(
-                !shouldDecrementVariant &&
+              const targetProduct = Boolean(
+                !targetVariant &&
                   product?.trackStock &&
                   product.stockQuantity !== null,
               );
 
-              if (shouldDecrementVariant && variant) {
-                const updated = await innerTx
-                  .update(productVariantTable)
-                  .set({
-                    stockQuantity: sql`${productVariantTable.stockQuantity} - ${ci.quantity}`,
-                  })
+              if (!targetVariant && !targetProduct) {
+                // Estoque ilimitado — sem movement, sem lock.
+                continue;
+              }
+
+              const lockTarget =
+                targetVariant && variant ? variant.id : ci.productId;
+              await innerTx.execute(
+                sql`SELECT pg_advisory_xact_lock(hashtext(${"stock-" + lockTarget}))`,
+              );
+
+              let currentStock: number | null = null;
+              if (targetVariant && variant) {
+                const [row] = await innerTx
+                  .select({ stockQuantity: productVariantTable.stockQuantity })
+                  .from(productVariantTable)
                   .where(
                     and(
                       eq(productVariantTable.id, variant.id),
                       eq(productVariantTable.storeId, store.id),
-                      gte(productVariantTable.stockQuantity, ci.quantity),
                     ),
-                  )
-                  .returning({ id: productVariantTable.id });
-
-                if (updated.length === 0) {
-                  throw new OutOfStockError(ci.productId);
-                }
-              }
-
-              if (shouldDecrementProduct) {
-                const updated = await innerTx
-                  .update(productTable)
-                  .set({
-                    stockQuantity: sql`${productTable.stockQuantity} - ${ci.quantity}`,
-                  })
+                  );
+                currentStock = row?.stockQuantity ?? null;
+              } else if (targetProduct) {
+                const [row] = await innerTx
+                  .select({ stockQuantity: productTable.stockQuantity })
+                  .from(productTable)
                   .where(
                     and(
                       eq(productTable.id, ci.productId),
                       eq(productTable.storeId, store.id),
-                      gte(productTable.stockQuantity, ci.quantity),
                     ),
-                  )
-                  .returning({ id: productTable.id });
-
-                if (updated.length === 0) {
-                  throw new OutOfStockError(ci.productId);
-                }
+                  );
+                currentStock = row?.stockQuantity ?? null;
               }
+
+              if (currentStock === null || currentStock < ci.quantity) {
+                throw new OutOfStockError(ci.productId);
+              }
+
+              salesToRecord.push({
+                productId: ci.productId,
+                variantId: targetVariant && variant ? variant.id : null,
+                quantity: ci.quantity,
+              });
             }
 
             const inserted = await innerTx
@@ -464,6 +490,23 @@ export async function createOrderFromCart(
                 quantity: ci.quantity,
               })),
             );
+
+            // Fase 4 (ADR-0015): INSERT stock_movement do tipo `sale`
+            // pra cada item rastreado. Trigger atualiza cache atomicamente
+            // dentro do mesmo COMMIT. Lock advisory já adquirido acima.
+            if (salesToRecord.length > 0) {
+              await innerTx.insert(stockMovementTable).values(
+                salesToRecord.map((s) => ({
+                  storeId: store.id,
+                  productId: s.productId,
+                  variantId: s.variantId,
+                  movementType: "sale" as const,
+                  quantityDelta: -s.quantity,
+                  referenceType: "order",
+                  referenceId: orderRow.id,
+                })),
+              );
+            }
 
             createdOrderId = orderRow.id;
             createdShortCode = candidate;

@@ -1,4 +1,5 @@
 import {
+  BoxesIcon,
   CreditCardIcon,
   HomeIcon,
   ImageIcon,
@@ -82,6 +83,12 @@ export const ADMIN_NAV_ITEMS: readonly AdminNavEntry[] = [
     href: "/admin/clientes",
     label: "Clientes",
     icon: UsersIcon,
+  },
+  {
+    kind: "link",
+    href: "/admin/estoque",
+    label: "Estoque",
+    icon: BoxesIcon,
   },
   {
     kind: "link",
