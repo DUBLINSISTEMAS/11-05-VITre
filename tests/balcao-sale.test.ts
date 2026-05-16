@@ -61,9 +61,10 @@ test("createBalcaoSaleSchema rejeita quantity 0 ou negativa", () => {
 });
 
 test("createBalcaoSaleSchema rejeita paymentMethod fora do enum", () => {
+  // safeParse aceita unknown — não usar @ts-expect-error (não dispararia
+  // erro TS e geraria TS2578 no build).
   const r = createBalcaoSaleSchema.safeParse({
     ...validBase(),
-    // @ts-expect-error — testando rejeição
     paymentMethod: "boleto",
   });
   assert.equal(r.success, false);
