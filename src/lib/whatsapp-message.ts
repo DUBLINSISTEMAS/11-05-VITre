@@ -168,6 +168,14 @@ export interface RenderTemplateInput {
   shortCode: string;
   publicUrl: string;
   customerNotes?: string;
+  /**
+   * Texto livre de "como pagar" configurado pela lojista
+   * (`storeTable.paymentMethodsNote`). Quando o template usa o
+   * placeholder `{formaPagamento}` e este campo está preenchido,
+   * é substituído pelo texto; senão substitui por string vazia.
+   * Fase 2 — ADR-0013.
+   */
+  paymentMethodsNote?: string | null;
 }
 
 /**
@@ -175,13 +183,16 @@ export interface RenderTemplateInput {
  * `template` é null/empty, cai pro `DEFAULT_WHATSAPP_TEMPLATE`.
  *
  * Placeholders (case-sensitive):
- *  - `{cliente}`     → safeCustomerName (escape de markdown)
- *  - `{loja}`        → safeStoreName
- *  - `{itens}`       → lista formatada (📦 *Nx ProdutoVar* — R$ 99,00)
- *  - `{total}`       → "R$ 324,80"
- *  - `{codigo}`      → "ABCD" (shortCode)
- *  - `{link}`        → URL pública do pedido
- *  - `{observacoes}` → "📝 obs do cliente" ou linha vazia
+ *  - `{cliente}`        → safeCustomerName (escape de markdown)
+ *  - `{loja}`           → safeStoreName
+ *  - `{itens}`          → lista formatada (📦 *Nx ProdutoVar* — R$ 99,00)
+ *  - `{total}`          → "R$ 324,80"
+ *  - `{codigo}`         → "ABCD" (shortCode)
+ *  - `{link}`           → URL pública do pedido
+ *  - `{observacoes}`    → "📝 obs do cliente" ou linha vazia
+ *  - `{formaPagamento}` → texto livre de "como pagar" (storeTable.payment
+ *                         MethodsNote) ou string vazia se não configurado.
+ *                         Fase 2 — ADR-0013.
  *
  * Trunca itens (e renderiza "+ X itens em link") se o resultado passar
  * de MAX_LENGTH. Mesma lógica do builder default.
@@ -199,6 +210,9 @@ export function buildOrderMessageFromTemplate(
   const notes = input.customerNotes?.trim()
     ? `📝 ${escapeWhatsAppFormatting(input.customerNotes.trim())}`
     : "";
+  const paymentNote = input.paymentMethodsNote?.trim()
+    ? escapeWhatsAppFormatting(input.paymentMethodsNote.trim())
+    : "";
 
   const render = (itemsBlock: string) =>
     tpl
@@ -209,6 +223,7 @@ export function buildOrderMessageFromTemplate(
       .replaceAll("{codigo}", input.shortCode)
       .replaceAll("{link}", input.publicUrl)
       .replaceAll("{observacoes}", notes)
+      .replaceAll("{formaPagamento}", paymentNote)
       // Limpa linhas em branco resultantes de placeholders vazios.
       .replace(/\n{3,}/g, "\n\n");
 

@@ -82,6 +82,11 @@ export function WhatsAppTemplateCard({
     shortCode: "A7K2",
     publicUrl: "https://vitre.site/p/exemplo",
     customerNotes: "Retirar no fim da tarde.",
+    // Preview do placeholder {formaPagamento} — não puxa do banco aqui
+    // (template-card é client puro), só ilustra como ficaria quando
+    // lojista configurar em /admin/configuracoes (seção Pagamento).
+    paymentMethodsNote:
+      "PIX, dinheiro ou cartão (até 10x). Combine pelo WhatsApp.",
   });
 
   const handleSave = () => {

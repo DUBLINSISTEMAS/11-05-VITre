@@ -100,6 +100,7 @@ export default async function SuccessPage({
     customerName: order.customerName,
     customerNotes: order.customerNotes,
     whatsappTemplate: order.store.whatsappTemplate,
+    paymentMethodsNote: order.store.paymentMethodsNote,
   });
   const whatsappUrl = buildWhatsAppUrl(order.store.whatsappNumber, message);
 

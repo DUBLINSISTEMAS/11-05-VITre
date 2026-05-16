@@ -152,6 +152,8 @@ export async function updateProduct(
           categoryId: data.categoryId,
           trackStock: data.trackStock,
           stockQuantity: data.trackStock ? data.stockQuantity : null,
+          installmentsOverride: data.installmentsOverride,
+          cashDiscountOverrideBps: data.cashDiscountOverrideBps,
           isActive: data.isActive,
           isFeatured: data.isFeatured,
           // Meta-fields canvas-v1 — null quando lojista deixou em branco

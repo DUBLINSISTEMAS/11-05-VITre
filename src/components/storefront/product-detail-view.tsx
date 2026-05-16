@@ -52,6 +52,23 @@ export function ProductDetailView({ product, store }: ProductDetailViewProps) {
     return v?.featuredImageId ?? null;
   }, [selectedVariantId, product.variants]);
 
+  // Pagamento (Fase 2 — ADR-0013): subset usado pelo panel renderizar
+  // a label de parcelamento. Derivado do `store` carregado pelo loader.
+  const storePayment = useMemo(
+    () => ({
+      acceptsCard: store.acceptsCard,
+      cardMaxInstallments: store.cardMaxInstallments,
+      installmentBasePrice: store.installmentBasePrice,
+      showInstallmentsOnPDP: store.showInstallmentsOnPDP,
+    }),
+    [
+      store.acceptsCard,
+      store.cardMaxInstallments,
+      store.installmentBasePrice,
+      store.showInstallmentsOnPDP,
+    ],
+  );
+
   return (
     <article className="-mx-4 lg:mx-0">
       {/* Mobile layout */}
@@ -73,6 +90,9 @@ export function ProductDetailView({ product, store }: ProductDetailViewProps) {
         <ProductPurchasePanel
           product={product}
           storeSlug={store.slug}
+          storePayment={storePayment}
+          cashDiscountBps={store.cashDiscountBps}
+          paymentMethodsNote={store.paymentMethodsNote}
           selectedVariantId={selectedVariantId}
           onSelectVariant={setSelectedVariantId}
         />
@@ -91,6 +111,9 @@ export function ProductDetailView({ product, store }: ProductDetailViewProps) {
           <ProductPurchasePanel
             product={product}
             storeSlug={store.slug}
+            storePayment={storePayment}
+            cashDiscountBps={store.cashDiscountBps}
+            paymentMethodsNote={store.paymentMethodsNote}
             selectedVariantId={selectedVariantId}
             onSelectVariant={setSelectedVariantId}
           />

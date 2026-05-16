@@ -25,6 +25,19 @@ export const nicheEnum = pgEnum("niche", [
   "outro",
 ]);
 
+/**
+ * Base de cálculo da parcela exibida no PDP.
+ *   - "base":      divide pelo preço cheio (preserva percepção de valor,
+ *                  defensável quando há promoção ativa).
+ *   - "effective": divide pelo preço atual (promo se ativa, senão base).
+ * Default "base" — comportamento que NÃO induz o cliente a esperar
+ * "Nx da promo" automaticamente. Ver ADR-0013.
+ */
+export const installmentBasePriceEnum = pgEnum("installment_base_price", [
+  "base",
+  "effective",
+]);
+
 export const storeTable = pgTable(
   "store",
   {
@@ -73,6 +86,57 @@ export const storeTable = pgTable(
     categoryShape: text("category_shape").notNull().default("rounded"),
     productCardStyle: text("product_card_style").notNull().default("standard"),
     heroStyle: text("hero_style").notNull().default("cover"),
+
+    // =================================================================
+    // Pagamento (Fase 2 — ADR-0013)
+    // Bloco inline (segue padrão item 10 do CLAUDE.md — promoção também
+    // é inline em productTable). Defaults conservadores: lojista que não
+    // configurar nada NÃO mostra parcela no PDP.
+    //
+    // CHECK constraints em supabase/sql/17_payment_check_constraints.sql.
+    // =================================================================
+
+    // Aceita cartão de crédito. Quando false, toda label de parcelamento
+    // some do storefront — independente das outras configs. Freio mestre.
+    acceptsCard: boolean("accepts_card").notNull().default(false),
+
+    // Máximo de parcelas exibido no PDP. Range 1..12 (CHECK no SQL 17).
+    // Quando 1, label não é renderizada (parcela única = preço cheio, ruído).
+    cardMaxInstallments: integer("card_max_installments").notNull().default(1),
+
+    // Juros em basis points (1bps = 0.01%). 0 = sem juros.
+    // MVP da Fase 2: UI só permite 0. Coluna existe pra Fase 5 (PDV) não
+    // precisar de migration quando suportar "Nx com juros de Y% no balcão".
+    // CHECK 0..9999 no SQL 17.
+    cardInterestRateBps: integer("card_interest_rate_bps")
+      .notNull()
+      .default(0),
+
+    // Base de cálculo da parcela. Ver doc do enum installmentBasePriceEnum.
+    installmentBasePrice: installmentBasePriceEnum("installment_base_price")
+      .notNull()
+      .default("base"),
+
+    // Gate explícito pra renderizar label no PDP. Mesmo com acceptsCard=true
+    // e cardMaxInstallments>1, se isto for false, a label não aparece.
+    // Default false: ainda mais conservador. Lojista pode preferir não
+    // poluir o PDP e deixar a parcela ser combinada no WhatsApp.
+    showInstallmentsOnPDP: boolean("show_installments_on_pdp")
+      .notNull()
+      .default(false),
+
+    // Desconto à vista em basis points. 0..9999. 0 = sem desconto.
+    // Renderiza linha auxiliar "à vista R$ X (10% off)" no PDP.
+    // NÃO assume método (PIX/dinheiro) — Vitrê não processa transação;
+    // método é combinado no WhatsApp. CHECK 0..9999 no SQL 17.
+    cashDiscountBps: integer("cash_discount_bps").notNull().default(0),
+
+    // Texto livre opcional descrevendo formas de pagamento aceitas.
+    // Até 280 chars. Renderiza num bloco "Como pagar" no PDP, abaixo do
+    // trust block. Ex: "Aceitamos PIX, dinheiro e cartão (parcelado em até
+    // 10x). Combine pelo WhatsApp."
+    // CHECK length <= 280 no SQL 17.
+    paymentMethodsNote: text("payment_methods_note"),
 
     // Endereço
     addressStreet: text("address_street"),

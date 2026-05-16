@@ -48,7 +48,14 @@ import {
   resolveVariantPriceState,
   type VariantForSelection,
 } from "@/lib/cart/variant-selection";
-import { formatBRL, formatInstallments, getEffectivePrice } from "@/lib/pricing";
+import {
+  formatBRL,
+  formatCashDiscount,
+  formatInstallments,
+  getEffectivePrice,
+  type PaymentConfig,
+  resolveCashDiscountBps,
+} from "@/lib/pricing";
 import type { ProductDetail } from "@/lib/storefront/products-loader";
 import { cn } from "@/lib/utils";
 
@@ -56,6 +63,23 @@ export interface ProductPurchasePanelProps {
   product: ProductDetail;
   /** Slug da loja — usado pelo botão "Adicionar e voltar pra loja". */
   storeSlug: string;
+  /**
+   * Configuração de pagamento da loja (Fase 2 — ADR-0013). Vem do
+   * loader do PDP (`store` já é carregado pro BrandProvider). Subset
+   * dedicado pra não acoplar este componente ao shape inteiro de Store.
+   */
+  storePayment: PaymentConfig;
+  /**
+   * Desconto à vista em basis points (`store.cashDiscountBps`). 0 =
+   * sem desconto. Separado de `storePayment` porque não entra nos
+   * gates de parcelamento — é uma label independente.
+   */
+  cashDiscountBps: number;
+  /**
+   * Texto livre de "como pagar" (`store.paymentMethodsNote`). Quando
+   * preenchido, renderiza bloco "Como pagar" abaixo do trust block.
+   */
+  paymentMethodsNote: string | null;
   /**
    * Variante selecionada (controlado pelo parent pra coordenar com a
    * gallery — quando a variante tem `featuredImageId`, a gallery rola
@@ -81,6 +105,9 @@ const META_FIELDS = [
 export function ProductPurchasePanel({
   product,
   storeSlug,
+  storePayment,
+  cashDiscountBps,
+  paymentMethodsNote,
   selectedVariantId: controlledVariantId,
   onSelectVariant,
 }: ProductPurchasePanelProps) {
@@ -143,7 +170,20 @@ export function ProductPurchasePanel({
     ? Math.round((1 - priceState.effectivePriceInCents / priceState.basePriceInCents) * 100)
     : null;
 
-  const installmentLabel = formatInstallments(priceState.effectivePriceInCents, 3);
+  const installmentLabel = formatInstallments({
+    basePriceInCents: priceState.basePriceInCents,
+    effectivePriceInCents: priceState.effectivePriceInCents,
+    storePayment,
+    productInstallmentsOverride: product.installmentsOverride,
+  });
+  const effectiveCashDiscountBps = resolveCashDiscountBps(
+    cashDiscountBps,
+    product.cashDiscountOverrideBps,
+  );
+  const cashDiscount = formatCashDiscount(
+    priceState.effectivePriceInCents,
+    effectiveCashDiscountBps,
+  );
 
   // Meta grid só renderiza se pelo menos 1 dos 4 campos tem valor.
   const metaPairs = useMemo(() => {
@@ -251,6 +291,11 @@ export function ProductPurchasePanel({
           </div>
           {installmentLabel && (
             <div className="mt-1.5 text-[11px] text-gray-500">{installmentLabel}</div>
+          )}
+          {cashDiscount && (
+            <div className="mt-0.5 text-[11px] text-success">
+              {cashDiscount.label}
+            </div>
           )}
         </div>
 
@@ -382,6 +427,20 @@ export function ProductPurchasePanel({
               </div>
             ))}
           </div>
+
+          {/* "Como pagar" — paymentMethodsNote da loja (Fase 2 / ADR-0013).
+              Complementa o trust block; não substitui. Renderiza só
+              quando o lojista preencheu o campo em /admin/configuracoes. */}
+          {paymentMethodsNote && paymentMethodsNote.trim() !== "" && (
+            <div className="mt-3 rounded-xl border border-border bg-background p-3">
+              <div className="text-[11.5px] font-semibold text-foreground">
+                Como pagar
+              </div>
+              <p className="mt-1 text-[11px] leading-snug text-muted-foreground [text-wrap:pretty]">
+                {paymentMethodsNote}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

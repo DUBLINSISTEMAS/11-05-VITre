@@ -79,6 +79,8 @@ export async function createProductFromValues(
           promoPriceInCents: data.promoPriceInCents,
           trackStock: data.trackStock,
           stockQuantity: data.trackStock ? data.stockQuantity : null,
+          installmentsOverride: data.installmentsOverride,
+          cashDiscountOverrideBps: data.cashDiscountOverrideBps,
           isActive: data.isActive,
           isFeatured: data.isFeatured,
           composition: data.composition,

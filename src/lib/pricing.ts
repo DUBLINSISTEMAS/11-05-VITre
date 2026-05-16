@@ -68,17 +68,127 @@ export function formatPriceLabel(
   return formatBRL(p.basePriceInCents);
 }
 
+// ============================================================
+// Pagamento configurável (Fase 2 — ADR-0013)
+// ============================================================
+
 /**
- * Formata parcelas sem juros: 60700, 3 → "ou 3× de R$ 202,33 sem juros".
- * Canvas linha 271 do _vitre-storefront.jsx.
- *
- * Divisão simples por N (sem ajuste de centavos sobrando — comum em
- * checkout brasileiro mostrar valor da parcela "ideal" e somar diferença
- * na 1ª no momento da cobrança real, mas como não há gateway o número é
- * só informativo).
+ * Subset das colunas de pagamento da loja consumido pelo renderer de
+ * parcela. Vem do loader (já carrega `store` para o BrandProvider) —
+ * passe apenas estes 4 campos pra manter `ProductPurchasePanelProps`
+ * enxuto. NÃO inclui `cashDiscountBps` / `paymentMethodsNote` — esses
+ * são renderizados por outros helpers/blocos.
  */
-export function formatInstallments(cents: number, installments = 3): string {
-  if (installments <= 1 || cents <= 0) return "";
-  const each = Math.floor(cents / installments);
-  return `ou ${installments}× de ${formatBRL(each)} sem juros`;
+export interface PaymentConfig {
+  acceptsCard: boolean;
+  cardMaxInstallments: number;
+  installmentBasePrice: "base" | "effective";
+  showInstallmentsOnPDP: boolean;
+}
+
+export interface InstallmentInput {
+  basePriceInCents: number;
+  effectivePriceInCents: number;
+  storePayment: PaymentConfig;
+  /**
+   * Override do max-parcelas APENAS deste produto. Quando preenchido,
+   * SUBSTITUI `storePayment.cardMaxInstallments`. null = usa default
+   * da loja. Caso de uso: loja default 3x, produto específico 10x.
+   */
+  productInstallmentsOverride: number | null;
+}
+
+/**
+ * Formata parcelas sem juros considerando a configuração de pagamento
+ * da loja + override opcional por produto.
+ *
+ * Retorna "" (label suprimida) quando QUALQUER gate falhar:
+ *   1. `acceptsCard === false`               (loja não aceita cartão)
+ *   2. `showInstallmentsOnPDP === false`     (loja prefere esconder)
+ *   3. teto efetivo de parcelas <= 1         ("1× sem juros" é ruído)
+ *   4. preço base <= 0                       (produto sem preço)
+ *
+ * Quando passa todos os gates, divide pelo preço escolhido conforme
+ * `installmentBasePrice`:
+ *   - "base":      divide pelo preço cheio (`basePriceInCents`)
+ *   - "effective": divide pelo preço atual (`effectivePriceInCents`,
+ *                  promo se ativa, senão = base)
+ *
+ * Divisão simples por N (sem ajuste de centavos sobrando — não há
+ * gateway, valor é informativo).
+ */
+export function formatInstallments(input: InstallmentInput): string {
+  if (!input.storePayment.acceptsCard) return "";
+  if (!input.storePayment.showInstallmentsOnPDP) return "";
+
+  const ceiling =
+    input.productInstallmentsOverride ?? input.storePayment.cardMaxInstallments;
+  if (ceiling <= 1) return "";
+
+  const baseCents =
+    input.storePayment.installmentBasePrice === "base"
+      ? input.basePriceInCents
+      : input.effectivePriceInCents;
+  if (baseCents <= 0) return "";
+
+  const each = Math.floor(baseCents / ceiling);
+  return `ou ${ceiling}× de ${formatBRL(each)} sem juros`;
+}
+
+/**
+ * Resolve o desconto à vista efetivo considerando override por produto.
+ *
+ * Regras (override por produto vence quando preenchido):
+ *   - `productOverride === null`     → usa `storeBps`
+ *   - `productOverride === 0`        → SEM desconto (mesmo se loja oferece)
+ *   - `productOverride > 0`          → usa o valor do produto, ignora loja
+ *
+ * O caso `productOverride === 0` é semanticamente diferente de `null`:
+ * é uma decisão ativa do lojista de DESLIGAR o desconto neste produto.
+ * Caso de uso: produto com margem apertada que não comporta o desconto
+ * padrão da loja.
+ *
+ * Helper puro pra ser usado em loaders, panels e testes (sem render).
+ */
+export function resolveCashDiscountBps(
+  storeBps: number,
+  productOverride: number | null,
+): number {
+  return productOverride === null ? storeBps : productOverride;
+}
+
+/**
+ * Calcula desconto à vista a partir de `cashDiscountBps` (basis points).
+ * Retorna `null` quando não há desconto efetivo ou preço inválido.
+ *
+ * Label NÃO menciona método (PIX/dinheiro) — Vitrê não processa
+ * transação; o método específico vive em `paymentMethodsNote` (texto
+ * livre do lojista) e é combinado no WhatsApp.
+ *
+ * Para o cálculo POR PRODUTO, resolva primeiro com `resolveCashDiscountBps`
+ * e passe o resultado aqui. Esta função é low-level e não conhece a
+ * regra de override — deixa quem chama escolher a fonte.
+ *
+ * Exemplo: effective=10000 (R$ 100), bps=1000 (10%)
+ *   → { discountedCents: 9000, label: "à vista R$ 90,00 (10% off)" }
+ *
+ * Percentual usa decimal só quando não é múltiplo de 100 bps:
+ *   bps=550 (5.5%) → "5.5% off"
+ *   bps=1000 (10%) → "10% off"
+ */
+export function formatCashDiscount(
+  effectivePriceInCents: number,
+  cashDiscountBps: number,
+): { discountedCents: number; label: string } | null {
+  if (cashDiscountBps <= 0 || effectivePriceInCents <= 0) return null;
+  const discounted = Math.floor(
+    (effectivePriceInCents * (10000 - cashDiscountBps)) / 10000,
+  );
+  const percent = (cashDiscountBps / 100).toFixed(
+    cashDiscountBps % 100 === 0 ? 0 : 1,
+  );
+  return {
+    discountedCents: discounted,
+    label: `à vista ${formatBRL(discounted)} (${percent}% off)`,
+  };
 }

@@ -127,6 +127,43 @@ export const updateStoreSchema = z.object({
 export type UpdateStoreInput = z.infer<typeof updateStoreSchema>;
 
 /**
+ * Schema do form de Pagamento — rota dedicada `/admin/pagamento`.
+ * Separado de `updateStoreSchema` propositadamente: cada rota persiste
+ * apenas o seu domínio, evita save acidental de campo não-editado
+ * (concurrent edit safety) e reflete a separação visual no admin.
+ *
+ * `cardInterestRateBps` NÃO entra no MVP — UI ainda fixa em 0%; coluna
+ * existe pra Fase 5 (PDV) sem migration extra. Fase 2 / ADR-0013.
+ *
+ * Tipo de INPUT pré-Zod-parse — usado pelo form RHF (client). Necessário
+ * por causa de `z.coerce.number()` em `cardMaxInstallments` e
+ * `cashDiscountBps` (input = unknown, output = number). Memory
+ * `zod-action-input-type-with-defaults.md` documenta o porquê.
+ */
+export const updatePaymentSchema = z.object({
+  acceptsCard: z.boolean(),
+  cardMaxInstallments: z.coerce
+    .number()
+    .int("Use um número inteiro.")
+    .min(1, "Mínimo 1 parcela.")
+    .max(12, "Máximo 12 parcelas."),
+  installmentBasePrice: z.enum(["base", "effective"]),
+  showInstallmentsOnPDP: z.boolean(),
+  cashDiscountBps: z.coerce
+    .number()
+    .int("Use um número inteiro.")
+    .min(0, "Não pode ser negativo.")
+    .max(9999, "Máximo 99.99%."),
+  paymentMethodsNote: z
+    .string()
+    .trim()
+    .max(280, "Texto muito longo (máx 280).")
+    .nullable(),
+});
+export type UpdatePaymentInput = z.input<typeof updatePaymentSchema>;
+export type UpdatePaymentData = z.output<typeof updatePaymentSchema>;
+
+/**
  * Schema do form de Aparência (cor primária + rotação banner).
  * Logo e ícone têm upload separado (StoreImageUploader). Onda 3.
  */

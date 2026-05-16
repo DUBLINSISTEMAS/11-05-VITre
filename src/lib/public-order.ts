@@ -26,6 +26,12 @@ export interface PublicOrderMessageInput {
    * null, builder usa DEFAULT_WHATSAPP_TEMPLATE.
    */
   whatsappTemplate?: string | null;
+  /**
+   * Texto livre de formas de pagamento aceitas (storeTable.payment
+   * MethodsNote). Alimenta placeholder {formaPagamento} no template.
+   * Fase 2 — ADR-0013.
+   */
+  paymentMethodsNote?: string | null;
 }
 
 export function generatePublicOrderToken(): string {
@@ -48,5 +54,6 @@ export function buildPublicOrderWhatsAppMessage(
     shortCode: input.shortCode,
     publicUrl: input.publicUrl,
     customerNotes: input.customerNotes ?? undefined,
+    paymentMethodsNote: input.paymentMethodsNote ?? null,
   });
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "product" ADD COLUMN "cash_discount_override_bps" integer;

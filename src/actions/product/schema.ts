@@ -136,6 +136,37 @@ const productFormFieldsSchema = z.object({
     .int()
     .min(0, "Estoque não pode ser negativo.")
     .nullable(),
+  /**
+   * Override de max-parcelas APENAS deste produto. null = usa default
+   * da loja (`store.cardMaxInstallments`). Range 1..12 (CHECK no
+   * SQL 17). Fase 2 / ADR-0013.
+   *
+   * `.nullish().default(null)`: input opcional (callers antigos +
+   * fixtures não precisam passar); output garante `null` ou `number`.
+   */
+  installmentsOverride: z
+    .number()
+    .int("Use um número inteiro.")
+    .min(1, "Mínimo 1 parcela.")
+    .max(12, "Máximo 12 parcelas.")
+    .nullish()
+    .transform((v) => v ?? null),
+  /**
+   * Override de desconto à vista APENAS deste produto, em basis points.
+   * null = usa default da loja (`store.cashDiscountBps`). 0 também é
+   * override válido (= sem desconto neste produto mesmo que loja ofereça).
+   * Range 0..9999 (CHECK no SQL 18). Fase 2 / ADR-0013.
+   *
+   * Mesmo padrão `.nullish().transform()` de `installmentsOverride` —
+   * memory `zod-nullish-transform-for-existing-fixtures.md`.
+   */
+  cashDiscountOverrideBps: z
+    .number()
+    .int("Use um número inteiro.")
+    .min(0, "Não pode ser negativo.")
+    .max(9999, "Máximo 99.99%.")
+    .nullish()
+    .transform((v) => v ?? null),
   isActive: z.boolean(),
   isFeatured: z.boolean(),
   // Meta-fields canvas-v1 (PDP). Todos opcionais; "" → null no transform.

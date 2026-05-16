@@ -60,6 +60,8 @@ export function NewProductForm({ categories }: NewProductFormProps) {
         categoryId: null,
         trackStock: false,
         stockQuantity: null,
+        installmentsOverride: null,
+        cashDiscountOverrideBps: null,
         isActive: true,
         isFeatured: false,
         composition: null,

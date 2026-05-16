@@ -101,6 +101,22 @@ export const productTable = pgTable(
     promoEndsAt: timestamp("promo_ends_at"),
     trackStock: boolean("track_stock").notNull().default(false),
     stockQuantity: integer("stock_quantity"),
+
+    // Override do max-parcelas APENAS deste produto. null = usa
+    // store.cardMaxInstallments. Range 1..12 (CHECK no SQL 17).
+    // Caso de uso: lojista de joia tem default 3x global, mas no produto
+    // "Aliança de ouro R$ 4.800" quer mostrar 10x. NÃO sobrescreve
+    // acceptsCard nem showInstallmentsOnPDP — apenas o teto. Fase 2 / ADR-0013.
+    installmentsOverride: integer("installments_override"),
+
+    // Override do desconto à vista APENAS deste produto. null = usa
+    // store.cashDiscountBps. Range 0..9999 bps (CHECK no SQL 18).
+    // Caso de uso: loja default 5%, peça encalhada vira 20% à vista pra
+    // limpar estoque. 0 também é override válido (= sem desconto neste
+    // produto mesmo que loja ofereça). Memory team
+    // `override-por-produto-heuristica-20-percent-2026-05-16`. Fase 2 / ADR-0013.
+    cashDiscountOverrideBps: integer("cash_discount_override_bps"),
+
     isActive: boolean("is_active").notNull().default(true),
     isFeatured: boolean("is_featured").notNull().default(false),
     // Meta fields canvas-v1 (PDP linhas 326-338) — todos opcionais.

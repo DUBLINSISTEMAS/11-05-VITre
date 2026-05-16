@@ -159,6 +159,7 @@ export async function createOrderFromCart(
           existing.publicToken,
           existing.totalInCents,
           data.customerNotes ?? undefined,
+          store.paymentMethodsNote,
         );
         return {
           ok: true,
@@ -539,6 +540,7 @@ export async function createOrderFromCart(
         shortCode: createdShortCode,
         publicUrl,
         customerNotes: data.customerNotes || undefined,
+        paymentMethodsNote: store.paymentMethodsNote,
       });
 
       // Convenção #4 do CLAUDE.md: mutações que afetam catálogo público
@@ -570,6 +572,7 @@ async function resolveStoreBySlug(
       name: string;
       whatsappNumber: string;
       whatsappTemplate: string | null;
+      paymentMethodsNote: string | null;
     }
   | null
 > {
@@ -583,6 +586,9 @@ async function resolveStoreBySlug(
           name: storeTable.name,
           whatsappNumber: storeTable.whatsappNumber,
           whatsappTemplate: storeTable.whatsappTemplate,
+          // Pagamento (Fase 2 — ADR-0013): alimenta {formaPagamento}
+          // no template WhatsApp da lojista.
+          paymentMethodsNote: storeTable.paymentMethodsNote,
         })
         .from(storeTable)
         .where(
@@ -607,7 +613,8 @@ async function rebuildMessageForExisting(
   shortCode: string,
   publicToken: string,
   totalInCents: number,
-  notes?: string,
+  notes: string | undefined,
+  paymentMethodsNote: string | null,
 ): Promise<string> {
   const items = await tx
     .select()
@@ -629,5 +636,6 @@ async function rebuildMessageForExisting(
     shortCode,
     publicUrl: `${baseUrl}/p/${publicToken}`,
     customerNotes: notes,
+    paymentMethodsNote,
   });
 }

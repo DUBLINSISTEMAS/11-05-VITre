@@ -62,6 +62,7 @@ export default async function PublicOrderPage({
     })),
     totalInCents: order.totalInCents,
     whatsappTemplate: order.store.whatsappTemplate,
+    paymentMethodsNote: order.store.paymentMethodsNote,
   });
   const whatsappUrl = buildWhatsAppUrl(order.store.whatsappNumber, message);
 

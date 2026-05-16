@@ -57,6 +57,18 @@ export interface ProductFormInitialData {
   categoryId: string | null;
   trackStock: boolean;
   stockQuantity: number | null;
+  /**
+   * Override do max-parcelas APENAS pra este produto. null = usa
+   * default da loja (`store.cardMaxInstallments`). Fase 2 — ADR-0013.
+   */
+  installmentsOverride: number | null;
+  /**
+   * Override do desconto à vista APENAS pra este produto, em basis points.
+   * null = usa default da loja (`store.cashDiscountBps`). 0 também é
+   * override válido (= sem desconto neste produto mesmo que loja ofereça).
+   * Fase 2 — ADR-0013.
+   */
+  cashDiscountOverrideBps: number | null;
   isActive: boolean;
   isFeatured: boolean;
   /** Meta-fields canvas-v1 — null quando lojista não preencheu. */
@@ -146,6 +158,8 @@ export function ProductForm({
       categoryId: initialData.categoryId,
       trackStock: initialData.trackStock,
       stockQuantity: initialData.stockQuantity,
+      installmentsOverride: initialData.installmentsOverride,
+      cashDiscountOverrideBps: initialData.cashDiscountOverrideBps,
       isActive: initialData.isActive,
       isFeatured: initialData.isFeatured,
       composition: initialData.composition ?? "",
@@ -417,6 +431,162 @@ export function ProductForm({
             <p className="text-muted-foreground text-xs">
               A promoção fica ativa enquanto preenchida. Para parar, limpe o campo.
             </p>
+
+            {/* Override de parcelas por produto — Fase 2 / ADR-0013 */}
+            <div className="space-y-1.5 border-t pt-3">
+              <Label htmlFor="product-installments-override">
+                Parcelar até (sobrescreve a loja)
+              </Label>
+              <Controller
+                name="installmentsOverride"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    value={field.value === null ? "default" : String(field.value)}
+                    onValueChange={(v) =>
+                      field.onChange(v === "default" ? null : Number(v))
+                    }
+                    disabled={isPending}
+                  >
+                    <SelectTrigger
+                      id="product-installments-override"
+                      className="w-full sm:max-w-[220px]"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">
+                        Usar o padrão da loja
+                      </SelectItem>
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {n}×
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              <p className="text-muted-foreground text-xs">
+                Deixe &ldquo;padrão da loja&rdquo; pra usar o limite
+                definido em Pagamento (menu lateral). Útil pra peças
+                mais caras que merecem mais parcelas.
+              </p>
+              {errors.installmentsOverride?.message ? (
+                <p className="text-destructive text-xs">
+                  {errors.installmentsOverride.message}
+                </p>
+              ) : null}
+            </div>
+
+            {/* Override de desconto à vista por produto — Fase 2 / ADR-0013 */}
+            <div className="space-y-1.5 border-t pt-3">
+              <Label htmlFor="product-cash-discount-override">
+                Desconto à vista (sobrescreve a loja)
+              </Label>
+              <Controller
+                name="cashDiscountOverrideBps"
+                control={control}
+                render={({ field }) => {
+                  // null  → "default" (usa cashDiscountBps da loja)
+                  // 0     → "off"     (este produto NÃO tem desconto, mesmo que loja tenha)
+                  // 1..9999 → input numérico em %
+                  const v = field.value;
+                  const mode =
+                    v === null
+                      ? "default"
+                      : v === 0
+                        ? "off"
+                        : "custom";
+                  const bpsValue = typeof v === "number" && v > 0 ? v : 0;
+                  return (
+                    <div className="space-y-2">
+                      <Select
+                        value={mode}
+                        onValueChange={(next) => {
+                          if (next === "default") field.onChange(null);
+                          else if (next === "off") field.onChange(0);
+                          else field.onChange(bpsValue > 0 ? bpsValue : 500); // default 5% ao abrir
+                        }}
+                        disabled={isPending}
+                      >
+                        <SelectTrigger
+                          id="product-cash-discount-override"
+                          className="w-full sm:max-w-[260px]"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="default">
+                            Usar o padrão da loja
+                          </SelectItem>
+                          <SelectItem value="off">
+                            Sem desconto neste produto
+                          </SelectItem>
+                          <SelectItem value="custom">
+                            Definir um valor específico
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      {mode === "custom" ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id="product-cash-discount-input"
+                            type="number"
+                            inputMode="decimal"
+                            step="0.5"
+                            min={0.01}
+                            max={99.99}
+                            value={
+                              bpsValue === 0
+                                ? ""
+                                : String(Math.round(bpsValue) / 100).replace(
+                                    ".",
+                                    ",",
+                                  )
+                            }
+                            onChange={(e) => {
+                              const raw = e.target.value
+                                .replace(",", ".")
+                                .trim();
+                              if (raw === "") {
+                                field.onChange(0);
+                                return;
+                              }
+                              const pct = Number.parseFloat(raw);
+                              if (!Number.isFinite(pct) || pct < 0) {
+                                field.onChange(0);
+                                return;
+                              }
+                              field.onChange(
+                                Math.min(9999, Math.round(pct * 100)),
+                              );
+                            }}
+                            placeholder="0"
+                            className="w-32"
+                            disabled={isPending}
+                            aria-invalid={!!errors.cashDiscountOverrideBps}
+                          />
+                          <span className="text-muted-foreground text-sm">
+                            % off
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                }}
+              />
+              <p className="text-muted-foreground text-xs">
+                Útil pra peça encalhada (queima estoque) ou pra desligar o
+                desconto em produto que já está com margem apertada.
+              </p>
+              {errors.cashDiscountOverrideBps?.message ? (
+                <p className="text-destructive text-xs">
+                  {errors.cashDiscountOverrideBps.message}
+                </p>
+              ) : null}
+            </div>
           </FormCard>
 
           <FormCard

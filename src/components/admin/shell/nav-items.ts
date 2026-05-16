@@ -1,4 +1,5 @@
 import {
+  CreditCardIcon,
   HomeIcon,
   ImageIcon,
   type LucideIcon,
@@ -74,6 +75,12 @@ export const ADMIN_NAV_ITEMS: readonly AdminNavEntry[] = [
         icon: ReceiptIcon,
       },
     ],
+  },
+  {
+    kind: "link",
+    href: "/admin/pagamento",
+    label: "Pagamento",
+    icon: CreditCardIcon,
   },
   {
     kind: "link",

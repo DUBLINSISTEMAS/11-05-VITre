@@ -37,6 +37,7 @@ export interface OrderWithItems extends Order {
     | "whatsappNumber"
     | "whatsappDisplay"
     | "whatsappTemplate"
+    | "paymentMethodsNote"
   >;
 }
 
@@ -63,6 +64,7 @@ async function getOrderByColumn(
         whatsappNumber: true,
         whatsappDisplay: true,
         whatsappTemplate: true,
+        paymentMethodsNote: true,
       },
     });
     const items = await tx
