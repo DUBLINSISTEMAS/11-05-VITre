@@ -14,6 +14,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
+import { customerTable } from "./customer";
 import { storeTable } from "./store";
 
 export const orderStatusEnum = pgEnum("order_status", [
@@ -54,6 +55,20 @@ export const orderTable = pgTable(
     customerName: text("customer_name").notNull(),
     customerPhone: text("customer_phone").notNull(), // E.164
     customerNotes: text("customer_notes"),
+    /**
+     * FK opcional para `customer` (Fase 3 — ADR-0014). NULL para pedidos
+     * antigos e pedidos do storefront cuja compradora não está cadastrada
+     * no admin. ON DELETE SET NULL — apagar cliente NÃO apaga pedido
+     * histórico; pedido fica órfão de vínculo mas mantém os snapshots
+     * `customer_name`/`customer_phone` da época da compra.
+     *
+     * NÃO substitui os snapshots. Snapshot = imutável (forma como o
+     * cliente se chamou naquela compra). FK = vínculo ativo (cliente
+     * pode mudar nome depois sem afetar o pedido velho).
+     */
+    customerId: uuid("customer_id").references(() => customerTable.id, {
+      onDelete: "set null",
+    }),
 
     totalInCents: integer("total_in_cents").notNull(),
 
@@ -83,6 +98,10 @@ export const orderRelations = relations(orderTable, ({ one, many }) => ({
   store: one(storeTable, {
     fields: [orderTable.storeId],
     references: [storeTable.id],
+  }),
+  customer: one(customerTable, {
+    fields: [orderTable.customerId],
+    references: [customerTable.id],
   }),
   items: many(orderItemTable),
 }));

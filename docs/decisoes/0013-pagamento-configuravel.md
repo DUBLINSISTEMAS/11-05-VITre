@@ -1,9 +1,10 @@
 # ADR-0013: Pagamento configurável por loja
 
 - **Data**: 2026-05-15
-- **Status**: proposto
+- **Status**: aceito (aplicado em prod 2026-05-16 via commits `c0a13f4` base + `95183db` refactor pós-pushback)
 - **Deriva de**: [ADR-0012](0012-pivot-vitre-gestao.md) (Fase 2 do pivô)
 - **Convive com**: [ADR-0008](0008-ux-catalogo-publico-storefront.md) — não toca em login/conta de cliente; apenas adiciona configuração do lojista
+- **Nota de refactor (2026-05-16)**: o ADR original propunha "nova seção dentro de `/admin/configuracoes`" (seção 5 abaixo). Foi rejeitado pelo founder em review (memory `admin-rota-dedicada-por-dominio-2026-05-16.md`): sistema sério agrupa por domínio funcional com rota dedicada. Refactor aplicou: rota `/admin/pagamento` própria + `update-payment.ts` separado de `updateStore`. Override por produto também foi expandido: `cashDiscountOverrideBps` adicionado (semântica 3-mode null/0/>0 — ver memory `override-por-produto-heuristica-20-percent-2026-05-16.md`) além do `installmentsOverride` já previsto.
 
 ## Contexto
 

@@ -9,6 +9,7 @@ import {
   SettingsIcon,
   StoreIcon,
   TagIcon,
+  UsersIcon,
 } from "lucide-react";
 
 /**
@@ -75,6 +76,12 @@ export const ADMIN_NAV_ITEMS: readonly AdminNavEntry[] = [
         icon: ReceiptIcon,
       },
     ],
+  },
+  {
+    kind: "link",
+    href: "/admin/clientes",
+    label: "Clientes",
+    icon: UsersIcon,
   },
   {
     kind: "link",
