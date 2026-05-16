@@ -1,7 +1,7 @@
 # ADR-0015: Estoque event-sourced via `stock_movement`
 
 - **Data**: 2026-05-16
-- **Status**: proposto
+- **Status**: aceito (aplicado em prod 2026-05-16 via commit `074ca2e`)
 - **Deriva de**: [ADR-0012](0012-pivot-vitre-gestao.md) (Fase 4 do pivô)
 - **Convive com**:
   - [ADR-0014](0014-customer-admin-vs-storefront.md) — Fase 3, sem conflito
