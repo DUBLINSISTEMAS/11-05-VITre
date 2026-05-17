@@ -155,7 +155,7 @@ export default function CriarLojaIdentidadePage() {
           <h1 className="text-[28px] font-semibold leading-[1.1] tracking-[-0.6px] sm:text-[32px] sm:tracking-[-0.8px]">
             Vamos dar identidade pra sua loja
           </h1>
-          <p className="text-muted-foreground mt-2 text-[13.5px]">
+          <p className="text-ink-4 mt-2 text-[13.5px]">
             Você pode mudar tudo isso depois. Começamos com o essencial.
           </p>
 
@@ -185,15 +185,15 @@ export default function CriarLojaIdentidadePage() {
                   </div>
                   <div
                     aria-hidden
-                    className="border-border bg-muted/40 text-muted-foreground flex flex-1 flex-col items-center justify-center gap-1.5 rounded-[10px] border-[1.5px] border-dashed p-6"
+                    className="border-line bg-bg-app text-ink-4 flex flex-1 flex-col items-center justify-center gap-1.5 rounded-[10px] border-[1.5px] border-dashed p-6"
                   >
                     <UploadCloudIcon className="size-5" />
-                    <span className="text-foreground text-[12px] font-medium">
+                    <span className="text-ink-1 text-[12px] font-medium">
                       Solte sua logo aqui
                     </span>
                     <span className="text-[10.5px]">
                       ou{" "}
-                      <span className="text-primary font-medium">
+                      <span className="text-brand font-medium">
                         depois nas configurações
                       </span>
                     </span>
@@ -296,7 +296,7 @@ export default function CriarLojaIdentidadePage() {
                             onClick={() => field.onChange(co.hex)}
                             disabled={isPending}
                             className={cn(
-                              "bg-card hocus:border-foreground/30 flex cursor-pointer items-center gap-2 rounded-[10px] border-[1.5px] px-2.5 py-3 transition-colors",
+                              "bg-surface hocus:border-line-2 flex cursor-pointer items-center gap-2 rounded-[10px] border-[1.5px] border-line px-2.5 py-3 transition-colors",
                               active && "shadow-sm",
                             )}
                             style={
@@ -357,10 +357,10 @@ export default function CriarLojaIdentidadePage() {
 
             {/* === Live preview (sticky desktop) === */}
             <aside className="lg:sticky lg:top-6 lg:self-start">
-              <p className="text-muted-foreground mb-2.5 font-mono text-[10px] uppercase tracking-[0.05em]">
+              <p className="text-ink-4 mb-2.5 font-mono text-[10px] uppercase tracking-[0.05em]">
                 Prévia ao vivo
               </p>
-              <div className="bg-card rounded-2xl border p-[18px] shadow-md">
+              <div className="bg-surface rounded-2xl border border-line p-[18px] shadow-md">
                 <div className="mb-3.5 flex items-center gap-2">
                   <span
                     aria-hidden
@@ -373,7 +373,7 @@ export default function CriarLojaIdentidadePage() {
                     <p className="truncate text-[12.5px] font-semibold leading-[1.1]">
                       {watchedName.trim() || "Sua loja"}
                     </p>
-                    <p className="text-muted-foreground truncate font-mono text-[9.5px]">
+                    <p className="text-ink-4 truncate font-mono text-[9.5px]">
                       {APP_URL_HOST}/{watchedSlug || "sua-loja"}
                     </p>
                   </div>
@@ -418,7 +418,7 @@ export default function CriarLojaIdentidadePage() {
                   ))}
                 </div>
               </div>
-              <p className="text-muted-foreground mt-2.5 text-[10.5px] leading-[1.5]">
+              <p className="text-ink-4 mt-2.5 text-[10.5px] leading-[1.5]">
                 Atualiza enquanto você digita.
               </p>
             </aside>
@@ -440,7 +440,7 @@ function Section({ label, hint, children }: SectionProps) {
     <section>
       <p className="mb-1 text-[13px] font-semibold">{label}</p>
       {hint ? (
-        <p className="text-muted-foreground mb-2.5 text-[11px]">{hint}</p>
+        <p className="text-ink-4 mb-2.5 text-[11px]">{hint}</p>
       ) : null}
       {children}
     </section>

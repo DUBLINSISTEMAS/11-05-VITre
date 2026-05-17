@@ -58,7 +58,7 @@ export function MobileHeader(props: MobileHeaderProps) {
             priority
             className="size-7 rounded-md"
           />
-          <span className="font-semibold tracking-tight text-foreground">
+          <span className="font-semibold tracking-tight text-ink-1">
             Vitrê
           </span>
         </Link>

@@ -29,7 +29,7 @@ export default function RedefinirPage() {
     <Suspense
       fallback={
         <AuthShell title="Carregando…">
-          <p className="text-muted-foreground text-sm">
+          <p className="text-ink-4 text-sm">
             Validando seu link…
           </p>
         </AuthShell>
@@ -76,7 +76,7 @@ function RedefinirForm() {
           </Link>
         }
       >
-        <p className="text-muted-foreground text-sm">
+        <p className="text-ink-4 text-sm">
           Este link parece estar quebrado ou expirou. Solicite um novo para
           redefinir sua senha.
         </p>

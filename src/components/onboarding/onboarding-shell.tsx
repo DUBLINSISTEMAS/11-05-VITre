@@ -29,12 +29,12 @@ export function OnboardingShell({
   const percent = Math.round((step / total) * 100);
 
   return (
-    <div className="bg-background grid min-h-dvh grid-rows-[auto_1fr]">
-      <header className="flex items-center gap-4 border-b px-6 py-4 sm:gap-8 sm:px-8 sm:py-[18px]">
+    <div className="bg-bg-app grid min-h-dvh grid-rows-[auto_1fr]">
+      <header className="flex items-center gap-4 border-b border-line px-6 py-4 sm:gap-8 sm:px-8 sm:py-[18px]">
         <Link
           href="/"
           aria-label="Vitrê"
-          className="hocus:text-primary text-foreground inline-flex shrink-0 items-center gap-2 transition-colors"
+          className="hocus:text-brand text-ink-1 inline-flex shrink-0 items-center gap-2 transition-colors"
         >
           <VitreLogoMark />
           <span className="text-[16px] font-semibold tracking-[-0.4px]">
@@ -43,24 +43,24 @@ export function OnboardingShell({
         </Link>
 
         <div className="hidden flex-1 sm:block sm:max-w-[380px]">
-          <div className="text-muted-foreground flex items-center justify-between text-[11px]">
+          <div className="text-ink-4 flex items-center justify-between text-[11px]">
             <span className="font-mono uppercase tracking-[0.04em]">
               Passo {step} de {total}
             </span>
             <span className="font-mono tabular-nums">{percent}%</span>
           </div>
-          <div className="bg-muted mt-1.5 h-[3px] overflow-hidden rounded-sm">
+          <div className="bg-line mt-1.5 h-[3px] overflow-hidden rounded-sm">
             <div
-              className="bg-primary h-full transition-[width] duration-300"
+              className="bg-brand h-full transition-[width] duration-300"
               style={{ width: `${percent}%` }}
             />
           </div>
         </div>
 
         {/* Mobile: progress compacto sem labels */}
-        <div className="bg-muted relative h-[3px] flex-1 overflow-hidden rounded-sm sm:hidden">
+        <div className="bg-line relative h-[3px] flex-1 overflow-hidden rounded-sm sm:hidden">
           <div
-            className="bg-primary h-full transition-[width] duration-300"
+            className="bg-brand h-full transition-[width] duration-300"
             style={{ width: `${percent}%` }}
           />
         </div>
@@ -68,7 +68,7 @@ export function OnboardingShell({
         {hideSignInLink ? null : (
           <Link
             href="/entrar"
-            className="text-muted-foreground hocus:text-foreground hidden text-[12px] transition-colors sm:ml-auto sm:inline"
+            className="text-ink-4 hocus:text-ink-1 hidden text-[12px] transition-colors sm:ml-auto sm:inline"
           >
             Já tenho conta · entrar
           </Link>

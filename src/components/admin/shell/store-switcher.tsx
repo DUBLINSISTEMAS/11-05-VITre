@@ -31,7 +31,7 @@ export function StoreSwitcher({
     <Link
       href="/admin"
       prefetch
-      className="hocus:bg-accent/60 group flex items-center gap-2.5 rounded-lg px-2 py-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
+      className="hocus:bg-bg-app group flex items-center gap-2.5 rounded-lg px-2 py-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
       aria-label={`${storeName} — ir para o início`}
     >
       {logoUrl ? (
@@ -58,10 +58,10 @@ export function StoreSwitcher({
         </span>
       )}
       <span className="min-w-0 flex-1 leading-tight">
-        <span className="block truncate text-[12.5px] font-semibold tracking-tight text-foreground">
+        <span className="block truncate text-[12.5px] font-semibold tracking-tight text-ink-1">
           {storeName}
         </span>
-        <span className="block truncate font-mono text-[10.5px] text-muted-foreground">
+        <span className="block truncate font-mono text-[10.5px] text-ink-4">
           @{storeSlug}
         </span>
       </span>

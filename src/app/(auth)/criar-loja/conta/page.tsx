@@ -97,7 +97,7 @@ export default function CriarContaPage() {
             Sua vitrine digital <br className="hidden sm:block" />
             em <span className="text-primary">5 minutos</span>.
           </h1>
-          <p className="text-muted-foreground mt-3 max-w-[460px] text-[14px] leading-[1.55]">
+          <p className="text-ink-4 mt-3 max-w-[460px] text-[14px] leading-[1.55]">
             Cadastre seus produtos, conecte seu WhatsApp e comece a vender.
             Sem mensalidade nos primeiros 14 dias.
           </p>
@@ -171,7 +171,7 @@ export default function CriarContaPage() {
                   "text-[10.5px]",
                   form.formState.errors.whatsappNumber
                     ? "text-destructive"
-                    : "text-muted-foreground",
+                    : "text-ink-4",
                 )}
               >
                 {form.formState.errors.whatsappNumber?.message ??
@@ -197,7 +197,7 @@ export default function CriarContaPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((s) => !s)}
-                  className="text-muted-foreground hocus:text-foreground absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
+                  className="text-ink-4 hocus:text-ink-1 absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
                   tabIndex={-1}
                   aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                 >
@@ -215,7 +215,7 @@ export default function CriarContaPage() {
                   <PasswordIndicator ok={passwordStrength.number} label="Número" />
                 </div>
               ) : (
-                <p className="text-muted-foreground text-[10.5px]">
+                <p className="text-ink-4 text-[10.5px]">
                   Mínimo 8 caracteres, com letra e número.
                 </p>
               )}
@@ -252,7 +252,7 @@ export default function CriarContaPage() {
                 onChange={(e) => setAgreed(e.target.checked)}
                 className="mt-0.5 size-3.5 cursor-pointer accent-primary"
               />
-              <span className="text-muted-foreground text-[11px] leading-[1.55]">
+              <span className="text-ink-4 text-[11px] leading-[1.55]">
                 Ao continuar você concorda com os{" "}
                 <Link
                   href="/termos"
@@ -274,7 +274,7 @@ export default function CriarContaPage() {
         </div>
 
         {/* === Visual column (desktop only) === */}
-        <aside className="bg-muted/50 relative hidden overflow-hidden border-l lg:block">
+        <aside className="bg-bg-app relative hidden overflow-hidden border-l border-line lg:block">
           {/* Gradient radial brand-tint top-right */}
           <div
             aria-hidden
@@ -287,7 +287,7 @@ export default function CriarContaPage() {
           <div className="relative flex h-full items-start gap-6 px-12 py-[60px] xl:gap-8">
             {/* Mini phone */}
             <div
-              className="bg-card flex shrink-0 flex-col gap-2 rounded-[28px] border p-2.5 shadow-xl"
+              className="bg-surface flex shrink-0 flex-col gap-2 rounded-[28px] border border-line p-2.5 shadow-xl"
               style={{ width: 220, aspectRatio: "9 / 19" }}
             >
               <div className="h-4" aria-hidden />
@@ -343,11 +343,11 @@ export default function CriarContaPage() {
                 },
               ].map((s) => (
                 <li key={s.n}>
-                  <p className="text-muted-foreground/70 font-mono text-[9.5px] tracking-[0.04em]">
+                  <p className="text-ink-5 font-mono text-[9.5px] tracking-[0.04em]">
                     {s.n}
                   </p>
                   <p className="mt-0.5 text-[13px] font-semibold">{s.l}</p>
-                  <p className="text-muted-foreground mt-0.5 text-[11.5px] leading-[1.5]">
+                  <p className="text-ink-4 mt-0.5 text-[11.5px] leading-[1.5]">
                     {s.t}
                   </p>
                 </li>
@@ -365,7 +365,7 @@ function PasswordIndicator({ ok, label }: { ok: boolean; label: string }) {
     <span
       className={cn(
         "inline-flex items-center gap-0.5 text-[10px] font-medium transition-colors",
-        ok ? "text-success" : "text-muted-foreground/60",
+        ok ? "text-success" : "text-ink-5",
       )}
     >
       {ok ? <CheckIcon className="size-3" /> : null}

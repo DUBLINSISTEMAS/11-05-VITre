@@ -106,7 +106,7 @@ export default function CriarLojaTipoNegocioPage() {
     return (
       <OnboardingShell step={3}>
         <div className="flex items-center justify-center py-16">
-          <Loader2Icon className="size-5 animate-spin text-muted-foreground" />
+          <Loader2Icon className="size-5 animate-spin text-ink-4" />
         </div>
       </OnboardingShell>
     );
@@ -122,7 +122,7 @@ export default function CriarLojaTipoNegocioPage() {
           <h1 className="mt-2 text-[28px] font-semibold leading-[1.1] tracking-[-0.6px] sm:text-[32px] sm:tracking-[-0.8px]">
             Que tipo de loja você tem?
           </h1>
-          <p className="mt-2 text-[13.5px] text-muted-foreground">
+          <p className="mt-2 text-[13.5px] text-ink-4">
             Usamos pra preparar categorias e exemplos relevantes pro seu nicho.
           </p>
 
@@ -136,8 +136,8 @@ export default function CriarLojaTipoNegocioPage() {
                   onClick={() => setNiche(n.value)}
                   disabled={isPending}
                   className={cn(
-                    "flex cursor-pointer flex-col items-start gap-3 rounded-[12px] border-[1.5px] px-4 py-5 text-left transition-colors hocus:border-foreground/40",
-                    active ? "shadow-sm" : "border-border bg-card",
+                    "flex cursor-pointer flex-col items-start gap-3 rounded-[12px] border-[1.5px] px-4 py-5 text-left transition-colors hocus:border-line-2",
+                    active ? "shadow-sm" : "border-line bg-surface",
                   )}
                   style={
                     active
@@ -167,8 +167,8 @@ export default function CriarLojaTipoNegocioPage() {
           {/* Opt-in: criar categorias sugeridas do nicho */}
           <label
             className={cn(
-              "mt-6 flex items-start gap-3 rounded-[12px] border bg-card px-4 py-4 transition-colors",
-              "hocus-within:border-foreground/30 cursor-pointer",
+              "mt-6 flex items-start gap-3 rounded-[12px] border border-line bg-surface px-4 py-4 transition-colors",
+              "hocus-within:border-line-2 cursor-pointer",
             )}
           >
             <Checkbox
@@ -181,10 +181,10 @@ export default function CriarLojaTipoNegocioPage() {
               aria-label="Criar categorias sugeridas do nicho"
             />
             <div className="flex-1">
-              <span className="text-foreground block text-[13px] font-medium">
+              <span className="text-ink-1 block text-[13px] font-medium">
                 Criar categorias sugeridas
               </span>
-              <p className="text-muted-foreground mt-0.5 text-[11.5px] leading-[1.4]">
+              <p className="text-ink-4 mt-0.5 text-[11.5px] leading-[1.4]">
                 Adicionamos algumas categorias comuns do seu nicho. Você
                 pode editar, renomear ou apagar depois.
               </p>

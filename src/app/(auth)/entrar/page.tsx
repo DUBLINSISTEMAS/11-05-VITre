@@ -35,7 +35,7 @@ function EntrarSkeleton() {
   return (
     <AuthShell title="Entrar" subtitle="Acesse sua conta">
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        <Loader2 className="size-5 animate-spin text-ink-4" />
       </div>
     </AuthShell>
   );
@@ -100,7 +100,7 @@ function EntrarContent() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  <FormLabel className="text-xs font-medium text-ink-4 uppercase tracking-wide">
                     Email
                   </FormLabel>
                   <FormControl>
@@ -111,7 +111,7 @@ function EntrarContent() {
                       autoCapitalize="off"
                       placeholder="seu@email.com"
                       disabled={isPending}
-                      className="h-10 bg-muted/30 border-0 focus-visible:ring-1"
+                      className="h-10 bg-bg-app border-0 focus-visible:ring-1"
                       {...field}
                     />
                   </FormControl>
@@ -128,12 +128,12 @@ function EntrarContent() {
               render={({ field }) => (
                 <FormItem>
                   <div className="flex items-center justify-between">
-                    <FormLabel className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    <FormLabel className="text-xs font-medium text-ink-4 uppercase tracking-wide">
                       Senha
                     </FormLabel>
                     <Link
                       href="/recuperar"
-                      className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                      className="text-xs text-ink-4 hover:text-brand transition-colors"
                       tabIndex={-1}
                     >
                       Esqueceu?
@@ -146,7 +146,7 @@ function EntrarContent() {
                         autoComplete="current-password"
                         placeholder="Sua senha"
                         disabled={isPending}
-                        className="h-10 bg-muted/30 border-0 focus-visible:ring-1 pr-10"
+                        className="h-10 bg-bg-app border-0 focus-visible:ring-1 pr-10"
                         {...field}
                       />
                       <button
@@ -154,7 +154,7 @@ function EntrarContent() {
                         onClick={() => setShowPassword(!showPassword)}
                         className={cn(
                           "absolute right-3 top-1/2 -translate-y-1/2",
-                          "text-muted-foreground hover:text-foreground transition-colors"
+                          "text-ink-4 hover:text-ink-1 transition-colors"
                         )}
                         tabIndex={-1}
                         aria-label={showPassword ? "Ocultar" : "Mostrar"}

@@ -259,15 +259,15 @@ function UserCardFooter({
     <div className="flex items-center gap-2 px-3 py-3">
       <span
         aria-hidden
-        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary"
+        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-wash text-[11px] font-semibold text-brand"
       >
         {getInitials(ownerName)}
       </span>
       <div className="min-w-0 flex-1 leading-tight">
-        <p className="truncate text-[12.5px] font-semibold text-foreground">
+        <p className="truncate text-[12.5px] font-semibold text-ink-1">
           {ownerName.split(/\s+/)[0] ?? "Você"}
         </p>
-        <p className="truncate font-mono text-[10.5px] text-muted-foreground">
+        <p className="truncate font-mono text-[10.5px] text-ink-4">
           {ownerEmail}
         </p>
       </div>
@@ -280,10 +280,10 @@ function UserCardFooter({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" side="top" sideOffset={6} className="min-w-52">
           <DropdownMenuLabel className="space-y-0.5 py-2">
-            <p className="truncate text-sm font-medium text-foreground">
+            <p className="truncate text-sm font-medium text-ink-1">
               {ownerName}
             </p>
-            <p className="truncate text-xs font-normal text-muted-foreground">
+            <p className="truncate text-xs font-normal text-ink-4">
               {ownerEmail}
             </p>
           </DropdownMenuLabel>

@@ -31,7 +31,7 @@ function WelcomeSkeleton() {
   return (
     <OnboardingShell step={4} hideSignInLink>
       <div className="flex items-center justify-center py-20">
-        <div className="bg-muted size-8 animate-pulse rounded-full" />
+        <div className="bg-bg-app size-8 animate-pulse rounded-full" />
       </div>
     </OnboardingShell>
   );
@@ -92,13 +92,13 @@ function WelcomeContent() {
             ) : null}
             .
           </h1>
-          <p className="text-muted-foreground mx-auto mt-3.5 max-w-[520px] text-center text-[14px] leading-[1.55]">
+          <p className="text-ink-4 mx-auto mt-3.5 max-w-[520px] text-center text-[14px] leading-[1.55]">
             Compartilhe esse link no Instagram, status do WhatsApp ou cartão de
             visita. Toda venda continua no seu WhatsApp.
           </p>
 
           {/* Link card mono */}
-          <div className="mx-auto mt-8 flex max-w-[520px] items-center overflow-hidden rounded-xl border bg-card shadow-sm">
+          <div className="mx-auto mt-8 flex max-w-[520px] items-center overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
             <p className="flex-1 truncate px-4 py-3.5 font-mono text-[13px] font-semibold">
               {storeUrlDisplay}
             </p>
@@ -118,7 +118,7 @@ function WelcomeContent() {
           </div>
 
           {/* Próximos passos */}
-          <p className="text-muted-foreground mb-3.5 mt-14 text-center font-mono text-[10px] uppercase tracking-[0.05em]">
+          <p className="text-ink-4 mb-3.5 mt-14 text-center font-mono text-[10px] uppercase tracking-[0.05em]">
             Próximos passos
           </p>
           <div className="grid gap-3.5 sm:grid-cols-3">
@@ -126,7 +126,7 @@ function WelcomeContent() {
               <Link
                 key={s.n}
                 href={s.href}
-                className="bg-card hocus:border-foreground/30 flex flex-col gap-2.5 rounded-xl border p-5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
+                className="bg-surface hocus:border-line-2 flex flex-col gap-2.5 rounded-xl border border-line p-5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
               >
                 <p className="text-primary font-mono text-[10.5px] font-semibold tracking-[0.05em]">
                   {s.n}
@@ -134,7 +134,7 @@ function WelcomeContent() {
                 <p className="text-[14px] font-semibold leading-tight tracking-[-0.2px]">
                   {s.t}
                 </p>
-                <p className="text-muted-foreground flex-1 text-[11.5px] leading-[1.55]">
+                <p className="text-ink-4 flex-1 text-[11.5px] leading-[1.55]">
                   {s.s}
                 </p>
                 <span className="hocus:text-primary mt-1.5 inline-flex items-center justify-center gap-1.5 self-start rounded-md border px-3 py-1.5 text-[12px] font-semibold transition-colors">

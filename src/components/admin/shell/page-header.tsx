@@ -44,11 +44,11 @@ export function AdminPageHeader({
       ) : null}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0 flex-1 space-y-1">
-          <h1 className="text-[22px] font-semibold tracking-tight text-foreground sm:text-2xl">
+          <h1 className="text-[22px] font-semibold tracking-tight text-ink-1 sm:text-2xl">
             {title}
           </h1>
           {subtitle ? (
-            <p className="text-[12.5px] font-medium text-muted-foreground sm:text-sm">
+            <p className="text-[12.5px] font-medium text-ink-4 sm:text-sm">
               {subtitle}
             </p>
           ) : null}
@@ -64,7 +64,7 @@ export function AdminPageHeader({
 function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
   return (
     <nav aria-label="Breadcrumb">
-      <ol className="flex flex-wrap items-center gap-1 text-[12.5px] font-medium text-muted-foreground">
+      <ol className="flex flex-wrap items-center gap-1 text-[12.5px] font-medium text-ink-4">
         {items.map((item, idx) => {
           const Icon = item.icon;
           const isLast = idx === items.length - 1;
@@ -79,13 +79,13 @@ function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
               {item.href && !isLast ? (
                 <Link
                   href={item.href}
-                  className="flex items-center gap-1 rounded-sm outline-none transition-colors hocus:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                  className="flex items-center gap-1 rounded-sm outline-none transition-colors hocus:text-ink-1 focus-visible:ring-2 focus-visible:ring-ring/50"
                 >
                   {content}
                 </Link>
               ) : (
                 <span
-                  className={`flex items-center gap-1 ${isLast ? "text-foreground" : ""}`}
+                  className={`flex items-center gap-1 ${isLast ? "text-ink-1" : ""}`}
                   aria-current={isLast ? "page" : undefined}
                 >
                   {content}
@@ -93,7 +93,7 @@ function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
               )}
               {!isLast ? (
                 <ChevronRightIcon
-                  className="size-3 shrink-0 text-muted-foreground/60"
+                  className="size-3 shrink-0 text-ink-5"
                   aria-hidden
                 />
               ) : null}
