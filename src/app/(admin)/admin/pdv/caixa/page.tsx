@@ -82,7 +82,7 @@ export default async function CaixaPage({ searchParams }: CaixaPageProps) {
         className="flex items-center gap-2 print:hidden"
         action="/admin/pdv/caixa"
       >
-        <label htmlFor="caixa-date" className="text-muted-foreground text-sm">
+        <label htmlFor="caixa-date" className="text-ink-4 text-sm">
           Dia:
         </label>
         <Input
@@ -108,15 +108,15 @@ function SummaryView({ summary }: { summary: DaySummary }) {
 
   return (
     <div className="space-y-4">
-      <div className="border-border/60 bg-card rounded-xl border p-4">
-        <span className="text-muted-foreground text-xs uppercase tracking-wider">
+      <div className="b3-card p-4">
+        <span className="text-ink-4 text-xs uppercase tracking-wider">
           {dateLabel}
         </span>
         <div className="mt-1 flex items-baseline gap-4">
           <div className="font-mono text-3xl font-semibold tabular-nums">
             {formatBRL(summary.totalCents)}
           </div>
-          <div className="text-muted-foreground text-sm">
+          <div className="text-ink-4 text-sm">
             {summary.totalCount}{" "}
             {summary.totalCount === 1 ? "venda" : "vendas"}
           </div>
@@ -124,13 +124,13 @@ function SummaryView({ summary }: { summary: DaySummary }) {
       </div>
 
       {summary.byMethod.length === 0 ? (
-        <div className="border-border/60 text-muted-foreground rounded-xl border-2 border-dashed p-8 text-center text-sm">
+        <div className="border-line text-ink-4 rounded-xl border-2 border-dashed p-8 text-center text-sm">
           Sem vendas no balcão neste dia.
         </div>
       ) : (
-        <div className="border-border/60 bg-card overflow-hidden rounded-xl border">
+        <div className="b3-card overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-muted-foreground text-xs uppercase tracking-wider">
+            <thead className="bg-bg-app text-ink-4 text-xs uppercase tracking-wider">
               <tr>
                 <th className="px-4 py-2 text-left font-medium">Método</th>
                 <th className="px-4 py-2 text-right font-medium">Vendas</th>
@@ -143,11 +143,11 @@ function SummaryView({ summary }: { summary: DaySummary }) {
                 return (
                   <tr
                     key={row.method}
-                    className="border-border/60 border-t last:border-b-0"
+                    className="border-line border-t last:border-b-0"
                   >
                     <td className="px-4 py-3">
                       <span className="flex items-center gap-2">
-                        <Icon className="text-muted-foreground size-4" />
+                        <Icon className="text-ink-4 size-4" />
                         {METHOD_LABEL[row.method]}
                       </span>
                     </td>
@@ -160,7 +160,7 @@ function SummaryView({ summary }: { summary: DaySummary }) {
                   </tr>
                 );
               })}
-              <tr className="bg-muted/30 border-border/60 border-t font-semibold">
+              <tr className="bg-bg-app border-line border-t font-semibold">
                 <td className="px-4 py-3">Total</td>
                 <td className="px-4 py-3 text-right font-mono tabular-nums">
                   {summary.totalCount}
@@ -174,7 +174,7 @@ function SummaryView({ summary }: { summary: DaySummary }) {
         </div>
       )}
 
-      <p className="text-muted-foreground print:hidden text-xs">
+      <p className="text-ink-4 print:hidden text-xs">
         Confira o dinheiro da gaveta com o total {METHOD_LABEL.cash}. Outros
         métodos passam por POS/PIX do lojista.
       </p>
@@ -184,7 +184,7 @@ function SummaryView({ summary }: { summary: DaySummary }) {
 
 function EmptyState() {
   return (
-    <div className="border-border/60 text-muted-foreground rounded-xl border-2 border-dashed p-8 text-center text-sm">
+    <div className="border-line text-ink-4 rounded-xl border-2 border-dashed p-8 text-center text-sm">
       Loja não encontrada ou data inválida.
     </div>
   );

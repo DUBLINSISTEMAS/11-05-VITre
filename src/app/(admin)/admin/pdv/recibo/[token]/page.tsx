@@ -103,8 +103,8 @@ export default async function ReciboBalcaoPage({ params }: ReciboPageProps) {
 
       <div className="mx-auto max-w-[420px] px-4 py-6 print:px-0 print:py-0">
         {/* Banner de sucesso — só em tela */}
-        <div className="mb-4 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-900 print:hidden">
-          <CheckCircle2Icon className="size-5 shrink-0 text-green-600" />
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-ok/30 bg-ok-wash p-3 text-sm text-ok print:hidden">
+          <CheckCircle2Icon className="size-5 shrink-0 text-ok" />
           <span className="font-medium">Venda registrada</span>
         </div>
 

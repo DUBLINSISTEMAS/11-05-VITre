@@ -332,8 +332,8 @@ export function PdvShell() {
           }}
         />
 
-        <section className="space-y-3 rounded-xl border bg-card p-4">
-          <h3 className="text-[13.5px] font-semibold tracking-tight">
+        <section className="b3-card space-y-3 p-4">
+          <h3 className="text-[13.5px] font-semibold tracking-tight text-ink-1">
             Pagamento
           </h3>
           <div className="grid grid-cols-2 gap-2">
@@ -364,9 +364,9 @@ export function PdvShell() {
                 onChange={(e) => setCashReceivedInput(e.target.value)}
               />
               {troco !== null ? (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-ink-4">
                   Troco:{" "}
-                  <span className="font-semibold text-foreground">
+                  <span className="font-semibold text-ink-1">
                     {formatBRL(troco)}
                   </span>
                 </p>
@@ -402,22 +402,22 @@ export function PdvShell() {
           </div>
         </section>
 
-        <section className="space-y-2 rounded-xl border bg-card p-4">
+        <section className="b3-card space-y-2 p-4">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Subtotal</span>
-            <span className="font-mono">{formatBRL(subtotalInCents)}</span>
+            <span className="text-ink-4">Subtotal</span>
+            <span className="font-mono text-ink-1">{formatBRL(subtotalInCents)}</span>
           </div>
           {discountInCents > 0 ? (
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Desconto</span>
-              <span className="font-mono text-red-600">
+              <span className="text-ink-4">Desconto</span>
+              <span className="font-mono text-danger">
                 −{formatBRL(discountInCents)}
               </span>
             </div>
           ) : null}
-          <div className="flex items-center justify-between border-t pt-2 text-base">
-            <span className="font-semibold">Total</span>
-            <span className="font-mono text-lg font-bold">
+          <div className="flex items-center justify-between border-t border-line pt-2 text-base">
+            <span className="font-semibold text-ink-1">Total</span>
+            <span className="font-mono text-lg font-bold text-ink-1">
               {formatBRL(totalInCents)}
             </span>
           </div>
@@ -498,7 +498,7 @@ function ProductSearchPicker({
       <div className="relative">
         <SearchIcon
           aria-hidden
-          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-4"
         />
         <Input
           id="pdv-product-search"
@@ -512,7 +512,7 @@ function ProductSearchPicker({
           <button
             type="button"
             onClick={() => setQ("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-4 hover:text-ink-1"
             aria-label="Limpar busca"
           >
             <XIcon className="size-4" />
@@ -525,7 +525,7 @@ function ProductSearchPicker({
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
-              className="aspect-square animate-pulse rounded-lg bg-muted/50"
+              className="aspect-square animate-pulse rounded-lg bg-bg-app"
             />
           ))}
         </div>
@@ -551,7 +551,7 @@ function ProductSearchPicker({
               <div
                 key={p.id}
                 className={cn(
-                  "group relative flex flex-col overflow-hidden rounded-lg border bg-card transition",
+                  "group relative flex flex-col overflow-hidden rounded-lg border border-line bg-surface transition",
                   isOutOfStock && "opacity-50",
                 )}
               >
@@ -565,9 +565,9 @@ function ProductSearchPicker({
                       onAdd(p, null, effectivePrice);
                     }
                   }}
-                  className="flex flex-1 flex-col items-start gap-1 p-2 text-left hover:bg-muted/40 disabled:cursor-not-allowed"
+                  className="flex flex-1 flex-col items-start gap-1 p-2 text-left hover:bg-bg-app disabled:cursor-not-allowed"
                 >
-                  <div className="relative aspect-square w-full overflow-hidden rounded bg-muted">
+                  <div className="relative aspect-square w-full overflow-hidden rounded bg-bg-app">
                     {p.thumbUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -576,7 +576,7 @@ function ProductSearchPicker({
                         className="size-full object-cover"
                       />
                     ) : (
-                      <div className="flex size-full items-center justify-center text-muted-foreground">
+                      <div className="flex size-full items-center justify-center text-ink-4">
                         <PackageIcon className="size-6" />
                       </div>
                     )}
@@ -588,12 +588,12 @@ function ProductSearchPicker({
                     {formatBRL(effectivePrice)}
                   </span>
                   {p.trackStock ? (
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-[11px] text-ink-4">
                       {p.stockQuantity ?? 0} em estoque
                     </span>
                   ) : null}
                   {hasVariants ? (
-                    <span className="text-[11px] text-primary">
+                    <span className="text-[11px] text-brand">
                       {expanded ? "▲ ocultar" : "▼"} {p.variants.length}{" "}
                       variantes
                     </span>
@@ -601,7 +601,7 @@ function ProductSearchPicker({
                 </button>
 
                 {hasVariants && expanded ? (
-                  <div className="border-t bg-muted/30 p-2 space-y-1">
+                  <div className="border-t border-line bg-bg-app p-2 space-y-1">
                     {p.variants.map((v) => {
                       const vPrice = v.priceInCents ?? effectivePrice;
                       const vOut =
@@ -614,7 +614,7 @@ function ProductSearchPicker({
                           type="button"
                           disabled={vOut}
                           onClick={() => onAdd(p, v, vPrice)}
-                          className="flex w-full items-center justify-between rounded px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+                          className="flex w-full items-center justify-between rounded px-2 py-1 text-xs hover:bg-bg-app disabled:opacity-50"
                         >
                           <span className="truncate">{v.name}</span>
                           <span className="font-mono">
@@ -636,9 +636,9 @@ function ProductSearchPicker({
 
 function EmptyHits({ hasQuery }: { hasQuery: boolean }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border/60 p-8 text-center">
-      <PackageIcon className="size-8 text-muted-foreground" />
-      <p className="text-sm text-muted-foreground">
+    <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-line p-8 text-center">
+      <PackageIcon className="size-8 text-ink-4" />
+      <p className="text-sm text-ink-4">
         {hasQuery
           ? "Nenhum produto encontrado."
           : "Cadastre produtos pra começar a vender no balcão."}
@@ -658,8 +658,8 @@ function CartPanel({
 }) {
   if (items.length === 0) {
     return (
-      <section className="rounded-xl border bg-card p-4">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <section className="b3-card p-4">
+        <div className="flex items-center gap-2 text-sm text-ink-4">
           <ShoppingBagIcon className="size-4" />
           Carrinho vazio
         </div>
@@ -667,17 +667,17 @@ function CartPanel({
     );
   }
   return (
-    <section className="rounded-xl border bg-card">
-      <header className="flex items-center justify-between border-b px-4 py-3">
-        <h3 className="text-[13.5px] font-semibold tracking-tight">
+    <section className="b3-card">
+      <header className="flex items-center justify-between border-b border-line px-4 py-3">
+        <h3 className="text-[13.5px] font-semibold tracking-tight text-ink-1">
           Carrinho · {items.length} {items.length === 1 ? "item" : "itens"}
         </h3>
       </header>
-      <ul className="divide-y">
+      <ul className="divide-y divide-line">
         {items.map((it, idx) => (
           <li key={`${it.productId}-${it.variantId ?? "p"}`} className="p-3">
             <div className="flex gap-2">
-              <div className="size-12 shrink-0 overflow-hidden rounded bg-muted">
+              <div className="size-12 shrink-0 overflow-hidden rounded bg-bg-app">
                 {it.thumbUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -687,7 +687,7 @@ function CartPanel({
                   />
                 ) : (
                   <div className="flex size-full items-center justify-center">
-                    <PackageIcon className="size-4 text-muted-foreground" />
+                    <PackageIcon className="size-4 text-ink-4" />
                   </div>
                 )}
               </div>
@@ -696,7 +696,7 @@ function CartPanel({
                   {it.productName}
                 </p>
                 {it.variantName ? (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-ink-4">
                     {it.variantName}
                   </p>
                 ) : null}
@@ -707,7 +707,7 @@ function CartPanel({
               <button
                 type="button"
                 onClick={() => removeItem(idx)}
-                className="text-muted-foreground hover:text-destructive"
+                className="text-ink-4 hover:text-danger"
                 aria-label="Remover"
               >
                 <Trash2Icon className="size-4" />
@@ -790,13 +790,13 @@ function CustomerComboboxLight({
 
   if (customerId) {
     return (
-      <section className="rounded-xl border bg-card p-4">
+      <section className="b3-card p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <UserIcon className="size-4 text-muted-foreground" />
+            <UserIcon className="size-4 text-ink-4" />
             <div>
               <p className="text-sm font-medium">{customerLabel}</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-ink-4">
                 Cliente vinculado
               </p>
             </div>
@@ -814,14 +814,14 @@ function CustomerComboboxLight({
   }
 
   return (
-    <section ref={containerRef} className="relative rounded-xl border bg-card p-4">
-      <Label className="text-[13.5px] font-semibold tracking-tight">
+    <section ref={containerRef} className="b3-card relative p-4">
+      <Label className="text-[13.5px] font-semibold tracking-tight text-ink-1">
         Cliente (opcional)
       </Label>
       <div className="relative mt-2">
         <SearchIcon
           aria-hidden
-          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-4"
         />
         <Input
           id="pdv-customer-search"
@@ -836,9 +836,9 @@ function CustomerComboboxLight({
         />
       </div>
       {showResults ? (
-        <div className="absolute left-4 right-4 top-full z-10 mt-1 max-h-64 overflow-y-auto rounded-lg border bg-popover shadow-md">
+        <div className="absolute left-4 right-4 top-full z-10 mt-1 max-h-64 overflow-y-auto rounded-lg border border-line bg-popover shadow-md">
           {hits.length === 0 ? (
-            <p className="p-3 text-xs text-muted-foreground">
+            <p className="p-3 text-xs text-ink-4">
               {isSearching ? "Buscando..." : "Nenhum cliente encontrado."}
             </p>
           ) : (
@@ -852,10 +852,10 @@ function CustomerComboboxLight({
                       setShowResults(false);
                       setQ("");
                     }}
-                    className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left hover:bg-muted/60"
+                    className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left hover:bg-bg-app"
                   >
                     <span className="text-sm">{c.name}</span>
-                    <span className="font-mono text-[11px] text-muted-foreground">
+                    <span className="font-mono text-[11px] text-ink-4">
                       {c.phone}
                     </span>
                   </button>
