@@ -51,7 +51,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   // sem maximumScale: respeita zoom do usuário (WCAG 2.1 — 1.4.4)
-  themeColor: "#1E3FE6",
+  themeColor: "#1A3A8F",
 };
 
 export default function RootLayout({

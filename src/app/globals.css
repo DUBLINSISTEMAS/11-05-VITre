@@ -18,9 +18,33 @@
  */
 
 :root {
-  /* — Brand fixa (Vitrê carvão) — preservada para BrandProvider por loja */
-  --brand: oklch(0.16 0.005 286);                /* Carvão (redesign canvas-v1) */
+  /* — Brand Vitrê (Dublin v3 navy BAGY-inspired, ADR-0019) — */
+  --brand: #1A3A8F;                              /* Navy sóbrio — substitui o carvão canvas-v1 */
+  --brand-2: #14306F;                            /* Hover/active state */
+  --brand-wash: #EEF1FB;                         /* Surface tinted (helpbar, side-item ativo) */
+  --brand-line: #C7D2EE;                         /* Borda tinted (focus ring soft, helpbar) */
   --brand-foreground: oklch(0.99 0 0);
+
+  /* — Dublin v3 surfaces & lines (BAGY-style admin) — */
+  --bg-app: #F5F6F8;                             /* Fundo do app (admin main) */
+  --surface: #FFFFFF;                            /* Cards, sidebar, drawer */
+  --line: var(--gray-200);                       /* Borda default (alias mantém compat) */
+  --line-2: var(--gray-300);                     /* Borda hover/forte */
+
+  /* — Ink scale (Dublin v3) — aliases pra gray-* — */
+  --ink-1: var(--gray-950);                      /* Texto principal */
+  --ink-2: var(--gray-800);                      /* Texto secundário forte */
+  --ink-3: var(--gray-600);                      /* Texto secundário */
+  --ink-4: var(--gray-500);                      /* Texto muted (labels, hints) */
+  --ink-5: var(--gray-400);                      /* Texto muito muted (placeholders) */
+
+  /* — Status washes (Dublin v3) — */
+  --ok: #16A34A;
+  --ok-wash: #DCFCE7;
+  --warn: #B4541C;
+  --warn-wash: #FBF1DE;
+  --danger: #B91C1C;
+  --danger-wash: #FBEBE9;
 
   /* — Paleta neutra — tinte violeta sutil */
   --gray-50:  oklch(0.985 0 0);
@@ -146,9 +170,33 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  /* — Brand utilities — */
+  /* — Brand utilities (Vitrê Dublin v3) — */
   --color-brand: var(--brand);
+  --color-brand-2: var(--brand-2);
+  --color-brand-wash: var(--brand-wash);
+  --color-brand-line: var(--brand-line);
   --color-brand-foreground: var(--brand-foreground);
+
+  /* — Dublin surfaces & lines — */
+  --color-bg-app: var(--bg-app);
+  --color-surface: var(--surface);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+
+  /* — Ink scale (Dublin v3) — */
+  --color-ink-1: var(--ink-1);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-ink-5: var(--ink-5);
+
+  /* — Status washes (Dublin v3) — */
+  --color-ok: var(--ok);
+  --color-ok-wash: var(--ok-wash);
+  --color-warn: var(--warn);
+  --color-warn-wash: var(--warn-wash);
+  --color-danger: var(--danger);
+  --color-danger-wash: var(--danger-wash);
 
   /* — Brand-store utilities (cor da loja, escopo restrito ADR-0011) — */
   --color-brand-store: var(--brand-store);
@@ -350,4 +398,240 @@
 }
 @utility animate-heart-ring-burst {
   animation: heart-ring-burst 0.4s ease-out forwards;
+}
+
+/* ============================================================
+ * Dublin v3 (BAGY-style) component classes — ADR-0019
+ *
+ * Padrões reutilizáveis extraídos de PIXEL PERFECT/admin/v3/bagy-style.css
+ * para uso ao longo das Ondas 2-6 do port. Apenas o que é genérico vive
+ * aqui — variantes específicas (sidebar, topbar, drawer admin) entram nas
+ * suas próprias ondas.
+ * ============================================================ */
+
+@layer components {
+  /* Cards */
+  .b3-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+  .b3-card-pad {
+    padding: 20px;
+  }
+  .b3-card-hd {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .b3-card-hd h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  /* Pills (status badges) — 6 variantes */
+  .b3-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background: var(--bg-app);
+    color: var(--ink-2);
+  }
+  .b3-pill--ok      { background: var(--ok-wash);     color: var(--ok); }
+  .b3-pill--warn    { background: var(--warn-wash);   color: var(--warn); }
+  .b3-pill--danger  { background: var(--danger-wash); color: var(--danger); }
+  .b3-pill--brand   { background: var(--brand-wash);  color: var(--brand); }
+  .b3-pill--gold    { background: #FEF3C7;            color: #92580C; }
+  .b3-pill--silver  { background: #E5E7EB;            color: #4B5563; }
+
+  /* Helpbar (faixa brand-wash topo de cards) */
+  .b3-helpbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    background: var(--brand-wash);
+    border-bottom: 1px solid var(--brand-line);
+    border-radius: 10px 10px 0 0;
+  }
+  .b3-helpbar-ico {
+    width: 32px;
+    height: 32px;
+    background: var(--brand);
+    color: white;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .b3-helpbar-text {
+    flex: 1;
+    font-size: 13.5px;
+    color: var(--ink-2);
+  }
+  .b3-helpbar-text a {
+    color: var(--brand);
+    font-weight: 600;
+    text-decoration: underline;
+  }
+
+  /* Tables */
+  .b3-tbl {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  .b3-tbl thead th {
+    height: 44px;
+    padding: 0 16px;
+    text-align: left;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-4);
+    background: var(--bg-app);
+    border-bottom: 1px solid var(--line);
+  }
+  .b3-tbl tbody td {
+    height: 64px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--line);
+    font-size: 13.5px;
+    color: var(--ink-1);
+  }
+  .b3-tbl tbody tr:hover td {
+    background: var(--bg-app);
+    cursor: pointer;
+  }
+
+  /* Pager (rodapé de listagem) */
+  .b3-pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: var(--bg-app);
+    border-top: 1px solid var(--line);
+    font-size: 12.5px;
+    color: var(--ink-4);
+  }
+
+  /* KPI Stats */
+  .b3-stat {
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  .b3-stat-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-4);
+    margin-bottom: 6px;
+  }
+  .b3-stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-1);
+  }
+
+  /* Tree (categorias com indent) */
+  .b3-tree {
+    padding: 8px 0;
+  }
+  .b3-tree-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin-bottom: 4px;
+    transition: border-color 120ms;
+  }
+  .b3-tree-row:hover {
+    border-color: var(--line-2);
+  }
+  .b3-tree-grip {
+    color: var(--ink-5);
+    cursor: grab;
+    display: inline-flex;
+    align-items: center;
+  }
+  .b3-tree-name {
+    flex: 1;
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-1);
+  }
+  .b3-tree-l1 { margin-left: 0; }
+  .b3-tree-l2 { margin-left: 28px; }
+  .b3-tree-l3 { margin-left: 56px; }
+
+  /* Drawer right slide-over (480px max — adoção restrita a forms curtos,
+   * ver ADR-0019 decisão arquitetural #4) */
+  .b3-drawer {
+    background: var(--surface);
+    width: 100%;
+    max-width: 480px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -20px 0 60px -20px rgba(15, 20, 25, 0.2);
+  }
+  .b3-drawer-hd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--line);
+  }
+  .b3-drawer-hd h2 {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--ink-1);
+  }
+  .b3-drawer-bd {
+    flex: 1;
+    overflow: auto;
+    padding: 20px 24px;
+  }
+  .b3-drawer-ft {
+    padding: 14px 24px 18px;
+    border-top: 1px solid var(--line);
+    background: var(--surface);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  /* Banner trial (faixa gradient topo do admin) */
+  .b3-banner-trial {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 18px;
+    background: linear-gradient(90deg, var(--brand-2), var(--brand));
+    color: white;
+    font-size: 13px;
+  }
 }
