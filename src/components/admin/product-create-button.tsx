@@ -1,35 +1,48 @@
 /**
- * Botão "+ Novo produto" do header e do empty state.
+ * Botão "+ Adicionar produto" do header e do empty state.
  *
- * Migrado pra <Link prefetch> em 2026-05-12 — Next 15 baixa o JS de
- * /admin/produtos/novo antes do click, abertura percebida instantânea.
- * Substitui o antigo gate ?novo=1 + ProductDialog.
+ * Port Dublin v3 (ADR-0019, Onda A.7): migrado pra classe `b3-btn b3-btn--cta`
+ * direto. Mantém <Link prefetch> pra /admin/produtos/novo — Next 15 baixa o
+ * JS antes do click. Substituído o gate `?novo=1` + ProductDialog em
+ * 2026-05-12 (auditoria sênior).
+ *
+ * Renderiza como Link sempre — `asChild` do shadcn Button removido em favor
+ * de class direta porque agora é primitivo `b3-btn` não shadcn Button.
  */
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface ProductCreateButtonProps {
   children?: React.ReactNode;
   className?: string;
-  size?: React.ComponentProps<typeof Button>["size"];
+  /** Tamanho do botão. `lg` adiciona altura/padding extras pra empty state CTAs. */
+  size?: "default" | "lg";
 }
 
 export function ProductCreateButton({
   children,
   className,
-  size,
+  size = "default",
 }: ProductCreateButtonProps) {
   return (
-    <Button asChild type="button" className={className} size={size}>
-      <Link href="/admin/produtos/novo" prefetch>
-        {children ?? (
-          <>
-            <PlusIcon /> <span className="hidden sm:inline">Novo produto</span>
-          </>
-        )}
-      </Link>
-    </Button>
+    <Link
+      href="/admin/produtos/novo"
+      prefetch
+      className={cn(
+        "b3-btn b3-btn--cta",
+        size === "lg" && "h-11 px-5 text-[14px]",
+        className,
+      )}
+    >
+      {children ?? (
+        <>
+          <PlusIcon size={14} />
+          <span className="hidden sm:inline">Adicionar produto</span>
+          <span className="sm:hidden">Adicionar</span>
+        </>
+      )}
+    </Link>
   );
 }

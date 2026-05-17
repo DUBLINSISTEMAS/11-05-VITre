@@ -1,22 +1,22 @@
 "use client";
 
-// Tabs de status da lista de produtos (canvas-v1 admin Lote 3 — substitui
-// o Select de status do ProductsFilters). URL-driven (`?status=...`).
+// Tabs de status da lista de produtos — port Dublin v3 (ADR-0019, Onda A.7).
 //
-// 5 abas: Todos / Visíveis / Pausados / Rascunhos / Sem estoque.
-// Canvas mostra 4 (Todos/Ativos/Rascunhos/Sem estoque) — adicionei
-// "Pausados" pra preservar UX atual sem regressão.
+// 6 tabs URL-driven. "Em promoção" usa `?promo=1` (mutex com `?status`):
+// selecionar uma tab `status` REMOVE `?promo`; selecionar "Em promoção"
+// REMOVE `?status`. Convenção CLAUDE.md #11 (URL como state).
+//
+// Layout `b3-tabs` (overflow-x:auto, padding 20px lateral via container).
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 
-import { cn } from "@/lib/utils";
-
 const TABS = [
-  { value: null, label: "Todos", countKey: "all" },
-  { value: "active", label: "Visíveis", countKey: "active" },
-  { value: "inactive", label: "Pausados", countKey: "inactive" },
-  { value: "draft", label: "Rascunhos", countKey: "draft" },
-  { value: "no-stock", label: "Sem estoque", countKey: "no-stock" },
+  { kind: "all", label: "Todos", countKey: "all" },
+  { kind: "status", value: "active", label: "Publicados", countKey: "active" },
+  { kind: "promo", label: "Em promoção", countKey: "promo" },
+  { kind: "status", value: "draft", label: "Rascunhos", countKey: "draft" },
+  { kind: "status", value: "inactive", label: "Despublicados", countKey: "inactive" },
+  { kind: "status", value: "no-stock", label: "Sem estoque", countKey: "no-stock" },
 ] as const;
 
 export type ProductStatusFilter =
@@ -31,6 +31,7 @@ export interface ProductsStatusTabsCounts {
   inactive: number;
   draft: number;
   "no-stock": number;
+  promo: number;
 }
 
 interface ProductsStatusTabsProps {
@@ -42,50 +43,48 @@ export function ProductsStatusTabs({ counts }: ProductsStatusTabsProps) {
   const searchParams = useSearchParams();
   const [, startTransition] = useTransition();
 
-  const current = searchParams.get("status");
+  const currentStatus = searchParams.get("status");
+  const currentPromo = searchParams.get("promo") === "1";
 
-  const handleSelect = (value: string | null) => {
+  const handleSelect = (tab: (typeof TABS)[number]) => {
     const usp = new URLSearchParams(window.location.search);
-    if (value === null) usp.delete("status");
-    else usp.set("status", value);
     usp.delete("page");
+    if (tab.kind === "all") {
+      usp.delete("status");
+      usp.delete("promo");
+    } else if (tab.kind === "promo") {
+      usp.delete("status");
+      usp.set("promo", "1");
+    } else {
+      usp.delete("promo");
+      usp.set("status", tab.value);
+    }
     startTransition(() => {
       router.replace(`?${usp.toString()}`, { scroll: false });
     });
   };
 
   return (
-    <div
-      role="tablist"
-      aria-label="Filtrar por status"
-      className="-mx-1 flex items-center gap-1 overflow-x-auto px-1 sm:gap-1.5"
-    >
+    <div role="tablist" aria-label="Filtrar por status" className="b3-tabs">
       {TABS.map((tab) => {
-        const isActive = (tab.value ?? null) === (current ?? null);
+        const isActive =
+          tab.kind === "all"
+            ? !currentStatus && !currentPromo
+            : tab.kind === "promo"
+              ? currentPromo
+              : !currentPromo && currentStatus === tab.value;
         const count = counts[tab.countKey];
         return (
           <button
             key={tab.label}
-            role="tab"
             type="button"
+            role="tab"
             aria-selected={isActive}
-            onClick={() => handleSelect(tab.value)}
-            className={cn(
-              "shrink-0 rounded-md px-3 py-1.5 text-[12.5px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
-              isActive
-                ? "bg-brand text-white"
-                : "text-ink-3 hocus:bg-bg-app hocus:text-ink-1",
-            )}
+            onClick={() => handleSelect(tab)}
+            className="b3-tab"
+            data-active={isActive ? "true" : undefined}
           >
-            {tab.label}
-            <span
-              className={cn(
-                "ml-1.5 font-mono text-[11px] tabular-nums",
-                isActive ? "opacity-80" : "opacity-60",
-              )}
-            >
-              {count}
-            </span>
+            {tab.label} · {count}
           </button>
         );
       })}

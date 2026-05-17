@@ -14,20 +14,19 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { sql } from "drizzle-orm";
-import { PackageIcon, PlusIcon, SearchXIcon } from "lucide-react";
+import { InfoIcon, PackageIcon, PlusIcon, SearchXIcon } from "lucide-react";
 import { Suspense } from "react";
 import { z } from "zod";
 
 import type { CategoryOption } from "@/components/admin/category-dialog";
 import { ProductCreateButton } from "@/components/admin/product-create-button";
 import { ProductsErrorToast } from "@/components/admin/products-error-toast";
-import { ProductsFilters } from "@/components/admin/products-filters";
 import { ProductsStatusTabs } from "@/components/admin/products-status-tabs";
 import {
   ProductsTable,
   type ProductTableRow,
 } from "@/components/admin/products-table";
-import { AdminPageHeader } from "@/components/admin/shell/page-header";
+import { ProductsToolbar } from "@/components/admin/products-toolbar";
 import { Pagination } from "@/components/common/pagination";
 import {
   categoryTable,
@@ -77,7 +76,9 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
     page,
   } = produtosSearchSchema.parse(await searchParams);
 
-  // ---- WHERE base (storeId + busca + categoria + promo) ----
+  // ---- WHERE base (storeId + busca + categoria) — SEM promo nem status ----
+  // promo + status são EIXOS DE TAB (mutex). Aplicados separadamente abaixo
+  // pra os counts não inflacionarem indevidamente.
   const baseConditions: SQL[] = [eq(productTable.storeId, store.id)];
   if (q) {
     const safeQ = q.replace(/[\\%_]/g, "\\$&");
@@ -86,9 +87,9 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
   if (categoryId) {
     baseConditions.push(eq(productTable.categoryId, categoryId));
   }
-  if (onlyPromo) {
+
+  const promoConditions = (): SQL[] => {
     const now = sql`now()`;
-    baseConditions.push(isNotNull(productTable.promoPriceInCents));
     const startCond = or(
       isNull(productTable.promoStartsAt),
       lte(productTable.promoStartsAt, now),
@@ -97,15 +98,13 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
       isNull(productTable.promoEndsAt),
       gte(productTable.promoEndsAt, now),
     );
-    if (startCond) baseConditions.push(startCond);
-    if (endCond) baseConditions.push(endCond);
-  }
+    const conds: SQL[] = [isNotNull(productTable.promoPriceInCents)];
+    if (startCond) conds.push(startCond);
+    if (endCond) conds.push(endCond);
+    return conds;
+  };
 
   // ---- Status conditions (separadas pra permitir count por aba) ----
-  // Aba "Todos" (s === null) exclui rascunhos por padrão — drafts órfãos
-  // (legado pré-fix d0c5804 + escapes) só aparecem quando lojista clica
-  // na aba "Rascunho" explicitamente. Antes, drafts apareciam misturados
-  // e o lojista via "produto fantasma" surgindo do nada na lista.
   const NOT_DRAFT: SQL[] = [
     sql`${productTable.slug} not like 'draft-%'`,
     sql`btrim(${productTable.name}) <> ''`,
@@ -133,9 +132,14 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
     return NOT_DRAFT;
   };
 
-  const whereClause = and(...baseConditions, ...statusConditions(statusFilter));
+  // Lista respeita ou ?promo=1 ou ?status=X (mutex). Quando ?promo=1, ignora
+  // statusFilter (UI já garante mas backend é defensivo).
+  const listConditions: SQL[] = onlyPromo
+    ? [...baseConditions, ...promoConditions(), ...NOT_DRAFT]
+    : [...baseConditions, ...statusConditions(statusFilter)];
+  const whereClause = and(...listConditions);
 
-  // ---- Fetch paralelo: lista + total + categorias da loja + capas ----
+  // ---- Fetch paralelo: lista + total + categorias + capas + counts ----
   const offset = (page - 1) * PAGE_SIZE;
   const {
     products,
@@ -150,8 +154,7 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
         .from(productTable)
         .where(and(...baseConditions, ...statusConditions(s)));
 
-    // SÉRIE dentro do tx — `pg` deprecou queries paralelas no mesmo
-    // client. Cada count com index é ~1ms; 8 queries totais ~8-12ms.
+    // SÉRIE dentro do tx — `pg` deprecou queries paralelas no mesmo client.
     const products = await tx.query.productTable.findMany({
       where: whereClause,
       orderBy: [desc(productTable.updatedAt)],
@@ -168,6 +171,7 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
         isActive: true,
         trackStock: true,
         stockQuantity: true,
+        categoryId: true,
       },
     });
     const totalRows = await tx
@@ -184,6 +188,10 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
     const cInactive = await countByStatus("inactive");
     const cDraft = await countByStatus("draft");
     const cNoStock = await countByStatus("no-stock");
+    const cPromo = await tx
+      .select({ value: count() })
+      .from(productTable)
+      .where(and(...baseConditions, ...promoConditions(), ...NOT_DRAFT));
 
     const tabCounts = {
       all: cAll[0]?.value ?? 0,
@@ -191,6 +199,7 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
       inactive: cInactive[0]?.value ?? 0,
       draft: cDraft[0]?.value ?? 0,
       "no-stock": cNoStock[0]?.value ?? 0,
+      promo: cPromo[0]?.value ?? 0,
     };
 
     let coversByProduct = new Map<string, string>();
@@ -229,6 +238,8 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
     parentId: c.parentId,
   }));
 
+  const categoriesById = new Map(categories.map((c) => [c.id, c.name]));
+
   const hasFilters =
     q !== "" || !!categoryId || statusFilter !== null || onlyPromo;
 
@@ -236,14 +247,13 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
     const usp = new URLSearchParams();
     if (q) usp.set("q", q);
     if (categoryId) usp.set("categoryId", categoryId);
-    if (statusFilter) usp.set("status", statusFilter);
+    if (statusFilter && !onlyPromo) usp.set("status", statusFilter);
     if (onlyPromo) usp.set("promo", "1");
     if (nextPage > 1) usp.set("page", String(nextPage));
     const qs = usp.toString();
     return qs ? `?${qs}` : "?";
   };
 
-  // ---- Mapear pra ProductTableRow ----
   const tableRows: ProductTableRow[] = products.map((p) => ({
     id: p.id,
     name: p.name,
@@ -256,57 +266,76 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
     trackStock: p.trackStock,
     stockQuantity: p.stockQuantity,
     cover: coversByProduct.get(p.id) ?? null,
+    categoryName: p.categoryId ? categoriesById.get(p.categoryId) ?? null : null,
   }));
 
-  return (
-    <div className="space-y-4 sm:space-y-6">
-      <AdminPageHeader
-        title="Produtos"
-        subtitle={renderCountLabel(total, hasFilters)}
-        actions={<ProductCreateButton />}
-      />
+  const rangeStart = total === 0 ? 0 : offset + 1;
+  const rangeEnd = Math.min(offset + products.length, total);
+  const rangeLabel =
+    total === 0
+      ? "0 de 0"
+      : `${rangeStart} – ${rangeEnd} de ${total}`;
 
-      {/* Suspense boundary obrigatório: ambos componentes usam useSearchParams().
-          Convenção CLAUDE.md #9. Fallback mantém altura pra evitar layout shift. */}
+  return (
+    <div className="b3-page">
+      <div className="b3-page-hd">
+        <div>
+          <h1 className="text-[24px] font-bold tracking-[-0.025em] text-ink-1">
+            Meus produtos
+          </h1>
+        </div>
+        <ProductCreateButton />
+      </div>
+
       <Suspense fallback={null}>
         <ProductsErrorToast />
       </Suspense>
 
-      <Suspense fallback={<div className="bg-bg-app h-10 animate-pulse rounded-md" />}>
-        <ProductsStatusTabs counts={tabCounts} />
-      </Suspense>
-
-      <Suspense fallback={<div className="bg-bg-app h-10 animate-pulse rounded-md" />}>
-        <ProductsFilters categories={filterCategories} />
-      </Suspense>
-
-      {products.length === 0 ? (
-        hasFilters ? (
-          <NoResults onlyPromo={onlyPromo} />
-        ) : (
-          <EmptyState />
-        )
+      {/* Empty state fresh (sem pedidos + sem filtros) FORA do card */}
+      {products.length === 0 && !hasFilters ? (
+        <EmptyState />
       ) : (
-        <>
-          <ProductsTable products={tableRows} />
+        <div className="b3-card" style={{ overflow: "hidden" }}>
+          <div className="b3-helpbar">
+            <span className="b3-helpbar-ico">
+              <InfoIcon size={14} />
+            </span>
+            <span className="b3-helpbar-text">
+              Precisa de ajuda? Em breve teremos vídeos curtos sobre{" "}
+              <button type="button" onClick={() => {}}>produtos</button>.
+            </span>
+          </div>
 
-          <Pagination
-            currentPage={page}
-            totalPages={totalPages}
-            buildHref={buildHref}
-          />
-        </>
+          <Suspense fallback={<div className="b3-tabs h-12" />}>
+            <ProductsStatusTabs counts={tabCounts} />
+          </Suspense>
+
+          <Suspense fallback={<div className="b3-toolbar h-14" />}>
+            <ProductsToolbar
+              categories={filterCategories}
+              rangeLabel={rangeLabel}
+            />
+          </Suspense>
+
+          {products.length === 0 ? (
+            <NoResults onlyPromo={onlyPromo} />
+          ) : (
+            <ProductsTable products={tableRows} />
+          )}
+
+          {totalPages > 1 ? (
+            <div className="border-t border-line p-3">
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                buildHref={buildHref}
+              />
+            </div>
+          ) : null}
+        </div>
       )}
     </div>
   );
-}
-
-function renderCountLabel(total: number, filtered: boolean): string {
-  if (total === 0) {
-    return filtered ? "Nenhum produto bate com os filtros." : "Nenhum produto ainda.";
-  }
-  const word = total === 1 ? "produto" : "produtos";
-  return filtered ? `${total} ${word} encontrado${total === 1 ? "" : "s"}` : `${total} ${word}`;
 }
 
 function EmptyState() {
@@ -320,8 +349,8 @@ function EmptyState() {
         Cadastre seu primeiro produto. Depois você pode publicar quando
         quiser que apareça pros seus clientes.
       </p>
-      <ProductCreateButton className="mt-2">
-        <PlusIcon /> Cadastrar primeiro produto
+      <ProductCreateButton size="lg" className="mt-2">
+        <PlusIcon size={14} /> Cadastrar primeiro produto
       </ProductCreateButton>
     </div>
   );
@@ -329,7 +358,7 @@ function EmptyState() {
 
 function NoResults({ onlyPromo }: { onlyPromo: boolean }) {
   return (
-    <div className="border-line flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-12">
+    <div className="flex flex-col items-center gap-3 p-8 text-center sm:p-12">
       <div className="bg-bg-app text-ink-4 flex size-12 items-center justify-center rounded-full">
         <SearchXIcon className="size-6" />
       </div>
