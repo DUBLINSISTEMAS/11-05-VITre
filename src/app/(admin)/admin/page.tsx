@@ -1,24 +1,19 @@
 import { count, desc, eq, sql } from "drizzle-orm";
+import { z } from "zod";
 
+import { QuickActions } from "@/components/admin/dashboard/quick-actions";
 import {
   type RecentOrderRow,
   RecentOrdersTable,
 } from "@/components/admin/dashboard/recent-orders-table";
-import { RevenueChart } from "@/components/admin/dashboard/revenue-chart";
+import {
+  type SalesSummary,
+  SalesSummaryCard,
+} from "@/components/admin/dashboard/sales-summary-card";
 import {
   SetupChecklist,
   type SetupItem,
 } from "@/components/admin/dashboard/setup-checklist";
-import {
-  DeltaChip,
-  StatCard,
-} from "@/components/admin/dashboard/stat-card";
-import {
-  DashboardQuickActions,
-  type DashboardStats,
-} from "@/components/admin/dashboard-quick-actions";
-import { AdminPageHeader } from "@/components/admin/shell/page-header";
-import { WelcomeCard } from "@/components/admin/welcome-card";
 import {
   bannerTable,
   categoryTable,
@@ -26,9 +21,6 @@ import {
   productTable,
 } from "@/db/schema";
 import { requireSession } from "@/lib/auth-server";
-import { env } from "@/lib/env";
-import { formatStatDelta } from "@/lib/format";
-import { formatBRL } from "@/lib/pricing";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
@@ -37,19 +29,15 @@ import { withTenant } from "@/lib/tenant";
  *  conta como personalização. */
 const BRAND_DEFAULT_HEX = "#1E3FE6";
 
+/** Período em dias aceito no URL ?periodo=7|30|90. Default 30. */
+const periodoSchema = z
+  .enum(["7", "30", "90"])
+  .catch("30")
+  .transform((v) => Number(v) as 7 | 30 | 90);
+
 function getFirstName(fullName: string | null | undefined): string {
   if (!fullName) return "lojista";
   return fullName.trim().split(/\s+/)[0] ?? "lojista";
-}
-
-/**
- * Calcula delta percentual entre período atual e anterior.
- * - prev=0 e curr>0 → +100% (sinaliza "novo" de forma simples)
- * - ambos 0 → 0
- */
-function pctDelta(current: number, previous: number): number {
-  if (previous === 0) return current > 0 ? 100 : 0;
-  return ((current - previous) / previous) * 100;
 }
 
 /** Gera array de YYYY-MM-DD pros últimos N dias (ordenado ASC, hoje no fim). */
@@ -64,7 +52,11 @@ function generateLastNDays(n: number): string[] {
   return days;
 }
 
-export default async function AdminHomePage() {
+export default async function AdminHomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ periodo?: string }>;
+}) {
   const session = await requireSession();
   const store = await getCurrentStore(session.user.id);
 
@@ -73,35 +65,43 @@ export default async function AdminHomePage() {
     throw new Error("UNREACHABLE: admin page sem loja");
   }
 
-  const storeUrl = `${env.NEXT_PUBLIC_APP_URL}/${store.slug}`;
+  const sp = await searchParams;
+  const periodo = periodoSchema.parse(sp.periodo);
   const firstName = getFirstName(session.user.name);
 
-  // 12 stats agregados em 6 round-trips ao DB usando `count(*) FILTER` +
-  // `sum(...) FILTER`, agrupados por tabela. Antes: 12 SELECTs em série
-  // (~12-15ms total). Depois: 6 SELECTs (~6-8ms). Manteríamos in-tx por
-  // node-pg ter deprecado paralelas no mesmo client (pg@9 — ver memory
-  // `node-pg-serialize-queries-in-tx`).
-  //
-  // Estratégia: `FILTER (WHERE ...)` só funciona dentro do MESMO SELECT,
-  // então combina-se queries que compartilham FROM. revenueSeries (group
-  // by day) e recentOrders (top 5 colunas) ficam separadas — estrutura
-  // distinta justifica round-trip dedicado.
+  // Stats agregados em 4 round-trips: salesStats (5 buckets em 1 query
+  // via FILTER), productStats (3 stats), categoryCount, bannerCount,
+  // revenueSeriesRows (group by day, janela do período), recentOrdersRaw.
+  // node-pg deprecou paralelas no mesmo tx — queries em série dentro do
+  // withTenant.
   const {
-    orderStats,
+    salesStats,
     productStats,
     categoryCountRows,
     bannerCountRows,
     revenueSeriesRows,
     recentOrdersRaw,
   } = await withTenant(store.id, session.user.id, async (tx) => {
-    // 5 stats em orderTable (4 janelas temporais + status pendente)
-    const orderStats = await tx
+    // 5 buckets de status × (count + sum) em 1 SELECT via FILTER
+    // Window: últimos `periodo` dias. Interval interpolado direto na SQL
+    // string (zod garantiu enum, sem injection).
+    const salesStats = await tx
       .select({
-        ordersLast7: sql<number>`count(*) filter (where ${orderTable.status} in ('confirmed','fulfilled') and ${orderTable.createdAt} >= now() - interval '7 days')::int`,
-        ordersPrev7: sql<number>`count(*) filter (where ${orderTable.status} in ('confirmed','fulfilled') and ${orderTable.createdAt} >= now() - interval '14 days' and ${orderTable.createdAt} < now() - interval '7 days')::int`,
-        revenueLast7: sql<number>`coalesce(sum(${orderTable.totalInCents}) filter (where ${orderTable.status} in ('confirmed','fulfilled') and ${orderTable.createdAt} >= now() - interval '7 days'), 0)::int`,
-        revenuePrev7: sql<number>`coalesce(sum(${orderTable.totalInCents}) filter (where ${orderTable.status} in ('confirmed','fulfilled') and ${orderTable.createdAt} >= now() - interval '14 days' and ${orderTable.createdAt} < now() - interval '7 days'), 0)::int`,
-        pendingOrders: sql<number>`count(*) filter (where ${orderTable.status} in ('awaiting_whatsapp','confirmed'))::int`,
+        // TOTAL = todos status na janela
+        totalCount: sql<number>`count(*) filter (where ${orderTable.createdAt} >= now() - interval '${sql.raw(String(periodo))} days')::int`,
+        totalSum: sql<number>`coalesce(sum(${orderTable.totalInCents}) filter (where ${orderTable.createdAt} >= now() - interval '${sql.raw(String(periodo))} days'), 0)::int`,
+        // APROVADOS = confirmed + fulfilled
+        aprovadosCount: sql<number>`count(*) filter (where ${orderTable.status} in ('confirmed','fulfilled') and ${orderTable.createdAt} >= now() - interval '${sql.raw(String(periodo))} days')::int`,
+        aprovadosSum: sql<number>`coalesce(sum(${orderTable.totalInCents}) filter (where ${orderTable.status} in ('confirmed','fulfilled') and ${orderTable.createdAt} >= now() - interval '${sql.raw(String(periodo))} days'), 0)::int`,
+        // PENDENTES = awaiting_whatsapp
+        pendentesCount: sql<number>`count(*) filter (where ${orderTable.status} = 'awaiting_whatsapp' and ${orderTable.createdAt} >= now() - interval '${sql.raw(String(periodo))} days')::int`,
+        pendentesSum: sql<number>`coalesce(sum(${orderTable.totalInCents}) filter (where ${orderTable.status} = 'awaiting_whatsapp' and ${orderTable.createdAt} >= now() - interval '${sql.raw(String(periodo))} days'), 0)::int`,
+        // CANCELADOS = canceled (note: schema usa single L)
+        canceladosCount: sql<number>`count(*) filter (where ${orderTable.status} = 'canceled' and ${orderTable.createdAt} >= now() - interval '${sql.raw(String(periodo))} days')::int`,
+        canceladosSum: sql<number>`coalesce(sum(${orderTable.totalInCents}) filter (where ${orderTable.status} = 'canceled' and ${orderTable.createdAt} >= now() - interval '${sql.raw(String(periodo))} days'), 0)::int`,
+        // EXPIRADOS = expired
+        expiradosCount: sql<number>`count(*) filter (where ${orderTable.status} = 'expired' and ${orderTable.createdAt} >= now() - interval '${sql.raw(String(periodo))} days')::int`,
+        expiradosSum: sql<number>`coalesce(sum(${orderTable.totalInCents}) filter (where ${orderTable.status} = 'expired' and ${orderTable.createdAt} >= now() - interval '${sql.raw(String(periodo))} days'), 0)::int`,
       })
       .from(orderTable)
       .where(eq(orderTable.storeId, store.id));
@@ -116,20 +116,17 @@ export default async function AdminHomePage() {
       .from(productTable)
       .where(eq(productTable.storeId, store.id));
 
-    // Categorias total (estrutura simples, fica isolado)
     const categoryCountRows = await tx
       .select({ value: count() })
       .from(categoryTable)
       .where(eq(categoryTable.storeId, store.id));
 
-    // Banners total (estrutura simples, fica isolado)
     const bannerCountRows = await tx
       .select({ value: count() })
       .from(bannerTable)
       .where(eq(bannerTable.storeId, store.id));
 
-    // Receita por dia últimos 90 dias — group by day, completa zeros no
-    // JS abaixo. Estrutura distinta dos counts; round-trip dedicado.
+    // Receita por dia — janela do período selecionado, group by day
     const revenueSeriesRows = await tx
       .select({
         day: sql<string>`to_char(date_trunc('day', ${orderTable.createdAt}), 'YYYY-MM-DD')`,
@@ -137,12 +134,11 @@ export default async function AdminHomePage() {
       })
       .from(orderTable)
       .where(
-        sql`${orderTable.storeId} = ${store.id} and ${orderTable.status} in ('confirmed','fulfilled') and ${orderTable.createdAt} >= now() - interval '90 days'`,
+        sql`${orderTable.storeId} = ${store.id} and ${orderTable.status} in ('confirmed','fulfilled') and ${orderTable.createdAt} >= now() - interval '${sql.raw(String(periodo))} days'`,
       )
       .groupBy(sql`date_trunc('day', ${orderTable.createdAt})`)
       .orderBy(sql`date_trunc('day', ${orderTable.createdAt})`);
 
-    // Top 5 pedidos recentes (colunas selecionadas pra tabela do dashboard)
     const recentOrdersRaw = await tx.query.orderTable.findMany({
       where: eq(orderTable.storeId, store.id),
       orderBy: [desc(orderTable.createdAt)],
@@ -158,7 +154,7 @@ export default async function AdminHomePage() {
     });
 
     return {
-      orderStats,
+      salesStats,
       productStats,
       categoryCountRows,
       bannerCountRows,
@@ -167,29 +163,38 @@ export default async function AdminHomePage() {
     };
   });
 
-  // ---- Stat cards data ----
-  const ordersLast7 = orderStats[0]?.ordersLast7 ?? 0;
-  const ordersPrev7 = orderStats[0]?.ordersPrev7 ?? 0;
-  const revenueLast7 = orderStats[0]?.revenueLast7 ?? 0;
-  const revenuePrev7 = orderStats[0]?.revenuePrev7 ?? 0;
-  const pendingOrders = orderStats[0]?.pendingOrders ?? 0;
-  const productTotal = productStats[0]?.productTotal ?? 0;
-  const productsPublished = productStats[0]?.productsPublished ?? 0;
-  const promoActive = productStats[0]?.promoActive ?? 0;
-  const categoryCount = categoryCountRows[0]?.value ?? 0;
-  const bannerCount = bannerCountRows[0]?.value ?? 0;
-
-  const ordersDelta = formatStatDelta(pctDelta(ordersLast7, ordersPrev7));
-  const revenueDelta = formatStatDelta(pctDelta(revenueLast7, revenuePrev7));
+  // ---- Sales summary ----
+  const sStat = salesStats[0];
+  const summary: SalesSummary = {
+    total: {
+      count: sStat?.totalCount ?? 0,
+      totalInCents: sStat?.totalSum ?? 0,
+    },
+    aprovados: {
+      count: sStat?.aprovadosCount ?? 0,
+      totalInCents: sStat?.aprovadosSum ?? 0,
+    },
+    pendentes: {
+      count: sStat?.pendentesCount ?? 0,
+      totalInCents: sStat?.pendentesSum ?? 0,
+    },
+    cancelados: {
+      count: sStat?.canceladosCount ?? 0,
+      totalInCents: sStat?.canceladosSum ?? 0,
+    },
+    expirados: {
+      count: sStat?.expiradosCount ?? 0,
+      totalInCents: sStat?.expiradosSum ?? 0,
+    },
+  };
 
   // ---- Revenue series com zeros preenchidos ----
   const revenueByDay = new Map(
     revenueSeriesRows.map((r) => [r.day, Number(r.total)]),
   );
-  const revenueSeries = generateLastNDays(90).map((date) => ({
-    date,
-    totalInCents: revenueByDay.get(date) ?? 0,
-  }));
+  const series = generateLastNDays(periodo).map(
+    (date) => revenueByDay.get(date) ?? 0,
+  );
 
   // ---- Recent orders ----
   const recentOrders: RecentOrderRow[] = recentOrdersRaw.map((o) => ({
@@ -202,6 +207,9 @@ export default async function AdminHomePage() {
   }));
 
   // ---- Setup checklist (6 itens) ----
+  const productsPublished = productStats[0]?.productsPublished ?? 0;
+  const categoryCount = categoryCountRows[0]?.value ?? 0;
+  const bannerCount = bannerCountRows[0]?.value ?? 0;
   const hasAddress =
     !!store.addressStreet && store.addressStreet.trim() !== "";
   const customColor = store.primaryColor !== BRAND_DEFAULT_HEX;
@@ -244,74 +252,26 @@ export default async function AdminHomePage() {
     },
   ];
 
-  // ---- DashboardQuickActions stats (compat — mantido em mobile) ----
-  const stats: DashboardStats = {
-    products: productTotal,
-    promo: promoActive,
-    pending: pendingOrders,
-    categories: categoryCount,
-    banners: bannerCount,
-  };
+  const allSetupDone = setupItems.every((i) => i.done);
 
   return (
-    <div className="space-y-6 sm:space-y-8">
-      <AdminPageHeader
-        title="Painel"
-        subtitle={
-          <>
-            Olá,{" "}
-            <span className="text-foreground font-medium">{firstName}</span>
-          </>
-        }
-      />
+    <div className="b3-page">
+      <h1 className="mb-6 text-[24px] font-bold tracking-[-0.025em] text-ink-1">
+        Olá, {firstName}!
+      </h1>
 
-      <WelcomeCard storeName={store.name} storeUrl={storeUrl} />
+      <QuickActions storeSlug={store.slug} />
 
-      {/* Stat cards: 4 colunas desktop, 2 mobile */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <StatCard
-          label="Pedidos · 7d"
-          value={ordersLast7}
-          delta={
-            <DeltaChip label={ordersDelta.label} tone={ordersDelta.tone} />
-          }
-          hint="vs 7 dias anteriores"
-        />
-        <StatCard
-          label="Receita · 7d"
-          value={formatBRL(revenueLast7)}
-          delta={
-            <DeltaChip label={revenueDelta.label} tone={revenueDelta.tone} />
-          }
-          hint="vs 7 dias anteriores"
-        />
-        <StatCard
-          label="Pedidos pendentes"
-          value={pendingOrders}
-          hint="aguardando ou confirmados"
-        />
-        <StatCard
-          label="Produtos publicados"
-          value={productsPublished}
-          hint={`${productTotal} no total`}
-        />
-      </div>
+      <SalesSummaryCard periodo={periodo} series={series} summary={summary} />
 
-      {/* Chart 2/3 + Setup 1/3 (lg+); empilhado em mobile */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <RevenueChart series={revenueSeries} />
-        </div>
-        <div className="lg:col-span-1">
+      {!allSetupDone ? (
+        <div className="mt-4">
           <SetupChecklist items={setupItems} />
         </div>
-      </div>
+      ) : null}
 
-      <RecentOrdersTable orders={recentOrders} />
-
-      {/* Atalhos de navegação — ponte mobile (bottom nav cobre 4, atalhos 6) */}
-      <div className="lg:hidden">
-        <DashboardQuickActions stats={stats} />
+      <div className="mt-4">
+        <RecentOrdersTable orders={recentOrders} />
       </div>
     </div>
   );

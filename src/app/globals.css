@@ -1599,6 +1599,12 @@
   .b3-select.mono {
     font-family: var(--font-mono, "Geist Mono", ui-monospace, monospace);
   }
+
+  /* Utility standalone .mono — usado em tabela/stat values do handoff Dublin v3.
+   * Mantida como classe global porque o handoff aplica direto em <td>, <span>, etc. */
+  .mono {
+    font-family: var(--font-mono, "Geist Mono", ui-monospace, monospace);
+  }
 }
 
 /* ========================================================
