@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 import { type SignInInput, signInSchema } from "@/actions/auth/schema";
 import { signInWithEmail } from "@/actions/auth/sign-in";
-import { AuthCard } from "@/components/auth/auth-card";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -33,11 +33,11 @@ export default function EntrarPage() {
 
 function EntrarSkeleton() {
   return (
-    <AuthCard title="Entrar" subtitle="Acesse sua conta">
+    <AuthShell title="Entrar" subtitle="Acesse sua conta">
       <div className="flex items-center justify-center py-8">
         <Loader2 className="size-5 animate-spin text-muted-foreground" />
       </div>
-    </AuthCard>
+    </AuthShell>
   );
 }
 
@@ -74,18 +74,17 @@ function EntrarContent() {
   };
 
   return (
-    <AuthCard
-      title="Bem-vindo de volta"
-      subtitle="Entre para acessar seu painel"
-      compact
+    <AuthShell
+      title="Entre na sua conta"
+      subtitle="Bem-vindo de volta. Continue de onde parou."
       footer={
         <>
-          Ainda nao tem conta?{" "}
+          Ainda não tem loja?{" "}
           <Link
             href="/criar-loja/conta"
-            className="text-primary font-medium hover:underline underline-offset-4"
+            className="font-semibold text-brand hover:underline underline-offset-4"
           >
-            Criar agora
+            Criar conta
           </Link>
         </>
       }
@@ -195,6 +194,6 @@ function EntrarContent() {
           </div>
         </form>
       </Form>
-    </AuthCard>
+    </AuthShell>
   );
 }

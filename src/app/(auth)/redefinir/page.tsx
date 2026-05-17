@@ -9,7 +9,7 @@ import { toast } from "sonner";
 
 import { resetPassword } from "@/actions/auth/reset-password";
 import { type ResetPasswordInput,resetPasswordSchema } from "@/actions/auth/schema";
-import { AuthCard } from "@/components/auth/auth-card";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -28,11 +28,11 @@ export default function RedefinirPage() {
   return (
     <Suspense
       fallback={
-        <AuthCard title="Carregando…">
+        <AuthShell title="Carregando…">
           <p className="text-muted-foreground text-sm">
             Validando seu link…
           </p>
-        </AuthCard>
+        </AuthShell>
       }
     >
       <RedefinirForm />
@@ -65,7 +65,7 @@ function RedefinirForm() {
 
   if (!token) {
     return (
-      <AuthCard
+      <AuthShell
         title="Link inválido"
         footer={
           <Link
@@ -80,12 +80,12 @@ function RedefinirForm() {
           Este link parece estar quebrado ou expirou. Solicite um novo para
           redefinir sua senha.
         </p>
-      </AuthCard>
+      </AuthShell>
     );
   }
 
   return (
-    <AuthCard
+    <AuthShell
       title="Defina sua nova senha"
       subtitle="Use uma senha forte com pelo menos 8 caracteres."
       footer={
@@ -143,6 +143,6 @@ function RedefinirForm() {
           </Button>
         </form>
       </Form>
-    </AuthCard>
+    </AuthShell>
   );
 }

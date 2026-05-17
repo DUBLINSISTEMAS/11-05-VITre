@@ -12,7 +12,7 @@ import {
   type RequestPasswordResetInput,
   requestPasswordResetSchema,
 } from "@/actions/auth/schema";
-import { AuthCard } from "@/components/auth/auth-card";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -46,7 +46,7 @@ export default function RecuperarPage() {
 
   if (sent) {
     return (
-      <AuthCard
+      <AuthShell
         title="Verifique seu email"
         footer={
           <Link href="/entrar" className="text-foreground font-medium underline-offset-4 hover:underline">
@@ -55,18 +55,18 @@ export default function RecuperarPage() {
         }
       >
         <div className="flex flex-col items-center gap-4 py-2 text-center">
-          <CheckCircle2Icon className="text-vitre-500 size-10" aria-hidden />
+          <CheckCircle2Icon className="text-brand size-10" aria-hidden />
           <p className="text-sm leading-relaxed">
             Se existe uma conta com esse email, enviamos um link para redefinir
             a senha. Confira sua caixa de entrada e a pasta de spam.
           </p>
         </div>
-      </AuthCard>
+      </AuthShell>
     );
   }
 
   return (
-    <AuthCard
+    <AuthShell
       title="Recuperar senha"
       subtitle="Vamos enviar um link de redefinição para seu email."
       footer={
@@ -104,6 +104,6 @@ export default function RecuperarPage() {
           </Button>
         </form>
       </Form>
-    </AuthCard>
+    </AuthShell>
   );
 }
