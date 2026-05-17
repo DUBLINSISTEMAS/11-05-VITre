@@ -50,24 +50,24 @@ export function WelcomeCard({ storeName, storeUrl }: WelcomeCardProps) {
       <div className="flex items-start gap-3">
         <span
           aria-hidden="true"
-          className="bg-primary/10 text-primary inline-flex size-10 shrink-0 items-center justify-center rounded-xl"
+          className="bg-brand-wash text-brand inline-flex size-10 shrink-0 items-center justify-center rounded-xl"
         >
           <StoreIcon className="size-5" />
         </span>
         <div className="space-y-1">
-          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+          <p className="text-ink-4 text-xs font-medium uppercase tracking-wide">
             Sua loja
           </p>
           <h2
             id="welcome-heading"
-            className="text-xl font-semibold leading-tight tracking-tight text-foreground sm:text-2xl"
+            className="text-xl font-semibold leading-tight tracking-tight text-ink-1 sm:text-2xl"
           >
             {storeName}
           </h2>
         </div>
       </div>
 
-      <p className="text-muted-foreground text-sm leading-relaxed sm:text-base">
+      <p className="text-ink-3 text-sm leading-relaxed sm:text-base">
         Tudo pronto. Cadastre seus primeiros produtos para a vitrine aparecer
         para os clientes — eles compram direto pelo WhatsApp.
       </p>

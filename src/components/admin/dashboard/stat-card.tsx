@@ -1,5 +1,8 @@
-// Stat card individual do dashboard admin (canvas-v1 admin Lote 3).
+// Stat card individual do dashboard admin (port Dublin v3, Onda 5a).
 // Layout: eyebrow → hero number → row de delta chip + hint.
+//
+// Container adota `b3-stat` (padding 16/18, border line, radius 10).
+// DeltaChip migrou pra paleta ok/danger Dublin.
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
@@ -17,14 +20,14 @@ export interface StatCardProps {
 
 export function StatCard({ label, value, delta, hint }: StatCardProps) {
   return (
-    <div className="bg-card flex flex-col gap-3 rounded-xl border p-4 shadow-sm">
+    <div className="b3-stat flex flex-col gap-3">
       <span className="text-eyebrow">{label}</span>
-      <span className="text-hero-num text-foreground">{value}</span>
+      <span className="text-hero-num text-ink-1">{value}</span>
       {delta || hint ? (
         <div className="flex flex-wrap items-center gap-2">
           {delta}
           {hint ? (
-            <span className="text-[11px] text-muted-foreground">{hint}</span>
+            <span className="text-[11px] text-ink-4">{hint}</span>
           ) : null}
         </div>
       ) : null}
@@ -42,9 +45,9 @@ export function DeltaChip({ label, tone }: DeltaChipProps) {
     <span
       className={cn(
         "inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10.5px] font-semibold leading-none",
-        tone === "positive" && "bg-success-soft text-success-foreground",
-        tone === "negative" && "bg-destructive-soft text-destructive-foreground",
-        tone === "neutral" && "bg-muted text-muted-foreground",
+        tone === "positive" && "bg-ok-wash text-ok",
+        tone === "negative" && "bg-danger-wash text-danger",
+        tone === "neutral" && "bg-bg-app text-ink-4",
       )}
     >
       {label}

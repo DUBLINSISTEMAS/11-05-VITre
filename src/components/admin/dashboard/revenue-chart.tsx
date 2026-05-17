@@ -1,13 +1,15 @@
 "use client";
 
-// Chart de receita diária no dashboard admin (canvas-v1 admin Lote 3).
+// Chart de receita diária no dashboard admin (port Dublin v3, Onda 5a).
 // SVG inline hand-rolled — sem deps externas (~70KB do recharts evitado).
 // Toggle de período 7d/14d/30d/90d state-only; server sempre traz 90 dias.
 //
 // Layout:
-// - Header: título + toggle pill 4 opções
+// - Header: título + toggle pill 4 opções (rail bg-app, pílula bg-surface)
 // - SVG path linha + área tingida + último data point destacado com badge
 //   inline mostrando valor + label do dia em monospace
+//
+// Container = `b3-card` (Onda 5a). Gridlines SVG usam --line (era --border).
 import { useMemo, useState } from "react";
 
 import { formatBRL } from "@/lib/pricing";
@@ -37,13 +39,13 @@ export function RevenueChart({ series }: RevenueChartProps) {
   );
 
   return (
-    <div className="bg-card flex flex-col gap-4 rounded-xl border p-4 shadow-sm sm:p-5">
+    <div className="b3-card flex flex-col gap-4 p-4 sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <div className="space-y-1">
           <span className="text-eyebrow">Receita</span>
-          <p className="text-foreground flex items-baseline gap-2 font-mono text-[22px] font-semibold tabular-nums leading-none tracking-[-0.02em]">
+          <p className="text-ink-1 flex items-baseline gap-2 font-mono text-[22px] font-semibold tabular-nums leading-none tracking-[-0.02em]">
             {formatBRL(total)}
-            <span className="text-muted-foreground font-sans text-[11.5px] font-medium tracking-normal">
+            <span className="text-ink-4 font-sans text-[11.5px] font-medium tracking-normal">
               · {period} dias
             </span>
           </p>
@@ -51,7 +53,7 @@ export function RevenueChart({ series }: RevenueChartProps) {
         <div
           role="tablist"
           aria-label="Período do gráfico"
-          className="bg-muted/60 flex shrink-0 items-center rounded-lg p-0.5"
+          className="bg-bg-app flex shrink-0 items-center rounded-lg p-0.5"
         >
           {PERIODS.map((p) => {
             const active = p === period;
@@ -65,8 +67,8 @@ export function RevenueChart({ series }: RevenueChartProps) {
                 className={cn(
                   "rounded-md px-2.5 py-1 font-mono text-[11px] font-medium transition-colors",
                   active
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hocus:text-foreground",
+                    ? "bg-surface text-ink-1 shadow-sm"
+                    : "text-ink-4 hocus:text-ink-1",
                 )}
               >
                 {p}d
@@ -102,7 +104,7 @@ function ChartSvg({
 
   if (n === 0) {
     return (
-      <div className="text-muted-foreground flex h-44 items-center justify-center text-sm">
+      <div className="text-ink-4 flex h-44 items-center justify-center text-sm">
         Sem dados ainda.
       </div>
     );
@@ -166,7 +168,7 @@ function ChartSvg({
             y1={y}
             x2={width}
             y2={y}
-            stroke="var(--border)"
+            stroke="var(--line)"
             strokeWidth="1"
             strokeDasharray="3 4"
             vectorEffect="non-scaling-stroke"
@@ -189,7 +191,7 @@ function ChartSvg({
             cy={ys[lastNonZeroIdx]}
             r="3.5"
             fill="var(--primary)"
-            stroke="var(--card)"
+            stroke="var(--surface)"
             strokeWidth="2"
             vectorEffect="non-scaling-stroke"
           />
@@ -197,7 +199,7 @@ function ChartSvg({
       </svg>
 
       {/* X-axis labels (HTML overlay pra evitar text scaling weirdo do SVG) */}
-      <div className="text-muted-foreground pointer-events-none absolute inset-x-0 -bottom-1 flex justify-between font-mono text-[10.5px] tabular-nums">
+      <div className="text-ink-4 pointer-events-none absolute inset-x-0 -bottom-1 flex justify-between font-mono text-[10.5px] tabular-nums">
         {tickIdxs.map((idx) => (
           <span key={idx}>{formatTick(points[idx]!.date)}</span>
         ))}
@@ -237,13 +239,13 @@ function LastPointBadge({
   const dayLabel = formatDayShort(point.date);
   return (
     <div
-      className="bg-foreground text-background pointer-events-none absolute rounded-md px-2 py-1 text-[10.5px] font-medium shadow-sm"
+      className="bg-ink-1 text-white pointer-events-none absolute rounded-md px-2 py-1 text-[10.5px] font-medium shadow-sm"
       style={{ left, top }}
     >
       <span className="font-mono tabular-nums">
         {formatBRL(point.totalInCents)}
       </span>
-      <span className="text-background/70 ml-1">· {dayLabel}</span>
+      <span className="text-white/70 ml-1">· {dayLabel}</span>
     </div>
   );
 }

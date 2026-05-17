@@ -133,8 +133,8 @@ function ActionCard({ action }: { action: QuickAction }) {
       href={action.href}
       prefetch
       className={cn(
-        "bg-background/50 hocus:bg-background hocus:shadow-brand-sm group flex items-center gap-3 rounded-xl border p-3.5 outline-none transition focus-visible:ring-2 focus-visible:ring-ring/50 sm:p-4",
-        action.highlight && "ring-primary/40 shadow-brand-sm bg-primary/5 ring-1",
+        "bg-surface hocus:border-line-2 group flex items-center gap-3 rounded-xl border border-line p-3.5 outline-none transition focus-visible:ring-2 focus-visible:ring-ring/50 sm:p-4",
+        action.highlight && "ring-brand/30 bg-brand-wash ring-1",
       )}
     >
       <span
@@ -142,20 +142,20 @@ function ActionCard({ action }: { action: QuickAction }) {
         className={cn(
           "flex size-10 shrink-0 items-center justify-center rounded-lg transition-colors",
           action.highlight
-            ? "bg-primary text-primary-foreground"
-            : "bg-primary/10 text-primary",
+            ? "bg-brand text-white"
+            : "bg-brand-wash text-brand",
         )}
       >
         <Icon className="size-5" />
       </span>
       <div className="min-w-0 flex-1 space-y-0.5">
-        <p className="truncate text-sm font-medium sm:text-[15px]">
+        <p className="truncate text-sm font-medium text-ink-1 sm:text-[15px]">
           {action.label}
         </p>
-        <p className="text-muted-foreground truncate text-xs">
+        <p className="text-ink-4 truncate text-xs">
           {action.count !== undefined ? (
             <>
-              <span className="text-foreground font-semibold">
+              <span className="text-ink-1 font-semibold">
                 {action.count}
               </span>{" "}
               {action.subtitle}

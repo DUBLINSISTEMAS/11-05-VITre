@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 /**
- * Header padrão de página do admin (estilo AbacatePay — Onda 3).
+ * Header padrão de página do admin (port Dublin v3, ADR-0019).
  *
  * - Breadcrumb opcional com ícones (ex: 🏠 Início / 📦 Produtos)
  * - Title 22px peso 600 ls -0.4 (`tracking-tight`)

@@ -1,7 +1,8 @@
-// Tabela "Pedidos recentes" no dashboard admin (canvas-v1 admin Lote 3).
+// Tabela "Pedidos recentes" no dashboard admin (port Dublin v3, Onda 5a).
 // Top N pedidos mais recentes — DataGrid 6-col mono no desktop, cards
-// compactos no mobile. Padrão fiel ao canvas (linhas 252-277): cabeçalho
-// monospace uppercase, sem avatar/pill colorido, status com dot+texto.
+// compactos no mobile. NÃO usa `b3-tbl` (que é seletor pra <table> HTML);
+// aqui é grid CSS pra responsividade. Container adota `b3-card`; tokens
+// muted/accent/border substituídos por bg-app/ink/line Dublin.
 import { ChevronRightIcon } from "lucide-react";
 import Link from "next/link";
 
@@ -28,22 +29,22 @@ const GRID_COLS =
 
 export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
   return (
-    <div className="bg-card overflow-hidden rounded-xl border shadow-sm">
-      <div className="flex items-baseline justify-between gap-3 border-b px-4 py-3 sm:px-5">
-        <h2 className="text-foreground text-[13.5px] font-semibold tracking-tight">
+    <div className="b3-card overflow-hidden">
+      <div className="flex items-baseline justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
+        <h2 className="text-ink-1 text-[13.5px] font-semibold tracking-tight">
           Pedidos recentes
         </h2>
         <Link
           href="/admin/pedidos"
           prefetch
-          className="text-muted-foreground hocus:text-primary text-[11.5px] font-medium transition-colors"
+          className="text-ink-4 hocus:text-brand text-[11.5px] font-medium transition-colors"
         >
           Ver todos →
         </Link>
       </div>
 
       {orders.length === 0 ? (
-        <div className="text-muted-foreground px-4 py-8 text-center text-sm">
+        <div className="text-ink-4 px-4 py-8 text-center text-sm">
           Nenhum pedido ainda.
         </div>
       ) : (
@@ -51,7 +52,7 @@ export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
           {/* Desktop: DataGrid 6 colunas */}
           <div
             role="rowgroup"
-            className={`text-eyebrow bg-muted/50 hidden ${GRID_COLS} items-center gap-3 border-b px-4 py-2.5 sm:grid sm:px-5`}
+            className={`text-eyebrow bg-bg-app hidden ${GRID_COLS} items-center gap-3 border-b border-line px-4 py-2.5 sm:grid sm:px-5`}
           >
             <span>Pedido</span>
             <span>Cliente</span>
@@ -61,25 +62,25 @@ export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
             <span aria-hidden />
           </div>
 
-          <ul className="divide-border divide-y">
+          <ul className="divide-line divide-y">
             {orders.map((o) => (
               <li key={o.id}>
                 {/* Desktop */}
                 <Link
                   href={`/admin/pedidos/${o.id}`}
                   prefetch
-                  className={`hocus:bg-accent/40 group hidden ${GRID_COLS} items-center gap-3 px-4 py-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 sm:grid sm:px-5`}
+                  className={`hocus:bg-bg-app group hidden ${GRID_COLS} items-center gap-3 px-4 py-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 sm:grid sm:px-5`}
                 >
-                  <span className="font-mono text-[13px] font-medium tabular-nums">
+                  <span className="font-mono text-[13px] font-medium tabular-nums text-ink-1">
                     {o.shortCode}
                   </span>
-                  <span className="min-w-0 truncate font-medium">
+                  <span className="min-w-0 truncate font-medium text-ink-1">
                     {o.customerName}
                   </span>
-                  <span className="font-mono tabular-nums">
+                  <span className="font-mono tabular-nums text-ink-1">
                     {formatBRL(o.totalInCents)}
                   </span>
-                  <span className="text-muted-foreground font-mono text-[12px]">
+                  <span className="text-ink-4 font-mono text-[12px]">
                     {formatRelativeDate(o.createdAt)}
                   </span>
                   <span>
@@ -87,7 +88,7 @@ export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
                   </span>
                   <span
                     aria-hidden
-                    className="text-muted-foreground/60 group-hover:text-foreground flex justify-end transition-colors"
+                    className="text-ink-5 group-hover:text-ink-1 flex justify-end transition-colors"
                   >
                     <ChevronRightIcon className="size-3.5" />
                   </span>
@@ -97,16 +98,16 @@ export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
                 <Link
                   href={`/admin/pedidos/${o.id}`}
                   prefetch
-                  className="hocus:bg-accent/40 group flex items-center gap-3 px-4 py-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 sm:hidden"
+                  className="hocus:bg-bg-app group flex items-center gap-3 px-4 py-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 sm:hidden"
                 >
-                  <span className="font-mono text-[13px] font-semibold tabular-nums">
+                  <span className="font-mono text-[13px] font-semibold tabular-nums text-ink-1">
                     {o.shortCode}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-medium">
+                    <p className="truncate text-[13px] font-medium text-ink-1">
                       {o.customerName}
                     </p>
-                    <p className="text-muted-foreground font-mono text-[11px]">
+                    <p className="text-ink-4 font-mono text-[11px]">
                       <span className="tabular-nums">
                         {formatBRL(o.totalInCents)}
                       </span>{" "}
