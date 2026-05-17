@@ -7,7 +7,6 @@ import { Suspense, useState } from "react";
 import { toast } from "sonner";
 
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell";
-import { Button } from "@/components/ui/button";
 import { clientEnv } from "@/lib/env-client";
 
 const APP_URL_HOST =
@@ -29,7 +28,7 @@ export default function BemVindoPage() {
 
 function WelcomeSkeleton() {
   return (
-    <OnboardingShell step={4} hideSignInLink>
+    <OnboardingShell step={4} hideSignInLink hideStepper>
       <div className="flex items-center justify-center py-20">
         <div className="bg-bg-app size-8 animate-pulse rounded-full" />
       </div>
@@ -41,8 +40,6 @@ function WelcomeContent() {
   const searchParams = useSearchParams();
   const storeNameRaw = searchParams.get("nome")?.trim() ?? "";
   const storeSlug = searchParams.get("slug") || "";
-  // Primeira palavra do nome da loja — só personaliza se veio nome real
-  // pela URL; sem nome, omite a vírgula vocativa.
   const firstWord = storeNameRaw ? storeNameRaw.split(/\s+/)[0] : "";
   const storeUrlDisplay = `${APP_URL_HOST}/${storeSlug}`;
   const storeUrlFull = `${APP_URL_FULL}/${storeSlug}`;
@@ -60,103 +57,101 @@ function WelcomeContent() {
   };
 
   return (
-    <OnboardingShell step={4} hideSignInLink>
-      <div className="overflow-y-auto px-4 py-12 sm:px-10 sm:py-[60px]">
-        <div className="mx-auto max-w-[880px]">
-          {/* Success ring */}
-          <div className="flex justify-center">
-            <div className="bg-success-soft text-success flex size-[72px] items-center justify-center rounded-full shadow-md">
-              <svg
-                width="36"
-                height="36"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-              >
-                <path d="M5 12.5l4.5 4.5L19 7" />
-              </svg>
-            </div>
-          </div>
-
-          <h1 className="mt-6 text-center text-[32px] font-semibold leading-[1.05] tracking-[-0.8px] sm:text-[38px] sm:tracking-[-1px]">
-            Sua vitrine está no ar
-            {firstWord ? (
-              <>
-                ,{" "}
-                <span className="text-primary">{firstWord}</span>
-              </>
-            ) : null}
-            .
-          </h1>
-          <p className="text-ink-4 mx-auto mt-3.5 max-w-[520px] text-center text-[14px] leading-[1.55]">
-            Compartilhe esse link no Instagram, status do WhatsApp ou cartão de
-            visita. Toda venda continua no seu WhatsApp.
-          </p>
-
-          {/* Link card mono */}
-          <div className="mx-auto mt-8 flex max-w-[520px] items-center overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
-            <p className="flex-1 truncate px-4 py-3.5 font-mono text-[13px] font-semibold">
-              {storeUrlDisplay}
-            </p>
-            <button
-              type="button"
-              onClick={handleCopy}
-              className="bg-foreground text-background hocus:bg-foreground/90 inline-flex h-[50px] shrink-0 items-center gap-1.5 border-l px-4 text-[12.5px] font-semibold transition-colors"
-              aria-label="Copiar link da vitrine"
+    <OnboardingShell step={4} hideSignInLink hideStepper>
+      <div className="text-center">
+        {/* Success ring */}
+        <div className="flex justify-center">
+          <div
+            className="flex size-[72px] items-center justify-center rounded-full shadow-md"
+            style={{
+              background: "var(--ok-wash)",
+              color: "var(--ok)",
+            }}
+          >
+            <svg
+              width="36"
+              height="36"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
             >
-              {copied ? (
-                <CheckIcon className="size-3.5" />
-              ) : (
-                <CopyIcon className="size-3.5" />
-              )}
-              {copied ? "Copiado" : "Copiar link"}
-            </button>
+              <path d="M5 12.5l4.5 4.5L19 7" />
+            </svg>
           </div>
+        </div>
 
-          {/* Próximos passos */}
-          <p className="text-ink-4 mb-3.5 mt-14 text-center font-mono text-[10px] uppercase tracking-[0.05em]">
-            Próximos passos
+        <h1 className="mt-6 text-[32px] font-bold leading-[1.05] tracking-[-0.025em] text-ink-1 sm:text-[38px]">
+          Sua vitrine está no ar
+          {firstWord ? (
+            <>
+              ,{" "}
+              <span className="text-brand">{firstWord}</span>
+            </>
+          ) : null}
+          .
+        </h1>
+        <p className="mx-auto mt-3.5 max-w-[520px] text-[14px] leading-[1.55] text-ink-4">
+          Compartilhe esse link no Instagram, status do WhatsApp ou cartão de
+          visita. Toda venda continua no seu WhatsApp.
+        </p>
+
+        {/* Link card mono */}
+        <div className="mx-auto mt-8 flex max-w-[520px] items-center overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
+          <p className="flex-1 truncate px-4 py-3.5 font-mono text-[13px] font-semibold text-left">
+            {storeUrlDisplay}
           </p>
-          <div className="grid gap-3.5 sm:grid-cols-3">
-            {NEXT_STEPS.map((s) => (
-              <Link
-                key={s.n}
-                href={s.href}
-                className="bg-surface hocus:border-line-2 flex flex-col gap-2.5 rounded-xl border border-line p-5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
-              >
-                <p className="text-primary font-mono text-[10.5px] font-semibold tracking-[0.05em]">
-                  {s.n}
-                </p>
-                <p className="text-[14px] font-semibold leading-tight tracking-[-0.2px]">
-                  {s.t}
-                </p>
-                <p className="text-ink-4 flex-1 text-[11.5px] leading-[1.55]">
-                  {s.s}
-                </p>
-                <span className="hocus:text-primary mt-1.5 inline-flex items-center justify-center gap-1.5 self-start rounded-md border px-3 py-1.5 text-[12px] font-semibold transition-colors">
-                  {s.cta} <ArrowRightIcon className="size-3.5" />
-                </span>
-              </Link>
-            ))}
-          </div>
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="inline-flex h-[50px] shrink-0 items-center gap-1.5 border-l border-line bg-foreground px-4 text-[12.5px] font-semibold text-background transition-colors hocus:bg-foreground/90"
+            aria-label="Copiar link da vitrine"
+          >
+            {copied ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+            {copied ? "Copiado" : "Copiar link"}
+          </button>
+        </div>
 
-          {/* CTA final */}
-          <div className="mt-10 text-center">
-            <Button
-              asChild
-              size="lg"
-              className="bg-foreground text-background hover:bg-foreground/90 h-[46px] gap-1.5 px-7 text-[13px] font-semibold shadow-md"
+        {/* Próximos passos */}
+        <p className="mb-3.5 mt-14 font-mono text-[10px] uppercase tracking-[0.05em] text-ink-4">
+          Próximos passos
+        </p>
+        <div className="grid gap-3.5 text-left sm:grid-cols-3">
+          {NEXT_STEPS.map((s) => (
+            <Link
+              key={s.n}
+              href={s.href}
+              className="flex flex-col gap-2.5 rounded-xl border border-line bg-surface p-5 outline-none transition-colors hocus:border-line-2 focus-visible:ring-2 focus-visible:ring-ring/50"
             >
-              <Link href="/admin">
-                Ir pro painel da minha loja
-                <ArrowRightIcon className="size-4" />
-              </Link>
-            </Button>
-          </div>
+              <p className="font-mono text-[10.5px] font-semibold tracking-[0.05em] text-brand">
+                {s.n}
+              </p>
+              <p className="text-[14px] font-semibold leading-tight tracking-[-0.2px] text-ink-1">
+                {s.t}
+              </p>
+              <p className="flex-1 text-[11.5px] leading-[1.55] text-ink-4">
+                {s.s}
+              </p>
+              <span className="mt-1.5 inline-flex items-center justify-center gap-1.5 self-start rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold transition-colors hocus:text-brand">
+                {s.cta} <ArrowRightIcon className="size-3.5" />
+              </span>
+            </Link>
+          ))}
+        </div>
+
+        {/* CTA final */}
+        <div className="mt-10">
+          <Link
+            href="/admin"
+            className="b3-btn b3-btn--cta"
+            style={{ height: 46, fontSize: 13, fontWeight: 700 }}
+          >
+            Ir pro painel da minha loja
+            <ArrowRightIcon className="size-4" />
+          </Link>
         </div>
       </div>
     </OnboardingShell>

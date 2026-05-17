@@ -1,7 +1,13 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowRightIcon, CheckIcon, EyeIcon, EyeOffIcon, Loader2Icon } from "lucide-react";
+import {
+  ArrowRightIcon,
+  CheckIcon,
+  EyeIcon,
+  EyeOffIcon,
+  Loader2Icon,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -14,17 +20,12 @@ import { signUpStoreOwner } from "@/actions/auth/sign-up";
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell";
 import { SIGNUP_WHATSAPP_KEY } from "@/components/onboarding/storage-keys";
 import { WhatsAppInput } from "@/components/onboarding/whatsapp-input";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { isValidWhatsAppBR } from "@/lib/whatsapp-format";
 
 // Schema local: extende signUpSchema com WhatsApp validado.
-// WhatsApp NÃO é submetido pra action (signUpSchema atual) — é capturado
-// e persistido em sessionStorage pra hidratação na tela 2 (identidade).
-// Decisão: evitar mexer no Better Auth user table só pra carregar valor
-// entre 2 telas. Ver memory `redesign-canvas-v1-onboarding-scope.md`.
+// WhatsApp NÃO é submetido pra action — é capturado e persistido em
+// sessionStorage pra hidratação na tela 2 (identidade).
 const accountFormSchema = signUpSchema.extend({
   whatsappNumber: z.string().refine((v) => isValidWhatsAppBR(v), {
     message: "WhatsApp inválido. Use o formato com DDD (ex: 11 99999-9999).",
@@ -62,14 +63,11 @@ export default function CriarContaPage() {
       return;
     }
     startTransition(async () => {
-      // Persiste WhatsApp ANTES de chamar action — se signup falhar,
-      // valor fica salvo pro próximo retry.
       try {
         sessionStorage.setItem(SIGNUP_WHATSAPP_KEY, values.whatsappNumber);
       } catch {
-        // private mode / cookies disabled — segue silencioso.
+        /* private mode — silencioso */
       }
-
       const result = await signUpStoreOwner({
         name: values.name,
         email: values.email,
@@ -85,277 +83,168 @@ export default function CriarContaPage() {
     });
   };
 
+  const errors = form.formState.errors;
+
   return (
-    <OnboardingShell step={1}>
-      <div className="grid h-full lg:grid-cols-2">
-        {/* === Form column === */}
-        <div className="mx-auto flex w-full max-w-[560px] flex-col justify-center px-6 py-10 sm:px-12 lg:py-[60px] lg:pl-[80px]">
-          <p className="text-primary font-mono text-[10.5px] font-semibold uppercase tracking-[0.05em]">
-            Comece grátis · 14 dias
-          </p>
-          <h1 className="mt-3 text-[32px] font-semibold leading-[1.05] tracking-[-1px] sm:text-[36px]">
-            Sua vitrine digital <br className="hidden sm:block" />
-            em <span className="text-primary">5 minutos</span>.
-          </h1>
-          <p className="text-ink-4 mt-3 max-w-[460px] text-[14px] leading-[1.55]">
-            Cadastre seus produtos, conecte seu WhatsApp e comece a vender.
-            Sem mensalidade nos primeiros 14 dias.
-          </p>
+    <OnboardingShell
+      step={1}
+      footerRight={
+        <button
+          type="button"
+          onClick={form.handleSubmit(onSubmit)}
+          className="b3-btn b3-btn--cta"
+          disabled={isPending || !isPasswordValid || !agreed}
+        >
+          {isPending ? (
+            <>
+              <Loader2Icon className="size-4 animate-spin" /> Criando…
+            </>
+          ) : (
+            <>
+              Continuar <ArrowRightIcon className="size-3.5" />
+            </>
+          )}
+        </button>
+      }
+    >
+      <span className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-brand">
+        PASSO 1 DE 4
+      </span>
+      <h2 className="mt-2 mb-1.5 text-[26px] font-bold tracking-[-0.02em] text-ink-1">
+        Vamos começar com seus dados
+      </h2>
+      <p className="mb-6 text-[14px] text-ink-3">
+        Você é a dona da loja. Esses dados ficam só pra você.
+      </p>
 
-          <form
-            onSubmit={form.handleSubmit(onSubmit)}
-            className="mt-8 flex flex-col gap-3.5"
-          >
-            <div className="space-y-1.5">
-              <Label htmlFor="signup-name" className="text-[11.5px] font-medium">
-                Seu nome
-              </Label>
-              <Input
-                id="signup-name"
-                autoComplete="name"
-                placeholder="Como podemos te chamar?"
-                disabled={isPending}
-                aria-invalid={!!form.formState.errors.name}
-                className="h-11"
-                {...form.register("name")}
-              />
-              {form.formState.errors.name?.message ? (
-                <p className="text-destructive text-[11px]">
-                  {form.formState.errors.name.message}
-                </p>
-              ) : null}
-            </div>
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <div className="b3-row2">
+          <div className="b3-field">
+            <label htmlFor="signup-name" className="b3-field-label">Seu nome</label>
+            <input
+              id="signup-name"
+              autoComplete="name"
+              placeholder="Como devo te chamar?"
+              disabled={isPending}
+              aria-invalid={!!errors.name}
+              className="b3-input"
+              {...form.register("name")}
+            />
+            {errors.name?.message ? (
+              <p className="mt-1 text-[11px] text-destructive">{errors.name.message}</p>
+            ) : null}
+          </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="signup-email" className="text-[11.5px] font-medium">
-                E-mail
-              </Label>
-              <Input
-                id="signup-email"
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                autoCapitalize="off"
-                placeholder="seu@email.com"
-                disabled={isPending}
-                aria-invalid={!!form.formState.errors.email}
-                className="h-11"
-                {...form.register("email")}
-              />
-              {form.formState.errors.email?.message ? (
-                <p className="text-destructive text-[11px]">
-                  {form.formState.errors.email.message}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="signup-whatsapp" className="text-[11.5px] font-medium">
-                WhatsApp
-              </Label>
-              <Controller
-                name="whatsappNumber"
-                control={form.control}
-                render={({ field }) => (
-                  <WhatsAppInput
-                    id="signup-whatsapp"
-                    value={field.value}
-                    onChange={field.onChange}
-                    disabled={isPending}
-                    aria-invalid={!!form.formState.errors.whatsappNumber}
-                  />
-                )}
-              />
-              <p
-                className={cn(
-                  "text-[10.5px]",
-                  form.formState.errors.whatsappNumber
-                    ? "text-destructive"
-                    : "text-ink-4",
-                )}
-              >
-                {form.formState.errors.whatsappNumber?.message ??
-                  "Será o número que recebe os pedidos."}
-              </p>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="signup-password" className="text-[11.5px] font-medium">
-                Senha
-              </Label>
-              <div className="relative">
-                <Input
-                  id="signup-password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="new-password"
-                  placeholder="Crie uma senha"
+          <div className="b3-field">
+            <label htmlFor="signup-whatsapp" className="b3-field-label">WhatsApp</label>
+            <Controller
+              name="whatsappNumber"
+              control={form.control}
+              render={({ field }) => (
+                <WhatsAppInput
+                  id="signup-whatsapp"
+                  value={field.value}
+                  onChange={field.onChange}
                   disabled={isPending}
-                  aria-invalid={!!form.formState.errors.password}
-                  className="h-11 pr-10"
-                  {...form.register("password")}
+                  aria-invalid={!!errors.whatsappNumber}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((s) => !s)}
-                  className="text-ink-4 hocus:text-ink-1 absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
-                  tabIndex={-1}
-                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                >
-                  {showPassword ? (
-                    <EyeOffIcon className="size-4" />
-                  ) : (
-                    <EyeIcon className="size-4" />
-                  )}
-                </button>
-              </div>
-              {password.length > 0 ? (
-                <div className="flex flex-wrap gap-3 pt-1">
-                  <PasswordIndicator ok={passwordStrength.length} label="8+ caracteres" />
-                  <PasswordIndicator ok={passwordStrength.letter} label="Letra" />
-                  <PasswordIndicator ok={passwordStrength.number} label="Número" />
-                </div>
-              ) : (
-                <p className="text-ink-4 text-[10.5px]">
-                  Mínimo 8 caracteres, com letra e número.
-                </p>
               )}
-              {form.formState.errors.password?.message ? (
-                <p className="text-destructive text-[11px]">
-                  {form.formState.errors.password.message}
-                </p>
-              ) : null}
-            </div>
-
-            <Button
-              type="submit"
-              size="lg"
-              className="bg-foreground text-background hover:bg-foreground/90 mt-4 h-12 gap-2 text-[14px] font-semibold"
-              disabled={isPending || !isPasswordValid || !agreed}
-            >
-              {isPending ? (
-                <>
-                  <Loader2Icon className="animate-spin" />
-                  Criando…
-                </>
-              ) : (
-                <>
-                  Continuar
-                  <ArrowRightIcon className="size-4" />
-                </>
-              )}
-            </Button>
-
-            <label className="flex cursor-pointer items-start gap-2 pt-1">
-              <input
-                type="checkbox"
-                checked={agreed}
-                onChange={(e) => setAgreed(e.target.checked)}
-                className="mt-0.5 size-3.5 cursor-pointer accent-primary"
-              />
-              <span className="text-ink-4 text-[11px] leading-[1.55]">
-                Ao continuar você concorda com os{" "}
-                <Link
-                  href="/termos"
-                  className="text-foreground hocus:text-primary underline underline-offset-2"
-                >
-                  Termos
-                </Link>{" "}
-                e a{" "}
-                <Link
-                  href="/privacidade"
-                  className="text-foreground hocus:text-primary underline underline-offset-2"
-                >
-                  Política de privacidade
-                </Link>
-                .
-              </span>
-            </label>
-          </form>
+            />
+            {errors.whatsappNumber?.message ? (
+              <p className="mt-1 text-[11px] text-destructive">{errors.whatsappNumber.message}</p>
+            ) : (
+              <p className="mt-1 text-[10.5px] text-ink-4">Será o número que recebe os pedidos.</p>
+            )}
+          </div>
         </div>
 
-        {/* === Visual column (desktop only) === */}
-        <aside className="bg-bg-app relative hidden overflow-hidden border-l border-line lg:block">
-          {/* Gradient radial brand-tint top-right */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 opacity-60"
-            style={{
-              background:
-                "radial-gradient(circle at 70% 30%, var(--brand-tint), transparent 60%)",
-            }}
+        <div className="b3-field">
+          <label htmlFor="signup-email" className="b3-field-label">E-mail</label>
+          <input
+            id="signup-email"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            autoCapitalize="off"
+            placeholder="seu@email.com"
+            disabled={isPending}
+            aria-invalid={!!errors.email}
+            className="b3-input mono"
+            {...form.register("email")}
           />
-          <div className="relative flex h-full items-start gap-6 px-12 py-[60px] xl:gap-8">
-            {/* Mini phone */}
-            <div
-              className="bg-surface flex shrink-0 flex-col gap-2 rounded-[28px] border border-line p-2.5 shadow-xl"
-              style={{ width: 220, aspectRatio: "9 / 19" }}
-            >
-              <div className="h-4" aria-hidden />
-              <div className="flex items-center gap-1.5 px-1.5">
-                <span
-                  aria-hidden
-                  className="bg-primary size-[18px] rounded-[4px]"
-                />
-                <span className="text-[10px] font-semibold">Sua loja aqui</span>
-              </div>
-              <div
-                aria-hidden
-                className="rounded-lg"
-                style={{
-                  aspectRatio: "16 / 9",
-                  background: "oklch(0.78 0.04 60)",
-                }}
-              />
-              <div className="grid grid-cols-2 gap-1.5">
-                {[
-                  "oklch(0.85 0.02 280)",
-                  "oklch(0.45 0.03 270)",
-                  "oklch(0.72 0.07 30)",
-                  "oklch(0.65 0.05 170)",
-                ].map((tone, i) => (
-                  <div
-                    key={i}
-                    aria-hidden
-                    className="rounded"
-                    style={{ aspectRatio: "3 / 4", background: tone }}
-                  />
-                ))}
-              </div>
-            </div>
+          {errors.email?.message ? (
+            <p className="mt-1 text-[11px] text-destructive">{errors.email.message}</p>
+          ) : null}
+        </div>
 
-            {/* Benefits list */}
-            <ul className="flex max-w-[240px] flex-col gap-[18px] pt-8">
-              {[
-                {
-                  n: "01",
-                  l: "Vitrine digital",
-                  t: "Adicione fotos, preços e variantes.",
-                },
-                {
-                  n: "02",
-                  l: "Checkout WhatsApp",
-                  t: "O cliente fecha a compra com você no WhatsApp.",
-                },
-                {
-                  n: "03",
-                  l: "Receba pelo Pix",
-                  t: "Sem taxa de gateway. O dinheiro cai direto pra você.",
-                },
-              ].map((s) => (
-                <li key={s.n}>
-                  <p className="text-ink-5 font-mono text-[9.5px] tracking-[0.04em]">
-                    {s.n}
-                  </p>
-                  <p className="mt-0.5 text-[13px] font-semibold">{s.l}</p>
-                  <p className="text-ink-4 mt-0.5 text-[11.5px] leading-[1.5]">
-                    {s.t}
-                  </p>
-                </li>
-              ))}
-            </ul>
+        <div className="b3-field">
+          <label htmlFor="signup-password" className="b3-field-label">Senha</label>
+          <div className="relative">
+            <input
+              id="signup-password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
+              placeholder="Mínimo 8 caracteres"
+              disabled={isPending}
+              aria-invalid={!!errors.password}
+              className="b3-input mono pr-10"
+              {...form.register("password")}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((s) => !s)}
+              className="text-ink-4 hocus:text-ink-1 absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
+              tabIndex={-1}
+              aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+            >
+              {showPassword ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+            </button>
           </div>
-        </aside>
-      </div>
+          {password.length > 0 ? (
+            <div className="mt-1 flex flex-wrap gap-3">
+              <PasswordIndicator ok={passwordStrength.length} label="8+ caracteres" />
+              <PasswordIndicator ok={passwordStrength.letter} label="Letra" />
+              <PasswordIndicator ok={passwordStrength.number} label="Número" />
+            </div>
+          ) : (
+            <p className="mt-1 text-[10.5px] text-ink-4">
+              Mínimo 8 caracteres, com letra e número.
+            </p>
+          )}
+          {errors.password?.message ? (
+            <p className="mt-1 text-[11px] text-destructive">{errors.password.message}</p>
+          ) : null}
+        </div>
+
+        <label className="mt-2 flex cursor-pointer items-start gap-2">
+          <input
+            type="checkbox"
+            checked={agreed}
+            onChange={(e) => setAgreed(e.target.checked)}
+            className="mt-0.5 size-3.5 cursor-pointer accent-brand"
+          />
+          <span className="text-[11px] leading-[1.55] text-ink-4">
+            Ao continuar você concorda com os{" "}
+            <Link
+              href="/termos"
+              className="text-foreground hocus:text-brand underline underline-offset-2"
+            >
+              Termos
+            </Link>{" "}
+            e a{" "}
+            <Link
+              href="/privacidade"
+              className="text-foreground hocus:text-brand underline underline-offset-2"
+            >
+              Política de privacidade
+            </Link>
+            .
+          </span>
+        </label>
+
+        {/* Submit hidden — Enter key dispara via form onSubmit */}
+        <button type="submit" hidden tabIndex={-1} />
+      </form>
     </OnboardingShell>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ArrowRight, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useTransition } from "react";
@@ -8,18 +9,11 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { resetPassword } from "@/actions/auth/reset-password";
-import { type ResetPasswordInput,resetPasswordSchema } from "@/actions/auth/schema";
-import { AuthShell } from "@/components/auth/auth-shell";
-import { Button } from "@/components/ui/button";
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+  type ResetPasswordInput,
+  resetPasswordSchema,
+} from "@/actions/auth/schema";
+import { AuthShell } from "@/components/auth/auth-shell";
 
 export default function RedefinirPage() {
   // useSearchParams precisa de Suspense boundary pro prerender do Next 15
@@ -29,9 +23,7 @@ export default function RedefinirPage() {
     <Suspense
       fallback={
         <AuthShell title="Carregando…">
-          <p className="text-ink-4 text-sm">
-            Validando seu link…
-          </p>
+          <p className="text-ink-4 text-sm">Validando seu link…</p>
         </AuthShell>
       }
     >
@@ -84,65 +76,76 @@ function RedefinirForm() {
     );
   }
 
+  const passwordError = form.formState.errors.password?.message;
+  const confirmError = form.formState.errors.confirmPassword?.message;
+
   return (
     <AuthShell
       title="Defina sua nova senha"
       subtitle="Use uma senha forte com pelo menos 8 caracteres."
       footer={
-        <Link href="/entrar" className="text-foreground font-medium underline-offset-4 hover:underline">
+        <Link
+          href="/entrar"
+          className="text-foreground font-medium underline-offset-4 hover:underline"
+        >
           Voltar para o login
         </Link>
       }
     >
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <input type="hidden" {...form.register("token")} />
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <input type="hidden" {...form.register("token")} />
 
-          <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nova senha</FormLabel>
-                <FormControl>
-                  <Input
-                    type="password"
-                    autoComplete="new-password"
-                    placeholder="Pelo menos 8 caracteres"
-                    disabled={isPending}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+        <div className="b3-field">
+          <label htmlFor="new-password" className="b3-field-label">Nova senha</label>
+          <input
+            id="new-password"
+            type="password"
+            autoComplete="new-password"
+            placeholder="Pelo menos 8 caracteres"
+            disabled={isPending}
+            aria-invalid={!!passwordError}
+            className="b3-input mono"
+            {...form.register("password")}
           />
+          {passwordError ? (
+            <p className="mt-1 text-[11px] text-destructive">{passwordError}</p>
+          ) : null}
+        </div>
 
-          <FormField
-            control={form.control}
-            name="confirmPassword"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Confirmar nova senha</FormLabel>
-                <FormControl>
-                  <Input
-                    type="password"
-                    autoComplete="new-password"
-                    placeholder="Repita a senha"
-                    disabled={isPending}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+        <div className="b3-field">
+          <label htmlFor="confirm-password" className="b3-field-label">Confirmar nova senha</label>
+          <input
+            id="confirm-password"
+            type="password"
+            autoComplete="new-password"
+            placeholder="Repita a senha"
+            disabled={isPending}
+            aria-invalid={!!confirmError}
+            className="b3-input mono"
+            {...form.register("confirmPassword")}
           />
+          {confirmError ? (
+            <p className="mt-1 text-[11px] text-destructive">{confirmError}</p>
+          ) : null}
+        </div>
 
-          <Button type="submit" size="lg" className="w-full" disabled={isPending}>
-            {isPending ? "Salvando..." : "Salvar nova senha"}
-          </Button>
-        </form>
-      </Form>
+        <button
+          type="submit"
+          className="b3-btn b3-btn--cta w-full justify-center"
+          style={{ height: 48, fontSize: 14, fontWeight: 700 }}
+          disabled={isPending}
+        >
+          {isPending ? (
+            <>
+              <Loader2 className="size-4 animate-spin" /> Salvando…
+            </>
+          ) : (
+            <>
+              Salvar nova senha <ArrowRight className="size-4" />
+            </>
+          )}
+        </button>
+      </form>
     </AuthShell>
   );
 }

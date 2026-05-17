@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
+import { ArrowRight, CheckIcon, Eye, EyeOff, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, useTransition } from "react";
@@ -11,16 +11,6 @@ import { toast } from "sonner";
 import { type SignInInput, signInSchema } from "@/actions/auth/schema";
 import { signInWithEmail } from "@/actions/auth/sign-in";
 import { AuthShell } from "@/components/auth/auth-shell";
-import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 export default function EntrarPage() {
@@ -33,7 +23,7 @@ export default function EntrarPage() {
 
 function EntrarSkeleton() {
   return (
-    <AuthShell title="Entrar" subtitle="Acesse sua conta">
+    <AuthShell title="Entre na sua conta" subtitle="Carregando…">
       <div className="flex items-center justify-center py-8">
         <Loader2 className="size-5 animate-spin text-ink-4" />
       </div>
@@ -46,6 +36,7 @@ function EntrarContent() {
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(false);
 
   const form = useForm<SignInInput>({
     resolver: zodResolver(signInSchema),
@@ -73,10 +64,13 @@ function EntrarContent() {
     });
   };
 
+  const emailError = form.formState.errors.email?.message;
+  const passwordError = form.formState.errors.password?.message;
+
   return (
     <AuthShell
       title="Entre na sua conta"
-      subtitle="Bem-vindo de volta. Continue de onde parou."
+      subtitle="Bem-vinda de volta. Continue de onde parou."
       footer={
         <>
           Ainda não tem loja?{" "}
@@ -89,111 +83,95 @@ function EntrarContent() {
         </>
       }
     >
-      {/* Stagger fade-in migrado de framer-motion → tw-animate-css (Onda 4
-          auditoria 2026-05-10). `[animation-fill-mode:backwards]` evita
-          flash do conteúdo antes do delay disparar. */}
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <div className="animate-in fade-in slide-in-from-left-3 duration-300 [animation-delay:100ms] [animation-fill-mode:backwards]">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-xs font-medium text-ink-4 uppercase tracking-wide">
-                    Email
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      type="email"
-                      inputMode="email"
-                      autoComplete="email"
-                      autoCapitalize="off"
-                      placeholder="seu@email.com"
-                      disabled={isPending}
-                      className="h-10 bg-bg-app border-0 focus-visible:ring-1"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-0">
+        <div className="b3-field">
+          <label htmlFor="email" className="b3-field-label">E-mail</label>
+          <input
+            id="email"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            autoCapitalize="off"
+            placeholder="seu@email.com"
+            disabled={isPending}
+            aria-invalid={!!emailError}
+            className="b3-input mono"
+            {...form.register("email")}
+          />
+          {emailError ? (
+            <p className="mt-1 text-[11px] text-destructive">{emailError}</p>
+          ) : null}
+        </div>
 
-          <div className="animate-in fade-in slide-in-from-left-3 duration-300 [animation-delay:150ms] [animation-fill-mode:backwards]">
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <div className="flex items-center justify-between">
-                    <FormLabel className="text-xs font-medium text-ink-4 uppercase tracking-wide">
-                      Senha
-                    </FormLabel>
-                    <Link
-                      href="/recuperar"
-                      className="text-xs text-ink-4 hover:text-brand transition-colors"
-                      tabIndex={-1}
-                    >
-                      Esqueceu?
-                    </Link>
-                  </div>
-                  <FormControl>
-                    <div className="relative">
-                      <Input
-                        type={showPassword ? "text" : "password"}
-                        autoComplete="current-password"
-                        placeholder="Sua senha"
-                        disabled={isPending}
-                        className="h-10 bg-bg-app border-0 focus-visible:ring-1 pr-10"
-                        {...field}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className={cn(
-                          "absolute right-3 top-1/2 -translate-y-1/2",
-                          "text-ink-4 hover:text-ink-1 transition-colors"
-                        )}
-                        tabIndex={-1}
-                        aria-label={showPassword ? "Ocultar" : "Mostrar"}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="size-4" />
-                        ) : (
-                          <Eye className="size-4" />
-                        )}
-                      </button>
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 [animation-delay:200ms] [animation-fill-mode:backwards]">
-            <Button
-              type="submit"
-              className="w-full h-10 font-medium gap-2 group"
+        <div className="b3-field">
+          <label htmlFor="password" className="b3-field-label">Senha</label>
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              placeholder="Sua senha"
               disabled={isPending}
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  Entrando...
-                </>
-              ) : (
-                <>
-                  Entrar
-                  <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-                </>
+              aria-invalid={!!passwordError}
+              className="b3-input mono pr-10"
+              {...form.register("password")}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((s) => !s)}
+              className={cn(
+                "absolute right-3 top-1/2 -translate-y-1/2",
+                "text-ink-4 hover:text-ink-1 transition-colors",
               )}
-            </Button>
+              tabIndex={-1}
+              aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+            >
+              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
           </div>
-        </form>
-      </Form>
+          {passwordError ? (
+            <p className="mt-1 text-[11px] text-destructive">{passwordError}</p>
+          ) : null}
+        </div>
+
+        <div className="mb-[18px] flex items-center justify-between text-[13px]">
+          <label className="b3-checkbox">
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+            />
+            <span className="b3-checkbox-box">
+              <CheckIcon size={11} strokeWidth={3} />
+            </span>
+            <span>Lembrar login</span>
+          </label>
+          <Link
+            href="/recuperar"
+            className="text-brand font-semibold hover:underline underline-offset-4"
+            tabIndex={-1}
+          >
+            Esqueceu a senha?
+          </Link>
+        </div>
+
+        <button
+          type="submit"
+          className="b3-btn b3-btn--cta w-full justify-center"
+          style={{ height: 48, fontSize: 14, fontWeight: 700 }}
+          disabled={isPending}
+        >
+          {isPending ? (
+            <>
+              <Loader2 className="size-4 animate-spin" /> Entrando…
+            </>
+          ) : (
+            <>
+              Entrar <ArrowRight className="size-4" />
+            </>
+          )}
+        </button>
+      </form>
     </AuthShell>
   );
 }

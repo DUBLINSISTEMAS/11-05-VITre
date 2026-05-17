@@ -1548,6 +1548,57 @@
       padding: 8px 0;
     }
   }
+
+  /* ========================================================
+   * CHECKBOX — caixa 16px com check brand quando on
+   * (Dublin v3 Login + Onboarding, Onda A.4)
+   * ======================================================== */
+  .b3-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    color: var(--ink-2);
+  }
+  .b3-checkbox-box {
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid var(--line-2);
+    border-radius: 4px;
+    background: var(--surface);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: transparent;
+    flex-shrink: 0;
+    transition: background 120ms, border-color 120ms, color 120ms;
+  }
+  .b3-checkbox input[type="checkbox"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .b3-checkbox input[type="checkbox"]:checked + .b3-checkbox-box {
+    background: var(--brand);
+    border-color: var(--brand);
+    color: white;
+  }
+  .b3-checkbox input[type="checkbox"]:focus-visible + .b3-checkbox-box {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+
+  /* Variant: input mono (font-mono em campos de email/senha/url do handoff) */
+  .b3-input.mono,
+  .b3-select.mono {
+    font-family: var(--font-mono, "Geist Mono", ui-monospace, monospace);
+  }
 }
 
 /* ========================================================

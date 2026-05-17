@@ -1,12 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  ArrowLeftIcon,
-  ArrowRightIcon,
-  Loader2Icon,
-  UploadCloudIcon,
-} from "lucide-react";
+import { ArrowLeftIcon, ArrowRightIcon, Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -24,11 +19,8 @@ import {
   SIGNUP_WHATSAPP_KEY,
 } from "@/components/onboarding/storage-keys";
 import { WhatsAppInput } from "@/components/onboarding/whatsapp-input";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { clientEnv } from "@/lib/env-client";
 import { generateSlug, isValidSlugFormat } from "@/lib/slug";
-import { cn } from "@/lib/utils";
 import { isValidWhatsAppBR } from "@/lib/whatsapp-format";
 
 const APP_URL_HOST =
@@ -37,10 +29,9 @@ const APP_URL_HOST =
     .replace(/\/$/, "")
     .replace(/^www\./, "") || "vitre.app";
 
-// 5 cores canvas (linha 215-219). Hex equivalentes do oklch — convertidos
-// pra ficarem editáveis depois via ColorPicker (que aceita hex).
+// 5 cores canvas (mantidas pra compat — usuária ajusta depois no admin).
 const COLOR_SWATCHES = [
-  { hex: "#1E3FE6", label: "Royal" },
+  { hex: "#1A3A8F", label: "Royal" },
   { hex: "#212126", label: "Carvão" },
   { hex: "#B58A3D", label: "Champagne" },
   { hex: "#C76E36", label: "Cobre" },
@@ -53,35 +44,27 @@ export default function CriarLojaIdentidadePage() {
   const [slugAvailable, setSlugAvailable] = useState(false);
   const slugManuallyEdited = useRef(false);
 
-  // Onda 3 port Dublin (ADR-0019): identidade NÃO chama createStore.
-  // Persiste em sessionStorage e roteia pra /tipo-negocio. createStore
-  // só é chamado no passo 3 com identity + niche + opt-in mesclados.
   const form = useForm<CreateStoreInput>({
     resolver: zodResolver(createStoreSchema),
     defaultValues: {
       name: "",
       slug: "",
-      niche: "roupa_feminina", // hidden default; usuária escolhe no passo 3
+      niche: "roupa_feminina",
       whatsappNumber: "",
-      primaryColor: "#1E3FE6",
+      primaryColor: "#1A3A8F",
       addressCity: "",
       addressState: "",
-      includeNicheCategories: true, // hidden default; usuária pode desmarcar no passo 3
+      includeNicheCategories: true,
     },
     mode: "onTouched",
   });
 
-  // Hidrata WhatsApp do sessionStorage (vindo da tela 1 Conta).
-  // Também hidrata o snapshot completo de identidade caso usuária esteja
-  // voltando do passo 3 (tipo-negocio) — todos os campos preenchidos no
-  // passo 2 ficam preservados.
   useEffect(() => {
     try {
       const storedWhatsapp = sessionStorage.getItem(SIGNUP_WHATSAPP_KEY);
       if (storedWhatsapp && isValidWhatsAppBR(storedWhatsapp)) {
         form.setValue("whatsappNumber", storedWhatsapp, { shouldValidate: true });
       }
-
       const storedIdentity = sessionStorage.getItem(ONBOARDING_IDENTITY_KEY);
       if (storedIdentity) {
         const parsed = JSON.parse(storedIdentity) as Partial<CreateStoreInput>;
@@ -98,12 +81,11 @@ export default function CriarLojaIdentidadePage() {
         if (parsed.addressState) form.setValue("addressState", parsed.addressState);
       }
     } catch {
-      // private mode / JSON.parse falhou — nada a fazer.
+      /* private mode / parse failed */
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-slug a partir do nome (até usuária editar manualmente).
   const watchedName = form.watch("name");
   useEffect(() => {
     if (slugManuallyEdited.current || !watchedName) return;
@@ -113,9 +95,6 @@ export default function CriarLojaIdentidadePage() {
     }
   }, [watchedName, form]);
 
-  const watchedSlug = form.watch("slug");
-  const watchedColor = form.watch("primaryColor");
-  const initial = (watchedName.trim()[0] ?? "S").toUpperCase();
   const watchedWhatsapp = form.watch("whatsappNumber");
   const showWhatsappInline = !isValidWhatsAppBR(watchedWhatsapp);
 
@@ -124,9 +103,6 @@ export default function CriarLojaIdentidadePage() {
       toast.error("Confirme um endereço disponível.");
       return;
     }
-    // Onda 3 port Dublin: persiste snapshot da identidade e roteia
-    // pro passo 3 (tipo-negocio). createStore é chamado lá com tudo
-    // mesclado (identity + niche + opt-in).
     startTransition(() => {
       try {
         sessionStorage.setItem(
@@ -141,308 +117,157 @@ export default function CriarLojaIdentidadePage() {
           }),
         );
       } catch {
-        // private mode — segue sem persistir. Usuária perde estado
-        // se voltar do passo 3, mas o fluxo principal completa.
+        /* private mode */
       }
       router.push("/criar-loja/tipo-negocio");
     });
   };
 
+  const errors = form.formState.errors;
+
   return (
-    <OnboardingShell step={2}>
-      <div className="overflow-y-auto px-4 pb-16 pt-8 sm:px-8 sm:pt-10 sm:pb-[60px]">
-        <div className="mx-auto max-w-[980px]">
-          <h1 className="text-[28px] font-semibold leading-[1.1] tracking-[-0.6px] sm:text-[32px] sm:tracking-[-0.8px]">
-            Vamos dar identidade pra sua loja
-          </h1>
-          <p className="text-ink-4 mt-2 text-[13.5px]">
-            Você pode mudar tudo isso depois. Começamos com o essencial.
-          </p>
+    <OnboardingShell
+      step={2}
+      footerLeft={
+        <Link href="/criar-loja/conta" className="b3-btn">
+          <ArrowLeftIcon className="size-3.5" /> Voltar
+        </Link>
+      }
+      footerRight={
+        <button
+          type="button"
+          onClick={form.handleSubmit(onSubmit)}
+          className="b3-btn b3-btn--cta"
+          disabled={isPending || !slugAvailable}
+        >
+          {isPending ? (
+            <>
+              <Loader2Icon className="size-4 animate-spin" /> Continuando…
+            </>
+          ) : (
+            <>
+              Continuar <ArrowRightIcon className="size-3.5" />
+            </>
+          )}
+        </button>
+      }
+    >
+      <span className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-brand">
+        PASSO 2 DE 4
+      </span>
+      <h2 className="mt-2 mb-1.5 text-[26px] font-bold tracking-[-0.02em] text-ink-1">
+        Como sua loja se chama?
+      </h2>
+      <p className="mb-6 text-[14px] text-ink-3">
+        É o nome que aparece pro cliente. Pode mudar tudo depois.
+      </p>
 
-          <form
-            onSubmit={form.handleSubmit(onSubmit)}
-            className="mt-8 grid gap-8 lg:grid-cols-[1.4fr_1fr]"
-          >
-            {/* === Form column === */}
-            <div className="flex flex-col gap-6">
-              {/* Logo (placeholder visual — upload real no admin) */}
-              <Section
-                label="Logo da loja"
-                hint="Você pode subir a sua logo depois em Configurações. Por enquanto usamos a inicial."
-              >
-                <div className="flex items-start gap-4">
-                  <div
-                    aria-hidden
-                    className="flex size-24 shrink-0 items-center justify-center rounded-xl text-white"
-                    style={{
-                      background: watchedColor,
-                      fontSize: 38,
-                      fontWeight: 600,
-                      letterSpacing: -1,
-                    }}
-                  >
-                    {initial}
-                  </div>
-                  <div
-                    aria-hidden
-                    className="border-line bg-bg-app text-ink-4 flex flex-1 flex-col items-center justify-center gap-1.5 rounded-[10px] border-[1.5px] border-dashed p-6"
-                  >
-                    <UploadCloudIcon className="size-5" />
-                    <span className="text-ink-1 text-[12px] font-medium">
-                      Solte sua logo aqui
-                    </span>
-                    <span className="text-[10.5px]">
-                      ou{" "}
-                      <span className="text-brand font-medium">
-                        depois nas configurações
-                      </span>
-                    </span>
-                  </div>
-                </div>
-              </Section>
-
-              {/* Nome */}
-              <Section
-                label="Nome da loja"
-                hint="É o nome que seus clientes vão ver no topo da página."
-              >
-                <Input
-                  autoComplete="organization"
-                  autoFocus
-                  placeholder="Ex: Atelier Maria"
-                  disabled={isPending}
-                  aria-invalid={!!form.formState.errors.name}
-                  className="h-11"
-                  {...form.register("name")}
-                />
-                {form.formState.errors.name?.message ? (
-                  <p className="text-destructive mt-1.5 text-[11px]">
-                    {form.formState.errors.name.message}
-                  </p>
-                ) : null}
-              </Section>
-
-              {/* Endereço da loja (slug) */}
-              <Section
-                label="Endereço da loja"
-                hint="Esse é o link que você vai compartilhar."
-              >
-                <Controller
-                  name="slug"
-                  control={form.control}
-                  render={({ field }) => (
-                    <SlugInput
-                      value={field.value}
-                      onChange={(v) => {
-                        slugManuallyEdited.current = true;
-                        field.onChange(v);
-                      }}
-                      onAvailabilityChange={setSlugAvailable}
-                      disabled={isPending}
-                      appUrl={APP_URL_HOST}
-                    />
-                  )}
-                />
-                {form.formState.errors.slug?.message ? (
-                  <p className="text-destructive mt-1.5 text-[11px]">
-                    {form.formState.errors.slug.message}
-                  </p>
-                ) : null}
-              </Section>
-
-              {/* WhatsApp inline (só se sessionStorage não trouxe válido) */}
-              {showWhatsappInline ? (
-                <Section
-                  label="WhatsApp para pedidos"
-                  hint="Será o número que recebe os pedidos."
-                >
-                  <Controller
-                    name="whatsappNumber"
-                    control={form.control}
-                    render={({ field }) => (
-                      <WhatsAppInput
-                        value={field.value}
-                        onChange={field.onChange}
-                        disabled={isPending}
-                        aria-invalid={!!form.formState.errors.whatsappNumber}
-                      />
-                    )}
-                  />
-                  {form.formState.errors.whatsappNumber?.message ? (
-                    <p className="text-destructive mt-1.5 text-[11px]">
-                      {form.formState.errors.whatsappNumber.message}
-                    </p>
-                  ) : null}
-                </Section>
-              ) : null}
-
-              {/* Cor da loja */}
-              <Section
-                label="Cor da loja"
-                hint="Aparece no botão de sacola e em destaques. Você pode trocar depois."
-              >
-                <Controller
-                  name="primaryColor"
-                  control={form.control}
-                  render={({ field }) => (
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-2.5">
-                      {COLOR_SWATCHES.map((co) => {
-                        const active =
-                          field.value.toLowerCase() === co.hex.toLowerCase();
-                        return (
-                          <button
-                            key={co.hex}
-                            type="button"
-                            onClick={() => field.onChange(co.hex)}
-                            disabled={isPending}
-                            className={cn(
-                              "bg-surface hocus:border-line-2 flex cursor-pointer items-center gap-2 rounded-[10px] border-[1.5px] border-line px-2.5 py-3 transition-colors",
-                              active && "shadow-sm",
-                            )}
-                            style={
-                              active
-                                ? { borderColor: co.hex }
-                                : undefined
-                            }
-                          >
-                            <span
-                              aria-hidden
-                              className="size-6 shrink-0 rounded-full"
-                              style={{ background: co.hex }}
-                            />
-                            <span className="text-[11.5px] font-medium">
-                              {co.label}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                />
-              </Section>
-
-              {/* Botões */}
-              <div className="mt-2 flex items-center gap-2">
-                <Button
-                  asChild
-                  type="button"
-                  variant="outline"
-                  size="lg"
-                  className="h-11 px-4 text-[13px]"
-                >
-                  <Link href="/criar-loja/conta">
-                    <ArrowLeftIcon className="size-4" /> Voltar
-                  </Link>
-                </Button>
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="bg-foreground text-background hover:bg-foreground/90 ml-auto h-11 gap-2 px-5 text-[13px] font-semibold"
-                  disabled={isPending || !slugAvailable}
-                >
-                  {isPending ? (
-                    <>
-                      <Loader2Icon className="size-4 animate-spin" />
-                      Continuando…
-                    </>
-                  ) : (
-                    <>
-                      Próximo passo
-                      <ArrowRightIcon className="size-4" />
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-
-            {/* === Live preview (sticky desktop) === */}
-            <aside className="lg:sticky lg:top-6 lg:self-start">
-              <p className="text-ink-4 mb-2.5 font-mono text-[10px] uppercase tracking-[0.05em]">
-                Prévia ao vivo
-              </p>
-              <div className="bg-surface rounded-2xl border border-line p-[18px] shadow-md">
-                <div className="mb-3.5 flex items-center gap-2">
-                  <span
-                    aria-hidden
-                    className="flex size-7 shrink-0 items-center justify-center rounded-md font-semibold text-white"
-                    style={{ background: watchedColor }}
-                  >
-                    {initial}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-[12.5px] font-semibold leading-[1.1]">
-                      {watchedName.trim() || "Sua loja"}
-                    </p>
-                    <p className="text-ink-4 truncate font-mono text-[9.5px]">
-                      {APP_URL_HOST}/{watchedSlug || "sua-loja"}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Hero card gradient brand */}
-                <div
-                  className="flex flex-col justify-end rounded-[10px] p-3.5"
-                  style={{
-                    aspectRatio: "16 / 10",
-                    background: `linear-gradient(135deg, color-mix(in oklch, ${watchedColor} 22%, white), color-mix(in oklch, ${watchedColor} 7%, white))`,
-                  }}
-                >
-                  <p
-                    className="font-mono text-[9px] font-semibold"
-                    style={{ color: watchedColor }}
-                  >
-                    NOVA COLEÇÃO
-                  </p>
-                  <p className="mt-0.5 text-[18px] font-semibold leading-[1.1] tracking-[-0.4px]">
-                    Linhas que respiram.
-                  </p>
-                </div>
-
-                {/* 2 produtos ficcionais */}
-                <div className="mt-2.5 grid grid-cols-2 gap-2">
-                  {[
-                    { name: "Vestido linho", price: "R$ 249,00", tone: "oklch(0.78 0.04 60)" },
-                    { name: "Calça wide", price: "R$ 199,00", tone: "oklch(0.45 0.03 270)" },
-                  ].map((p) => (
-                    <div key={p.name}>
-                      <div
-                        aria-hidden
-                        className="rounded-md"
-                        style={{ aspectRatio: "3 / 4", background: p.tone }}
-                      />
-                      <p className="mt-1 text-[10px] font-medium">{p.name}</p>
-                      <p className="font-mono text-[10px] font-semibold tabular-nums">
-                        {p.price}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <p className="text-ink-4 mt-2.5 text-[10.5px] leading-[1.5]">
-                Atualiza enquanto você digita.
-              </p>
-            </aside>
-          </form>
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <div className="b3-field">
+          <label htmlFor="store-name" className="b3-field-label">Nome da loja</label>
+          <input
+            id="store-name"
+            autoComplete="organization"
+            autoFocus
+            placeholder="Ex: Sandra Brito Collection"
+            disabled={isPending}
+            aria-invalid={!!errors.name}
+            className="b3-input"
+            {...form.register("name")}
+          />
+          {errors.name?.message ? (
+            <p className="mt-1 text-[11px] text-destructive">{errors.name.message}</p>
+          ) : null}
         </div>
-      </div>
+
+        <div className="b3-field">
+          <label className="b3-field-label">URL pública</label>
+          <Controller
+            name="slug"
+            control={form.control}
+            render={({ field }) => (
+              <SlugInput
+                value={field.value}
+                onChange={(v) => {
+                  slugManuallyEdited.current = true;
+                  field.onChange(v);
+                }}
+                onAvailabilityChange={setSlugAvailable}
+                disabled={isPending}
+                appUrl={APP_URL_HOST}
+              />
+            )}
+          />
+          {errors.slug?.message ? (
+            <p className="mt-1 text-[11px] text-destructive">{errors.slug.message}</p>
+          ) : null}
+        </div>
+
+        {showWhatsappInline ? (
+          <div className="b3-field">
+            <label htmlFor="store-whatsapp" className="b3-field-label">WhatsApp para pedidos</label>
+            <Controller
+              name="whatsappNumber"
+              control={form.control}
+              render={({ field }) => (
+                <WhatsAppInput
+                  id="store-whatsapp"
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={isPending}
+                  aria-invalid={!!errors.whatsappNumber}
+                />
+              )}
+            />
+            {errors.whatsappNumber?.message ? (
+              <p className="mt-1 text-[11px] text-destructive">{errors.whatsappNumber.message}</p>
+            ) : (
+              <p className="mt-1 text-[10.5px] text-ink-4">Será o número que recebe os pedidos.</p>
+            )}
+          </div>
+        ) : null}
+
+        <div className="b3-field">
+          <label className="b3-field-label">Cor primária</label>
+          <Controller
+            name="primaryColor"
+            control={form.control}
+            render={({ field }) => (
+              <div className="flex flex-wrap gap-2">
+                {COLOR_SWATCHES.map((co) => {
+                  const active = field.value.toLowerCase() === co.hex.toLowerCase();
+                  return (
+                    <button
+                      key={co.hex}
+                      type="button"
+                      onClick={() => field.onChange(co.hex)}
+                      disabled={isPending}
+                      title={co.label}
+                      aria-label={co.label}
+                      aria-pressed={active}
+                      className="cursor-pointer transition-transform hocus:scale-105"
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
+                        background: co.hex,
+                        border: active
+                          ? "2px solid var(--ink-1)"
+                          : "1px solid var(--line-2)",
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          />
+          <p className="mt-2 text-[10.5px] text-ink-4">
+            Aparece no botão de sacola e em destaques da vitrine.
+          </p>
+        </div>
+
+        <button type="submit" hidden tabIndex={-1} />
+      </form>
     </OnboardingShell>
-  );
-}
-
-interface SectionProps {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}
-
-function Section({ label, hint, children }: SectionProps) {
-  return (
-    <section>
-      <p className="mb-1 text-[13px] font-semibold">{label}</p>
-      {hint ? (
-        <p className="text-ink-4 mb-2.5 text-[11px]">{hint}</p>
-      ) : null}
-      {children}
-    </section>
   );
 }
