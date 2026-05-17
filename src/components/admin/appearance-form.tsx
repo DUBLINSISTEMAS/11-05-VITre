@@ -108,7 +108,7 @@ export function AppearanceForm({ initialData }: AppearanceFormProps) {
 
         <div className="space-y-1.5 pt-2">
           <Label>Cor primária</Label>
-          <p className="text-muted-foreground text-xs">
+          <p className="text-ink-4 text-xs">
             A cor que destaca botões, links e elementos da sua vitrine.
           </p>
           <Controller
@@ -163,7 +163,7 @@ export function AppearanceForm({ initialData }: AppearanceFormProps) {
               </Select>
             )}
           />
-          <p className="text-muted-foreground text-xs">
+          <p className="text-ink-4 text-xs">
             Quanto tempo cada banner aparece antes de trocar pro próximo. Só
             faz diferença se você tem 2 ou mais banners ativos.
           </p>
@@ -232,11 +232,13 @@ interface FormCardProps {
 
 function FormCard({ title, description, children }: FormCardProps) {
   return (
-    <section className="bg-card rounded-xl border p-4 shadow-sm sm:p-5">
+    <section className="b3-card p-4 sm:p-5">
       <header className="mb-4 space-y-0.5">
-        <h2 className="text-[13.5px] font-semibold tracking-tight">{title}</h2>
+        <h2 className="text-[13.5px] font-semibold tracking-tight text-ink-1">
+          {title}
+        </h2>
         {description ? (
-          <p className="text-muted-foreground text-xs leading-relaxed">
+          <p className="text-ink-4 text-xs leading-relaxed">
             {description}
           </p>
         ) : null}

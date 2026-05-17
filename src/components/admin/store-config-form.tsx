@@ -150,10 +150,10 @@ export function StoreConfigForm({
 
         <div className="space-y-1.5">
           <Label>Slug (URL)</Label>
-          <p className="bg-muted text-muted-foreground rounded-md px-2.5 py-1.5 font-mono text-xs">
+          <p className="bg-bg-app text-ink-4 rounded-md px-2.5 py-1.5 font-mono text-xs">
             {storefrontUrl}
           </p>
-          <p className="text-muted-foreground text-xs">
+          <p className="text-ink-4 text-xs">
             Como sua loja aparece no link. Esse endereço é fixo — não dá pra
             mudar pra não quebrar o que você já mandou pros clientes.
           </p>
@@ -186,7 +186,7 @@ export function StoreConfigForm({
               </Select>
             )}
           />
-          <p className="text-muted-foreground text-xs">
+          <p className="text-ink-4 text-xs">
             Ajuda quando criamos sugestões automáticas e indicações.
           </p>
         </div>
@@ -221,7 +221,7 @@ export function StoreConfigForm({
         <div className="space-y-1.5">
           <Label htmlFor="store-instagram">Instagram (opcional)</Label>
           <div className="relative">
-            <span className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm">
+            <span className="text-ink-4 pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm">
               @
             </span>
             <Input
@@ -383,17 +383,19 @@ interface FormCardProps {
 }
 
 /**
- * Card padrão de form do admin Lote 3 — bg-card radius 12 shadow-sm,
+ * Card padrão de form do admin — b3-card (Dublin v3, ADR-0019),
  * com header (title + description opcional) e content body.
  * Mesmo pattern aplicado em product-form.tsx (Onda 4).
  */
 function FormCard({ title, description, children }: FormCardProps) {
   return (
-    <section className="bg-card rounded-xl border p-4 shadow-sm sm:p-5">
+    <section className="b3-card p-4 sm:p-5">
       <header className="mb-4 space-y-0.5">
-        <h2 className="text-[13.5px] font-semibold tracking-tight">{title}</h2>
+        <h2 className="text-[13.5px] font-semibold tracking-tight text-ink-1">
+          {title}
+        </h2>
         {description ? (
-          <p className="text-muted-foreground text-xs leading-relaxed">
+          <p className="text-ink-4 text-xs leading-relaxed">
             {description}
           </p>
         ) : null}

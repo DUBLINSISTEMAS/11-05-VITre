@@ -132,7 +132,7 @@ export function StoreImageUploader({
       <div className="flex items-center gap-3">
         <div
           className={cn(
-            "bg-muted relative shrink-0 overflow-hidden rounded-xl border",
+            "bg-bg-app relative shrink-0 overflow-hidden rounded-xl border border-line",
             kind === "logo"
               ? "h-20 w-32 sm:h-24 sm:w-40"
               : "size-20 sm:size-24",
@@ -151,7 +151,7 @@ export function StoreImageUploader({
               unoptimized={previewUrl !== null}
             />
           ) : (
-            <div className="text-muted-foreground flex size-full items-center justify-center">
+            <div className="text-ink-4 flex size-full items-center justify-center">
               <ImagePlusIcon className="size-6" />
             </div>
           )}
@@ -192,7 +192,7 @@ export function StoreImageUploader({
       </div>
 
       {hint ? (
-        <p className="text-muted-foreground text-xs">{hint}</p>
+        <p className="text-ink-4 text-xs">{hint}</p>
       ) : null}
 
       <input

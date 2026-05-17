@@ -19,7 +19,7 @@ export default function Loading() {
 
       <div className="space-y-6">
         {/* Imagens (logo + ícone) */}
-        <div className="border-border/60 space-y-4 rounded-xl border p-4">
+        <div className="b3-card space-y-4 p-4">
           <Skeleton className="h-5 w-32" />
           <div className="flex gap-6">
             <Skeleton className="size-24 rounded-xl" />
@@ -28,7 +28,7 @@ export default function Loading() {
         </div>
 
         {/* Campos */}
-        <div className="border-border/60 space-y-4 rounded-xl border p-4">
+        <div className="b3-card space-y-4 p-4">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="space-y-2">
               <Skeleton className="h-4 w-32" />

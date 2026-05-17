@@ -20,10 +20,10 @@ export default async function AparenciaPage() {
 
       <section className="space-y-2">
         <header className="px-1">
-          <h2 className="text-[13.5px] font-semibold tracking-tight">
+          <h2 className="text-[13.5px] font-semibold tracking-tight text-ink-1">
             Modelo da vitrine
           </h2>
-          <p className="text-muted-foreground text-xs leading-relaxed">
+          <p className="text-ink-4 text-xs leading-relaxed">
             Cada modelo muda a forma das categorias, o estilo dos cards, o
             hero e a barra inferior.
           </p>

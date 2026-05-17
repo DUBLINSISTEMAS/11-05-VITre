@@ -79,7 +79,7 @@ export function ThemeSelector({ currentTheme }: ThemeSelectorProps) {
   return (
     <div className="space-y-3">
       {activePresetId === null && (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-amber-900">
+        <div className="flex items-start gap-2 rounded-lg border border-warn/30 bg-warn-wash px-3 py-2.5 text-warn">
           <SparklesIcon className="mt-0.5 size-4 shrink-0" />
           <p className="text-xs leading-relaxed">
             Sua vitrine está com uma combinação personalizada. Aplicar um
@@ -98,28 +98,28 @@ export function ThemeSelector({ currentTheme }: ThemeSelectorProps) {
             <article
               key={id}
               className={cn(
-                "relative flex flex-col overflow-hidden rounded-xl border bg-card shadow-sm transition-all",
+                "relative flex flex-col overflow-hidden rounded-xl border bg-surface shadow-sm transition-all",
                 isActive
-                  ? "border-foreground/30 ring-2 ring-foreground/10"
-                  : "border-border hover:border-foreground/20",
+                  ? "border-brand ring-2 ring-brand/20"
+                  : "border-line hover:border-line-2",
               )}
             >
               {isActive && (
-                <span className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-full bg-foreground px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider text-background">
+                <span className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-full bg-brand px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider text-brand-foreground">
                   <CheckIcon className="size-2.5" /> Atual
                 </span>
               )}
 
-              <div className="bg-muted/40 p-3">
+              <div className="bg-bg-app p-3">
                 <ThemePreview preset={preset} />
               </div>
 
               <div className="flex flex-1 flex-col gap-3 p-4">
                 <header>
-                  <h3 className="text-[14px] font-semibold tracking-tight text-foreground">
+                  <h3 className="text-[14px] font-semibold tracking-tight text-ink-1">
                     {preset.name}
                   </h3>
-                  <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                  <p className="mt-1 text-[12px] leading-relaxed text-ink-4">
                     {preset.description}
                   </p>
                 </header>
@@ -176,7 +176,7 @@ export function ThemeSelector({ currentTheme }: ThemeSelectorProps) {
               Veja como sua vitrine fica com este modelo antes de aplicar.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-1 overflow-hidden bg-muted">
+          <div className="flex-1 overflow-hidden bg-bg-app">
             {previewingId ? (
               <iframe
                 key={previewingId}
@@ -186,7 +186,7 @@ export function ThemeSelector({ currentTheme }: ThemeSelectorProps) {
               />
             ) : null}
           </div>
-          <div className="border-t bg-card px-4 py-3">
+          <div className="border-t border-line bg-surface px-4 py-3">
             <Button
               type="button"
               className="w-full"
@@ -208,7 +208,7 @@ export function ThemeSelector({ currentTheme }: ThemeSelectorProps) {
         </DialogContent>
       </Dialog>
 
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs text-ink-4">
         Trocar de modelo é seguro e não afeta seus produtos, categorias ou
         pedidos — apenas o visual da vitrine. Você pode mudar quantas vezes
         quiser.

@@ -117,12 +117,12 @@ export function WhatsAppTemplateCard({
   };
 
   return (
-    <section className="bg-card rounded-2xl border p-4 shadow-sm sm:p-5">
+    <section className="b3-card p-4 sm:p-5">
       <header className="mb-3">
-        <h2 className="text-[15px] font-semibold tracking-tight">
+        <h2 className="text-[15px] font-semibold tracking-tight text-ink-1">
           Mensagem do pedido (WhatsApp)
         </h2>
-        <p className="text-muted-foreground mt-1 text-[12.5px] leading-relaxed">
+        <p className="text-ink-4 mt-1 text-[12.5px] leading-relaxed">
           Esta é a mensagem que CHEGA NO SEU WHATSAPP quando um cliente
           finaliza o pedido. Edite à vontade. Use os placeholders abaixo
           pra inserir nome do cliente, total, etc.
@@ -150,7 +150,7 @@ export function WhatsAppTemplateCard({
             key={p.token}
             type="button"
             onClick={() => handleInsertPlaceholder(p.token)}
-            className="hocus:bg-accent inline-flex items-center gap-1.5 rounded-full border bg-background px-2.5 py-1 font-mono text-[11px] transition-colors"
+            className="hocus:bg-bg-app inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1 font-mono text-[11px] text-ink-1 transition-colors"
             title={`Inserir ${p.token} — ${p.label}`}
           >
             <CopyIcon className="size-3 opacity-60" aria-hidden />
@@ -159,11 +159,11 @@ export function WhatsAppTemplateCard({
         ))}
       </div>
 
-      <div className="mt-4 rounded-xl border bg-muted/30 p-3">
-        <div className="mb-2 text-[12px] font-semibold text-foreground">
+      <div className="mt-4 rounded-xl border border-line bg-bg-app p-3">
+        <div className="mb-2 text-[12px] font-semibold text-ink-1">
           Prévia da mensagem
         </div>
-        <pre className="whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-muted-foreground">
+        <pre className="whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-ink-3">
           {preview}
         </pre>
       </div>

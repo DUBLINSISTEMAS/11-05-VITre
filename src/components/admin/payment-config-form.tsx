@@ -167,7 +167,7 @@ export function PaymentConfigForm({ initialData }: PaymentConfigFormProps) {
               </Select>
             )}
           />
-          <p className="text-muted-foreground text-xs">
+          <p className="text-ink-4 text-xs">
             Você pode sobrescrever esse limite por produto, na tela de
             edição (em &ldquo;Preços e promoção&rdquo;).
           </p>
@@ -204,7 +204,7 @@ export function PaymentConfigForm({ initialData }: PaymentConfigFormProps) {
               </Select>
             )}
           />
-          <p className="text-muted-foreground text-xs">
+          <p className="text-ink-4 text-xs">
             &ldquo;Preço cheio&rdquo; preserva o valor original mesmo em
             promoção (3× de R$ 100 em vez de 3× de R$ 80). &ldquo;Preço
             atual&rdquo; divide sempre pelo valor que o cliente paga hoje.
@@ -261,12 +261,12 @@ export function PaymentConfigForm({ initialData }: PaymentConfigFormProps) {
                     disabled={isPending}
                     aria-invalid={!!errors.cashDiscountBps}
                   />
-                  <span className="text-muted-foreground text-sm">% off</span>
+                  <span className="text-ink-4 text-sm">% off</span>
                 </div>
               );
             }}
           />
-          <p className="text-muted-foreground text-xs">
+          <p className="text-ink-4 text-xs">
             Vai aparecer no produto como &ldquo;à vista R$ X (Y% off)
             &rdquo;. O método (PIX, dinheiro) você descreve no campo abaixo.
           </p>
@@ -302,7 +302,7 @@ export function PaymentConfigForm({ initialData }: PaymentConfigFormProps) {
                       )
                     }
                   />
-                  <div className="text-muted-foreground flex justify-between text-xs">
+                  <div className="text-ink-4 flex justify-between text-xs">
                     <span>
                       Aparece no produto e no template do WhatsApp via{" "}
                       <code className="font-mono">{"{formaPagamento}"}</code>.
@@ -394,7 +394,7 @@ function ToggleRow({
           {label}
         </Label>
         {description ? (
-          <p className="text-muted-foreground text-[11px] leading-snug">
+          <p className="text-ink-4 text-[11px] leading-snug">
             {description}
           </p>
         ) : null}
@@ -417,11 +417,13 @@ interface FormCardProps {
 
 function FormCard({ title, description, children }: FormCardProps) {
   return (
-    <section className="bg-card rounded-xl border p-4 shadow-sm sm:p-5">
+    <section className="b3-card p-4 sm:p-5">
       <header className="mb-4 space-y-0.5">
-        <h2 className="text-[13.5px] font-semibold tracking-tight">{title}</h2>
+        <h2 className="text-[13.5px] font-semibold tracking-tight text-ink-1">
+          {title}
+        </h2>
         {description ? (
-          <p className="text-muted-foreground text-xs leading-relaxed">
+          <p className="text-ink-4 text-xs leading-relaxed">
             {description}
           </p>
         ) : null}
