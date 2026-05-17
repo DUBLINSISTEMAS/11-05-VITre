@@ -10,10 +10,10 @@ import Link from "next/link";
 interface OnboardingShellProps {
   /** Passo atual (1-indexed). */
   step: number;
-  /** Total de passos. Default 3. */
+  /** Total de passos. Default 4 (Dublin v3: conta → identidade → tipo de negócio → bem-vindo). */
   total?: number;
   /**
-   * Esconde o link "Já tenho conta · entrar" (tela 3 já não faz sentido —
+   * Esconde o link "Já tenho conta · entrar" (tela 4 já não faz sentido —
    * usuária já tem conta e está logada).
    */
   hideSignInLink?: boolean;
@@ -22,7 +22,7 @@ interface OnboardingShellProps {
 
 export function OnboardingShell({
   step,
-  total = 3,
+  total = 4,
   hideSignInLink = false,
   children,
 }: OnboardingShellProps) {

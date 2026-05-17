@@ -29,7 +29,7 @@ export default function BemVindoPage() {
 
 function WelcomeSkeleton() {
   return (
-    <OnboardingShell step={3} hideSignInLink>
+    <OnboardingShell step={4} hideSignInLink>
       <div className="flex items-center justify-center py-20">
         <div className="bg-muted size-8 animate-pulse rounded-full" />
       </div>
@@ -60,7 +60,7 @@ function WelcomeContent() {
   };
 
   return (
-    <OnboardingShell step={3} hideSignInLink>
+    <OnboardingShell step={4} hideSignInLink>
       <div className="overflow-y-auto px-4 py-12 sm:px-10 sm:py-[60px]">
         <div className="mx-auto max-w-[880px]">
           {/* Success ring */}

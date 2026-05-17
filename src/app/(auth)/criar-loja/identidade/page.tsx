@@ -13,17 +13,18 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import { createStore } from "@/actions/store/create-store";
 import {
   type CreateStoreInput,
   createStoreSchema,
 } from "@/actions/store/schema";
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell";
 import { SlugInput } from "@/components/onboarding/slug-input";
-import { SIGNUP_WHATSAPP_KEY } from "@/components/onboarding/storage-keys";
+import {
+  ONBOARDING_IDENTITY_KEY,
+  SIGNUP_WHATSAPP_KEY,
+} from "@/components/onboarding/storage-keys";
 import { WhatsAppInput } from "@/components/onboarding/whatsapp-input";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { clientEnv } from "@/lib/env-client";
 import { generateSlug, isValidSlugFormat } from "@/lib/slug";
@@ -35,15 +36,6 @@ const APP_URL_HOST =
     .replace(/^https?:\/\//, "")
     .replace(/\/$/, "")
     .replace(/^www\./, "") || "vitre.app";
-
-// 4 nichos visuais canvas (linha 192-196). "outro" não aparece como card —
-// quem não se encaixa escolhe o mais próximo e edita depois em /admin/configuracoes.
-const NICHE_CARDS = [
-  { value: "roupa_feminina", label: "Roupa", color: "oklch(0.45 0.18 250)" },
-  { value: "joia", label: "Joia", color: "oklch(0.55 0.12 75)" },
-  { value: "semijoia", label: "Semijoia", color: "oklch(0.62 0.13 25)" },
-  { value: "perfumaria", label: "Perfumaria", color: "oklch(0.42 0.08 175)" },
-] as const;
 
 // 5 cores canvas (linha 215-219). Hex equivalentes do oklch — convertidos
 // pra ficarem editáveis depois via ColorPicker (que aceita hex).
@@ -61,30 +53,52 @@ export default function CriarLojaIdentidadePage() {
   const [slugAvailable, setSlugAvailable] = useState(false);
   const slugManuallyEdited = useRef(false);
 
+  // Onda 3 port Dublin (ADR-0019): identidade NÃO chama createStore.
+  // Persiste em sessionStorage e roteia pra /tipo-negocio. createStore
+  // só é chamado no passo 3 com identity + niche + opt-in mesclados.
   const form = useForm<CreateStoreInput>({
     resolver: zodResolver(createStoreSchema),
     defaultValues: {
       name: "",
       slug: "",
-      niche: "roupa_feminina",
+      niche: "roupa_feminina", // hidden default; usuária escolhe no passo 3
       whatsappNumber: "",
       primaryColor: "#1E3FE6",
       addressCity: "",
       addressState: "",
-      includeNicheCategories: true,
+      includeNicheCategories: true, // hidden default; usuária pode desmarcar no passo 3
     },
     mode: "onTouched",
   });
 
   // Hidrata WhatsApp do sessionStorage (vindo da tela 1 Conta).
+  // Também hidrata o snapshot completo de identidade caso usuária esteja
+  // voltando do passo 3 (tipo-negocio) — todos os campos preenchidos no
+  // passo 2 ficam preservados.
   useEffect(() => {
     try {
-      const stored = sessionStorage.getItem(SIGNUP_WHATSAPP_KEY);
-      if (stored && isValidWhatsAppBR(stored)) {
-        form.setValue("whatsappNumber", stored, { shouldValidate: true });
+      const storedWhatsapp = sessionStorage.getItem(SIGNUP_WHATSAPP_KEY);
+      if (storedWhatsapp && isValidWhatsAppBR(storedWhatsapp)) {
+        form.setValue("whatsappNumber", storedWhatsapp, { shouldValidate: true });
+      }
+
+      const storedIdentity = sessionStorage.getItem(ONBOARDING_IDENTITY_KEY);
+      if (storedIdentity) {
+        const parsed = JSON.parse(storedIdentity) as Partial<CreateStoreInput>;
+        if (parsed.name) form.setValue("name", parsed.name);
+        if (parsed.slug) {
+          form.setValue("slug", parsed.slug);
+          slugManuallyEdited.current = true;
+        }
+        if (parsed.whatsappNumber && isValidWhatsAppBR(parsed.whatsappNumber)) {
+          form.setValue("whatsappNumber", parsed.whatsappNumber);
+        }
+        if (parsed.primaryColor) form.setValue("primaryColor", parsed.primaryColor);
+        if (parsed.addressCity) form.setValue("addressCity", parsed.addressCity);
+        if (parsed.addressState) form.setValue("addressState", parsed.addressState);
       }
     } catch {
-      // private mode — nada a fazer.
+      // private mode / JSON.parse falhou — nada a fazer.
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -110,24 +124,27 @@ export default function CriarLojaIdentidadePage() {
       toast.error("Confirme um endereço disponível.");
       return;
     }
-    startTransition(async () => {
-      const result = await createStore(values);
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-      // Limpa sessionStorage do WhatsApp (já persistido na store).
+    // Onda 3 port Dublin: persiste snapshot da identidade e roteia
+    // pro passo 3 (tipo-negocio). createStore é chamado lá com tudo
+    // mesclado (identity + niche + opt-in).
+    startTransition(() => {
       try {
-        sessionStorage.removeItem(SIGNUP_WHATSAPP_KEY);
+        sessionStorage.setItem(
+          ONBOARDING_IDENTITY_KEY,
+          JSON.stringify({
+            name: values.name,
+            slug: values.slug,
+            whatsappNumber: values.whatsappNumber,
+            primaryColor: values.primaryColor,
+            addressCity: values.addressCity,
+            addressState: values.addressState,
+          }),
+        );
       } catch {
-        /* ignore */
+        // private mode — segue sem persistir. Usuária perde estado
+        // se voltar do passo 3, mas o fluxo principal completa.
       }
-      const params = new URLSearchParams({
-        nome: values.name,
-        slug: values.slug,
-      });
-      router.push(`/criar-loja/bem-vindo?${params.toString()}`);
-      router.refresh();
+      router.push("/criar-loja/tipo-negocio");
     });
   };
 
@@ -259,91 +276,6 @@ export default function CriarLojaIdentidadePage() {
                 </Section>
               ) : null}
 
-              {/* Nicho */}
-              <Section
-                label="O que você vende?"
-                hint="Ajuda a sugerir categorias e modelos de produto."
-              >
-                <Controller
-                  name="niche"
-                  control={form.control}
-                  render={({ field }) => (
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      {NICHE_CARDS.map((n) => {
-                        const active = field.value === n.value;
-                        return (
-                          <button
-                            key={n.value}
-                            type="button"
-                            onClick={() => field.onChange(n.value)}
-                            disabled={isPending}
-                            className={cn(
-                              "flex cursor-pointer flex-col items-start gap-2 rounded-[10px] border-[1.5px] px-3 py-3.5 text-left transition-colors hocus:border-foreground/40",
-                              active
-                                ? "shadow-sm"
-                                : "border-border bg-card",
-                            )}
-                            style={
-                              active
-                                ? {
-                                    borderColor: n.color,
-                                    background: `color-mix(in oklch, ${n.color} 8%, white)`,
-                                  }
-                                : undefined
-                            }
-                          >
-                            <span
-                              aria-hidden
-                              className="size-6 rounded-md"
-                              style={{ background: n.color }}
-                            />
-                            <span
-                              className="text-[12.5px] font-semibold"
-                              style={{ color: active ? n.color : undefined }}
-                            >
-                              {n.label}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                />
-
-                {/* Opt-in: categorias sugeridas do nicho. */}
-                <Controller
-                  name="includeNicheCategories"
-                  control={form.control}
-                  render={({ field }) => (
-                    <label
-                      className={cn(
-                        "mt-3 flex items-start gap-3 rounded-[10px] border bg-card px-3 py-3 transition-colors",
-                        "hocus-within:border-foreground/30 cursor-pointer",
-                      )}
-                    >
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={(checked) =>
-                          field.onChange(checked === true)
-                        }
-                        disabled={isPending}
-                        className="mt-0.5"
-                        aria-label="Criar categorias sugeridas do nicho"
-                      />
-                      <div className="flex-1">
-                        <span className="text-foreground block text-[12.5px] font-medium">
-                          Criar categorias sugeridas
-                        </span>
-                        <p className="text-muted-foreground mt-0.5 text-[11px] leading-[1.4]">
-                          Adicionamos algumas categorias comuns do seu nicho. Você
-                          pode editar, renomear ou apagar depois.
-                        </p>
-                      </div>
-                    </label>
-                  )}
-                />
-              </Section>
-
               {/* Cor da loja */}
               <Section
                 label="Cor da loja"
@@ -411,7 +343,7 @@ export default function CriarLojaIdentidadePage() {
                   {isPending ? (
                     <>
                       <Loader2Icon className="size-4 animate-spin" />
-                      Criando…
+                      Continuando…
                     </>
                   ) : (
                     <>
