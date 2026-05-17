@@ -15,8 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
-
 import type { CategoryOption } from "./category-dialog";
 
 const CATEGORY_ALL = "__all__";
@@ -115,7 +113,7 @@ export function ProductsFilters({ categories }: ProductsFiltersProps) {
       <div className="relative flex-1 sm:max-w-sm">
         <SearchIcon
           aria-hidden
-          className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
+          className="text-ink-4 pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
         />
         <Input
           type="search"
@@ -128,7 +126,7 @@ export function ProductsFilters({ categories }: ProductsFiltersProps) {
         />
         <kbd
           aria-hidden
-          className="border-border bg-muted text-muted-foreground pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded border px-1.5 font-mono text-[10px] sm:inline-block"
+          className="border-line bg-bg-app text-ink-4 pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded border px-1.5 font-mono text-[10px] sm:inline-block"
         >
           ⌘K
         </kbd>
@@ -178,7 +176,7 @@ export function ProductsFilters({ categories }: ProductsFiltersProps) {
           size="sm"
           onClick={togglePromo}
           aria-pressed={onlyPromo}
-          className={cn("h-9 gap-1.5", onlyPromo && "shadow-brand-sm")}
+          className="h-9 gap-1.5"
         >
           <SparklesIcon className="size-4" />
           <span>Em promoção</span>
@@ -190,7 +188,7 @@ export function ProductsFilters({ categories }: ProductsFiltersProps) {
             variant="ghost"
             size="sm"
             onClick={clearAll}
-            className="text-muted-foreground h-9"
+            className="text-ink-4 h-9"
             aria-label="Limpar filtros"
           >
             <XIcon className="size-4" /> Limpar

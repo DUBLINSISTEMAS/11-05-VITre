@@ -32,12 +32,12 @@ export function StockInput({ value, onChange, disabled }: StockInputProps) {
 
   return (
     <div className="space-y-3">
-      <div className="bg-muted/30 flex items-center justify-between gap-3 rounded-xl border p-3">
+      <div className="bg-bg-app flex items-center justify-between gap-3 rounded-xl border border-line p-3">
         <div className="space-y-0.5">
           <Label htmlFor={switchId} className="cursor-pointer text-sm">
             Controlar estoque
           </Label>
-          <p className="text-muted-foreground text-xs">
+          <p className="text-ink-4 text-xs">
             {value.trackStock
               ? "Cliente vê 'esgotado' quando chegar a 0."
               : "Estoque ilimitado — sempre disponível."}

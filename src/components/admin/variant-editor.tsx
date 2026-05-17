@@ -120,7 +120,7 @@ export function VariantEditor({
   };
 
   return (
-    <div className="bg-muted/30 rounded-xl border">
+    <div className="bg-bg-app rounded-xl border border-line">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
@@ -129,17 +129,17 @@ export function VariantEditor({
         aria-controls={panelId}
       >
         <div className="flex items-center gap-2">
-          <span className="font-medium">Variantes</span>
-          <span className="text-muted-foreground text-xs">(opcional)</span>
+          <span className="font-medium text-ink-1">Variantes</span>
+          <span className="text-ink-4 text-xs">(opcional)</span>
           {value.length > 0 ? (
-            <span className="bg-vitre-100 text-vitre-700 rounded-full px-2 py-0.5 text-xs font-medium">
+            <span className="b3-pill b3-pill--brand">
               {value.length}
             </span>
           ) : null}
         </div>
         <ChevronDownIcon
           className={cn(
-            "text-muted-foreground size-4 transition-transform",
+            "text-ink-4 size-4 transition-transform",
             expanded && "rotate-180",
           )}
           aria-hidden
@@ -149,13 +149,13 @@ export function VariantEditor({
       {expanded ? (
         <div id={panelId} className="space-y-3 px-4 pb-4">
           {value.length === 0 ? (
-            <p className="text-muted-foreground text-xs leading-relaxed">
+            <p className="text-ink-4 text-xs leading-relaxed">
               Use variantes quando o produto tem tamanhos, cores ou outras
               opções com preço/estoque diferentes. Ex: P, M, G; Aro 14, 16,
               18; 100ml, 200ml.
             </p>
           ) : (
-            <p className="text-muted-foreground text-xs leading-relaxed">
+            <p className="text-ink-4 text-xs leading-relaxed">
               Use apenas um tipo de variante por produto: tamanho ou cor.
             </p>
           )}
@@ -187,7 +187,7 @@ export function VariantEditor({
               <PlusIcon /> Adicionar variante
             </Button>
           ) : (
-            <p className="text-muted-foreground text-center text-xs">
+            <p className="text-ink-4 text-center text-xs">
               Limite de {maxVariants} variantes atingido.
             </p>
           )}
@@ -230,7 +230,7 @@ function VariantRow({
     variant.axis === "color" ? "Cru · Café · Preto" : "P · 14 · 100ml";
 
   return (
-    <div className="bg-card rounded-lg border p-3">
+    <div className="b3-card rounded-lg p-3">
       <div className="flex items-start gap-2">
         <div className="flex-1 space-y-1.5">
           <Label htmlFor={nameId} className="text-xs">
@@ -342,7 +342,7 @@ function VariantRow({
               />
               <span
                 aria-hidden
-                className="border-border size-6 shrink-0 rounded-full border"
+                className="border-line size-6 shrink-0 rounded-full border"
                 style={{
                   background: variant.colorHex || "transparent",
                 }}
@@ -355,7 +355,7 @@ function VariantRow({
       {productImages.length > 0 ? (
         <div className="mt-3 space-y-1.5">
           <Label className="text-xs">Foto destacada (opcional)</Label>
-          <p className="text-muted-foreground text-[11px] leading-relaxed">
+          <p className="text-ink-4 text-[11px] leading-relaxed">
             Quando o cliente selecionar essa variação, essa foto vai
             aparecer em destaque na galeria.
           </p>
@@ -366,9 +366,9 @@ function VariantRow({
               disabled={disabled}
               aria-pressed={variant.featuredImageId === null}
               className={cn(
-                "bg-muted text-muted-foreground hocus:bg-muted/80 flex h-12 w-12 shrink-0 items-center justify-center rounded-md border-2 text-[9.5px] font-medium tracking-wide uppercase transition-colors",
+                "bg-bg-app text-ink-4 hocus:bg-line flex h-12 w-12 shrink-0 items-center justify-center rounded-md border-2 text-[9.5px] font-medium tracking-wide uppercase transition-colors",
                 variant.featuredImageId === null
-                  ? "border-foreground"
+                  ? "border-ink-1"
                   : "border-transparent",
                 disabled && "cursor-not-allowed opacity-50",
               )}
@@ -390,8 +390,8 @@ function VariantRow({
                   className={cn(
                     "relative h-12 w-12 shrink-0 overflow-hidden rounded-md border-2 transition-all",
                     selected
-                      ? "border-foreground"
-                      : "border-transparent hover:border-muted-foreground/40",
+                      ? "border-ink-1"
+                      : "border-transparent hover:border-ink-5",
                     disabled && "cursor-not-allowed opacity-50",
                   )}
                 >

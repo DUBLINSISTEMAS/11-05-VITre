@@ -428,12 +428,12 @@ export function ProductForm({
                 ) : null}
               </div>
             </div>
-            <p className="text-muted-foreground text-xs">
+            <p className="text-ink-4 text-xs">
               A promoção fica ativa enquanto preenchida. Para parar, limpe o campo.
             </p>
 
             {/* Override de parcelas por produto — Fase 2 / ADR-0013 */}
-            <div className="space-y-1.5 border-t pt-3">
+            <div className="space-y-1.5 border-t border-line pt-3">
               <Label htmlFor="product-installments-override">
                 Parcelar até (sobrescreve a loja)
               </Label>
@@ -467,7 +467,7 @@ export function ProductForm({
                   </Select>
                 )}
               />
-              <p className="text-muted-foreground text-xs">
+              <p className="text-ink-4 text-xs">
                 Deixe &ldquo;padrão da loja&rdquo; pra usar o limite
                 definido em Pagamento (menu lateral). Útil pra peças
                 mais caras que merecem mais parcelas.
@@ -480,7 +480,7 @@ export function ProductForm({
             </div>
 
             {/* Override de desconto à vista por produto — Fase 2 / ADR-0013 */}
-            <div className="space-y-1.5 border-t pt-3">
+            <div className="space-y-1.5 border-t border-line pt-3">
               <Label htmlFor="product-cash-discount-override">
                 Desconto à vista (sobrescreve a loja)
               </Label>
@@ -568,7 +568,7 @@ export function ProductForm({
                             disabled={isPending}
                             aria-invalid={!!errors.cashDiscountOverrideBps}
                           />
-                          <span className="text-muted-foreground text-sm">
+                          <span className="text-ink-4 text-sm">
                             % off
                           </span>
                         </div>
@@ -577,7 +577,7 @@ export function ProductForm({
                   );
                 }}
               />
-              <p className="text-muted-foreground text-xs">
+              <p className="text-ink-4 text-xs">
                 Útil pra peça encalhada (queima estoque) ou pra desligar o
                 desconto em produto que já está com margem apertada.
               </p>
@@ -817,13 +817,13 @@ interface FormCardProps {
 
 function FormCard({ title, description, children }: FormCardProps) {
   return (
-    <section className="bg-card flex flex-col gap-4 rounded-2xl border p-4 shadow-sm sm:p-5 xl:p-6">
+    <section className="b3-card flex flex-col gap-4 rounded-2xl p-4 sm:p-5 xl:p-6">
       <header className="space-y-0.5">
-        <h2 className="text-[13.5px] font-semibold tracking-tight text-foreground">
+        <h2 className="text-[13.5px] font-semibold tracking-tight text-ink-1">
           {title}
         </h2>
         {description ? (
-          <p className="text-muted-foreground text-[11.5px] leading-relaxed">
+          <p className="text-ink-4 text-[11.5px] leading-relaxed">
             {description}
           </p>
         ) : null}
@@ -886,13 +886,13 @@ function ToggleRow({
   disabled,
 }: ToggleRowProps) {
   return (
-    <div className="flex items-start justify-between gap-3 border-b pb-3 last:border-0 last:pb-0">
+    <div className="flex items-start justify-between gap-3 border-b border-line pb-3 last:border-0 last:pb-0">
       <div className="min-w-0 flex-1 space-y-0.5">
         <Label htmlFor={id} className="text-[12.5px] font-medium">
           {label}
         </Label>
         {description ? (
-          <p className="text-muted-foreground text-[11px] leading-snug">
+          <p className="text-ink-4 text-[11px] leading-snug">
             {description}
           </p>
         ) : null}

@@ -272,11 +272,11 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
         <ProductsErrorToast />
       </Suspense>
 
-      <Suspense fallback={<div className="bg-muted/30 h-10 animate-pulse rounded-md" />}>
+      <Suspense fallback={<div className="bg-bg-app h-10 animate-pulse rounded-md" />}>
         <ProductsStatusTabs counts={tabCounts} />
       </Suspense>
 
-      <Suspense fallback={<div className="bg-muted/30 h-10 animate-pulse rounded-md" />}>
+      <Suspense fallback={<div className="bg-bg-app h-10 animate-pulse rounded-md" />}>
         <ProductsFilters categories={filterCategories} />
       </Suspense>
 
@@ -311,12 +311,12 @@ function renderCountLabel(total: number, filtered: boolean): string {
 
 function EmptyState() {
   return (
-    <div className="border-border/60 flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-12">
-      <div className="bg-primary/10 text-primary flex size-12 items-center justify-center rounded-full">
+    <div className="border-line flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-12">
+      <div className="bg-brand-wash text-brand flex size-12 items-center justify-center rounded-full">
         <PackageIcon className="size-6" />
       </div>
-      <h2 className="text-lg font-semibold">Comece sua vitrine</h2>
-      <p className="text-muted-foreground max-w-sm text-sm">
+      <h2 className="text-lg font-semibold text-ink-1">Comece sua vitrine</h2>
+      <p className="text-ink-4 max-w-sm text-sm">
         Cadastre seu primeiro produto. Depois você pode publicar quando
         quiser que apareça pros seus clientes.
       </p>
@@ -329,14 +329,14 @@ function EmptyState() {
 
 function NoResults({ onlyPromo }: { onlyPromo: boolean }) {
   return (
-    <div className="border-border/60 flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-12">
-      <div className="bg-muted text-muted-foreground flex size-12 items-center justify-center rounded-full">
+    <div className="border-line flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-12">
+      <div className="bg-bg-app text-ink-4 flex size-12 items-center justify-center rounded-full">
         <SearchXIcon className="size-6" />
       </div>
-      <h2 className="text-lg font-semibold">
+      <h2 className="text-lg font-semibold text-ink-1">
         {onlyPromo ? "Nenhum produto em promoção agora" : "Nada por aqui"}
       </h2>
-      <p className="text-muted-foreground max-w-sm text-sm">
+      <p className="text-ink-4 max-w-sm text-sm">
         {onlyPromo
           ? "Quando você definir um preço promocional num produto, ele aparece aqui."
           : "Tente outros termos de busca ou limpe os filtros."}

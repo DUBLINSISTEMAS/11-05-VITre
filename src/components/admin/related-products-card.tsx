@@ -102,18 +102,18 @@ export function RelatedProductsCard({
   };
 
   return (
-    <section className="bg-card rounded-2xl border p-4 shadow-sm sm:p-5">
+    <section className="b3-card rounded-2xl p-4 sm:p-5">
       <header className="mb-3 flex items-start justify-between gap-3">
         <div className="space-y-0.5">
-          <h2 className="text-[13.5px] font-semibold tracking-tight text-foreground">
+          <h2 className="text-[13.5px] font-semibold tracking-tight text-ink-1">
             Produtos relacionados
           </h2>
-          <p className="text-muted-foreground text-[11.5px] leading-relaxed">
+          <p className="text-ink-4 text-[11.5px] leading-relaxed">
             Ordem manual: os selecionados aparecem primeiro. Se faltar produto,
             a vitrine completa automaticamente com itens da mesma categoria.
           </p>
         </div>
-        <span className="font-mono text-[10.5px] uppercase tracking-[0.5px] text-muted-foreground">
+        <span className="font-mono text-[10.5px] uppercase tracking-[0.5px] text-ink-4">
           {selectedIds.length}/{MAX_RELATED}
         </span>
       </header>
@@ -124,12 +124,12 @@ export function RelatedProductsCard({
           {selectedItems.map((item, idx) => (
             <li
               key={item.id}
-              className="bg-muted/30 group flex items-center gap-3 rounded-lg border border-transparent px-2 py-2 hover:border-border"
+              className="bg-bg-app group flex items-center gap-3 rounded-lg border border-transparent px-2 py-2 hover:border-line-2"
             >
-              <span className="font-mono text-[10px] text-muted-foreground w-5 tabular-nums">
+              <span className="font-mono text-[10px] text-ink-4 w-5 tabular-nums">
                 {idx + 1}
               </span>
-              <div className="bg-background relative size-10 shrink-0 overflow-hidden rounded-md">
+              <div className="bg-surface relative size-10 shrink-0 overflow-hidden rounded-md">
                 {item.cover ? (
                   <Image
                     src={item.cover}
@@ -140,18 +140,18 @@ export function RelatedProductsCard({
                   />
                 ) : (
                   <span className="flex size-full items-center justify-center">
-                    <PackageIcon className="text-muted-foreground/60 size-4" />
+                    <PackageIcon className="text-ink-5 size-4" />
                   </span>
                 )}
               </div>
-              <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium">
+              <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-ink-1">
                 {item.name}
               </span>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="size-7 shrink-0 text-muted-foreground hocus:text-destructive"
+                className="size-7 shrink-0 text-ink-4 hocus:text-danger"
                 onClick={() => handleRemove(item.id)}
                 aria-label={`Remover ${item.name}`}
               >
@@ -161,7 +161,7 @@ export function RelatedProductsCard({
           ))}
         </ul>
       ) : (
-        <p className="bg-muted/20 mb-3 rounded-lg border border-dashed py-4 text-center text-[11.5px] text-muted-foreground">
+        <p className="bg-bg-app/40 mb-3 rounded-lg border border-dashed border-line py-4 text-center text-[11.5px] text-ink-4">
           Nenhum produto selecionado.
         </p>
       )}
@@ -177,15 +177,15 @@ export function RelatedProductsCard({
           className="text-[13px]"
         />
         {filteredSuggestions.length > 0 ? (
-          <ul className="bg-card absolute inset-x-0 top-full z-10 mt-1 max-h-60 overflow-y-auto rounded-lg border shadow-md">
+          <ul className="bg-surface absolute inset-x-0 top-full z-10 mt-1 max-h-60 overflow-y-auto rounded-lg border border-line shadow-md">
             {filteredSuggestions.map((c) => (
               <li key={c.id}>
                 <button
                   type="button"
                   onClick={() => handleAdd(c.id)}
-                  className="hocus:bg-accent flex w-full items-center gap-3 px-3 py-2 text-left transition-colors"
+                  className="hocus:bg-bg-app flex w-full items-center gap-3 px-3 py-2 text-left transition-colors"
                 >
-                  <div className="bg-muted relative size-8 shrink-0 overflow-hidden rounded-md">
+                  <div className="bg-bg-app relative size-8 shrink-0 overflow-hidden rounded-md">
                     {c.cover ? (
                       <Image
                         src={c.cover}
@@ -195,13 +195,13 @@ export function RelatedProductsCard({
                         className="object-cover"
                       />
                     ) : (
-                      <PackageIcon className="text-muted-foreground/60 m-auto size-4" />
+                      <PackageIcon className="text-ink-5 m-auto size-4" />
                     )}
                   </div>
-                  <span className="truncate text-[12.5px] font-medium">
+                  <span className="truncate text-[12.5px] font-medium text-ink-1">
                     {c.name}
                   </span>
-                  <PlusIcon className="text-muted-foreground ml-auto size-4 shrink-0" />
+                  <PlusIcon className="text-ink-4 ml-auto size-4 shrink-0" />
                 </button>
               </li>
             ))}

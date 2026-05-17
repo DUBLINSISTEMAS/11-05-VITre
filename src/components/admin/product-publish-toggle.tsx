@@ -61,7 +61,7 @@ export function ProductPublishToggle({
             : "Pausado — só você vê"
       }
     >
-      <span className="text-muted-foreground hidden sm:inline">
+      <span className="text-ink-4 hidden sm:inline">
         {optimistic ? "Visível" : "Pausado"}
       </span>
       <Switch

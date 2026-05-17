@@ -82,19 +82,19 @@ export function BulkActionsToolbar({
   if (count === 0) return null;
 
   return (
-    <div className="bg-foreground text-background sticky bottom-4 z-20 mx-auto flex w-fit items-center gap-2 rounded-xl px-3 py-2 shadow-lg">
+    <div className="bg-ink-1 text-white sticky bottom-4 z-20 mx-auto flex w-fit items-center gap-2 rounded-xl px-3 py-2 shadow-lg">
       <button
         type="button"
         onClick={onClear}
         aria-label="Limpar seleção"
-        className="hocus:bg-background/15 flex size-7 items-center justify-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-background/40"
+        className="hocus:bg-white/15 flex size-7 items-center justify-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-white/40"
       >
         <XIcon className="size-4" />
       </button>
       <span className="font-mono text-[12.5px] font-medium tabular-nums">
         {count} selecionado{count === 1 ? "" : "s"}
       </span>
-      <span aria-hidden className="bg-background/20 mx-1 h-5 w-px" />
+      <span aria-hidden className="bg-white/20 mx-1 h-5 w-px" />
 
       <Button
         type="button"
@@ -102,7 +102,7 @@ export function BulkActionsToolbar({
         variant="ghost"
         disabled={isPending}
         onClick={() => handleToggle(true)}
-        className="text-background hover:bg-background/15 hover:text-background h-8"
+        className="text-white hover:bg-white/15 hover:text-white h-8"
       >
         <EyeIcon className="size-3.5" /> Publicar
       </Button>
@@ -112,7 +112,7 @@ export function BulkActionsToolbar({
         variant="ghost"
         disabled={isPending}
         onClick={() => handleToggle(false)}
-        className="text-background hover:bg-background/15 hover:text-background h-8"
+        className="text-white hover:bg-white/15 hover:text-white h-8"
       >
         <EyeOffIcon className="size-3.5" /> Pausar
       </Button>
@@ -124,7 +124,7 @@ export function BulkActionsToolbar({
             size="sm"
             variant="ghost"
             disabled={isPending}
-            className="text-destructive-soft hover:bg-destructive/15 hover:text-destructive-soft h-8"
+            className="text-danger-wash hover:bg-danger/15 hover:text-danger-wash h-8"
           >
             <Trash2Icon className="size-3.5" /> Excluir
           </Button>

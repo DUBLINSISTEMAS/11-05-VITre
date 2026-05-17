@@ -83,7 +83,7 @@ export function DeleteProductDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Excluir produto?</AlertDialogTitle>
           <AlertDialogDescription>
-            <span className="text-foreground font-medium">
+            <span className="text-ink-1 font-medium">
               {productName || "Este produto"}
             </span>{" "}
             e todas as suas fotos e variantes serão removidos. Esta ação não

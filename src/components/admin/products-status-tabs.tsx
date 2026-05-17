@@ -73,8 +73,8 @@ export function ProductsStatusTabs({ counts }: ProductsStatusTabsProps) {
             className={cn(
               "shrink-0 rounded-md px-3 py-1.5 text-[12.5px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
               isActive
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hocus:bg-accent hocus:text-foreground",
+                ? "bg-brand text-white"
+                : "text-ink-3 hocus:bg-bg-app hocus:text-ink-1",
             )}
           >
             {tab.label}

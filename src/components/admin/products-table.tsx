@@ -1,12 +1,14 @@
 "use client";
 
-// Lista de produtos do admin (canvas-v1 admin Lote 3).
+// Lista de produtos do admin (port Dublin v3, Onda 5b).
 //
-// - Desktop (lg+): tabela densa estilo canvas — checkbox · foto 64×80 ·
-//   nome+sku · preço · estoque · status pill · ações kebab. Header
-//   monospace uppercase. Linhas grid template fixo.
+// - Desktop (lg+): tabela densa estilo BAGY — checkbox · foto · nome+sku ·
+//   preço · estoque · status pill · ações editar. Header monospace
+//   uppercase em bg-app, linhas com grid CSS (não <table>; portanto NÃO
+//   usa `b3-tbl` que é seletor de <table>).
 // - Mobile (<lg): grid de cards visuais (mantém UX do lojista mobile-first).
 //
+// Status pills migram pra `b3-pill b3-pill--{ok,warn,danger}` Dublin.
 // Selection state: `selectedIds` Set local. Quando >0, renderiza
 // `<BulkActionsToolbar>` sticky bottom dentro do card de listagem.
 // `onMutated` (do toolbar) limpa seleção e força re-render via router.refresh.
@@ -84,10 +86,10 @@ export function ProductsTable({ products }: ProductsTableProps) {
   return (
     <div className="space-y-4">
       {/* Desktop: tabela densa */}
-      <div className="bg-card hidden overflow-hidden rounded-xl border shadow-sm lg:block">
+      <div className="b3-card hidden overflow-hidden lg:block">
         <div
           role="rowgroup"
-          className="text-eyebrow bg-muted/50 grid grid-cols-[40px_64px_minmax(0,1.6fr)_100px_minmax(0,1fr)_100px_88px_40px] items-center gap-3 border-b px-4 py-3"
+          className="text-eyebrow bg-bg-app grid grid-cols-[40px_64px_minmax(0,1.6fr)_100px_minmax(0,1fr)_100px_88px_40px] items-center gap-3 border-b border-line px-4 py-3"
         >
           <span aria-hidden className="flex items-center justify-center">
             <Checkbox
@@ -105,7 +107,7 @@ export function ProductsTable({ products }: ProductsTableProps) {
           <span aria-hidden />
         </div>
 
-        <ul role="rowgroup" className="divide-y">
+        <ul role="rowgroup" className="divide-y divide-line">
           {products.map((p) => {
             const isDraft = !p.name.trim() || p.slug.startsWith("draft-");
             const onPromoNow = hasActivePromo(p);
@@ -118,8 +120,8 @@ export function ProductsTable({ products }: ProductsTableProps) {
                 className={cn(
                   "grid grid-cols-[40px_64px_minmax(0,1.6fr)_100px_minmax(0,1fr)_100px_88px_40px] items-center gap-3 px-4 py-3 transition-colors",
                   isSelected
-                    ? "bg-primary/5"
-                    : "hover:bg-accent/30",
+                    ? "bg-brand-wash"
+                    : "hover:bg-bg-app",
                 )}
               >
                 <span className="flex items-center justify-center">
@@ -132,7 +134,7 @@ export function ProductsTable({ products }: ProductsTableProps) {
                 <Link
                   href={editHref(p.id)}
                   prefetch
-                  className="bg-muted relative block size-12 shrink-0 overflow-hidden rounded-md"
+                  className="bg-bg-app relative block size-12 shrink-0 overflow-hidden rounded-md"
                   aria-label={`Editar ${p.name || "rascunho"}`}
                 >
                   {p.cover ? (
@@ -145,34 +147,34 @@ export function ProductsTable({ products }: ProductsTableProps) {
                     />
                   ) : (
                     <span className="flex size-full items-center justify-center">
-                      <PackageIcon className="text-muted-foreground size-4" />
+                      <PackageIcon className="text-ink-4 size-4" />
                     </span>
                   )}
                 </Link>
                 <Link
                   href={editHref(p.id)}
                   prefetch
-                  className="hocus:text-primary min-w-0 truncate text-left text-[13px] font-medium text-foreground transition-colors"
+                  className="hocus:text-brand min-w-0 truncate text-left text-[13px] font-medium text-ink-1 transition-colors"
                 >
                   {isDraft ? (
-                    <span className="text-muted-foreground italic">
+                    <span className="text-ink-4 italic">
                       Rascunho sem nome
                     </span>
                   ) : (
                     p.name
                   )}
                 </Link>
-                <span className="font-mono text-[11.5px] text-muted-foreground">
+                <span className="font-mono text-[11.5px] text-ink-4">
                   {skuPlaceholder}
                 </span>
                 <span className="flex flex-wrap items-baseline gap-1.5">
-                  <span className="font-mono text-[12.5px] text-foreground tabular-nums">
+                  <span className="font-mono text-[12.5px] text-ink-1 tabular-nums">
                     {formatPriceLabel(p)}
                   </span>
                   {onPromoNow ? (
                     <SparklesIcon
                       aria-label="Em promoção"
-                      className="text-warning-foreground size-3"
+                      className="text-warn size-3"
                     />
                   ) : null}
                 </span>
@@ -192,7 +194,7 @@ export function ProductsTable({ products }: ProductsTableProps) {
                   href={editHref(p.id)}
                   prefetch
                   aria-label={`Editar ${p.name || "rascunho"}`}
-                  className="hocus:bg-accent flex size-7 items-center justify-center rounded-md text-muted-foreground"
+                  className="hocus:bg-bg-app hocus:text-ink-1 flex size-7 items-center justify-center rounded-md text-ink-4 transition-colors"
                 >
                   <PencilIcon className="size-4" />
                 </Link>
@@ -212,8 +214,8 @@ export function ProductsTable({ products }: ProductsTableProps) {
             <li key={p.id}>
               <div
                 className={cn(
-                  "bg-card flex items-center gap-3 rounded-xl border p-3",
-                  isSelected && "ring-primary/30 ring-2",
+                  "b3-card flex items-center gap-3 p-3",
+                  isSelected && "ring-brand/30 ring-2",
                 )}
               >
                 <Checkbox
@@ -226,7 +228,7 @@ export function ProductsTable({ products }: ProductsTableProps) {
                   prefetch
                   className="flex flex-1 items-center gap-3 text-left"
                 >
-                  <div className="bg-muted relative size-16 shrink-0 overflow-hidden rounded-lg sm:size-20">
+                  <div className="bg-bg-app relative size-16 shrink-0 overflow-hidden rounded-lg sm:size-20">
                     {p.cover ? (
                       <Image
                         src={p.cover}
@@ -237,21 +239,21 @@ export function ProductsTable({ products }: ProductsTableProps) {
                       />
                     ) : (
                       <div className="flex size-full items-center justify-center">
-                        <PackageIcon className="text-muted-foreground size-6" />
+                        <PackageIcon className="text-ink-4 size-6" />
                       </div>
                     )}
                   </div>
                   <div className="min-w-0 flex-1 space-y-1">
-                    <p className="truncate font-medium">
+                    <p className="truncate font-medium text-ink-1">
                       {isDraft ? (
-                        <span className="text-muted-foreground italic">
+                        <span className="text-ink-4 italic">
                           Rascunho sem nome
                         </span>
                       ) : (
                         p.name
                       )}
                     </p>
-                    <p className="text-muted-foreground text-xs">
+                    <p className="text-ink-4 text-xs">
                       {formatPriceLabel(p)}
                     </p>
                     <div className="flex flex-wrap items-center gap-1">
@@ -262,7 +264,7 @@ export function ProductsTable({ products }: ProductsTableProps) {
                         isDraft={isDraft}
                       />
                       {onPromoNow ? (
-                        <span className="bg-warning-soft text-warning-foreground inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium">
+                        <span className="b3-pill b3-pill--warn">
                           <SparklesIcon className="size-2.5" /> Promo
                         </span>
                       ) : null}
@@ -293,7 +295,7 @@ function StockCell({
   quantity: number | null;
 }) {
   if (!trackStock) {
-    return <span className="text-[11.5px] text-muted-foreground">—</span>;
+    return <span className="text-[11.5px] text-ink-4">—</span>;
   }
   const q = quantity ?? 0;
   const isOut = q === 0;
@@ -301,7 +303,7 @@ function StockCell({
     <span
       className={cn(
         "font-mono text-[12.5px] tabular-nums",
-        isOut ? "text-destructive" : "text-foreground",
+        isOut ? "text-danger" : "text-ink-1",
       )}
     >
       {q}
@@ -323,31 +325,31 @@ function StatusPill({
   const isOutOfStock = trackStock && (quantity ?? 0) === 0;
   if (isDraft) {
     return (
-      <span className="bg-muted text-muted-foreground inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10.5px] font-medium">
-        <span aria-hidden className="bg-muted-foreground size-1.5 rounded-full" />
+      <span className="b3-pill">
+        <span aria-hidden className="bg-ink-4 size-1.5 rounded-full" />
         Rascunho
       </span>
     );
   }
   if (isOutOfStock) {
     return (
-      <span className="bg-destructive-soft text-destructive inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10.5px] font-medium">
-        <span aria-hidden className="bg-destructive size-1.5 rounded-full" />
+      <span className="b3-pill b3-pill--danger">
+        <span aria-hidden className="bg-danger size-1.5 rounded-full" />
         Sem estoque
       </span>
     );
   }
   if (isActive) {
     return (
-      <span className="bg-success-soft text-success-foreground inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10.5px] font-medium">
-        <span aria-hidden className="bg-success size-1.5 rounded-full" />
+      <span className="b3-pill b3-pill--ok">
+        <span aria-hidden className="bg-ok size-1.5 rounded-full" />
         Visível
       </span>
     );
   }
   return (
-    <span className="bg-muted text-muted-foreground inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10.5px] font-medium">
-      <span aria-hidden className="bg-muted-foreground size-1.5 rounded-full" />
+    <span className="b3-pill">
+      <span aria-hidden className="bg-ink-4 size-1.5 rounded-full" />
       Pausado
     </span>
   );

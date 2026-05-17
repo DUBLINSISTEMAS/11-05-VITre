@@ -329,7 +329,7 @@ export function ImageUploader({
           ? stagedFiles.map((s, idx) => (
               <div
                 key={s.id}
-                className="group bg-muted relative aspect-[3/4] overflow-hidden rounded-xl border"
+                className="group bg-bg-app relative aspect-[3/4] overflow-hidden rounded-xl border border-line"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -338,7 +338,7 @@ export function ImageUploader({
                   className="size-full object-cover"
                 />
                 {idx === 0 ? (
-                  <span className="bg-foreground text-background absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.04em]">
+                  <span className="bg-ink-1 text-white absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.04em]">
                     CAPA
                   </span>
                 ) : null}
@@ -359,7 +359,7 @@ export function ImageUploader({
         {!isStaged && images.map((img, idx) => (
           <div
             key={img.id}
-            className="group bg-muted relative aspect-[3/4] overflow-hidden rounded-xl border"
+            className="group bg-bg-app relative aspect-[3/4] overflow-hidden rounded-xl border border-line"
           >
             <Image
               src={img.url}
@@ -404,7 +404,7 @@ export function ImageUploader({
         {!isStaged && pendingPreviews.map((p) => (
           <div
             key={p.id}
-            className="bg-muted relative aspect-[3/4] overflow-hidden rounded-xl border"
+            className="bg-bg-app relative aspect-[3/4] overflow-hidden rounded-xl border border-line"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -426,12 +426,12 @@ export function ImageUploader({
             type="button"
             onClick={() => inputRef.current?.click()}
             className={cn(
-              "border-border bg-muted/30 hover:bg-muted/60 hover:border-foreground/30 flex aspect-[3/4] flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed transition-colors",
+              "border-line bg-bg-app/40 hover:bg-bg-app hover:border-ink-5 flex aspect-[3/4] flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed transition-colors",
             )}
             aria-label="Adicionar imagem"
           >
-            <ImagePlusIcon className="text-muted-foreground size-6" />
-            <span className="text-muted-foreground text-xs font-medium">
+            <ImagePlusIcon className="text-ink-4 size-6" />
+            <span className="text-ink-4 text-xs font-medium">
               Adicionar
             </span>
           </button>
@@ -447,7 +447,7 @@ export function ImageUploader({
         onChange={(e) => handleFiles(e.target.files)}
       />
 
-      <p className="text-muted-foreground text-xs">
+      <p className="text-ink-4 text-xs">
         Até {maxImages} imagens. A primeira é a capa do produto. JPG, PNG ou
         WebP — fotos grandes são otimizadas automaticamente. Toque no lápis
         para ajustar enquadramento.
