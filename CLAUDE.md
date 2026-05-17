@@ -6,6 +6,7 @@ SaaS multi-tenant de **gestão para lojas de pequeno e médio porte**: catálogo
 
 ## Estado atual
 
+- **Port Dublin v3 (BAGY-style) em curso desde 2026-05-17** ([ADR-0019](docs/decisoes/0019-port-dublin-v3-bagy-style.md)). Founder anexou `PIXEL PERFECT/` com redesign completo (admin SPA + storefront + login + onboarding). Plano em 7 ondas (0→6): docs → tokens → login → onboarding → admin shell → módulos existentes refresh → storefront refresh. Pausa "Onda 2 hotfix → relatórios" do roadmap gestão completo. Refresh visual, não rewrite — toda lógica de domínio preservada. Brand muda **carvão canvas-v1 → navy BAGY** `#1A3A8F`. Módulos novos sem backend (atributos, cupons, grupos, equipe, assinatura, suporte) **ficam fora do port** — backlog pós.
 - **Pivô em curso**: Vitrê deixou de ser apenas catálogo e virou sistema de gestão da loja ([ADR-0012](docs/decisoes/0012-pivot-vitre-gestao.md)). Storefront público + admin CRUD + checkout WhatsApp permanecem **intactos**. Adicionando 6 módulos novos em ordem causal: pagamento configurável → clientes → estoque event-sourced → PDV balcão → relatórios → empacotamento desktop. Cada módulo tem ADR próprio antes do código.
 - **Fase 3 concluída em 2026-05-16** (commits `4c391b8` core + `29d8edf` vínculo cliente↔pedido). Tabela `customer` em prod com RLS tenant_isolation, CRUD admin completo em `/admin/clientes`, FK opcional `order.customer_id` (ON DELETE SET NULL preserva snapshots), combobox de vínculo no `OrderDetailDialog` + ação "criar cliente a partir deste pedido" com dedup automático por phone. ADR-0014 aceito.
 - **Fase 4 concluída em 2026-05-16** (commit `074ca2e`). Tabela `stock_movement` em prod com RLS owner-only + INSERT anônimo restrito a sale/return de order. Trigger `sync_stock_cache_on_movement` atualiza `stock_quantity` em product/variant atomicamente. Backfill aplicado em prod (saldo `initial` preservado via DISABLE TRIGGER no SQL 25). `create-from-cart.ts` refatorado pra INSERT movement type=sale sob advisory lock (anti-oversell); `restock.ts` pra INSERT type=return. Action standalone `recordStockMovement` cobre manual_in/manual_out/adjustment. UI `/admin/estoque` com listagem URL-driven + filtros. ADR-0015 aceito. **Follow-up não-bloqueante**: dialog "lançar movimentação" no editor de produto (action existe, falta UX).
@@ -58,13 +59,14 @@ SaaS multi-tenant de **gestão para lojas de pequeno e médio porte**: catálogo
 
 ## Identidade visual
 
-- **Cor primária Vitrê**: `#1E3FE6` (azul royal vibrante — extraído da logo principal). Token: `--brand` (fixo).
-- **Tipografia**: Geist (sans) + Geist Mono.
-- **Pegada**: minimalista profissional, neutros frios (paleta `navy-*`), surfaces translúcidas, sombras tintadas (estilo Fly.io).
-- **Token shadcn `--primary`**: lê de `--brand` por padrão; sobrescrito no storefront via `<BrandProvider color={store.primaryColor}>`.
+- **Cor primária Vitrê** (port Dublin v3 em curso desde 2026-05-17): `#1A3A8F` navy BAGY-inspired (`--brand`). Hover `#14306F` (`--brand-2`). Wash `#EEF1FB` (`--brand-wash`), line `#C7D2EE` (`--brand-line`). Paleta legada `vitre-*` (50→950, primary `#1E3FE6`) **mantida pra marketing/emails/favicon/logo** — só admin/login/onboarding muda. Histórico do royal vibrante em [ADR-0007](docs/decisoes/0007-identidade-visual-vitre.md), nova decisão em [ADR-0019](docs/decisoes/0019-port-dublin-v3-bagy-style.md).
+- **Tipografia**: Geist (sans) + Geist Mono via `next/font`.
+- **Pegada**: BAGY-inspired (Stripe/Fly.io sério), sidebar branca 248px, surfaces neutras `--bg-app: #F5F6F8`, escala `--ink-1..5` (`#0F1419` → `#B5BAC2`), raios 12px cards / 8px botões.
+- **Token shadcn `--primary`**: lê de `--brand` por padrão; sobrescrito no storefront via `<BrandProvider color={store.primaryColor}>` ([ADR-0011](docs/decisoes/0011-brand-color-restrita-bottom-nav-sacola.md) preservado).
 - **Variant `hocus:`**: estados hover + focus-visible juntos (use `hocus:bg-accent/10`).
-- **Utilities**: `bg-brand`, `bg-navy-{50..950}`, `shadow-brand-{sm,md,lg}`, `surface-base`, `surface-elevated`, `surface-dark`.
-- Detalhes em [ADR-0007](docs/decisoes/0007-identidade-visual-vitre.md) (cor) e [ADR-0009](docs/decisoes/0009-design-system-tokens-navy.md) (tokens navy + sistema dual).
+- **Utilities Dublin** (Onda 1+ do port): `b3-card`, `b3-pill-{ok,warn,danger,brand,gold,silver}`, `b3-tbl`, `b3-drawer`, `b3-helpbar`, `b3-stat`, `b3-tree` em `@layer components`.
+- **Utilities legadas mantidas**: `bg-brand`, `bg-navy-{50..950}`, `shadow-brand-{sm,md,lg}`, `surface-base`, `surface-elevated`, `surface-dark`.
+- Detalhes em [ADR-0019](docs/decisoes/0019-port-dublin-v3-bagy-style.md) (port em curso), [ADR-0007](docs/decisoes/0007-identidade-visual-vitre.md) (cor histórica, parcialmente substituído) e [ADR-0009](docs/decisoes/0009-design-system-tokens-navy.md) (sistema dual brand/primary, parcialmente substituído).
 
 ## Comandos comuns
 
@@ -98,6 +100,7 @@ npm run db:seed          # popula Sandra Brito + placeholders
 
 ## Onde encontrar tudo
 
+- **Port Dublin v3 (SoT visual ATIVA)**: [`docs/decisoes/0019-port-dublin-v3-bagy-style.md`](docs/decisoes/0019-port-dublin-v3-bagy-style.md) + pacote em `PIXEL PERFECT/` (tokens canônicos em `PIXEL PERFECT/admin/v3/bagy-style.css`).
 - **Pivô para Vitrê Gestão (guarda-chuva das fases 2–6)**: [`docs/decisoes/0012-pivot-vitre-gestao.md`](docs/decisoes/0012-pivot-vitre-gestao.md)
 - **Arquitetura completa**: [`docs/arquitetura-tecnica.md`](docs/arquitetura-tecnica.md)
 - **Briefing rápido**: [`docs/CONTEXT.md`](docs/CONTEXT.md)

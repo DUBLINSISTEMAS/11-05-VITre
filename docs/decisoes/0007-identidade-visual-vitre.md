@@ -1,7 +1,7 @@
 # ADR-0007: Identidade visual e design system do Vitrê
 
 - **Data**: 2026-05-07
-- **Status**: aceito
+- **Status**: aceito · **parcialmente substituído por [ADR-0019](./0019-port-dublin-v3-bagy-style.md)** (2026-05-17): cor primária migra de `#1E3FE6` royal pra `#1A3A8F` navy BAGY-inspired. Tipografia Geist, princípios minimalistas e a separação `--brand-store` (storefront por-loja) seguem válidos. Paleta `vitre-*` (50→950) e logo continuam fonte da verdade pra marketing/emails/favicon.
 
 ## Contexto
 

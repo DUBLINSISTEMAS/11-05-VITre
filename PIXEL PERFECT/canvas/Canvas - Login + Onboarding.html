@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Canvas · Login + Onboarding · Dublin v3</title>
+<style>
+  body, html { margin: 0; background: #f0eee9; }
+  iframe { width: 100%; height: 100%; border: none; display: block; background: white; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel">
+  const ADMIN = "../admin/Dublin v3 (BAGY-style).html";
+  const W = 1280, H = 800;
+
+  const ab = (id, label, hash, w = W, h = H) => (
+    <DCArtboard id={id} label={label} width={w} height={h}>
+      <iframe src={ADMIN + "#" + hash} style={{ width: w, height: h, border: "none" }} />
+    </DCArtboard>
+  );
+
+  function App() {
+    return (
+      <DesignCanvas>
+        <DCSection id="entrada" title="Entrada · login + criar conta" subtitle="Duas portas de entrada — login (cliente existente) e signup (nova loja, 14 dias Pro grátis)">
+          {ab("login", "① Login · split brand + form", "/login")}
+          {ab("signup", "② Signup · 30s · sem cartão", "/signup")}
+        </DCSection>
+
+        <DCSection id="onboarding" title="Onboarding wizard · 4 passos" subtitle="Conta → Identidade → Tipo de negócio → Pagamento. Cada passo independente, com botão Pular sempre visível">
+          {ab("ob-0", "① Sua conta · nome, WhatsApp, e-mail, senha", "/onboarding/0", W, 820)}
+          {ab("ob-1", "② Identidade · nome da loja + URL pública", "/onboarding/1", W, 820)}
+          {ab("ob-2", "③ Tipo de negócio · multi-select 6 ramos", "/onboarding/2", W, 820)}
+          {ab("ob-3", "④ Pagamento · PIX, dinheiro, cartões", "/onboarding/3", W, 820)}
+        </DCSection>
+
+        <DCSection id="primeiro-acesso" title="Primeiro acesso · loja vazia" subtitle="Onde o usuário chega após o onboarding — dashboard sem dados ainda, banner trial sempre visível">
+          {ab("primeiro-dash", "① Dashboard vazio · banner trial 14 dias", "/dashboard")}
+        </DCSection>
+      </DesignCanvas>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

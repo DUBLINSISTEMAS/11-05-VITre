@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dublin v3 — BAGY-inspired (navy · responsivo)</title>
+<link rel="stylesheet" href="v3/bagy-style.css" />
+<style>
+  body { background: var(--bg-app); margin: 0; }
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="icons.jsx"></script>
+<script type="text/babel" src="v3/bagy-admin.jsx"></script>
+<script type="text/babel" src="v3/bagy-extra.jsx"></script>
+<script type="text/babel" src="v3/bagy-routes.jsx"></script>
+<script type="text/babel" src="v3/bagy-modals.jsx"></script>
+<script type="text/babel" src="v3/bagy-detail.jsx"></script>
+<script type="text/babel" src="v3/bagy-sprint-a.jsx"></script>
+<script type="text/babel" src="v3/bagy-sprint-b.jsx"></script>
+<script type="text/babel" src="v3/bagy-sprint-d.jsx"></script>
+<script type="text/babel" src="v3/bagy-sprint-e.jsx"></script>
+<script type="text/babel" src="v3/bagy-fixes.jsx"></script>
+
+<script type="text/babel">
+  const ROUTES = {
+    "/dashboard":             () => <B3DashboardV2Screen />,
+    "/produtos":              () => <B3ProdutosScreen />,
+    "/produtos/categorias":   () => <B3CategoriasScreen />,
+    "/produtos/categorias/nova": () => <B3NovaCategoriaScreen />,
+    "/produtos/atributos":    () => <B3AtributosScreen />,
+    "/produtos/atributos/tamanho": () => <B3AtributoDetalheScreen />,
+    "/produtos/estoque":      () => <B3EstoqueScreen />,
+    "/produtos/banners":      () => <B3BannersScreen />,
+    "/produtos/detalhe":      () => <B3ProdutoDetalheScreen />,
+    "/produtos/novo":         () => <B3ProdutoDetalheScreen />,
+    "/estoque":               () => <B3EstoqueScreen />,
+    "/estoque/inventario":    () => <B3InventarioScreen />,
+    "/configuracoes/identidade": () => <B3ConfigPlaceholder title="Identidade" desc="Logo, favicon redondo, cor primária e tipografia da loja." ico="IcAppearance" />,
+    "/configuracoes/whatsapp":   () => <B3ConfigPlaceholder title="WhatsApp & mensagem" desc="Template da mensagem do checkout com preview live no celular do cliente." ico="IcWhatsApp" />,
+    "/configuracoes/horarios":   () => <B3ConfigPlaceholder title="Horários de atendimento" desc="Por dia da semana · controla quando aceitar pedidos." ico="IcClock" />,
+    "/configuracoes/equipe":     () => <B3ConfigPlaceholder title="Equipe & permissões" desc="Multi-usuário · 3 roles (Admin, Operadora, Financeiro) com permissões granulares." ico="IcCustomers" />,
+    "/clientes":              () => <B3ClientesScreen onOpenNew={() => window.__openDrawer()} onOpenDetail={() => { location.hash = "/clientes/detalhe"; }} />,
+    "/clientes/detalhe":      () => <B3ClienteDetalheScreen onBack={() => { location.hash = "/clientes"; }} />,
+    "/clientes/grupos":       () => <B3GruposScreen />,
+    "/vendas/pedidos":        () => <B3PedidosScreen />,
+    "/vendas/pdv":            () => <B3PDVScreen />,
+    "/vendas/caixa":          () => <B3CaixaScreen />,
+    "/promocoes":             () => <B3CuponsScreen />,
+    "/promocoes/cupons":      () => <B3CuponsScreen />,
+    "/marketing":             () => <B3PlaceholderScreen active="marketing" title="Marketing" ico="IcStar" desc="Pixels, integrações com Instagram, e-mail marketing e remarketing. Conecte ferramentas externas." />,
+    "/relatorios":            () => <B3PlaceholderScreen active="relatorios" title="Relatórios" ico="IcArchive" desc="Vendas confirmadas, pedidos do catálogo, estoque, clientes — com exportação em Excel." />,
+    "/loja-virtual":          () => <B3LojaVirtualV2Screen />,
+    "/loja-virtual/produtos": () => <B3ProdutosLVScreen />,
+    "/loja-virtual/categorias": () => <B3CategoriasLVScreen />,
+    "/loja-virtual/banners": () => <B3BannersScreen />,
+    "/login":                 () => <B3LoginScreen />,
+    "/onboarding":            () => <B3OnboardingScreen />,
+    "/onboarding/0":          () => <B3OnboardingScreen initialStep={0} />,
+    "/onboarding/1":          () => <B3OnboardingScreen initialStep={1} />,
+    "/onboarding/2":          () => <B3OnboardingScreen initialStep={2} />,
+    "/onboarding/3":          () => <B3OnboardingScreen initialStep={3} />,
+    "/storefront-preview":    () => <B3StorefrontPreview />,
+    "/pagamentos":            () => <B3PagamentosScreen />,
+    "/configuracoes":         () => <B3ConfiguracoesScreen />,
+    "/assinatura":            () => <B3AssinaturaScreen />,
+    "/notificacoes":          () => <B3NotificacoesScreen />,
+    "/vendas/pedidos/8042":   () => <B3PedidoDetalheScreen />,
+    "/produtos/detalhe":      () => <B3ProdutoDetalheScreen />,
+    "/produtos/novo":         () => <B3ProdutoDetalheScreen />,
+    "/signup":                () => <B3SignupScreen />,
+    "/suporte":               () => <B3SuporteScreen />,
+    "/mobile":                () => <B3MobileApp />,
+  };
+
+  const NAV_ROUTES = {
+    "Painel": "/dashboard",
+    "Produtos": "/produtos",
+    "Meus produtos": "/produtos",
+    "Categorias": "/produtos/categorias",
+    "Atributos": "/produtos/atributos",
+    "Estoque": "/estoque",
+    "Banners": "/produtos/banners",
+    "Clientes": "/clientes",
+    "Meus clientes": "/clientes",
+    "Grupos de clientes": "/clientes/grupos",
+    "Contatos": "/clientes",
+    "Vendas": "/vendas/pedidos",
+    "Pedidos": "/vendas/pedidos",
+    "PDV": "/vendas/pdv",
+    "Caixa": "/vendas/caixa",
+    "Promoções": "/promocoes",
+    "Cupons": "/promocoes/cupons",
+    "Ofertas": "/promocoes",
+    "Marketing": "/marketing",
+    "Relatórios": "/relatorios",
+    "Loja virtual": "/loja-virtual",
+    "Aparência": "/loja-virtual",
+    "Produtos da loja": "/loja-virtual/produtos",
+    "Categorias da loja": "/loja-virtual/categorias",
+    "Banners": "/loja-virtual/banners",
+    "Pagamentos": "/pagamentos",
+    "Configurações": "/configuracoes",
+    "Identidade":    "/configuracoes/identidade",
+    "WhatsApp":      "/configuracoes/whatsapp",
+    "Horários":      "/configuracoes/horarios",
+    "Equipe":        "/configuracoes/equipe",
+    "Geral":         "/configuracoes",
+    "Assinatura": "/assinatura",
+    "Suporte": "/suporte",
+  };
+
+  function useHash() {
+    const [hash, setHash] = React.useState(() => location.hash.slice(1) || "/dashboard");
+    React.useEffect(() => {
+      const onHash = () => setHash(location.hash.slice(1) || "/dashboard");
+      window.addEventListener("hashchange", onHash);
+      return () => window.removeEventListener("hashchange", onHash);
+    }, []);
+    return hash;
+  }
+
+  function App() {
+    const hash = useHash();
+    const [drawerOpen, setDrawerOpen] = React.useState(false);
+    const [vendaOpen, setVendaOpen] = React.useState(false);
+    const [prodOpen, setProdOpen] = React.useState(false);
+    const [movOpen, setMovOpen] = React.useState(false);
+    const [reciboOpen, setReciboOpen] = React.useState(false);
+    const [whatsOpen, setWhatsOpen] = React.useState(false);
+    const [deliveredOpen, setDeliveredOpen] = React.useState(false);
+    const [userMenuOpen, setUserMenuOpen] = React.useState(false);
+    const [quickOpen, setQuickOpen] = React.useState(false);
+    const [searchAnchor, setSearchAnchor] = React.useState(null);
+    const [pushedToasts, setPushedToasts] = React.useState([]);
+    const [bannerVisible, setBannerVisible] = React.useState(true);
+    window.__openDrawer = () => setDrawerOpen(true);
+    window.__openVendaModal = () => setVendaOpen(true);
+    window.__openProdModal = () => setProdOpen(true);
+    window.__openMovModal = () => setMovOpen(true);
+    window.__openRecibo = () => setReciboOpen(true);
+    window.__openWhats = () => setWhatsOpen(true);
+    window.__openMarkDelivered = () => setDeliveredOpen(true);
+    window.__openUserMenu = () => setUserMenuOpen(true);
+    window.__openQuick = () => setQuickOpen(true);
+    window.__openSearch = (anchor) => setSearchAnchor(anchor);
+    window.__toast = (t) => setPushedToasts(arr => [...arr, { id: Date.now() + Math.random(), ...t }]);
+
+    // Keyboard shortcut: cmd/ctrl+K → quick actions
+    React.useEffect(() => {
+      const onKey = (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+          e.preventDefault(); setQuickOpen(o => !o);
+        }
+        if (e.key === "Escape") {
+          setQuickOpen(false); setUserMenuOpen(false); setSearchAnchor(null);
+        }
+      };
+      window.addEventListener("keydown", onKey);
+      return () => window.removeEventListener("keydown", onKey);
+    }, []);
+
+    // Define B3ConfigPlaceholder
+    if (!window.B3ConfigPlaceholder) {
+      window.B3ConfigPlaceholder = ({ title, desc, ico }) => {
+        const Ic = window[ico];
+        return (
+          <B3Shell active="config">
+            <div className="b3-page">
+              <div className="b3-page-hd"><h1>{title}</h1></div>
+              <div className="b3-card b3-card-pad" style={{ padding: 48, textAlign: "center" }}>
+                <div style={{ width: 64, height: 64, background: "var(--brand-wash)", color: "var(--brand)", borderRadius: 50, display: "inline-flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px" }}><Ic size={28} /></div>
+                <p style={{ fontSize: 14, color: "var(--ink-3)", maxWidth: 480, margin: "0 auto", lineHeight: 1.55 }}>{desc}</p>
+              </div>
+            </div>
+          </B3Shell>
+        );
+      };
+    }
+
+    const screen = (ROUTES[hash] || ROUTES["/dashboard"])();
+
+    React.useEffect(() => {
+      document.querySelectorAll(".b3-side-item, .b3-side-sub-item").forEach(el => {
+        const txt = el.textContent.trim();
+        if (NAV_ROUTES[txt]) {
+          el.onclick = (e) => { e.stopPropagation(); location.hash = NAV_ROUTES[txt]; };
+        }
+      });
+      // Wire CTAs to modals
+      document.querySelectorAll(".b3-btn--cta, .b3-btn").forEach(b => {
+        const t = b.textContent.trim();
+        if (t.includes("Adicionar cliente")) b.onclick = () => setDrawerOpen(true);
+        else if (t.includes("Adicionar produto") || t.includes("Novo produto")) b.onclick = () => setProdOpen(true);
+        else if (t.includes("Pedido manual") || t.includes("Lançar venda")) b.onclick = () => setVendaOpen(true);
+        else if (t.includes("Nova movimentação")) b.onclick = () => setMovOpen(true);
+      });
+    });
+
+    // Toast push helper rendering
+    const PushedToastLayer = () => {
+      React.useEffect(() => {
+        if (pushedToasts.length === 0) return;
+        const latest = pushedToasts[pushedToasts.length - 1];
+        const tid = setTimeout(() => setPushedToasts(ts => ts.filter(t => t.id !== latest.id)), 4500);
+        return () => clearTimeout(tid);
+      }, [pushedToasts.length]);
+      return (
+        <div className="b3-toasts" style={{ position: "fixed", bottom: 20, right: 20, zIndex: 700, display: "flex", flexDirection: "column", gap: 8 }}>
+          {pushedToasts.map(t => {
+            const Ic = t.ico ? window[t.ico] : window.IcCheck;
+            return (
+              <div key={t.id} className={`b3-toast b3-toast--${t.tone || "ok"}`} style={{ background: "white", border: "1px solid var(--line)", boxShadow: "0 10px 30px -10px rgba(15,20,25,0.25)", borderRadius: 10, padding: 12, display: "flex", gap: 10, minWidth: 320, maxWidth: 380, animation: "b3slidein 280ms cubic-bezier(0.22,1,0.36,1)" }}>
+                <span style={{ width: 28, height: 28, background: `var(--${t.tone === "warn" ? "warn-wash" : t.tone === "danger" ? "danger-wash" : t.tone === "brand" ? "brand-wash" : "ok-wash"})`, color: `var(--${t.tone === "warn" ? "warn" : t.tone === "danger" ? "danger" : t.tone === "brand" ? "brand" : "ok"})`, borderRadius: 8, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic size={14} /></span>
+                <div style={{ flex: 1, fontSize: 12.5, lineHeight: 1.4 }}>
+                  <b style={{ fontWeight: 700 }}>{t.t}</b>
+                  <div style={{ color: "var(--ink-3)" }}>{t.b}</div>
+                </div>
+                <button onClick={() => setPushedToasts(ts => ts.filter(x => x.id !== t.id))} style={{ width: 24, height: 24, background: "transparent", border: "none", borderRadius: 50, cursor: "pointer", color: "var(--ink-4)" }}><IcClose size={11} /></button>
+              </div>
+            );
+          })}
+        </div>
+      );
+    };
+
+    return (
+      <>
+        {bannerVisible && <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50 }}><B3Banner kind="trial" onClose={() => setBannerVisible(false)} /></div>}
+        <div style={{ paddingTop: bannerVisible ? 44 : 0 }}>{screen}</div>
+        <B3CadastrarClienteDrawer open={drawerOpen} onClose={() => { setDrawerOpen(false); window.__toast?.({ tone: "ok", t: "Cliente cadastrado", b: "Adicionado ao grupo Padrão · ID #23429781", ico: "IcCustomers" }); }} />
+        <B3VendaNovaModal open={vendaOpen} onClose={() => { setVendaOpen(false); if (vendaOpen) { setReciboOpen(true); } }} />
+        <B3ProdutoNovoModal open={prodOpen} onClose={() => { setProdOpen(false); if (prodOpen) window.__toast?.({ tone: "ok", t: "Produto publicado", b: "Visível na loja em segundos", ico: "IcCatalog" }); }} />
+        <B3MovimentacaoModal open={movOpen} onClose={() => { setMovOpen(false); if (movOpen) window.__toast?.({ tone: "brand", t: "Movimentação registrada", b: "Estoque atualizado · histórico salvo", ico: "IcStock" }); }} />
+        <B3ReciboModal open={reciboOpen} onClose={() => setReciboOpen(false)} />
+        <B3WhatsAppHandoff open={whatsOpen} onClose={() => { setWhatsOpen(false); if (whatsOpen) window.__toast?.({ tone: "ok", t: "Pedido confirmado", b: "Estoque debitado · WhatsApp aberto", ico: "IcWhatsApp" }); }} />
+        <B3MarkDeliveredModal open={deliveredOpen} onClose={() => setDeliveredOpen(false)} />
+        <B3UserMenu open={userMenuOpen} onClose={() => setUserMenuOpen(false)} />
+        <B3QuickActions open={quickOpen} onClose={() => setQuickOpen(false)} />
+        <B3SearchDropdown open={!!searchAnchor} anchor={searchAnchor} onClose={() => setSearchAnchor(null)} />
+        <B3StatusLayer />
+        <B3Toasts />
+        <PushedToastLayer />
+        <B3GlobalWiring />
+      </>
+    );
+  }
+
+  window.__App = App;
+  function mount() {
+    const root = document.getElementById("root");
+    if (!root || root.__mounted) return;
+    if (typeof window.B3ClientesScreen !== "function") return;
+    if (typeof window.B3DashboardScreen !== "function") return;
+    root.__mounted = true;
+    ReactDOM.createRoot(root).render(React.createElement(window.__App));
+  }
+  if (document.readyState === "complete") setTimeout(mount, 0);
+  else window.addEventListener("load", () => setTimeout(mount, 0));
+  let __t = 0;
+  const __p = setInterval(() => {
+    __t++;
+    if (document.getElementById("root")?.__mounted || __t > 60) { clearInterval(__p); return; }
+    mount();
+  }, 100);
+</script>
+</body>
+</html>

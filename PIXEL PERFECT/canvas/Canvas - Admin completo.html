@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Canvas · Admin completo · Dublin v3</title>
+<style>
+  body, html { margin: 0; background: #f0eee9; }
+  iframe { width: 100%; height: 100%; border: none; display: block; background: white; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel">
+  const ADMIN = "../admin/Dublin v3 (BAGY-style).html";
+  const W = 1440, H = 900;
+
+  const ab = (id, label, hash, w = W, h = H) => (
+    <DCArtboard id={id} label={label} width={w} height={h}>
+      <iframe src={ADMIN + "#" + hash} style={{ width: w, height: h, border: "none" }} />
+    </DCArtboard>
+  );
+
+  function App() {
+    return (
+      <DesignCanvas>
+        <DCSection id="painel" title="Dashboard · visão geral do dia" subtitle="Receita confirmada vs potencial · pedidos pendentes · estoque baixo · mix de pagamento">
+          {ab("d-dash", "① Dashboard · 1440×900", "/dashboard")}
+          {ab("d-notif", "② Notificações · 1440×900", "/notificacoes")}
+        </DCSection>
+
+        <DCSection id="vendas" title="Vendas · pedidos · PDV · caixa" subtitle="O ciclo completo de venda — do pedido recebido pelo WhatsApp à venda balcão e fechamento de caixa">
+          {ab("v-pedidos", "① Pedidos · lista", "/vendas/pedidos")}
+          {ab("v-detalhe", "② Pedido detalhe · VTR-8042", "/vendas/pedidos/8042", W, 1100)}
+          {ab("v-pdv", "③ PDV · balcão (split + carrinho)", "/vendas/pdv")}
+          {ab("v-caixa", "④ Caixa do dia · fechamento", "/vendas/caixa")}
+        </DCSection>
+
+        <DCSection id="catalogo" title="Catálogo · produtos, categorias, atributos, banners" subtitle="Estrutura completa do catálogo — lista, detalhe com variantes, tree de categorias, atributos e banners">
+          {ab("c-produtos", "① Produtos · lista", "/produtos")}
+          {ab("c-detalhe", "② Produto detalhe · variantes + promo", "/produtos/detalhe", W, 1500)}
+          {ab("c-cat", "③ Categorias · árvore drag-drop", "/produtos/categorias")}
+          {ab("c-cat-nova", "④ Nova categoria · form completo", "/produtos/categorias/nova")}
+          {ab("c-attr", "⑤ Atributos · lista", "/produtos/atributos")}
+          {ab("c-attr-det", "⑥ Atributo · tamanho · valores", "/produtos/atributos/tamanho")}
+          {ab("c-ban", "⑦ Banners · campanhas", "/produtos/banners")}
+        </DCSection>
+
+        <DCSection id="estoque" title="Estoque · controle de saldo + inventário" subtitle="Visão de baixo/zerado · movimentação event-sourced · inventário físico com divergências">
+          {ab("e-lista", "① Estoque · status por variante", "/estoque")}
+          {ab("e-inv", "② Inventário físico · contagem ao vivo", "/estoque/inventario", W, 1100)}
+        </DCSection>
+
+        <DCSection id="clientes" title="Clientes · perfis + grupos" subtitle="Cadastro, detalhe individual com estatísticas, segmentação por grupos com benefícios">
+          {ab("cl-lista", "① Clientes · lista", "/clientes")}
+          {ab("cl-detalhe", "② Cliente · perfil + histórico", "/clientes/detalhe")}
+          {ab("cl-grupos", "③ Grupos · Padrão · Silver · Gold · Atacado", "/clientes/grupos")}
+        </DCSection>
+
+        <DCSection id="marketing" title="Marketing & promoções" subtitle="Cupons com regras de validade e usos · campanhas · ofertas">
+          {ab("m-cupons", "① Cupons · ativos + agendados", "/promocoes/cupons")}
+          {ab("m-marketing", "② Marketing · placeholder pixels", "/marketing")}
+          {ab("m-relatorios", "③ Relatórios · placeholder Excel", "/relatorios")}
+        </DCSection>
+
+        <DCSection id="loja-virtual" title="Loja virtual · aparência + curadoria" subtitle="Personalização da loja pública — identidade, cor primária, tipografia, preview live · seleção de produtos e categorias">
+          {ab("lv-aparencia", "① Aparência · preview desktop+mobile", "/loja-virtual", W, 1100)}
+          {ab("lv-produtos", "② Produtos da loja · toggle visibilidade", "/loja-virtual/produtos")}
+          {ab("lv-categorias", "③ Categorias da loja · ordem do menu", "/loja-virtual/categorias")}
+        </DCSection>
+
+        <DCSection id="config" title="Pagamentos · configurações · assinatura · suporte" subtitle="Métodos aceitos · endereço · WhatsApp · plano + zona perigo · suporte direto">
+          {ab("cfg-pag", "① Pagamentos · métodos", "/pagamentos")}
+          {ab("cfg-cfg", "② Configurações · endereço + contato", "/configuracoes")}
+          {ab("cfg-id", "③ Identidade · logo, cor, tipografia", "/configuracoes/identidade")}
+          {ab("cfg-wa", "④ WhatsApp · template + preview", "/configuracoes/whatsapp")}
+          {ab("cfg-eq", "⑤ Equipe · roles + permissões", "/configuracoes/equipe")}
+          {ab("cfg-ass", "⑥ Assinatura · plano Pro", "/assinatura")}
+          {ab("cfg-sup", "⑦ Suporte · WhatsApp + e-mail", "/suporte")}
+        </DCSection>
+
+        <DCSection id="mobile" title="Admin mobile · iOS 390×844" subtitle="App pra dona da loja operar do celular — sidebar drawer, FAB PDV, fluxos navegáveis (Painel · Vendas · PDV · Catálogo · Cadastros · Caixa)">
+          <DCArtboard id="mob-app" label="App mobile · 390×844 navegável" width={520} height={920}>
+            <iframe src={ADMIN + "#/mobile"} style={{ width: 520, height: 920, border: "none" }} />
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

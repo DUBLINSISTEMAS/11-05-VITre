@@ -1,7 +1,7 @@
 # ADR-0009: Design system com tokens navy + sistema dual brand/primary
 
 - **Data**: 2026-05-07
-- **Status**: aceito
+- **Status**: aceito · **parcialmente substituído por [ADR-0019](./0019-port-dublin-v3-bagy-style.md)** (2026-05-17): valor de `--brand` migra pra navy Dublin `#1A3A8F` e novos tokens `--brand-2`/`--brand-wash`/`--brand-line`/`--ink-1..5` entram em `@layer components`. Os princípios estruturais (token `--brand` fixo separado de `--primary` configurável, `--brand-store` por loja, `hocus:`, sombras brand-aware, neutros frios) seguem válidos — apenas a paleta concreta é atualizada.
 - **Substitui parcialmente**: [ADR-0007](./0007-identidade-visual-vitre.md) (mantém paleta `vitre-*` como legado, troca neutros)
 
 ## Contexto

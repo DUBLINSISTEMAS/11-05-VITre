@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dublin v3 · índice</title>
+<link rel="stylesheet" href="admin/v3/bagy-style.css" />
+<style>
+  body { background: var(--bg-app); margin: 0; padding: 40px 32px 80px; font-family: var(--font); color: var(--ink-1); }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  .hd { margin-bottom: 36px; }
+  .hd .mark { width: 56px; height: 56px; background: var(--brand); color: white; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; font-family: var(--mono); font-weight: 700; font-size: 28px; margin-bottom: 18px; }
+  .hd h1 { font-size: 36px; font-weight: 700; letter-spacing: -0.025em; margin: 0 0 8px; }
+  .hd p { font-size: 15px; color: var(--ink-3); margin: 0; max-width: 580px; line-height: 1.55; }
+  .grp { margin-top: 36px; }
+  .grp-l { font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-4); margin-bottom: 14px; }
+  .row { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+  a.card { display: block; padding: 18px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; text-decoration: none; color: inherit; transition: border-color 120ms, transform 120ms; }
+  a.card:hover { border-color: var(--brand-line); transform: translateY(-1px); }
+  a.card b { display: block; font-size: 14px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 4px; }
+  a.card span { font-size: 12.5px; color: var(--ink-4); }
+  a.card .mono { font-family: var(--mono); font-size: 11px; color: var(--brand); margin-top: 8px; display: block; }
+  a.card.primary { background: linear-gradient(135deg, var(--brand), #2A4FA8); color: white; border: none; }
+  a.card.primary span { color: rgba(255,255,255,0.7); }
+  a.card.primary .mono { color: rgba(255,255,255,0.9); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hd">
+    <div class="mark">D</div>
+    <h1>Dublin v3 · todos os pontos de entrada</h1>
+    <p>Sistema de gestão pra pequenas lojas físicas + virtuais. Cada entrada abaixo é uma tela que existe — pode rodar isolada, ou navegar pra outras pelo fluxo natural.</p>
+  </div>
+
+  <div class="grp">
+    <div class="grp-l">★ Acesso · Pré-login</div>
+    <div class="row">
+      <a class="card primary" href="admin/Login.html">
+        <b>Login</b>
+        <span>Entrar na conta existente · split brand + form</span>
+        <span class="mono">admin/Login.html</span>
+      </a>
+      <a class="card" href="admin/Onboarding.html">
+        <b>Onboarding · criar loja</b>
+        <span>Wizard 4 passos · conta → identidade → tipo → pagamento</span>
+        <span class="mono">admin/Onboarding.html</span>
+      </a>
+      <a class="card" href="admin/Onboarding.html#2">
+        <b>Onboarding · pulando pra step 3</b>
+        <span>Deep-link direto pro passo "Tipo de negócio"</span>
+        <span class="mono">admin/Onboarding.html#2</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="grp">
+    <div class="grp-l">▣ Admin · pós-login</div>
+    <div class="row">
+      <a class="card primary" href="admin/Dublin v3 (BAGY-style).html">
+        <b>Admin completo (SPA)</b>
+        <span>30+ rotas via hash router · sidebar BAGY-style + topbar</span>
+        <span class="mono">#/dashboard</span>
+      </a>
+      <a class="card" href="admin/Dublin v3 (BAGY-style).html#/vendas/pedidos">
+        <b>Pedidos · WhatsApp + balcão</b>
+        <span>Lista com filtros · clique abre detalhe</span>
+        <span class="mono">#/vendas/pedidos</span>
+      </a>
+      <a class="card" href="admin/Dublin v3 (BAGY-style).html#/vendas/pdv">
+        <b>PDV · venda balcão</b>
+        <span>Split catálogo + carrinho · F2 pra buscar</span>
+        <span class="mono">#/vendas/pdv</span>
+      </a>
+      <a class="card" href="admin/Dublin v3 (BAGY-style).html#/produtos">
+        <b>Catálogo</b>
+        <span>Produtos · categorias · atributos · banners</span>
+        <span class="mono">#/produtos</span>
+      </a>
+      <a class="card" href="admin/Dublin v3 (BAGY-style).html#/estoque">
+        <b>Estoque + inventário</b>
+        <span>Saldo por variante · movimentação event-sourced</span>
+        <span class="mono">#/estoque</span>
+      </a>
+      <a class="card" href="admin/Dublin v3 (BAGY-style).html#/mobile">
+        <b>Admin mobile (PWA)</b>
+        <span>App pro celular · iOS 390×844 · FAB PDV</span>
+        <span class="mono">#/mobile</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="grp">
+    <div class="grp-l">⛬ Storefront · público</div>
+    <div class="row">
+      <a class="card primary" href="storefront/Sandra Brito (Dublin-style).html">
+        <b>Storefront Sandra Brito</b>
+        <span>Catálogo público com checkout via WhatsApp · Dublin-style</span>
+        <span class="mono">storefront/Sandra Brito (Dublin-style).html</span>
+      </a>
+      <a class="card" href="admin/Dublin v3 (BAGY-style).html#/storefront-preview">
+        <b>Storefront mobile · 4 estados</b>
+        <span>Home · categoria · busca · sacola — preview iOS</span>
+        <span class="mono">#/storefront-preview</span>
+      </a>
+      <a class="card" href="storefront/Storefront Vitrê (atual).html">
+        <b>Vitrê (versão anterior)</b>
+        <span>Iteração prévia, antes do tratamento Dublin · referência</span>
+        <span class="mono">storefront/Storefront Vitrê (atual).html</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="grp">
+    <div class="grp-l">▢ Canvas · apresentação</div>
+    <div class="row">
+      <a class="card" href="canvas/Canvas - Admin completo.html">
+        <b>Canvas · Admin completo</b>
+        <span>32 artboards em 9 seções · todas as telas lado a lado</span>
+      </a>
+      <a class="card" href="canvas/Canvas - Storefront completo.html">
+        <b>Canvas · Storefront completo</b>
+        <span>Desktop + mobile 4-up + Vitrê anterior</span>
+      </a>
+      <a class="card" href="canvas/Canvas - Login + Onboarding.html">
+        <b>Canvas · Login + Onboarding</b>
+        <span>Login + Signup + 4 passos do wizard</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="grp">
+    <div class="grp-l">⌖ Para Claude Code</div>
+    <div class="row">
+      <a class="card" href="design_handoff_dublin_v3/README.md">
+        <b>Handoff · README</b>
+        <span>Domínio, tokens, mapeamento de rotas, plano de implementação</span>
+        <span class="mono">design_handoff_dublin_v3/README.md</span>
+      </a>
+    </div>
+  </div>
+</div>
+</body>
+</html>
