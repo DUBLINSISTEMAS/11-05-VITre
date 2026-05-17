@@ -147,7 +147,7 @@ export function StockMovementDialog({
         <DialogHeader>
           <DialogTitle>Lançar movimentação de estoque</DialogTitle>
           <DialogDescription>
-            <span className="text-foreground font-medium">{productName}</span>
+            <span className="text-ink-1 font-medium">{productName}</span>
             {" — "}registra entrada, saída ou ajuste manual.
           </DialogDescription>
         </DialogHeader>
@@ -165,15 +165,15 @@ export function StockMovementDialog({
                   className={cn(
                     "rounded-md border px-3 py-2 text-sm font-medium transition",
                     movementType === t
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-background hocus:bg-muted",
+                      ? "border-brand bg-brand-wash text-brand"
+                      : "border-line bg-surface text-ink-1 hocus:bg-bg-app",
                   )}
                 >
                   {TYPE_LABEL[t]}
                 </button>
               ))}
             </div>
-            <p className="text-muted-foreground text-xs">
+            <p className="text-ink-4 text-xs">
               {TYPE_HINT[movementType]}
             </p>
           </div>
@@ -189,8 +189,8 @@ export function StockMovementDialog({
                   className={cn(
                     "rounded-md border px-3 py-2 text-sm font-medium",
                     direction === "positive"
-                      ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                      : "border-border bg-background hocus:bg-muted",
+                      ? "border-ok bg-ok-wash text-ok"
+                      : "border-line bg-surface text-ink-1 hocus:bg-bg-app",
                   )}
                 >
                   +Entrada
@@ -201,8 +201,8 @@ export function StockMovementDialog({
                   className={cn(
                     "rounded-md border px-3 py-2 text-sm font-medium",
                     direction === "negative"
-                      ? "border-rose-500 bg-rose-50 text-rose-700"
-                      : "border-border bg-background hocus:bg-muted",
+                      ? "border-danger bg-danger-wash text-danger"
+                      : "border-line bg-surface text-ink-1 hocus:bg-bg-app",
                   )}
                 >
                   −Saída
@@ -227,7 +227,7 @@ export function StockMovementDialog({
                     <SelectItem key={v.id} value={v.id}>
                       {v.name}
                       {" — "}
-                      <span className="text-muted-foreground tabular-nums">
+                      <span className="text-ink-4 tabular-nums">
                         {v.stockQuantity} em estoque
                       </span>
                     </SelectItem>
@@ -252,7 +252,7 @@ export function StockMovementDialog({
               autoFocus
               required
             />
-            <p className="text-muted-foreground text-xs">
+            <p className="text-ink-4 text-xs">
               Sempre positivo. O sinal sai do tipo escolhido acima.
             </p>
           </div>
