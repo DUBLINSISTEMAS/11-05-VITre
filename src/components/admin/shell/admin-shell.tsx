@@ -8,22 +8,23 @@ export interface AdminShellProps extends AdminSidebarProps {
 }
 
 /**
- * Shell do painel admin (refatorado pra estilo AbacatePay — Ondas 1 + 2).
+ * Shell do painel admin — port Dublin v3 BAGY-style (Onda 4, ADR-0019).
  *
  * Layout:
- * - Desktop (lg+): sidebar fixa 240px (SidebarContent: store switcher,
+ * - Desktop (lg+): sidebar fixa 248px (SidebarContent: store switcher,
  *   nav planos + grupos recolhíveis, suporte, user card no rodapé).
- *   Main com conteúdo fluindo direto sobre o fundo cinza #F3F4F6. Cada
+ *   Main com conteúdo fluindo direto sobre `--bg-app` (#F5F6F8). Cada
  *   bloco da página é seu próprio card branco — não há mais wrapper único.
  * - Mobile (<lg): MobileHeader com hamburger (abre Sheet drawer com a
  *   mesma SidebarContent) + logo + sino. BottomNav removido — toda a nav
  *   passou pro drawer.
  *
- * Sem ornamento decorativo: AbacatePay é flat sobre cinza.
+ * Sem ornamento decorativo: BAGY-inspired é flat sobre cinza, item ativo
+ * com brand-wash + border-left navy 3px.
  */
 export function AdminShell({ children, ...userProps }: AdminShellProps) {
   return (
-    <div className="relative min-h-dvh bg-[#F3F4F6] print:bg-white">
+    <div className="relative min-h-dvh bg-bg-app print:bg-white">
       <div className="lg:flex">
         {/*
           data-admin-chrome: usado pelo CSS print de /admin/pedidos/[id]/imprimir

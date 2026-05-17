@@ -75,7 +75,7 @@ export function SidebarContent({
         />
       </div>
 
-      <hr className="mx-3 border-gray-200" />
+      <hr className="mx-3 border-line" />
 
       {/* Lista de items */}
       <nav className="flex-1 overflow-y-auto px-2 py-3" aria-label="Navegação principal">
@@ -96,14 +96,14 @@ export function SidebarContent({
       <div className="px-2 pb-2">
         <a
           href="mailto:contato@vitre.site"
-          className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-navy-700 outline-none transition-colors hocus:bg-accent hocus:text-navy-900 focus-visible:ring-2 focus-visible:ring-ring/50"
+          className="flex items-center gap-2.5 rounded-lg border-l-[3px] border-transparent px-2.5 py-2 text-sm font-medium text-ink-2 outline-none transition-colors hocus:bg-bg-app hocus:text-ink-1 focus-visible:ring-2 focus-visible:ring-ring/50"
         >
           <MessageCircleIcon className="size-4 shrink-0" aria-hidden />
           <span>Suporte</span>
         </a>
       </div>
 
-      <hr className="mx-3 border-gray-200" />
+      <hr className="mx-3 border-line" />
 
       {/* Footer: user card */}
       <UserCardFooter
@@ -127,6 +127,8 @@ function NavLinkRow({ item, pathname, onNavigate }: NavLinkRowProps) {
   const Icon = item.icon;
   const isActive = isLinkActive(item, pathname);
 
+  // Onda 4 port Dublin (ADR-0019): item ativo recebe brand-wash + border-left
+  // navy 3px (padrão BAGY-inspired). Inativo segue text-ink-2 + hover bg-app.
   return (
     <Link
       href={item.href}
@@ -134,10 +136,11 @@ function NavLinkRow({ item, pathname, onNavigate }: NavLinkRowProps) {
       onClick={onNavigate}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
+        "relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
+        "border-l-[3px] border-transparent",
         isActive
-          ? "bg-primary/10 text-primary"
-          : "text-navy-700 hocus:bg-accent hocus:text-navy-900",
+          ? "bg-brand-wash text-brand border-l-brand"
+          : "text-ink-2 hocus:bg-bg-app hocus:text-ink-1",
       )}
     >
       <Icon className="size-4 shrink-0" aria-hidden />
@@ -167,17 +170,17 @@ function NavGroupRow({ group, pathname, onNavigate }: NavGroupRowProps) {
         onClick={() => setIsOpen((v) => !v)}
         aria-expanded={isOpen}
         className={cn(
-          "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
+          "flex w-full items-center gap-2.5 rounded-lg border-l-[3px] border-transparent px-2.5 py-2 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
           hasActiveChild
-            ? "text-navy-900"
-            : "text-navy-700 hocus:bg-accent hocus:text-navy-900",
+            ? "text-ink-1"
+            : "text-ink-2 hocus:bg-bg-app hocus:text-ink-1",
         )}
       >
         <Icon className="size-4 shrink-0" aria-hidden />
         <span className="flex-1 truncate text-left">{group.label}</span>
         <ChevronDownIcon
           className={cn(
-            "size-3.5 shrink-0 text-navy-400 transition-transform",
+            "size-3.5 shrink-0 text-ink-4 transition-transform",
             isOpen && "rotate-180",
           )}
           aria-hidden
@@ -185,7 +188,7 @@ function NavGroupRow({ group, pathname, onNavigate }: NavGroupRowProps) {
       </button>
 
       {isOpen ? (
-        <ul className="mt-0.5 ml-3 space-y-0.5 border-l border-gray-200 pl-2">
+        <ul className="mt-0.5 ml-3 space-y-0.5 border-l border-line pl-2">
           {group.children.map((child) => {
             const ChildIcon = child.icon;
             const isActive = isLinkActive(child, pathname);
@@ -199,8 +202,8 @@ function NavGroupRow({ group, pathname, onNavigate }: NavGroupRowProps) {
                   className={cn(
                     "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
                     isActive
-                      ? "bg-primary/10 text-primary"
-                      : "text-navy-600 hocus:bg-accent hocus:text-navy-900",
+                      ? "bg-brand-wash text-brand"
+                      : "text-ink-3 hocus:bg-bg-app hocus:text-ink-1",
                   )}
                 >
                   <ChildIcon className="size-3.5 shrink-0" aria-hidden />
@@ -270,7 +273,7 @@ function UserCardFooter({
       </div>
       <DropdownMenu>
         <DropdownMenuTrigger
-          className="rounded-md p-1 text-navy-500 outline-none transition-colors hocus:bg-accent hocus:text-navy-900 focus-visible:ring-2 focus-visible:ring-ring/50"
+          className="rounded-md p-1 text-ink-4 outline-none transition-colors hocus:bg-bg-app hocus:text-ink-1 focus-visible:ring-2 focus-visible:ring-ring/50"
           aria-label="Opções da conta"
         >
           <MoreVerticalIcon className="size-4" />

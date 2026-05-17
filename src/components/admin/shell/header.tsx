@@ -20,12 +20,12 @@ export function MobileHeader(props: MobileHeaderProps) {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-gray-200 bg-white lg:hidden">
+    <header className="sticky top-0 z-40 w-full border-b border-line bg-surface lg:hidden">
       <div className="flex h-14 items-center justify-between gap-3 px-3">
         {/* Hamburger → abre drawer com SidebarContent */}
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger
-            className="rounded-md p-2 text-navy-700 outline-none transition-colors hocus:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50"
+            className="rounded-md p-2 text-ink-2 outline-none transition-colors hocus:bg-bg-app focus-visible:ring-2 focus-visible:ring-ring/50"
             aria-label="Abrir menu"
           >
             <MenuIcon className="size-5" />
@@ -47,7 +47,7 @@ export function MobileHeader(props: MobileHeaderProps) {
         <Link
           href="/admin"
           prefetch
-          className="hocus:bg-accent flex items-center gap-2 rounded-md px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          className="hocus:bg-bg-app flex items-center gap-2 rounded-md px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           aria-label="Vitrê — ir para o início"
         >
           <Image
@@ -66,7 +66,7 @@ export function MobileHeader(props: MobileHeaderProps) {
         {/* Sino placeholder */}
         <button
           type="button"
-          className="rounded-md p-2 text-navy-700 outline-none transition-colors hocus:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50"
+          className="rounded-md p-2 text-ink-2 outline-none transition-colors hocus:bg-bg-app focus-visible:ring-2 focus-visible:ring-ring/50"
           aria-label="Notificações"
         >
           <BellIcon className="size-5" />
