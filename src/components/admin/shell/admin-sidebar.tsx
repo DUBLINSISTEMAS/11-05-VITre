@@ -1,8 +1,8 @@
-// Sidebar lateral fixa do admin — desktop only (`hidden lg:flex`).
-// Mobile usa o mesmo conteúdo dentro de um Sheet drawer (ver MobileHeader).
-//
-// Onda 4 port Dublin (ADR-0019): 240px → 248px e border-right usa --line
-// (alias gray-200 mantém pixel-exato).
+// Sidebar lateral fixa do admin — desktop only.
+// Onda A.3 port Dublin v3 (ADR-0019): substitui wrappers tailwind pela
+// classe canônica `b3-side` (248px, sticky, bg-surface, border-right --line,
+// flex column pra rodapé com margin-top:auto). Mobile usa o mesmo
+// SidebarContent dentro de um Sheet drawer (ver MobileHeader).
 import { SidebarContent, type SidebarContentProps } from "./sidebar-content";
 
 export type AdminSidebarProps = SidebarContentProps;
@@ -11,7 +11,7 @@ export function AdminSidebar(props: AdminSidebarProps) {
   return (
     <aside
       aria-label="Navegação principal"
-      className="sticky top-0 hidden h-dvh w-[248px] shrink-0 border-r border-line lg:flex"
+      className="b3-side hidden lg:flex"
     >
       <SidebarContent {...props} />
     </aside>

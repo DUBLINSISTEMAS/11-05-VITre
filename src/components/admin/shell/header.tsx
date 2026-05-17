@@ -1,10 +1,14 @@
 "use client";
 
-// Header MOBILE-ONLY (`lg:hidden`). Em desktop a sidebar carrega todo
-// o nav, então não há topbar. Em mobile:
-// - Hamburger à esquerda abre Sheet drawer com sidebar completa
-// - Logo Vitrê no centro
-// - Sino de notificações à direita (placeholder por enquanto — vira badge real em fase futura)
+// Header MOBILE-ONLY do admin — port Dublin v3 (ADR-0019, Onda A.3).
+// Em desktop a sidebar (b3-side) + topbar (b3-top) cuidam de tudo, então
+// este componente fica `lg:hidden`.
+//
+// Estrutura:
+// - Hamburger à esquerda abre Sheet drawer com SidebarContent completa
+//   (envolvida em flex column pro b3-side-foot ancorar no rodapé)
+// - Logo Vitrê central
+// - Sino à direita (placeholder; vira badge real em B.6+)
 import { BellIcon, MenuIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -20,9 +24,12 @@ export function MobileHeader(props: MobileHeaderProps) {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-line bg-surface lg:hidden">
+    <header
+      className="sticky top-0 z-40 w-full border-b border-line bg-surface lg:hidden"
+      data-admin-chrome="mobile-header"
+    >
       <div className="flex h-14 items-center justify-between gap-3 px-3">
-        {/* Hamburger → abre drawer com SidebarContent */}
+        {/* Hamburger → drawer com SidebarContent */}
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger
             className="rounded-md p-2 text-ink-2 outline-none transition-colors hocus:bg-bg-app focus-visible:ring-2 focus-visible:ring-ring/50"
@@ -32,7 +39,7 @@ export function MobileHeader(props: MobileHeaderProps) {
           </SheetTrigger>
           <SheetContent
             side="left"
-            className="w-[280px] p-0 sm:max-w-[280px]"
+            className="flex w-[280px] flex-col bg-white p-0 sm:max-w-[280px]"
             showCloseButton={false}
           >
             <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
