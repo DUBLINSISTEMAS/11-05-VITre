@@ -90,39 +90,39 @@ export function EditCustomerForm({
 
       {/* Histórico — só renderiza se há vínculos */}
       {orderCount > 0 ? (
-        <section className="bg-card rounded-xl border p-4 shadow-sm sm:p-5">
+        <section className="b3-card p-4 sm:p-5">
           <header className="mb-3 flex items-center justify-between gap-2">
             <div className="space-y-0.5">
-              <h2 className="text-[13.5px] font-semibold tracking-tight">
+              <h2 className="text-[13.5px] font-semibold tracking-tight text-ink-1">
                 Últimos pedidos vinculados
               </h2>
-              <p className="text-muted-foreground text-xs">
+              <p className="text-ink-4 text-xs">
                 Pedidos que apontam pra este cliente. Histórico antigo sem
                 vínculo aparece direto em <code>/admin/pedidos</code>.
               </p>
             </div>
           </header>
-          <ul className="divide-border divide-y">
+          <ul className="divide-line divide-y">
             {recentOrders.map((o) => (
               <li key={o.id}>
                 <Link
                   href={`/admin/pedidos?q=${encodeURIComponent(o.shortCode)}`}
                   prefetch={false}
-                  className="hocus:bg-accent/40 flex items-center gap-3 rounded-md px-2 py-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
+                  className="hocus:bg-bg-app flex items-center gap-3 rounded-md px-2 py-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
                 >
-                  <div className="bg-muted flex size-8 shrink-0 items-center justify-center rounded-md">
-                    <ReceiptIcon className="text-muted-foreground size-4" />
+                  <div className="bg-bg-app flex size-8 shrink-0 items-center justify-center rounded-md">
+                    <ReceiptIcon className="text-ink-4 size-4" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-mono text-[12.5px] font-medium tabular-nums">
+                    <p className="font-mono text-[12.5px] font-medium tabular-nums text-ink-1">
                       {o.shortCode}
                     </p>
-                    <p className="text-muted-foreground text-[11.5px]">
+                    <p className="text-ink-4 text-[11.5px]">
                       {formatRelativeDate(o.createdAt)} ·{" "}
                       {ORDER_STATUS_LABEL[o.status] ?? o.status}
                     </p>
                   </div>
-                  <span className="font-mono text-[13px] tabular-nums">
+                  <span className="font-mono text-[13px] tabular-nums text-ink-1">
                     {formatBRL(o.totalInCents)}
                   </span>
                 </Link>
@@ -138,7 +138,7 @@ export function EditCustomerForm({
           <h2 className="text-destructive text-[13.5px] font-semibold tracking-tight">
             Excluir cliente
           </h2>
-          <p className="text-muted-foreground text-xs leading-relaxed">
+          <p className="text-ink-4 text-xs leading-relaxed">
             Pedidos vinculados <strong>não</strong> são apagados — eles
             mantêm nome e telefone do momento da compra, só perdem o
             vínculo ativo com este cliente.

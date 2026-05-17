@@ -361,7 +361,7 @@ export function CustomerForm({ mode, initialData, onAfterSave }: CustomerFormPro
                     field.onChange(e.target.value === "" ? null : e.target.value)
                   }
                 />
-                <div className="text-muted-foreground flex justify-end text-xs">
+                <div className="text-ink-4 flex justify-end text-xs">
                   <span className="tabular-nums">{text.length}/1000</span>
                 </div>
                 {errors.notes?.message ? (
@@ -435,7 +435,7 @@ function Field({ label, htmlFor, error, required, hint, children }: FieldProps) 
         {required ? <span className="text-destructive ml-0.5">*</span> : null}
       </Label>
       {children}
-      {hint ? <p className="text-muted-foreground text-[11px]">{hint}</p> : null}
+      {hint ? <p className="text-ink-4 text-[11px]">{hint}</p> : null}
       {error ? <p className="text-destructive text-xs">{error}</p> : null}
     </div>
   );
@@ -449,11 +449,11 @@ interface FormCardProps {
 
 function FormCard({ title, description, children }: FormCardProps) {
   return (
-    <section className="bg-card rounded-xl border p-4 shadow-sm sm:p-5">
+    <section className="b3-card p-4 sm:p-5">
       <header className="mb-4 space-y-0.5">
-        <h2 className="text-[13.5px] font-semibold tracking-tight">{title}</h2>
+        <h2 className="text-[13.5px] font-semibold tracking-tight text-ink-1">{title}</h2>
         {description ? (
-          <p className="text-muted-foreground text-xs leading-relaxed">{description}</p>
+          <p className="text-ink-4 text-xs leading-relaxed">{description}</p>
         ) : null}
       </header>
       <div className="space-y-3">{children}</div>

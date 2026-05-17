@@ -117,7 +117,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
       />
 
       <Suspense
-        fallback={<div className="bg-muted/30 h-10 animate-pulse rounded-md" />}
+        fallback={<div className="bg-bg-app h-10 animate-pulse rounded-md" />}
       >
         <CustomersFilters />
       </Suspense>
@@ -144,12 +144,12 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
 
 function EmptyState() {
   return (
-    <div className="border-border/60 flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-12">
-      <div className="bg-primary/10 text-primary flex size-12 items-center justify-center rounded-full">
+    <div className="border-line flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-12">
+      <div className="bg-brand-wash text-brand flex size-12 items-center justify-center rounded-full">
         <UsersIcon className="size-6" />
       </div>
-      <h2 className="text-lg font-semibold">Cadastre seu primeiro cliente</h2>
-      <p className="text-muted-foreground max-w-sm text-sm">
+      <h2 className="text-lg font-semibold text-ink-1">Cadastre seu primeiro cliente</h2>
+      <p className="text-ink-4 max-w-sm text-sm">
         Telefone é a chave. Vai ser útil pra venda balcão, follow-up no
         WhatsApp e histórico de compras.
       </p>
@@ -164,12 +164,12 @@ function EmptyState() {
 
 function NoResults() {
   return (
-    <div className="border-border/60 flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-12">
-      <div className="bg-muted text-muted-foreground flex size-12 items-center justify-center rounded-full">
+    <div className="border-line flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-12">
+      <div className="bg-bg-app text-ink-4 flex size-12 items-center justify-center rounded-full">
         <SearchXIcon className="size-6" />
       </div>
-      <h2 className="text-lg font-semibold">Nenhum cliente encontrado</h2>
-      <p className="text-muted-foreground max-w-sm text-sm">
+      <h2 className="text-lg font-semibold text-ink-1">Nenhum cliente encontrado</h2>
+      <p className="text-ink-4 max-w-sm text-sm">
         Confira nome ou telefone, ou limpe a busca.
       </p>
     </div>

@@ -77,9 +77,9 @@ export function CustomerLinkSection({
     };
 
     return (
-      <section className="space-y-3 rounded-xl border bg-card p-4">
+      <section className="b3-card space-y-3 p-4">
         <header className="flex items-center justify-between gap-2">
-          <h3 className="text-[13.5px] font-semibold tracking-tight">
+          <h3 className="text-[13.5px] font-semibold tracking-tight text-ink-1">
             Cliente cadastrado
           </h3>
           <Button
@@ -88,7 +88,7 @@ export function CustomerLinkSection({
             size="sm"
             onClick={handleUnlink}
             disabled={isPending}
-            className="text-muted-foreground"
+            className="text-ink-4"
           >
             {isPending ? (
               <Loader2Icon className="size-3.5 animate-spin" />
@@ -101,20 +101,20 @@ export function CustomerLinkSection({
         <Link
           href={`/admin/clientes/${linkedCustomer.id}`}
           prefetch
-          className="hocus:bg-accent/40 group flex items-center gap-3 rounded-lg border bg-background p-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
+          className="hocus:bg-bg-app group flex items-center gap-3 rounded-lg border border-line bg-surface p-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
         >
-          <div className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold">
+          <div className="bg-brand-wash text-brand flex size-9 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold">
             {linkedCustomer.name.slice(0, 2).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium leading-tight">
+            <p className="truncate text-sm font-medium leading-tight text-ink-1">
               {linkedCustomer.name}
             </p>
-            <p className="text-muted-foreground font-mono text-[11.5px] leading-tight">
+            <p className="text-ink-4 font-mono text-[11.5px] leading-tight">
               {linkedCustomer.phone}
             </p>
           </div>
-          <Link2Icon className="text-muted-foreground/60 group-hover:text-foreground size-4 shrink-0 transition-colors" />
+          <Link2Icon className="text-ink-5 group-hover:text-ink-1 size-4 shrink-0 transition-colors" />
         </Link>
       </section>
     );
@@ -209,12 +209,12 @@ function UnlinkedSection({
   const busy = isLinking || isCreating;
 
   return (
-    <section className="space-y-3 rounded-xl border bg-card p-4">
+    <section className="b3-card space-y-3 p-4">
       <header className="space-y-0.5">
-        <h3 className="text-[13.5px] font-semibold tracking-tight">
+        <h3 className="text-[13.5px] font-semibold tracking-tight text-ink-1">
           Cliente cadastrado
         </h3>
-        <p className="text-muted-foreground text-xs leading-relaxed">
+        <p className="text-ink-4 text-xs leading-relaxed">
           Vincule a um cliente do seu cadastro pra ter histórico unificado.
           Os dados deste pedido (<span className="font-medium">{snapshotName}</span>{" "}
           {snapshotPhone ? (
@@ -230,7 +230,7 @@ function UnlinkedSection({
         <div className="relative">
           <SearchIcon
             aria-hidden
-            className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
+            className="text-ink-4 pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
           />
           <Input
             type="search"
@@ -243,19 +243,19 @@ function UnlinkedSection({
             disabled={busy}
           />
           {isSearching ? (
-            <Loader2Icon className="text-muted-foreground absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin" />
+            <Loader2Icon className="text-ink-4 absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin" />
           ) : null}
         </div>
 
         {showResults ? (
-          <div className="bg-popover absolute left-0 right-0 top-full z-30 mt-1 max-h-64 overflow-y-auto rounded-lg border shadow-md">
+          <div className="bg-popover absolute left-0 right-0 top-full z-30 mt-1 max-h-64 overflow-y-auto rounded-lg border border-line shadow-md">
             {hits.length === 0 ? (
-              <div className="text-muted-foreground flex flex-col items-center gap-1 px-3 py-4 text-center text-xs">
+              <div className="text-ink-4 flex flex-col items-center gap-1 px-3 py-4 text-center text-xs">
                 <UsersIcon className="size-5 opacity-50" />
                 <span>Nenhum cliente encontrado.</span>
               </div>
             ) : (
-              <ul className="divide-border/60 divide-y">
+              <ul className="divide-line divide-y">
                 {hits.map((h) => (
                   <li key={h.id}>
                     <button
@@ -263,22 +263,22 @@ function UnlinkedSection({
                       onClick={() => handleLink(h.id)}
                       disabled={busy}
                       className={cn(
-                        "hocus:bg-accent/40 flex w-full items-center gap-2.5 px-3 py-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
+                        "hocus:bg-bg-app flex w-full items-center gap-2.5 px-3 py-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
                         busy && "opacity-50",
                       )}
                     >
-                      <div className="bg-primary/10 text-primary flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold">
+                      <div className="bg-brand-wash text-brand flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold">
                         {h.name.slice(0, 2).toUpperCase()}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] font-medium leading-tight">
+                        <p className="truncate text-[13px] font-medium leading-tight text-ink-1">
                           {h.name}
                         </p>
-                        <p className="text-muted-foreground font-mono text-[11px] leading-tight">
+                        <p className="text-ink-4 font-mono text-[11px] leading-tight">
                           {h.phone}
                         </p>
                       </div>
-                      <CheckIcon className="text-muted-foreground/0 size-4 shrink-0 transition-colors group-hover:text-foreground" />
+                      <CheckIcon className="text-ink-5 size-4 shrink-0 transition-colors group-hover:text-ink-1" />
                     </button>
                   </li>
                 ))}
@@ -288,7 +288,7 @@ function UnlinkedSection({
         ) : null}
 
         <div className="flex items-center gap-2 pt-1">
-          <span className="text-muted-foreground text-[11px]">ou</span>
+          <span className="text-ink-4 text-[11px]">ou</span>
           <Button
             type="button"
             variant="outline"

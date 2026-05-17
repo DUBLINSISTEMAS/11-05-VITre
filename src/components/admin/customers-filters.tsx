@@ -52,7 +52,7 @@ export function CustomersFilters() {
       <div className="relative flex-1 sm:max-w-sm">
         <SearchIcon
           aria-hidden
-          className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
+          className="text-ink-4 pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
         />
         <Input
           type="search"
@@ -71,7 +71,7 @@ export function CustomersFilters() {
           variant="ghost"
           size="sm"
           onClick={clearAll}
-          className="text-muted-foreground"
+          className="text-ink-4"
         >
           <XIcon className="size-4" /> Limpar
         </Button>
