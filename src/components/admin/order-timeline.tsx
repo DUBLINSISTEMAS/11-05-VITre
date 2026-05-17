@@ -54,8 +54,8 @@ export function OrderTimeline({ order }: OrderTimelineProps) {
                 className={cn(
                   "absolute left-[11px] top-6 bottom-0 w-px",
                   step.state === "done"
-                    ? "bg-foreground/30"
-                    : "bg-foreground/15",
+                    ? "bg-ink-4"
+                    : "bg-line",
                 )}
               />
             ) : null}
@@ -66,11 +66,11 @@ export function OrderTimeline({ order }: OrderTimelineProps) {
               className={cn(
                 "relative z-10 mt-0.5 flex size-[22px] shrink-0 items-center justify-center rounded-full transition-all",
                 step.state === "done" &&
-                  "bg-foreground text-background",
+                  "bg-ink-1 text-white",
                 step.state === "current" &&
-                  "bg-primary text-primary-foreground ring-brand-tint ring-4",
+                  "bg-brand text-white ring-brand-wash ring-4",
                 step.state === "pending" &&
-                  "border-foreground/30 bg-card border-2",
+                  "border-ink-5 bg-surface border-2",
               )}
             >
               {step.state === "done" ? (
@@ -83,15 +83,15 @@ export function OrderTimeline({ order }: OrderTimelineProps) {
                 className={cn(
                   "text-[12.5px] font-medium",
                   step.state === "pending"
-                    ? "text-muted-foreground"
-                    : "text-foreground",
-                  step.state === "current" && "text-primary",
+                    ? "text-ink-4"
+                    : "text-ink-1",
+                  step.state === "current" && "text-brand",
                 )}
               >
                 {step.label}
               </p>
               {step.date ? (
-                <p className="text-muted-foreground font-mono text-[11px]">
+                <p className="text-ink-4 font-mono text-[11px]">
                   {formatRelativeDate(step.date)}
                 </p>
               ) : null}

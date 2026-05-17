@@ -8,15 +8,15 @@ const STATUS_LABELS: Record<string, string> = {
   expired: "Expirado",
 };
 
+// Port Dublin v3 (Onda 5d): migra pra `b3-pill b3-pill--{warn,ok,danger}`.
+// Dublin é flat, sem ring. Decisão preservada: founder pediu verde fixo
+// pra "Confirmado" (Onda 4 / 2026-05-12) — ok-wash atende.
 const STATUS_CLASSES: Record<string, string> = {
-  awaiting_whatsapp: "bg-warning-soft text-warning-foreground ring-warning/30",
-  // Onda 4 (2026-05-12): founder pediu verde fixo pra "Confirmado".
-  // Confirmado vira success-soft (verde claro com texto verde escuro).
-  // Fulfilled segue verde também mas com leve variação visual via opacity.
-  confirmed: "bg-success-soft text-success ring-success/40",
-  fulfilled: "bg-success/15 text-success ring-success/30",
-  canceled: "bg-destructive-soft text-destructive ring-destructive/30",
-  expired: "bg-muted text-muted-foreground ring-border",
+  awaiting_whatsapp: "b3-pill b3-pill--warn",
+  confirmed: "b3-pill b3-pill--ok",
+  fulfilled: "b3-pill b3-pill--ok",
+  canceled: "b3-pill b3-pill--danger",
+  expired: "b3-pill",
 };
 
 interface OrderStatusBadgeProps {
@@ -25,8 +25,8 @@ interface OrderStatusBadgeProps {
 }
 
 /**
- * Badge de status do pedido com cores semânticas. Inclui ring tintado
- * pra contraste em fundos claros e escuros.
+ * Badge de status do pedido. Cores semânticas via b3-pill variants
+ * (port Dublin v3). Size só ajusta padding/font-size.
  */
 export function OrderStatusBadge({
   status,
@@ -37,11 +37,8 @@ export function OrderStatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full font-medium ring-1 ring-inset",
-        size === "sm"
-          ? "px-2 py-0.5 text-[11px]"
-          : "px-2.5 py-1 text-xs",
         classes,
+        size === "md" && "px-2.5 py-1 text-xs",
       )}
     >
       {label}

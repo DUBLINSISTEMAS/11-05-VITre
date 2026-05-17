@@ -58,7 +58,7 @@ export function OrderStatusActions({
 
   if (allowed.length === 0) {
     return (
-      <p className="text-muted-foreground text-xs">
+      <p className="text-ink-4 text-xs">
         Pedido finalizado. Sem ações disponíveis.
       </p>
     );

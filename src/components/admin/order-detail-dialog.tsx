@@ -97,13 +97,13 @@ export function OrderDetailDialog({
 function DialogShellLoading() {
   return (
     <>
-      <DialogHeader className="border-b px-5 py-4 sm:px-6">
+      <DialogHeader className="border-b border-line px-5 py-4 sm:px-6">
         <DialogTitle className="sr-only">Carregando pedido…</DialogTitle>
         <DialogDescription className="sr-only">
           Aguardando dados do pedido.
         </DialogDescription>
       </DialogHeader>
-      <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+      <div className="flex items-center justify-center gap-2 py-16 text-sm text-ink-4">
         <Loader2Icon className="size-4 animate-spin" /> Carregando…
       </div>
     </>
@@ -113,7 +113,7 @@ function DialogShellLoading() {
 function DialogShellError({ message }: { message: string }) {
   return (
     <>
-      <DialogHeader className="border-b px-5 py-4 sm:px-6">
+      <DialogHeader className="border-b border-line px-5 py-4 sm:px-6">
         <DialogTitle>Não foi possível abrir o pedido</DialogTitle>
         <DialogDescription>{message}</DialogDescription>
       </DialogHeader>
@@ -140,15 +140,15 @@ function OrderDetailContent({
 
   return (
     <>
-      <DialogHeader className="border-b px-5 py-4 sm:px-6">
+      <DialogHeader className="border-b border-line px-5 py-4 sm:px-6">
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1 space-y-0.5">
-            <DialogTitle className="text-base font-semibold sm:text-lg">
+            <DialogTitle className="text-base font-semibold text-ink-1 sm:text-lg">
               {order.customerName}
             </DialogTitle>
             <DialogDescription className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
               <span className="font-mono">#{order.shortCode}</span>
-              <span aria-hidden className="text-muted-foreground/40">·</span>
+              <span aria-hidden className="text-ink-5">·</span>
               <span>
                 {formatBRL(order.totalInCents)} · {itemCount}{" "}
                 {itemCount === 1 ? "item" : "itens"}
@@ -163,15 +163,15 @@ function OrderDetailContent({
 
       <div className="space-y-4 px-5 py-4 sm:px-6">
         {/* Cliente + ações primárias */}
-        <section className="space-y-3 rounded-xl border bg-card p-4">
-          <h3 className="text-[13.5px] font-semibold tracking-tight">
+        <section className="b3-card space-y-3 p-4">
+          <h3 className="text-[13.5px] font-semibold tracking-tight text-ink-1">
             Cliente
           </h3>
           <div className="flex flex-wrap items-center gap-3 text-sm">
-            <PhoneIcon className="size-4 shrink-0 text-muted-foreground" />
-            <span className="font-mono text-[13px]">
+            <PhoneIcon className="size-4 shrink-0 text-ink-4" />
+            <span className="font-mono text-[13px] text-ink-1">
               {order.customerPhone ?? (
-                <span className="text-muted-foreground italic">
+                <span className="text-ink-4 italic">
                   Sem telefone (balcão)
                 </span>
               )}
@@ -190,9 +190,9 @@ function OrderDetailContent({
           </div>
 
           {order.customerNotes ? (
-            <div className="space-y-1 rounded-lg bg-muted/50 p-3">
+            <div className="space-y-1 rounded-lg bg-bg-app p-3">
               <p className="text-eyebrow">Observações da cliente</p>
-              <p className="whitespace-pre-wrap text-sm">
+              <p className="whitespace-pre-wrap text-sm text-ink-1">
                 {order.customerNotes}
               </p>
             </div>
@@ -209,17 +209,17 @@ function OrderDetailContent({
         />
 
         {/* Linha do tempo */}
-        <section className="space-y-3 rounded-xl border bg-card p-4">
-          <h3 className="text-[13.5px] font-semibold tracking-tight">
+        <section className="b3-card space-y-3 p-4">
+          <h3 className="text-[13.5px] font-semibold tracking-tight text-ink-1">
             Linha do tempo
           </h3>
           <OrderTimeline order={order} />
         </section>
 
         {/* Itens */}
-        <section className="space-y-3 rounded-xl border bg-card p-4">
-          <h3 className="text-[13.5px] font-semibold tracking-tight">Itens</h3>
-          <ul className="divide-y divide-border">
+        <section className="b3-card space-y-3 p-4">
+          <h3 className="text-[13.5px] font-semibold tracking-tight text-ink-1">Itens</h3>
+          <ul className="divide-y divide-line">
             {order.items.map((it) => {
               const subtotal = it.priceInCentsSnapshot * it.quantity;
               return (
@@ -227,7 +227,7 @@ function OrderDetailContent({
                   key={it.id}
                   className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
                 >
-                  <div className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-muted sm:size-14">
+                  <div className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-bg-app sm:size-14">
                     {it.imageUrlSnapshot ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -238,36 +238,36 @@ function OrderDetailContent({
                     ) : null}
                   </div>
                   <div className="min-w-0 flex-1 space-y-0.5">
-                    <p className="truncate text-sm font-medium">
+                    <p className="truncate text-sm font-medium text-ink-1">
                       {it.productNameSnapshot}
                     </p>
                     {it.variantNameSnapshot ? (
-                      <p className="text-muted-foreground text-xs">
+                      <p className="text-ink-4 text-xs">
                         {it.variantNameSnapshot}
                       </p>
                     ) : null}
-                    <p className="font-mono text-[11.5px] tabular-nums text-muted-foreground">
+                    <p className="font-mono text-[11.5px] tabular-nums text-ink-4">
                       {it.quantity} × {formatBRL(it.priceInCentsSnapshot)}
                     </p>
                   </div>
-                  <p className="font-mono text-sm font-medium tabular-nums">
+                  <p className="font-mono text-sm font-medium tabular-nums text-ink-1">
                     {formatBRL(subtotal)}
                   </p>
                 </li>
               );
             })}
           </ul>
-          <div className="flex items-center justify-between border-t pt-3">
-            <span className="text-sm font-medium">Total</span>
-            <span className="font-mono text-base font-semibold tabular-nums">
+          <div className="flex items-center justify-between border-t border-line pt-3">
+            <span className="text-sm font-medium text-ink-1">Total</span>
+            <span className="font-mono text-base font-semibold tabular-nums text-ink-1">
               {formatBRL(order.totalInCents)}
             </span>
           </div>
         </section>
 
         {/* Ações */}
-        <section className="space-y-3 rounded-xl border bg-card p-4">
-          <h3 className="text-[13.5px] font-semibold tracking-tight">Ações</h3>
+        <section className="b3-card space-y-3 p-4">
+          <h3 className="text-[13.5px] font-semibold tracking-tight text-ink-1">Ações</h3>
           <OrderStatusActions orderId={order.id} status={order.status} />
           <Button
             asChild

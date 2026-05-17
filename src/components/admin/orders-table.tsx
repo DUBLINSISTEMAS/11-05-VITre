@@ -44,10 +44,10 @@ export function OrdersTable({ orders }: OrdersTableProps) {
   return (
     <>
       {/* Desktop: tabela densa */}
-      <div className="bg-card hidden overflow-hidden rounded-xl border shadow-sm lg:block">
+      <div className="b3-card hidden overflow-hidden lg:block">
         <div
           role="rowgroup"
-          className="text-eyebrow bg-muted/50 grid grid-cols-[110px_minmax(0,1.4fr)_minmax(0,130px)_minmax(0,130px)_120px_32px] items-center gap-4 border-b px-4 py-2.5"
+          className="text-eyebrow bg-bg-app grid grid-cols-[110px_minmax(0,1.4fr)_minmax(0,130px)_minmax(0,130px)_120px_32px] items-center gap-4 border-b border-line px-4 py-2.5"
         >
           <span>#</span>
           <span>Cliente</span>
@@ -57,29 +57,29 @@ export function OrdersTable({ orders }: OrdersTableProps) {
           <span aria-hidden />
         </div>
 
-        <ul className="divide-border divide-y">
+        <ul className="divide-line divide-y">
           {orders.map((o) => (
             <li key={o.id}>
               <button
                 type="button"
                 onClick={() => setOpenOrderId(o.id)}
-                className="hocus:bg-accent/40 group grid w-full grid-cols-[110px_minmax(0,1.4fr)_minmax(0,130px)_minmax(0,130px)_120px_32px] items-center gap-4 px-4 py-2.5 text-left text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
+                className="hocus:bg-bg-app group grid w-full grid-cols-[110px_minmax(0,1.4fr)_minmax(0,130px)_minmax(0,130px)_120px_32px] items-center gap-4 px-4 py-2.5 text-left text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
               >
-                <span className="font-mono text-[12.5px] font-medium tabular-nums">
+                <span className="font-mono text-[12.5px] font-medium tabular-nums text-ink-1">
                   {o.shortCode}
                 </span>
-                <span className="flex min-w-0 items-center gap-1.5 truncate font-medium">
+                <span className="flex min-w-0 items-center gap-1.5 truncate font-medium text-ink-1">
                   {o.customerName}
                   {o.channel === "balcao" ? (
-                    <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-amber-900">
+                    <span className="b3-pill b3-pill--gold shrink-0">
                       Balcão
                     </span>
                   ) : null}
                 </span>
-                <span className="font-mono text-[13px] tabular-nums">
+                <span className="font-mono text-[13px] tabular-nums text-ink-1">
                   {formatBRL(o.totalInCents)}
                 </span>
-                <span className="text-muted-foreground text-[12.5px]">
+                <span className="text-ink-4 text-[12.5px]">
                   {formatRelativeDate(o.createdAt)}
                 </span>
                 <span>
@@ -87,7 +87,7 @@ export function OrdersTable({ orders }: OrdersTableProps) {
                 </span>
                 <span
                   aria-hidden
-                  className="text-muted-foreground/60 group-hover:text-foreground flex justify-end transition-colors"
+                  className="text-ink-5 group-hover:text-ink-1 flex justify-end transition-colors"
                 >
                   <ChevronRightIcon className="size-4" />
                 </span>
@@ -98,22 +98,22 @@ export function OrdersTable({ orders }: OrdersTableProps) {
       </div>
 
       {/* Mobile: rows compactas (4.1 — densidade) */}
-      <ul className="divide-border divide-y overflow-hidden rounded-xl border bg-card lg:hidden">
+      <ul className="b3-card divide-line divide-y overflow-hidden lg:hidden">
         {orders.map((o) => (
           <li key={o.id}>
             <button
               type="button"
               onClick={() => setOpenOrderId(o.id)}
-              className="hocus:bg-accent/40 group flex w-full items-center gap-2.5 px-3 py-2.5 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
+              className="hocus:bg-bg-app group flex w-full items-center gap-2.5 px-3 py-2.5 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
             >
-              <div className="bg-muted flex size-9 shrink-0 items-center justify-center rounded-md font-mono text-[11px] font-semibold tabular-nums">
+              <div className="bg-bg-app flex size-9 shrink-0 items-center justify-center rounded-md font-mono text-[11px] font-semibold tabular-nums text-ink-1">
                 {o.shortCode}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[13.5px] font-medium leading-tight">
+                <p className="truncate text-[13.5px] font-medium leading-tight text-ink-1">
                   {o.customerName}
                 </p>
-                <p className="text-muted-foreground mt-0.5 truncate text-[11.5px] leading-tight">
+                <p className="text-ink-4 mt-0.5 truncate text-[11.5px] leading-tight">
                   <span className="font-mono tabular-nums">
                     {formatBRL(o.totalInCents)}
                   </span>{" "}
