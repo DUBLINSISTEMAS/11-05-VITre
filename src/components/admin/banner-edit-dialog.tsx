@@ -95,7 +95,7 @@ export function BannerEditDialog({ banner }: BannerEditDialogProps) {
               autoComplete="off"
               aria-invalid={!!linkError}
             />
-            <p className="text-muted-foreground text-xs">
+            <p className="text-ink-4 text-xs">
               Use um caminho da vitrine (começando com /) ou um link completo
               (http/https). Deixe em branco se for só decorativo.
             </p>

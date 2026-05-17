@@ -116,7 +116,7 @@ export function CategoryEditDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="border-border/60 mb-4 rounded-lg border p-3">
+        <div className="border-line mb-4 rounded-lg border p-3">
           <CategoryImageUploader
             categoryId={category.id}
             currentUrl={category.imageUrl}
@@ -166,7 +166,7 @@ export function CategoryEditDialog({
                 </SelectContent>
               </Select>
               {hasChildren ? (
-                <p className="text-muted-foreground text-xs">
+                <p className="text-ink-4 text-xs">
                   Esta categoria tem subcategorias — não pode virar
                   subcategoria. Mova ou apague as filhas primeiro.
                 </p>

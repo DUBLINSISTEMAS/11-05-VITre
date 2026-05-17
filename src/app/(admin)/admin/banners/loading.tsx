@@ -23,7 +23,7 @@ export default function Loading() {
         {Array.from({ length: 3 }).map((_, i) => (
           <li
             key={i}
-            className="border-border/60 flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center"
+            className="border-line flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center"
           >
             <Skeleton className="aspect-[8/3] w-full rounded-lg sm:aspect-auto sm:h-20 sm:w-52 sm:shrink-0" />
             <div className="flex-1 space-y-2">

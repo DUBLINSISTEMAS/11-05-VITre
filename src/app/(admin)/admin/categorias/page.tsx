@@ -82,12 +82,12 @@ export default async function CategoriasPage() {
 
 function EmptyState() {
   return (
-    <div className="border-border/60 flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-12">
-      <div className="bg-primary/10 text-primary flex size-12 items-center justify-center rounded-full">
+    <div className="border-line flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-12">
+      <div className="bg-brand-wash text-brand flex size-12 items-center justify-center rounded-full">
         <TagIcon className="size-6" />
       </div>
-      <h2 className="text-lg font-semibold">Organize sua vitrine</h2>
-      <p className="text-muted-foreground max-w-sm text-sm">
+      <h2 className="text-lg font-semibold text-ink-1">Organize sua vitrine</h2>
+      <p className="text-ink-4 max-w-sm text-sm">
         Categorias agrupam produtos pra seu cliente achar rápido — ex:
         “Vestidos”, “Anéis”, “Perfumes”. Você pode criar subcategorias
         (até 2 níveis).

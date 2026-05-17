@@ -160,7 +160,7 @@ export function CategoryDialog({
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-muted-foreground text-xs">
+              <p className="text-ink-4 text-xs">
                 Use pra criar subcategorias (ex: “Vestidos” → “Festa”). Máx 2
                 níveis.
               </p>

@@ -121,7 +121,7 @@ export function CategoryImageUploader({
       <div className="flex items-center gap-3">
         <div
           className={cn(
-            "bg-muted relative size-20 shrink-0 overflow-hidden rounded-full border sm:size-24",
+            "bg-bg-app relative size-20 shrink-0 overflow-hidden rounded-full border border-line sm:size-24",
           )}
         >
           {displayUrl ? (
@@ -134,7 +134,7 @@ export function CategoryImageUploader({
               unoptimized={previewUrl !== null}
             />
           ) : (
-            <div className="text-muted-foreground flex size-full items-center justify-center">
+            <div className="text-ink-4 flex size-full items-center justify-center">
               <ImagePlusIcon className="size-6" />
             </div>
           )}
@@ -174,7 +174,7 @@ export function CategoryImageUploader({
         </div>
       </div>
 
-      {hint ? <p className="text-muted-foreground text-xs">{hint}</p> : null}
+      {hint ? <p className="text-ink-4 text-xs">{hint}</p> : null}
 
       <input
         ref={inputRef}

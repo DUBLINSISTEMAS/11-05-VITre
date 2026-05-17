@@ -24,7 +24,7 @@ export default function Loading() {
         {Array.from({ length: 5 }).map((_, i) => (
           <li
             key={i}
-            className="border-border/60 flex items-center gap-3 rounded-xl border p-3"
+            className="border-line flex items-center gap-3 rounded-xl border p-3"
           >
             <Skeleton className="size-12 shrink-0 rounded-full" />
             <Skeleton className="h-4 flex-1" />

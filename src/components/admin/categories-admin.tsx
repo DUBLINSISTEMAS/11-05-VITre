@@ -228,9 +228,9 @@ function CategoryCard({
   return (
     <div
       className={cn(
-        "bg-card flex items-center gap-2 rounded-xl border p-2.5 shadow-sm transition-colors sm:gap-3 sm:p-3",
+        "b3-card flex items-center gap-2 p-2.5 transition-colors sm:gap-3 sm:p-3",
         !category.isActive && "opacity-60",
-        isChild && "border-dashed shadow-none",
+        isChild && "border-dashed",
       )}
     >
       <div className="flex shrink-0 flex-col">
@@ -258,7 +258,7 @@ function CategoryCard({
         </Button>
       </div>
 
-      <div className="bg-muted relative size-10 shrink-0 overflow-hidden rounded-full border sm:size-12">
+      <div className="bg-bg-app relative size-10 shrink-0 overflow-hidden rounded-full border border-line sm:size-12">
         {category.imageUrl ? (
           <Image
             src={category.imageUrl}
@@ -268,22 +268,22 @@ function CategoryCard({
             className="object-cover"
           />
         ) : (
-          <div className="text-muted-foreground/60 flex size-full items-center justify-center">
+          <div className="text-ink-5 flex size-full items-center justify-center">
             <ImageIcon className="size-4" />
           </div>
         )}
       </div>
 
       <div className="min-w-0 flex-1 space-y-0.5">
-        <p className="truncate text-sm font-medium sm:text-base">
+        <p className="truncate text-sm font-medium text-ink-1 sm:text-base">
           {category.name}
           {!category.isActive ? (
-            <span className="text-muted-foreground ml-2 text-xs font-normal">
+            <span className="text-ink-4 ml-2 text-xs font-normal">
               · pausada
             </span>
           ) : null}
         </p>
-        <p className="text-muted-foreground text-xs">
+        <p className="text-ink-4 text-xs">
           {productCount} {productCount === 1 ? "produto" : "produtos"}
           {hasChildren ? " · com subcategorias" : ""}
         </p>

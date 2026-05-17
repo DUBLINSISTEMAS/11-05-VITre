@@ -191,15 +191,15 @@ export function BannersAdmin({ banners, maxBanners }: BannersAdminProps) {
           onClick={() => inputRef.current?.click()}
           disabled={isPending}
           className={cn(
-            "border-border bg-muted/30 hover:bg-muted/60 hover:border-foreground/30 flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 transition-colors disabled:opacity-50 sm:p-8",
+            "border-line bg-bg-app/40 hover:bg-bg-app hover:border-ink-5 flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 transition-colors disabled:opacity-50 sm:p-8",
           )}
         >
           {isPending ? (
-            <Loader2Icon className="text-muted-foreground size-6 animate-spin" />
+            <Loader2Icon className="text-ink-4 size-6 animate-spin" />
           ) : (
-            <UploadIcon className="text-muted-foreground size-6" />
+            <UploadIcon className="text-ink-4 size-6" />
           )}
-          <span className="text-sm font-medium">
+          <span className="text-sm font-medium text-ink-1">
             {isPending
               ? phase === "preparing"
                 ? "Preparando imagem…"
@@ -208,12 +208,12 @@ export function BannersAdmin({ banners, maxBanners }: BannersAdminProps) {
                 ? "Enviar primeiro banner"
                 : "Enviar outro banner"}
           </span>
-          <span className="text-muted-foreground text-xs">
+          <span className="text-ink-4 text-xs">
             JPG, PNG ou WebP. Recomendado 1600×600px.
           </span>
         </button>
       ) : (
-        <p className="text-muted-foreground rounded-xl border border-dashed p-4 text-center text-sm">
+        <p className="text-ink-4 rounded-xl border border-dashed border-line p-4 text-center text-sm">
           Limite de {maxBanners} banners atingido. Apague algum pra subir
           outro.
         </p>
@@ -272,12 +272,12 @@ export function BannersAdmin({ banners, maxBanners }: BannersAdminProps) {
 
 function EmptyState() {
   return (
-    <div className="border-border/60 flex flex-col items-center gap-2 rounded-xl border-2 border-dashed p-8 text-center sm:p-10">
-      <div className="bg-primary/10 text-primary flex size-12 items-center justify-center rounded-full">
+    <div className="border-line flex flex-col items-center gap-2 rounded-xl border-2 border-dashed p-8 text-center sm:p-10">
+      <div className="bg-brand-wash text-brand flex size-12 items-center justify-center rounded-full">
         <ImagePlusIcon className="size-6" />
       </div>
-      <h2 className="text-lg font-semibold">Sem banners ainda</h2>
-      <p className="text-muted-foreground max-w-sm text-sm">
+      <h2 className="text-lg font-semibold text-ink-1">Sem banners ainda</h2>
+      <p className="text-ink-4 max-w-sm text-sm">
         Banners aparecem no topo da sua vitrine, ótimos pra destacar promoções
         ou coleções novas.
       </p>
@@ -307,11 +307,11 @@ function BannerCard({
   return (
     <div
       className={cn(
-        "bg-card flex flex-col gap-3 rounded-xl border p-3 shadow-sm sm:flex-row sm:items-center",
+        "b3-card flex flex-col gap-3 p-3 sm:flex-row sm:items-center",
         !banner.isActive && "opacity-60",
       )}
     >
-      <div className="bg-muted relative aspect-[8/3] w-full overflow-hidden rounded-lg sm:aspect-auto sm:h-20 sm:w-52 sm:shrink-0">
+      <div className="bg-bg-app relative aspect-[8/3] w-full overflow-hidden rounded-lg sm:aspect-auto sm:h-20 sm:w-52 sm:shrink-0">
         <Image
           src={banner.imageUrl}
           alt=""
@@ -325,14 +325,14 @@ function BannerCard({
       <div className="min-w-0 flex-1 space-y-0.5">
         <p className="truncate text-sm font-medium">
           {banner.link ? (
-            <span className="text-muted-foreground font-mono text-xs">
+            <span className="text-ink-4 font-mono text-xs">
               {banner.link}
             </span>
           ) : (
-            <span className="text-muted-foreground italic">Sem link</span>
+            <span className="text-ink-4 italic">Sem link</span>
           )}
         </p>
-        <p className="text-muted-foreground text-xs">
+        <p className="text-ink-4 text-xs">
           {banner.isActive ? "Visível" : "Pausado"}
         </p>
       </div>
