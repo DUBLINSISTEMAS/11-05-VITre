@@ -1,16 +1,14 @@
 "use client";
 
-// Lista de pedidos do admin (Onda 4 do pacote master 2026-05-12).
+// Lista de pedidos — port Dublin v3 (ADR-0019, Onda A.6).
+// REWRITE pra usar `b3-tbl` canônico (substitui grid custom anterior).
+// Mobile responsivo: CSS @media (max-width: 640px) em globals.css faz
+// thead esconder e tbody tr virar block stack (já no globals).
 //
-// Mudanças vs canvas-v1 anterior:
-//  - Cada linha é um <button> que abre OrderDetailDialog (não navega mais
-//    pra /admin/pedidos/[id], rota deletada).
-//  - Densidade aumentada: padding reduzido, mobile virou row densa em
-//    vez de card grande.
-//  - Status badge mantém amarelo (aguardando) + verde (confirmado) — cores
-//    aplicadas via STATUS_CLASSES no OrderStatusBadge.
+// Cada row continua clicável (abre OrderDetailDialog ao clicar). Checkbox
+// master + per-row é placeholder visual (bulk actions ficam pra onda futura).
 
-import { ChevronRightIcon } from "lucide-react";
+import { MessageCircleIcon } from "lucide-react";
 import { useState } from "react";
 
 import type { ORDER_STATUS_VALUES } from "@/actions/order/schema";
@@ -20,6 +18,8 @@ import { formatRelativeDate } from "@/lib/format";
 import { formatBRL } from "@/lib/pricing";
 
 type OrderStatus = (typeof ORDER_STATUS_VALUES)[number];
+type OrderChannel = "whatsapp" | "balcao";
+type OrderPaymentMethod = "cash" | "pix" | "debit" | "credit" | "other";
 
 export interface OrderTableRow {
   id: string;
@@ -30,12 +30,25 @@ export interface OrderTableRow {
   totalInCents: number;
   status: OrderStatus;
   createdAt: Date;
-  /** Fase 5: 'whatsapp' (legado/storefront) ou 'balcao' (PDV). */
-  channel?: "whatsapp" | "balcao";
+  channel?: OrderChannel;
+  paymentMethod?: OrderPaymentMethod | null;
 }
 
 export interface OrdersTableProps {
   orders: ReadonlyArray<OrderTableRow>;
+}
+
+const PAYMENT_LABELS: Record<OrderPaymentMethod, string> = {
+  cash: "Dinheiro",
+  pix: "PIX",
+  debit: "Débito",
+  credit: "Crédito",
+  other: "Outro",
+};
+
+function paymentLabel(method: OrderPaymentMethod | null | undefined): string {
+  if (!method) return "—";
+  return PAYMENT_LABELS[method];
 }
 
 export function OrdersTable({ orders }: OrdersTableProps) {
@@ -43,90 +56,88 @@ export function OrdersTable({ orders }: OrdersTableProps) {
 
   return (
     <>
-      {/* Desktop: tabela densa */}
-      <div className="b3-card hidden overflow-hidden lg:block">
-        <div
-          role="rowgroup"
-          className="text-eyebrow bg-bg-app grid grid-cols-[110px_minmax(0,1.4fr)_minmax(0,130px)_minmax(0,130px)_120px_32px] items-center gap-4 border-b border-line px-4 py-2.5"
-        >
-          <span>#</span>
-          <span>Cliente</span>
-          <span>Total</span>
-          <span>Data</span>
-          <span>Status</span>
-          <span aria-hidden />
-        </div>
-
-        <ul className="divide-line divide-y">
+      <table className="b3-tbl">
+        <thead>
+          <tr>
+            <th style={{ paddingLeft: 20, width: 28 }}>
+              <span className="sr-only">Selecionar</span>
+            </th>
+            <th>Código</th>
+            <th>Cliente</th>
+            <th>Canal</th>
+            <th>Pagamento</th>
+            <th style={{ textAlign: "right" }}>Total</th>
+            <th>Status</th>
+            <th>Data</th>
+          </tr>
+        </thead>
+        <tbody>
           {orders.map((o) => (
-            <li key={o.id}>
-              <button
-                type="button"
-                onClick={() => setOpenOrderId(o.id)}
-                className="hocus:bg-bg-app group grid w-full grid-cols-[110px_minmax(0,1.4fr)_minmax(0,130px)_minmax(0,130px)_120px_32px] items-center gap-4 px-4 py-2.5 text-left text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
-              >
-                <span className="font-mono text-[12.5px] font-medium tabular-nums text-ink-1">
-                  {o.shortCode}
-                </span>
-                <span className="flex min-w-0 items-center gap-1.5 truncate font-medium text-ink-1">
-                  {o.customerName}
-                  {o.channel === "balcao" ? (
-                    <span className="b3-pill b3-pill--gold shrink-0">
-                      Balcão
-                    </span>
-                  ) : null}
-                </span>
-                <span className="font-mono text-[13px] tabular-nums text-ink-1">
-                  {formatBRL(o.totalInCents)}
-                </span>
-                <span className="text-ink-4 text-[12.5px]">
-                  {formatRelativeDate(o.createdAt)}
-                </span>
-                <span>
-                  <OrderStatusBadge status={o.status} />
-                </span>
-                <span
-                  aria-hidden
-                  className="text-ink-5 group-hover:text-ink-1 flex justify-end transition-colors"
-                >
-                  <ChevronRightIcon className="size-4" />
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Mobile: rows compactas (4.1 — densidade) */}
-      <ul className="b3-card divide-line divide-y overflow-hidden lg:hidden">
-        {orders.map((o) => (
-          <li key={o.id}>
-            <button
-              type="button"
+            <tr
+              key={o.id}
               onClick={() => setOpenOrderId(o.id)}
-              className="hocus:bg-bg-app group flex w-full items-center gap-2.5 px-3 py-2.5 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setOpenOrderId(o.id);
+                }
+              }}
+              tabIndex={0}
+              role="button"
+              aria-label={`Abrir pedido ${o.shortCode}`}
+              className="cursor-pointer outline-none focus-visible:bg-bg-app"
             >
-              <div className="bg-bg-app flex size-9 shrink-0 items-center justify-center rounded-md font-mono text-[11px] font-semibold tabular-nums text-ink-1">
+              <td style={{ paddingLeft: 20 }}>
+                <input
+                  type="checkbox"
+                  aria-label={`Selecionar pedido ${o.shortCode}`}
+                  onClick={(e) => e.stopPropagation()}
+                  disabled
+                  className="cursor-not-allowed opacity-50"
+                />
+              </td>
+              <td
+                className="mono"
+                style={{ color: "var(--brand)", fontWeight: 600 }}
+              >
                 {o.shortCode}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[13.5px] font-medium leading-tight text-ink-1">
-                  {o.customerName}
-                </p>
-                <p className="text-ink-4 mt-0.5 truncate text-[11.5px] leading-tight">
-                  <span className="font-mono tabular-nums">
-                    {formatBRL(o.totalInCents)}
-                  </span>{" "}
-                  · {formatRelativeDate(o.createdAt)}
-                </p>
-              </div>
-              <div className="shrink-0">
+              </td>
+              <td style={{ fontWeight: 500 }}>{o.customerName}</td>
+              <td>
+                {o.channel === "balcao" ? (
+                  <span className="b3-pill b3-pill--gold">Balcão</span>
+                ) : (
+                  <span className="b3-pill b3-pill--ok">
+                    <MessageCircleIcon size={11} aria-hidden />
+                    WhatsApp
+                  </span>
+                )}
+              </td>
+              <td>
+                <span className="b3-pill">{paymentLabel(o.paymentMethod)}</span>
+              </td>
+              <td
+                className="mono"
+                style={{
+                  textAlign: "right",
+                  fontWeight: 600,
+                }}
+              >
+                {formatBRL(o.totalInCents)}
+              </td>
+              <td>
                 <OrderStatusBadge status={o.status} />
-              </div>
-            </button>
-          </li>
-        ))}
-      </ul>
+              </td>
+              <td
+                className="mono"
+                style={{ fontSize: 11.5, color: "var(--ink-4)" }}
+              >
+                {formatRelativeDate(o.createdAt)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
       <OrderDetailDialog
         orderId={openOrderId}
