@@ -302,8 +302,9 @@ export async function createBalcaoSale(
           });
         }
 
-        // 9. Aplicar desconto
+        // 9. Aplicar desconto + acréscimo (ADR-0020)
         const discount = data.discountInCents ?? 0;
+        const surcharge = data.surchargeInCents ?? 0;
         if (discount > subtotalInCents) {
           return {
             ok: false,
@@ -311,7 +312,7 @@ export async function createBalcaoSale(
             errorMessage: "Desconto maior que o subtotal da venda.",
           };
         }
-        const totalInCents = subtotalInCents - discount;
+        const totalInCents = subtotalInCents - discount + surcharge;
 
         // 10. Validar troco (se cash + cashReceived informado)
         if (
@@ -426,6 +427,8 @@ export async function createBalcaoSale(
                   paymentMethod: data.paymentMethod,
                   discountInCents:
                     data.discountInCents ?? null,
+                  surchargeInCents:
+                    data.surchargeInCents ?? null,
                   cashReceivedInCents:
                     data.paymentMethod === "cash"
                       ? data.cashReceivedInCents

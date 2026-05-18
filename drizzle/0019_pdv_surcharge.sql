@@ -1,0 +1,1 @@
+ALTER TABLE "order" ADD COLUMN "surcharge_in_cents" integer;

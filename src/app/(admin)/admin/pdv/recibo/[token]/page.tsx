@@ -81,6 +81,7 @@ export default async function ReciboBalcaoPage({ params }: ReciboPageProps) {
     0,
   );
   const discount = order.discountInCents ?? 0;
+  const surcharge = order.surchargeInCents ?? 0;
   const troco =
     order.paymentMethod === "cash" &&
     order.cashReceivedInCents !== null &&
@@ -182,6 +183,14 @@ export default async function ReciboBalcaoPage({ params }: ReciboPageProps) {
                 <span className="text-black/60">Desconto</span>
                 <span className="font-mono tabular-nums">
                   −{formatBRL(discount)}
+                </span>
+              </div>
+            ) : null}
+            {surcharge > 0 ? (
+              <div className="flex justify-between">
+                <span className="text-black/60">Acréscimo</span>
+                <span className="font-mono tabular-nums">
+                  +{formatBRL(surcharge)}
                 </span>
               </div>
             ) : null}

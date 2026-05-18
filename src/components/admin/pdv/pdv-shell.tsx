@@ -93,13 +93,50 @@ function inputToCents(value: string): number | null {
   return Math.round(num * 100);
 }
 
+function inputToPct(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const num = Number(trimmed.replace(",", "."));
+  if (!Number.isFinite(num) || num < 0) return null;
+  return num;
+}
+
+/** Formata centavos como "12,34" pra input pt-BR. Null/zero → string vazia. */
+function centsToInput(cents: number | null): string {
+  if (cents === null || cents === 0) return "";
+  return (cents / 100).toFixed(2).replace(".", ",");
+}
+
+/** Calcula porcentagem de cents sobre base. Retorna string limpa ou vazia. */
+function pctFromCents(cents: number, base: number): string {
+  if (base === 0 || cents === 0) return "";
+  const pct = (cents / base) * 100;
+  // 2 casas decimais, remove .00 trailing
+  const fixed = pct.toFixed(2);
+  const cleaned = fixed.replace(/\.?0+$/, "");
+  return cleaned.replace(".", ",");
+}
+
 export function PdvShell() {
   const router = useRouter();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(
     null,
   );
-  const [discountInput, setDiscountInput] = useState("");
+  // ADR-0020 — desconto e acréscimo duais (R$ ou %). R$ é canônico no DB; %
+  // é UX. `lastEdit` evita stomp quando o subtotal muda: se usuário digitou
+  // em %, manter % e recomputar R$; se digitou em R$, manter R$ e recomputar %.
+  const [discountAmountInput, setDiscountAmountInput] = useState("");
+  const [discountPctInput, setDiscountPctInput] = useState("");
+  const [lastDiscountEdit, setLastDiscountEdit] = useState<
+    "amount" | "pct" | null
+  >(null);
+  const [surchargeAmountInput, setSurchargeAmountInput] = useState("");
+  const [surchargePctInput, setSurchargePctInput] = useState("");
+  const [lastSurchargeEdit, setLastSurchargeEdit] = useState<
+    "amount" | "pct" | null
+  >(null);
+
   const [cashReceivedInput, setCashReceivedInput] = useState("");
   const [notes, setNotes] = useState("");
   const [customerId, setCustomerId] = useState<string | null>(null);
@@ -110,8 +147,38 @@ export function PdvShell() {
     () => cart.reduce((s, it) => s + it.priceInCents * it.quantity, 0),
     [cart],
   );
-  const discountInCents = inputToCents(discountInput) ?? 0;
-  const totalInCents = Math.max(0, subtotalInCents - discountInCents);
+
+  // R$ canônico — sempre lê do AmountInput (que é sincronizado tanto por
+  // edição direta quanto pela edição em %).
+  const discountInCents = inputToCents(discountAmountInput) ?? 0;
+  const surchargeInCents = inputToCents(surchargeAmountInput) ?? 0;
+
+  // Reconcile com subtotal: se usuário digitou em %, mantém % e recomputa R$;
+  // se digitou em R$, recomputa % a partir de R$. Executa quando subtotal muda.
+  useEffect(() => {
+    if (lastDiscountEdit === "pct") {
+      const pct = inputToPct(discountPctInput);
+      const newCents =
+        pct === null ? 0 : Math.round((pct / 100) * subtotalInCents);
+      setDiscountAmountInput(centsToInput(newCents));
+    } else if (lastDiscountEdit === "amount") {
+      setDiscountPctInput(pctFromCents(discountInCents, subtotalInCents));
+    }
+    if (lastSurchargeEdit === "pct") {
+      const pct = inputToPct(surchargePctInput);
+      const newCents =
+        pct === null ? 0 : Math.round((pct / 100) * subtotalInCents);
+      setSurchargeAmountInput(centsToInput(newCents));
+    } else if (lastSurchargeEdit === "amount") {
+      setSurchargePctInput(pctFromCents(surchargeInCents, subtotalInCents));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subtotalInCents]);
+
+  const totalInCents = Math.max(
+    0,
+    subtotalInCents - discountInCents + surchargeInCents,
+  );
   const cashReceivedInCents = inputToCents(cashReceivedInput);
   const troco =
     paymentMethod === "cash" &&
@@ -119,6 +186,36 @@ export function PdvShell() {
     cashReceivedInCents >= totalInCents
       ? cashReceivedInCents - totalInCents
       : null;
+
+  // Handlers de mudança bidirecional —————————————————————————————
+  const onDiscountAmountChange = (v: string) => {
+    setLastDiscountEdit("amount");
+    setDiscountAmountInput(v);
+    const cents = inputToCents(v) ?? 0;
+    setDiscountPctInput(pctFromCents(cents, subtotalInCents));
+  };
+  const onDiscountPctChange = (v: string) => {
+    setLastDiscountEdit("pct");
+    setDiscountPctInput(v);
+    const pct = inputToPct(v);
+    const cents =
+      pct === null ? 0 : Math.round((pct / 100) * subtotalInCents);
+    setDiscountAmountInput(centsToInput(cents));
+  };
+  const onSurchargeAmountChange = (v: string) => {
+    setLastSurchargeEdit("amount");
+    setSurchargeAmountInput(v);
+    const cents = inputToCents(v) ?? 0;
+    setSurchargePctInput(pctFromCents(cents, subtotalInCents));
+  };
+  const onSurchargePctChange = (v: string) => {
+    setLastSurchargeEdit("pct");
+    setSurchargePctInput(v);
+    const pct = inputToPct(v);
+    const cents =
+      pct === null ? 0 : Math.round((pct / 100) * subtotalInCents);
+    setSurchargeAmountInput(centsToInput(cents));
+  };
 
   const addToCart = useCallback(
     (
@@ -193,7 +290,12 @@ export function PdvShell() {
   const reset = useCallback(() => {
     setCart([]);
     setPaymentMethod(null);
-    setDiscountInput("");
+    setDiscountAmountInput("");
+    setDiscountPctInput("");
+    setLastDiscountEdit(null);
+    setSurchargeAmountInput("");
+    setSurchargePctInput("");
+    setLastSurchargeEdit(null);
     setCashReceivedInput("");
     setNotes("");
     setCustomerId(null);
@@ -232,6 +334,7 @@ export function PdvShell() {
       customerId,
       paymentMethod,
       discountInCents: discountInCents > 0 ? discountInCents : null,
+      surchargeInCents: surchargeInCents > 0 ? surchargeInCents : null,
       cashReceivedInCents:
         paymentMethod === "cash" ? cashReceivedInCents : null,
       notes: notes.trim() || null,
@@ -342,8 +445,14 @@ export function PdvShell() {
               cashReceivedInput={cashReceivedInput}
               setCashReceivedInput={setCashReceivedInput}
               troco={troco}
-              discountInput={discountInput}
-              setDiscountInput={setDiscountInput}
+              discountAmountInput={discountAmountInput}
+              discountPctInput={discountPctInput}
+              onDiscountAmountChange={onDiscountAmountChange}
+              onDiscountPctChange={onDiscountPctChange}
+              surchargeAmountInput={surchargeAmountInput}
+              surchargePctInput={surchargePctInput}
+              onSurchargeAmountChange={onSurchargeAmountChange}
+              onSurchargePctChange={onSurchargePctChange}
               notes={notes}
               setNotes={setNotes}
             />
@@ -362,12 +471,28 @@ export function PdvShell() {
               {formatBRL(totalInCents)}
             </span>
           </div>
-          {discountInCents > 0 ? (
-            <div className="mb-2 flex items-center justify-between text-xs text-ink-4">
-              <span>Subtotal {formatBRL(subtotalInCents)} · desconto</span>
-              <span className="mono text-danger">
-                −{formatBRL(discountInCents)}
-              </span>
+          {discountInCents > 0 || surchargeInCents > 0 ? (
+            <div className="mb-2 space-y-1 text-xs text-ink-4">
+              <div className="flex items-center justify-between">
+                <span>Subtotal</span>
+                <span className="mono">{formatBRL(subtotalInCents)}</span>
+              </div>
+              {discountInCents > 0 ? (
+                <div className="flex items-center justify-between">
+                  <span>Desconto</span>
+                  <span className="mono text-danger">
+                    −{formatBRL(discountInCents)}
+                  </span>
+                </div>
+              ) : null}
+              {surchargeInCents > 0 ? (
+                <div className="flex items-center justify-between">
+                  <span>Acréscimo</span>
+                  <span className="mono text-warn">
+                    +{formatBRL(surchargeInCents)}
+                  </span>
+                </div>
+              ) : null}
             </div>
           ) : null}
           <button
@@ -715,8 +840,14 @@ function PaymentSection({
   cashReceivedInput,
   setCashReceivedInput,
   troco,
-  discountInput,
-  setDiscountInput,
+  discountAmountInput,
+  discountPctInput,
+  onDiscountAmountChange,
+  onDiscountPctChange,
+  surchargeAmountInput,
+  surchargePctInput,
+  onSurchargeAmountChange,
+  onSurchargePctChange,
   notes,
   setNotes,
 }: {
@@ -725,11 +856,19 @@ function PaymentSection({
   cashReceivedInput: string;
   setCashReceivedInput: (v: string) => void;
   troco: number | null;
-  discountInput: string;
-  setDiscountInput: (v: string) => void;
+  discountAmountInput: string;
+  discountPctInput: string;
+  onDiscountAmountChange: (v: string) => void;
+  onDiscountPctChange: (v: string) => void;
+  surchargeAmountInput: string;
+  surchargePctInput: string;
+  onSurchargeAmountChange: (v: string) => void;
+  onSurchargePctChange: (v: string) => void;
   notes: string;
   setNotes: (v: string) => void;
 }) {
+  const inputCls =
+    "border-line bg-surface focus:border-brand h-9 w-full rounded-[8px] border px-3 text-[13px] outline-none transition";
   return (
     <div className="space-y-3 p-[18px]">
       <div className="text-ink-4 text-[11px] font-bold uppercase tracking-[0.06em]">
@@ -770,7 +909,7 @@ function PaymentSection({
             placeholder="0,00"
             value={cashReceivedInput}
             onChange={(e) => setCashReceivedInput(e.target.value)}
-            className="border-line bg-surface focus:border-brand h-9 w-full rounded-[8px] border px-3 text-[13px] outline-none transition"
+            className={inputCls}
           />
           {troco !== null ? (
             <p className="text-ink-4 text-xs">
@@ -783,21 +922,81 @@ function PaymentSection({
         </div>
       ) : null}
 
-      <div className="space-y-1">
-        <label
-          htmlFor="discount"
-          className="text-ink-4 text-[11px] font-medium"
-        >
-          Desconto manual (opcional)
-        </label>
-        <input
-          id="discount"
-          inputMode="decimal"
-          placeholder="0,00"
-          value={discountInput}
-          onChange={(e) => setDiscountInput(e.target.value)}
-          className="border-line bg-surface focus:border-brand h-9 w-full rounded-[8px] border px-3 text-[13px] outline-none transition"
-        />
+      {/* ADR-0020 — desconto + acréscimo 2x2 com auto-cálculo bidirecional R$/% */}
+      <div className="space-y-2">
+        <div className="text-ink-4 text-[11px] font-medium">
+          Ajustes (opcional)
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {/* Desconto R$ */}
+          <div className="space-y-1">
+            <label
+              htmlFor="discount-amount"
+              className="text-ink-3 text-[10px] font-medium uppercase tracking-[0.04em]"
+            >
+              Desconto R$
+            </label>
+            <input
+              id="discount-amount"
+              inputMode="decimal"
+              placeholder="0,00"
+              value={discountAmountInput}
+              onChange={(e) => onDiscountAmountChange(e.target.value)}
+              className={inputCls}
+            />
+          </div>
+          {/* Desconto % */}
+          <div className="space-y-1">
+            <label
+              htmlFor="discount-pct"
+              className="text-ink-3 text-[10px] font-medium uppercase tracking-[0.04em]"
+            >
+              Desconto %
+            </label>
+            <input
+              id="discount-pct"
+              inputMode="decimal"
+              placeholder="0"
+              value={discountPctInput}
+              onChange={(e) => onDiscountPctChange(e.target.value)}
+              className={inputCls}
+            />
+          </div>
+          {/* Acréscimo R$ */}
+          <div className="space-y-1">
+            <label
+              htmlFor="surcharge-amount"
+              className="text-ink-3 text-[10px] font-medium uppercase tracking-[0.04em]"
+            >
+              Acréscimo R$
+            </label>
+            <input
+              id="surcharge-amount"
+              inputMode="decimal"
+              placeholder="0,00"
+              value={surchargeAmountInput}
+              onChange={(e) => onSurchargeAmountChange(e.target.value)}
+              className={inputCls}
+            />
+          </div>
+          {/* Acréscimo % */}
+          <div className="space-y-1">
+            <label
+              htmlFor="surcharge-pct"
+              className="text-ink-3 text-[10px] font-medium uppercase tracking-[0.04em]"
+            >
+              Acréscimo %
+            </label>
+            <input
+              id="surcharge-pct"
+              inputMode="decimal"
+              placeholder="0"
+              value={surchargePctInput}
+              onChange={(e) => onSurchargePctChange(e.target.value)}
+              className={inputCls}
+            />
+          </div>
+        </div>
       </div>
 
       <div className="space-y-1">

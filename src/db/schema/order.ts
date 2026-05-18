@@ -122,6 +122,12 @@ export const orderTable = pgTable(
     paymentMethod: orderPaymentMethodEnum("payment_method"),
     /** Fase 5 — desconto manual no balcão (em centavos). */
     discountInCents: integer("discount_in_cents"),
+    /**
+     * ADR-0020 — acréscimo manual no balcão (taxa cartão, frete, embalagem,
+     * "fechar redondo"). Simétrico a discount_in_cents. NULL = sem acréscimo.
+     * CHECK >= 0 via supabase/sql/27_pdv_surcharge_check.sql.
+     */
+    surchargeInCents: integer("surcharge_in_cents"),
     /** Fase 5 — valor recebido em dinheiro (pra cálculo de troco). */
     cashReceivedInCents: integer("cash_received_in_cents"),
 

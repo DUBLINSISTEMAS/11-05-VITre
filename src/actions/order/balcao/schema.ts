@@ -40,6 +40,15 @@ export const createBalcaoSaleSchema = z
       .int()
       .min(0, "Desconto não pode ser negativo")
       .nullable(),
+    /**
+     * ADR-0020 — acréscimo manual em centavos (taxa cartão, frete, embalagem,
+     * "fechar redondo"). NULL = sem acréscimo. Simétrico a discountInCents.
+     */
+    surchargeInCents: z
+      .number()
+      .int()
+      .min(0, "Acréscimo não pode ser negativo")
+      .nullable(),
     /** Valor recebido em dinheiro (pra cálculo de troco). Só faz sentido
      * quando paymentMethod === 'cash'. */
     cashReceivedInCents: z
