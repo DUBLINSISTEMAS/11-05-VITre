@@ -9,7 +9,7 @@
 // "em breve" — quando o ADR correspondente fechar, basta tirar a flag e o item
 // passa a navegar. Roadmap pós-Onda A.17 (2026-05-18):
 //   B2.4 Horários       → /admin/configuracoes/horarios
-//   B3.1 Atributos      → /admin/produtos/atributos
+//   B3.1 Atributos      → /admin/atributos (ADR-0024)
 //   B3.2 Grupos clientes→ /admin/clientes/grupos
 //   B3.3 Cupons         → /admin/promocoes/cupons
 //   B3.4 Contatos       → /admin/clientes/contatos  (inbox WhatsApp)
@@ -72,7 +72,7 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
         subs: [
           { label: "Meus produtos", href: "/admin/produtos" },
           { label: "Categorias", href: "/admin/categorias" },
-          { label: "Atributos", href: "/admin/produtos/atributos", soon: true },
+          { label: "Atributos", href: "/admin/atributos" },
           { label: "Banners", href: "/admin/banners" },
         ],
       },
