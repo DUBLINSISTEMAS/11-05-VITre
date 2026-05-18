@@ -20,7 +20,6 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { applyTheme } from "@/actions/store/apply-theme";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -125,34 +124,33 @@ export function ThemeSelector({ currentTheme }: ThemeSelectorProps) {
                 </header>
 
                 <div className="mt-auto flex gap-2">
-                  <Button
+                  <button
                     type="button"
-                    variant="outline"
-                    size="sm"
                     onClick={() => setPreviewingId(id)}
                     disabled={isPending}
-                    className="flex-1"
+                    className="b3-btn b3-btn--sm flex-1 justify-center disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <EyeIcon /> Visualizar
-                  </Button>
-                  <Button
+                    <EyeIcon size={13} /> Visualizar
+                  </button>
+                  <button
                     type="button"
-                    size="sm"
-                    variant={isActive ? "outline" : "default"}
                     onClick={() => onApply(id)}
                     disabled={isPending || isActive}
-                    className="flex-1"
+                    className={cn(
+                      "b3-btn b3-btn--sm flex-1 justify-center disabled:cursor-not-allowed disabled:opacity-50",
+                      !isActive && "b3-btn--cta",
+                    )}
                   >
                     {isApplying ? (
                       <>
-                        <Loader2Icon className="animate-spin" /> Aplicando…
+                        <Loader2Icon className="size-3.5 animate-spin" /> Aplicando…
                       </>
                     ) : isActive ? (
                       "Em uso"
                     ) : (
                       "Aplicar"
                     )}
-                  </Button>
+                  </button>
                 </div>
               </div>
             </article>
@@ -187,9 +185,10 @@ export function ThemeSelector({ currentTheme }: ThemeSelectorProps) {
             ) : null}
           </div>
           <div className="border-t border-line bg-surface px-4 py-3">
-            <Button
+            <button
               type="button"
-              className="w-full"
+              className="b3-btn b3-btn--cta w-full justify-center disabled:cursor-not-allowed disabled:opacity-50"
+              style={{ height: 40 }}
               disabled={
                 isPending || previewingId === activePresetId
               }
@@ -203,7 +202,7 @@ export function ThemeSelector({ currentTheme }: ThemeSelectorProps) {
               {previewingId === activePresetId
                 ? "Este modelo já está aplicado"
                 : "Aplicar este modelo"}
-            </Button>
+            </button>
           </div>
         </DialogContent>
       </Dialog>

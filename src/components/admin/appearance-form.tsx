@@ -13,8 +13,6 @@ import {
 } from "@/actions/store/schema";
 import { updateAppearance } from "@/actions/store/update-appearance";
 import { ColorPicker } from "@/components/onboarding/color-picker";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -107,7 +105,9 @@ export function AppearanceForm({ initialData }: AppearanceFormProps) {
         />
 
         <div className="space-y-1.5 pt-2">
-          <Label>Cor primária</Label>
+          <label className="text-ink-1 text-[13px] font-medium">
+            Cor primária
+          </label>
           <p className="text-ink-4 text-xs">
             A cor que destaca botões, links e elementos da sua vitrine.
           </p>
@@ -135,7 +135,12 @@ export function AppearanceForm({ initialData }: AppearanceFormProps) {
         description="Como o carrossel de banners aparece na sua vitrine."
       >
         <div className="space-y-1.5">
-          <Label htmlFor="banner-rotation">Tempo do carrossel</Label>
+          <label
+            htmlFor="banner-rotation"
+            className="text-ink-1 text-[13px] font-medium"
+          >
+            Tempo do carrossel
+          </label>
           <Controller
             name="bannerRotationSec"
             control={control}
@@ -177,21 +182,22 @@ export function AppearanceForm({ initialData }: AppearanceFormProps) {
 
       {/* Save desktop inline */}
       <div className="hidden justify-end pt-4 lg:flex">
-        <Button
+        <button
           type="submit"
           disabled={isPending || !isDirty}
-          className="min-w-32"
+          className="b3-btn b3-btn--cta min-w-32 justify-center disabled:cursor-not-allowed disabled:opacity-50"
+          style={{ height: 40 }}
         >
           {isPending ? (
             <>
-              <Loader2Icon className="animate-spin" /> Salvando…
+              <Loader2Icon className="size-3.5 animate-spin" /> Salvando…
             </>
           ) : (
             <>
-              <SaveIcon /> Salvar
+              <SaveIcon size={14} /> Salvar
             </>
           )}
-        </Button>
+        </button>
       </div>
 
       {/* Save mobile sticky (acima do bottom nav) */}
@@ -203,22 +209,22 @@ export function AppearanceForm({ initialData }: AppearanceFormProps) {
           bottom: "calc(env(safe-area-inset-bottom) + 3.5rem + 0.25rem)",
         }}
       >
-        <Button
+        <button
           type="submit"
           disabled={isPending || !isDirty}
-          className="w-full"
-          size="lg"
+          className="b3-btn b3-btn--cta w-full justify-center disabled:cursor-not-allowed disabled:opacity-50"
+          style={{ height: 44 }}
         >
           {isPending ? (
             <>
-              <Loader2Icon className="animate-spin" /> Salvando…
+              <Loader2Icon className="size-4 animate-spin" /> Salvando…
             </>
           ) : (
             <>
-              <SaveIcon /> Salvar
+              <SaveIcon size={14} /> Salvar
             </>
           )}
-        </Button>
+        </button>
       </div>
     </form>
   );
