@@ -30,6 +30,12 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
+import {
+  checkRateLimit,
+  getClientIp,
+  RateLimitError,
+  rateLimits,
+} from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -51,6 +57,31 @@ export async function GET(request: Request) {
   const start = Date.now();
   const timestamp = new Date().toISOString();
   const detailed = isDetailRequestAuthorized(request);
+
+  // S6 (auditoria 2026-05-18): rate-limit por IP antes de tocar o pool.
+  // /api/health é público (UptimeRobot) — sem limiter, atacante consegue
+  // hammer o endpoint e esgotar connection pool (max:3) por minutos.
+  // Requests detalhados (X-Health-Secret válido) bypassam o limite — só
+  // o founder/CI deveria mandar esses, e o hit é mais caro.
+  if (!detailed) {
+    try {
+      await checkRateLimit(rateLimits.publicApi, getClientIp(request.headers));
+    } catch (err) {
+      if (err instanceof RateLimitError) {
+        return Response.json(
+          { ok: false, db: "throttled", timestamp },
+          {
+            status: 429,
+            headers: {
+              "Cache-Control": "no-store",
+              "Retry-After": String(err.retryAfterSeconds),
+            },
+          },
+        );
+      }
+      throw err;
+    }
+  }
 
   try {
     const result = await db.execute<HealthRow>(

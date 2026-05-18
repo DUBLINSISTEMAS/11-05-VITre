@@ -1,10 +1,10 @@
 import { asc, eq } from "drizzle-orm";
 import { ShieldIcon, UserPlusIcon } from "lucide-react";
 
-import { db } from "@/db";
 import { storeMembershipTable, userTable } from "@/db/schema";
 import { requireSession } from "@/lib/auth-server";
 import { getCurrentStore } from "@/lib/store-context";
+import { withTenant } from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
 
@@ -15,26 +15,35 @@ export default async function EquipePage() {
     throw new Error("UNREACHABLE: equipe page sem loja");
   }
 
-  // Carrega owner + memberships. ⚠ NÃO usa withTenant aqui — owner pode
-  // querer ver os membros mesmo durante o setup. RLS protege via store_id
-  // do GUC quando outras actions tocarem.
-  const [owner] = await db
-    .select({ name: userTable.name, email: userTable.email })
-    .from(userTable)
-    .where(eq(userTable.id, store.ownerId))
-    .limit(1);
+  // RLS-first: storeMembershipTable tem FORCE RLS (SQL 35) com policy que casa
+  // contra GUC `app.current_store_id`. Sem `withTenant`, o pool `vitre_app`
+  // (NOBYPASSRLS) retornaria zero rows silenciosamente.
+  // Memory: admin-page-db-cru-force-rls-silent-zero (auditoria 2026-05-18).
+  const { owner, memberships } = await withTenant(
+    store.id,
+    session.user.id,
+    async (tx) => {
+      const [ownerRow] = await tx
+        .select({ name: userTable.name, email: userTable.email })
+        .from(userTable)
+        .where(eq(userTable.id, store.ownerId))
+        .limit(1);
 
-  const memberships = await db
-    .select({
-      id: storeMembershipTable.id,
-      invitedEmail: storeMembershipTable.invitedEmail,
-      role: storeMembershipTable.role,
-      status: storeMembershipTable.status,
-      createdAt: storeMembershipTable.createdAt,
-    })
-    .from(storeMembershipTable)
-    .where(eq(storeMembershipTable.storeId, store.id))
-    .orderBy(asc(storeMembershipTable.createdAt));
+      const membershipRows = await tx
+        .select({
+          id: storeMembershipTable.id,
+          invitedEmail: storeMembershipTable.invitedEmail,
+          role: storeMembershipTable.role,
+          status: storeMembershipTable.status,
+          createdAt: storeMembershipTable.createdAt,
+        })
+        .from(storeMembershipTable)
+        .where(eq(storeMembershipTable.storeId, store.id))
+        .orderBy(asc(storeMembershipTable.createdAt));
+
+      return { owner: ownerRow, memberships: membershipRows };
+    },
+  );
 
   return (
     <div className="space-y-4 sm:space-y-6">
