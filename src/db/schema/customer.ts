@@ -17,9 +17,68 @@
  * RLS em supabase/sql/21_customer_rls.sql.
  */
 import { relations } from "drizzle-orm";
-import { index, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  index,
+  integer,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  unique,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 import { storeTable } from "./store";
+
+/**
+ * ADR-0025 — Grupos de clientes com desconto automático.
+ *
+ * Catálogo por loja (lojista cria "VIP" / "Atacado" / "Comum" e configura
+ * o discountBps de cada). `customer.group_id` FK ON DELETE SET NULL —
+ * apagar grupo desvincula sem perder o cliente.
+ */
+export const customerGroupTable = pgTable(
+  "customer_group",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => storeTable.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /**
+     * Desconto sugerido em basis points (0..9999 — até 99.99%). CHECK no
+     * SQL 32. PDV usa pra sugerir desconto quando cliente do grupo é
+     * selecionado. NÃO aplica silenciosamente — UI mostra botão "aplicar".
+     */
+    discountBps: integer("discount_bps").notNull().default(0),
+    description: text("description"),
+    position: integer("position").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    storeIdx: index("customer_group_store_idx").on(t.storeId),
+    storeNameUnique: unique("customer_group_store_name_unique").on(
+      t.storeId,
+      t.name,
+    ),
+  }),
+);
+
+export const customerGroupRelations = relations(
+  customerGroupTable,
+  ({ one }) => ({
+    store: one(storeTable, {
+      fields: [customerGroupTable.storeId],
+      references: [storeTable.id],
+    }),
+  }),
+);
+
+export type CustomerGroup = typeof customerGroupTable.$inferSelect;
+export type NewCustomerGroup = typeof customerGroupTable.$inferInsert;
 
 /**
  * ADR-0021 — PF (pessoa física) ou PJ (pessoa jurídica).
@@ -75,6 +134,14 @@ export const customerTable = pgTable(
     // Notas livres do lojista. Até 1000 chars (CHECK no SQL 20).
     notes: text("notes"),
 
+    /**
+     * ADR-0025 — Vínculo com grupo (VIP/Atacado/Comum). NULL = sem grupo.
+     * ON DELETE SET NULL: apagar grupo desvincula sem perder o cliente.
+     */
+    groupId: uuid("group_id").references(() => customerGroupTable.id, {
+      onDelete: "set null",
+    }),
+
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -91,6 +158,7 @@ export const customerTable = pgTable(
       t.storeId,
       t.createdAt,
     ),
+    groupIdx: index("customer_group_idx").on(t.groupId),
   }),
 );
 
@@ -98,6 +166,10 @@ export const customerRelations = relations(customerTable, ({ one }) => ({
   store: one(storeTable, {
     fields: [customerTable.storeId],
     references: [storeTable.id],
+  }),
+  group: one(customerGroupTable, {
+    fields: [customerTable.groupId],
+    references: [customerGroupTable.id],
   }),
 }));
 
