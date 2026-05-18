@@ -1,5 +1,6 @@
 -- =====================================================================
--- 27_force_rls_consistency.sql — FORCE ROW LEVEL SECURITY consistency
+-- 36_force_rls_consistency.sql — FORCE ROW LEVEL SECURITY consistency
+-- (renomeado de 27_* em 2026-05-18 para resolver colisão com 27_pdv_surcharge_check.sql)
 -- =====================================================================
 --
 -- CONTEXTO
