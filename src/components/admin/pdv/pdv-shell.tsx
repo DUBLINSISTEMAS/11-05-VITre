@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
+  forwardRef,
   useCallback,
   useEffect,
   useMemo,
@@ -41,6 +42,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 
+import { createCustomer } from "@/actions/customer/create";
 import {
   type CustomerSearchHit,
   searchCustomers,
@@ -142,6 +144,10 @@ export function PdvShell() {
   const [notes, setNotes] = useState("");
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [customerLabel, setCustomerLabel] = useState<string>("");
+  // Venda rápida (Frente A.2): nome/tel direto no order, sem cadastro de
+  // customer. Só usados quando customerId === null.
+  const [walkInName, setWalkInName] = useState<string>("");
+  const [walkInPhone, setWalkInPhone] = useState<string>("");
   const [isSubmitting, startSubmit] = useTransition();
 
   const subtotalInCents = useMemo(
@@ -301,6 +307,8 @@ export function PdvShell() {
     setNotes("");
     setCustomerId(null);
     setCustomerLabel("");
+    setWalkInName("");
+    setWalkInPhone("");
   }, []);
 
   const canSubmit =
@@ -333,6 +341,8 @@ export function PdvShell() {
         quantity: it.quantity,
       })),
       customerId,
+      walkInName: customerId ? null : walkInName.trim() || null,
+      walkInPhone: customerId ? null : walkInPhone.trim() || null,
       paymentMethod,
       discountInCents: discountInCents > 0 ? discountInCents : null,
       surchargeInCents: surchargeInCents > 0 ? surchargeInCents : null,
@@ -426,9 +436,17 @@ export function PdvShell() {
         <CustomerComboboxLight
           customerId={customerId}
           customerLabel={customerLabel}
+          walkInName={walkInName}
+          walkInPhone={walkInPhone}
+          setWalkInName={setWalkInName}
+          setWalkInPhone={setWalkInPhone}
           onPick={(c) => {
             setCustomerId(c?.id ?? null);
             setCustomerLabel(c ? `${c.name} · ${c.phone}` : "");
+            if (c) {
+              setWalkInName("");
+              setWalkInPhone("");
+            }
           }}
         />
 
@@ -1021,16 +1039,26 @@ function PaymentSection({
 function CustomerComboboxLight({
   customerId,
   customerLabel,
+  walkInName,
+  walkInPhone,
+  setWalkInName,
+  setWalkInPhone,
   onPick,
 }: {
   customerId: string | null;
   customerLabel: string;
+  walkInName: string;
+  walkInPhone: string;
+  setWalkInName: (v: string) => void;
+  setWalkInPhone: (v: string) => void;
   onPick: (customer: CustomerSearchHit | null) => void;
 }) {
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<CustomerSearchHit[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [isSearching, startSearch] = useTransition();
+  const [showQuickSale, setShowQuickSale] = useState(false);
+  const [showFullCreate, setShowFullCreate] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -1060,6 +1088,7 @@ function CustomerComboboxLight({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  // 1) Cliente cadastrado vinculado
   if (customerId) {
     return (
       <div className="border-b border-line p-[18px]">
@@ -1071,7 +1100,7 @@ function CustomerComboboxLight({
             <UserIcon className="text-ink-4 size-4" />
             <div>
               <p className="text-sm font-medium">{customerLabel}</p>
-              <p className="text-ink-4 text-xs">Vinculado a esta venda</p>
+              <p className="text-ink-4 text-xs">Cadastrado · vinculado à venda</p>
             </div>
           </div>
           <button
@@ -1086,72 +1115,495 @@ function CustomerComboboxLight({
     );
   }
 
+  // 2) Venda rápida com nome preenchido (sem cadastro)
+  if (walkInName.trim()) {
+    return (
+      <div className="border-b border-line p-[18px]">
+        <div className="text-ink-4 mb-2 text-[11px] font-bold uppercase tracking-[0.06em]">
+          Cliente
+        </div>
+        <div className="bg-bg-app flex items-center justify-between rounded-[10px] p-3">
+          <div className="flex items-center gap-2">
+            <UserIcon className="text-ink-4 size-4" />
+            <div>
+              <p className="text-sm font-medium">{walkInName}</p>
+              <p className="text-ink-4 text-xs">
+                Venda rápida · {walkInPhone || "sem telefone"}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setWalkInName("");
+              setWalkInPhone("");
+            }}
+            className="text-ink-4 hover:text-ink-1 text-xs"
+          >
+            Trocar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div ref={containerRef} className="relative border-b border-line p-[18px]">
-      <div className="text-ink-4 mb-2 text-[11px] font-bold uppercase tracking-[0.06em]">
-        Cliente
-      </div>
-      <div className="relative">
-        <SearchIcon
-          aria-hidden
-          size={14}
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-4"
-        />
-        <input
-          id="pdv-customer-search"
-          value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
-            setShowResults(true);
-          }}
-          onFocus={() => setShowResults(true)}
-          placeholder="Adicionar cliente · opcional (F3)"
-          className="bg-bg-app border-line-2 placeholder:text-ink-3 focus:border-brand h-10 w-full rounded-[10px] border border-dashed pl-9 pr-3 text-[13px] outline-none transition"
-        />
-      </div>
-      {showResults ? (
-        <div className="border-line bg-popover absolute left-[18px] right-[18px] top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-[10px] border shadow-md">
-          {hits.length === 0 ? (
-            <p className="text-ink-4 p-3 text-xs">
-              {isSearching ? "Buscando…" : "Nenhum cliente encontrado."}
-            </p>
-          ) : (
-            <ul>
-              {hits.map((c) => {
-                const docFmt = c.document
-                  ? formatDocument(c.document, c.type)
-                  : "";
-                return (
-                  <li key={c.id}>
+    <>
+      <div
+        ref={containerRef}
+        className="relative border-b border-line p-[18px]"
+      >
+        <div className="text-ink-4 mb-2 text-[11px] font-bold uppercase tracking-[0.06em]">
+          Cliente
+        </div>
+        <div className="relative">
+          <SearchIcon
+            aria-hidden
+            size={14}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-4"
+          />
+          <input
+            id="pdv-customer-search"
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setShowResults(true);
+            }}
+            onFocus={() => setShowResults(true)}
+            placeholder="Buscar cliente cadastrado (F3) · opcional"
+            className="bg-bg-app border-line-2 placeholder:text-ink-3 focus:border-brand h-10 w-full rounded-[10px] border border-dashed pl-9 pr-3 text-[13px] outline-none transition"
+          />
+        </div>
+
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setShowQuickSale(true)}
+            className="text-ink-2 hover:text-brand text-[12px] underline-offset-2 hover:underline"
+          >
+            + Venda rápida (só nome)
+          </button>
+          <span className="text-ink-4 text-[12px]">·</span>
+          <button
+            type="button"
+            onClick={() => setShowFullCreate(true)}
+            className="text-ink-2 hover:text-brand text-[12px] underline-offset-2 hover:underline"
+          >
+            + Cadastrar cliente completo
+          </button>
+        </div>
+
+        {showResults && q.trim().length > 0 ? (
+          <div className="border-line bg-popover absolute left-[18px] right-[18px] top-[78px] z-20 mt-1 max-h-64 overflow-y-auto rounded-[10px] border shadow-md">
+            {hits.length === 0 ? (
+              <div className="p-3 text-xs">
+                <p className="text-ink-4 mb-2">
+                  {isSearching ? "Buscando…" : `Nenhum cliente "${q}".`}
+                </p>
+                {!isSearching && (
+                  <div className="flex flex-col gap-1">
                     <button
                       type="button"
                       onClick={() => {
-                        onPick(c);
+                        setWalkInName(q.trim());
                         setShowResults(false);
                         setQ("");
                       }}
-                      className="hover:bg-bg-app flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left"
+                      className="text-brand text-left hover:underline"
                     >
-                      <span className="flex items-center gap-1.5 text-sm">
-                        {c.type === "company" ? (
-                          <span className="bg-brand-wash text-brand rounded px-1 py-px text-[9px] font-bold leading-[1] tracking-wide">
-                            PJ
-                          </span>
-                        ) : null}
-                        {c.name}
-                      </span>
-                      <span className="mono text-ink-4 text-[11px]">
-                        {c.phone}
-                        {docFmt ? ` · ${docFmt}` : ""}
-                      </span>
+                      Usar &quot;{q}&quot; como venda rápida
                     </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowFullCreate(true);
+                        setShowResults(false);
+                      }}
+                      className="text-brand text-left hover:underline"
+                    >
+                      Cadastrar cliente completo
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <ul>
+                {hits.map((c) => {
+                  const docFmt = c.document
+                    ? formatDocument(c.document, c.type)
+                    : "";
+                  return (
+                    <li key={c.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onPick(c);
+                          setShowResults(false);
+                          setQ("");
+                        }}
+                        className="hover:bg-bg-app flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left"
+                      >
+                        <span className="flex items-center gap-1.5 text-sm">
+                          {c.type === "company" ? (
+                            <span className="bg-brand-wash text-brand rounded px-1 py-px text-[9px] font-bold leading-[1] tracking-wide">
+                              PJ
+                            </span>
+                          ) : null}
+                          {c.name}
+                        </span>
+                        <span className="mono text-ink-4 text-[11px]">
+                          {c.phone}
+                          {docFmt ? ` · ${docFmt}` : ""}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        ) : null}
+      </div>
+
+      {showQuickSale && (
+        <QuickSaleDialog
+          initialName={q}
+          onClose={() => setShowQuickSale(false)}
+          onConfirm={(name, phone) => {
+            setWalkInName(name);
+            setWalkInPhone(phone);
+            setShowQuickSale(false);
+            setQ("");
+          }}
+        />
+      )}
+
+      {showFullCreate && (
+        <FullCustomerCreateDialog
+          initialName={q}
+          onClose={() => setShowFullCreate(false)}
+          onCreated={(c) => {
+            onPick(c);
+            setShowFullCreate(false);
+            setQ("");
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+// =========================================================================
+// Frente A — diálogos de cadastro do cliente no PDV
+// =========================================================================
+
+function QuickSaleDialog({
+  initialName,
+  onClose,
+  onConfirm,
+}: {
+  initialName: string;
+  onClose: () => void;
+  onConfirm: (name: string, phone: string) => void;
+}) {
+  const [name, setName] = useState(initialName.trim());
+  const [phone, setPhone] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  const canConfirm = name.trim().length > 0;
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="bg-surface w-full max-w-md rounded-xl border shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal
+        aria-label="Venda rápida"
+      >
+        <div className="border-b px-5 py-4">
+          <h2 className="text-ink-1 text-[16px] font-bold">Venda rápida</h2>
+          <p className="text-ink-4 mt-1 text-[12px]">
+            Só o nome é obrigatório. O cliente NÃO será cadastrado no sistema —
+            o nome fica salvo apenas neste pedido.
+          </p>
         </div>
-      ) : null}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (canConfirm) onConfirm(name.trim(), phone.trim());
+          }}
+          className="space-y-3 px-5 py-4"
+        >
+          <div>
+            <label className="text-ink-2 mb-1 block text-[12px] font-medium">
+              Nome do cliente *
+            </label>
+            <input
+              ref={inputRef}
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ex: Maria · José Silva"
+              className="border-line bg-surface focus:border-brand h-10 w-full rounded-[8px] border px-3 text-[13px] outline-none"
+              maxLength={120}
+              required
+            />
+          </div>
+          <div>
+            <label className="text-ink-2 mb-1 block text-[12px] font-medium">
+              Telefone (opcional)
+            </label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+5511999999999"
+              className="border-line bg-surface focus:border-brand h-10 w-full rounded-[8px] border px-3 text-[13px] outline-none"
+            />
+            <p className="text-ink-4 mt-1 text-[10.5px]">
+              Use formato internacional. Em branco se não tiver.
+            </p>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="border-line text-ink-2 hover:bg-bg-app h-9 rounded-[8px] border px-3 text-[12px]"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={!canConfirm}
+              className="bg-brand h-9 rounded-[8px] px-3 text-[12px] font-semibold text-white disabled:opacity-50"
+            >
+              Usar este nome
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
+
+function FullCustomerCreateDialog({
+  initialName,
+  onClose,
+  onCreated,
+}: {
+  initialName: string;
+  onClose: () => void;
+  onCreated: (c: CustomerSearchHit) => void;
+}) {
+  const [name, setName] = useState(initialName.trim());
+  const [phone, setPhone] = useState("");
+  const [type, setType] = useState<"individual" | "company">("individual");
+  const [document, setDocument] = useState("");
+  const [email, setEmail] = useState("");
+  const [notes, setNotes] = useState("");
+  const [submitting, startSubmit] = useTransition();
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+    startSubmit(async () => {
+      const result = await createCustomer({
+        name: name.trim(),
+        phone: phone.trim(),
+        type,
+        document: document.trim() || undefined,
+        email: email.trim() || undefined,
+        notes: notes.trim() || undefined,
+      });
+      if (!result.ok) {
+        setErrors(result.fieldErrors ?? {});
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Cliente cadastrado.");
+      onCreated({
+        id: result.customer.id,
+        name: result.customer.name,
+        phone: result.customer.phone,
+        document: null,
+        type,
+      });
+    });
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="bg-surface w-full max-w-lg rounded-xl border shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal
+        aria-label="Cadastrar cliente"
+      >
+        <div className="border-b px-5 py-4">
+          <h2 className="text-ink-1 text-[16px] font-bold">
+            Cadastrar cliente completo
+          </h2>
+          <p className="text-ink-4 mt-1 text-[12px]">
+            Cliente fica salvo na base e pode ser vinculado a futuras vendas.
+          </p>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-3 px-5 py-4">
+          <div className="flex gap-2">
+            <label
+              className={`flex-1 cursor-pointer rounded-[8px] border px-3 py-2 text-center text-[12px] ${
+                type === "individual"
+                  ? "border-brand text-brand"
+                  : "border-line text-ink-3"
+              }`}
+            >
+              <input
+                type="radio"
+                name="type"
+                value="individual"
+                checked={type === "individual"}
+                onChange={() => setType("individual")}
+                className="sr-only"
+              />
+              Pessoa Física
+            </label>
+            <label
+              className={`flex-1 cursor-pointer rounded-[8px] border px-3 py-2 text-center text-[12px] ${
+                type === "company"
+                  ? "border-brand text-brand"
+                  : "border-line text-ink-3"
+              }`}
+            >
+              <input
+                type="radio"
+                name="type"
+                value="company"
+                checked={type === "company"}
+                onChange={() => setType("company")}
+                className="sr-only"
+              />
+              Pessoa Jurídica
+            </label>
+          </div>
+          <FieldText
+            ref={inputRef}
+            label={type === "company" ? "Razão social *" : "Nome *"}
+            value={name}
+            onChange={setName}
+            error={errors.name}
+            required
+          />
+          <FieldText
+            label="Telefone *"
+            value={phone}
+            onChange={setPhone}
+            placeholder="+5511999999999"
+            error={errors.phone}
+            required
+          />
+          <FieldText
+            label={type === "company" ? "CNPJ" : "CPF"}
+            value={document}
+            onChange={setDocument}
+            placeholder={type === "company" ? "00.000.000/0000-00" : "000.000.000-00"}
+            error={errors.document}
+          />
+          <FieldText
+            label="E-mail"
+            value={email}
+            onChange={setEmail}
+            placeholder="cliente@example.com"
+            error={errors.email}
+            type="email"
+          />
+          <div>
+            <label className="text-ink-2 mb-1 block text-[12px] font-medium">
+              Observações
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              className="border-line bg-surface focus:border-brand w-full resize-none rounded-[8px] border px-3 py-2 text-[13px] outline-none"
+              maxLength={1000}
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="border-line text-ink-2 hover:bg-bg-app h-9 rounded-[8px] border px-3 text-[12px]"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={submitting || !name.trim() || !phone.trim()}
+              className="bg-brand h-9 rounded-[8px] px-3 text-[12px] font-semibold text-white disabled:opacity-50"
+            >
+              {submitting ? "Salvando…" : "Cadastrar e vincular"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+const FieldText = forwardRef<
+  HTMLInputElement,
+  {
+    label: string;
+    value: string;
+    onChange: (v: string) => void;
+    placeholder?: string;
+    error?: string;
+    required?: boolean;
+    type?: string;
+  }
+>(function FieldText(
+  { label, value, onChange, placeholder, error, required, type = "text" },
+  ref,
+) {
+  return (
+    <div>
+      <label className="text-ink-2 mb-1 block text-[12px] font-medium">
+        {label}
+      </label>
+      <input
+        ref={ref}
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        required={required}
+        className={`bg-surface h-10 w-full rounded-[8px] border px-3 text-[13px] outline-none ${
+          error ? "border-red-500" : "border-line focus:border-brand"
+        }`}
+      />
+      {error && (
+        <p className="mt-1 text-[10.5px] text-red-600">{error}</p>
+      )}
+    </div>
+  );
+});

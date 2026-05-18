@@ -143,7 +143,8 @@ export async function createBalcaoSale(
       store.id,
       userId,
       async (tx) => {
-        // 5. Customer (opcional) — confirma que pertence à loja
+        // 5. Customer (opcional) — confirma que pertence à loja, OU
+        //    aceita venda rápida (walkInName) sem cadastro no DB.
         let customerSnapshotName = "Cliente balcão";
         let customerSnapshotPhone: string | null = null;
         if (data.customerId) {
@@ -163,6 +164,10 @@ export async function createBalcaoSale(
           }
           customerSnapshotName = cust.name;
           customerSnapshotPhone = cust.phone;
+        } else if (data.walkInName) {
+          // Venda rápida: snapshot direto no order, sem cadastro de customer.
+          customerSnapshotName = data.walkInName;
+          customerSnapshotPhone = data.walkInPhone;
         }
 
         // 6. Agrega itens por (productId, variantId) — protege contra

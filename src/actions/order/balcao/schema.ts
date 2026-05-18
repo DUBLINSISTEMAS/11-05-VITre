@@ -25,6 +25,9 @@ export const balcaoItemSchema = z.object({
 });
 export type BalcaoItemInput = z.infer<typeof balcaoItemSchema>;
 
+/** E.164 simplificado (mesmo da Fase 3 customer schema). */
+const E164 = /^\+[1-9][0-9]{6,14}$/;
+
 export const createBalcaoSaleSchema = z
   .object({
     items: z
@@ -33,6 +36,27 @@ export const createBalcaoSaleSchema = z
       .max(99, "Máximo 99 itens por venda"),
     /** FK customer opcional. NULL = walk-in. */
     customerId: z.string().uuid().nullable(),
+    /**
+     * Venda rápida (ADR-0030 / Frente A): quando NÃO há customerId, lojista
+     * pode digitar um nome (+ tel opcional) que vira snapshot do order SEM
+     * criar customer no DB. Ignorado se customerId presente.
+     */
+    walkInName: z
+      .preprocess(
+        (v) => (typeof v === "string" && v.trim() === "" ? null : v),
+        z.string().trim().min(1).max(120).nullable(),
+      )
+      .default(null),
+    walkInPhone: z
+      .preprocess(
+        (v) => (typeof v === "string" && v.trim() === "" ? null : v),
+        z
+          .string()
+          .trim()
+          .regex(E164, "Telefone inválido. Use formato +5511999999999.")
+          .nullable(),
+      )
+      .default(null),
     paymentMethod: z.enum(PAYMENT_METHOD_VALUES),
     /** Desconto manual em centavos. NULL = sem desconto. */
     discountInCents: z
