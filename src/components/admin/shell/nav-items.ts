@@ -106,7 +106,7 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
           { label: "Cupons", href: "/admin/promocoes/cupons" },
         ],
       },
-      { k: "relatorios", label: "Relatórios", icon: ArchiveIcon, href: "/admin/relatorios", soon: true },
+      { k: "relatorios", label: "Relatórios", icon: ArchiveIcon, href: "/admin/relatorios" },
     ],
   },
   {
