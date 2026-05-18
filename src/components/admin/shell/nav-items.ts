@@ -22,6 +22,7 @@ import {
   CreditCardIcon,
   HomeIcon,
   InfoIcon,
+  LayersIcon,
   type LucideIcon,
   PackageIcon,
   PaletteIcon,
@@ -113,6 +114,7 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
     label: "MINHA LOJA",
     items: [
       { k: "lojavirtual", label: "Aparência", icon: PaletteIcon, href: "/admin/aparencia" },
+      { k: "colecoes", label: "Coleções", icon: LayersIcon, href: "/admin/colecoes" },
       { k: "pagamentos", label: "Pagamentos", icon: CreditCardIcon, href: "/admin/pagamento" },
       {
         k: "config",
@@ -120,7 +122,7 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
         icon: TagIcon,
         subs: [
           { label: "Geral", href: "/admin/configuracoes" },
-          { label: "Horários", href: "/admin/configuracoes/horarios", soon: true },
+          { label: "Horários", href: "/admin/configuracoes#horarios" },
           { label: "Equipe", href: "/admin/equipe" },
         ],
       },
