@@ -176,6 +176,13 @@
       "when": 1779126547150,
       "tag": "0024_customer_groups",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1779126798985,
+      "tag": "0025_coupons",
+      "breakpoints": true
     }
   ]
 }

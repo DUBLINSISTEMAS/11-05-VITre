@@ -103,7 +103,7 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
         icon: SparklesIcon,
         dot: true,
         subs: [
-          { label: "Cupons", href: "/admin/promocoes/cupons", soon: true },
+          { label: "Cupons", href: "/admin/promocoes/cupons" },
         ],
       },
       { k: "relatorios", label: "Relatórios", icon: ArchiveIcon, href: "/admin/relatorios", soon: true },

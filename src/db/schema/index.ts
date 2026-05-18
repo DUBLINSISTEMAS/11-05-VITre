@@ -5,6 +5,7 @@ export * from "./attribute";
 export * from "./auth";
 export * from "./cash";
 export * from "./catalog";
+export * from "./coupon";
 export * from "./customer";
 export * from "./inventory";
 export * from "./order";
