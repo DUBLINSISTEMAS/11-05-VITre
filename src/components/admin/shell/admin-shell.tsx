@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { AdminSidebar, type AdminSidebarProps } from "./admin-sidebar";
+import { CommandPalette } from "./command-palette";
 import { MobileHeader } from "./header";
 import { TopBar } from "./topbar";
 
@@ -54,6 +55,8 @@ export function AdminShell({ children, ...userProps }: AdminShellProps) {
           </div>
         </main>
       </div>
+
+      <CommandPalette />
     </div>
   );
 }
