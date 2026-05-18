@@ -1,7 +1,9 @@
 import { TrashIcon } from "lucide-react";
 
+import { BusinessHoursForm } from "@/components/admin/business-hours-form";
 import { StoreConfigForm } from "@/components/admin/store-config-form";
 import { WhatsAppTemplateCard } from "@/components/admin/whatsapp-template-card";
+import type { BusinessHoursJson } from "@/db/schema/store";
 import { requireSession } from "@/lib/auth-server";
 import { env } from "@/lib/env";
 import { getCurrentStore } from "@/lib/store-context";
@@ -60,6 +62,10 @@ export default async function ConfiguracoesPage() {
           />
 
           <WhatsAppTemplateCard initialTemplate={store.whatsappTemplate} />
+
+          <BusinessHoursForm
+            initialHours={store.businessHours as BusinessHoursJson | null}
+          />
         </div>
 
         {/* Coluna lateral: Plano + Zona de perigo */}

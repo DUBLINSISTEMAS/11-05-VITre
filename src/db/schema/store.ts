@@ -7,6 +7,7 @@ import {
   boolean,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   text,
@@ -138,6 +139,13 @@ export const storeTable = pgTable(
     // CHECK length <= 280 no SQL 17.
     paymentMethodsNote: text("payment_methods_note"),
 
+    // =================================================================
+    // Horários de funcionamento (ADR-0023)
+    // jsonb 7 dias × até 2 turnos. NULL = não configurado.
+    // Validação estrutural via CHECK no SQL 30; semântica via Zod.
+    // =================================================================
+    businessHours: jsonb("business_hours").$type<BusinessHoursJson | null>(),
+
     // Endereço
     addressStreet: text("address_street"),
     addressNumber: text("address_number"),
@@ -171,6 +179,34 @@ export const storeRelations = relations(storeTable, ({ one }) => ({
     references: [userTable.id],
   }),
 }));
+
+/**
+ * Formato canônico de `store.business_hours`. Validação Zod em
+ * `actions/store/business-hours/schema.ts`.
+ *
+ * - `closed: true` → fechado naquele dia.
+ * - `shifts: []` → "horário não definido" (UI mostra "consulte").
+ * - Cada shift: opensAt < closesAt no formato HH:MM (24h, validado app-layer).
+ */
+export type BusinessHoursShift = {
+  opensAt: string; // "09:00"
+  closesAt: string; // "18:00"
+};
+
+export type BusinessHoursDay = {
+  closed: boolean;
+  shifts: BusinessHoursShift[];
+};
+
+export type BusinessHoursJson = {
+  monday: BusinessHoursDay;
+  tuesday: BusinessHoursDay;
+  wednesday: BusinessHoursDay;
+  thursday: BusinessHoursDay;
+  friday: BusinessHoursDay;
+  saturday: BusinessHoursDay;
+  sunday: BusinessHoursDay;
+};
 
 export type Store = typeof storeTable.$inferSelect;
 export type NewStore = typeof storeTable.$inferInsert;
