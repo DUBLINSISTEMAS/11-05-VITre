@@ -11,3 +11,4 @@ export * from "./inventory";
 export * from "./lead";
 export * from "./order";
 export * from "./store";
+export * from "./team";
