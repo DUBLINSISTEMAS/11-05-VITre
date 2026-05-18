@@ -32,15 +32,11 @@ export interface AdminShellProps extends AdminSidebarProps {
 export function AdminShell({ children, ...userProps }: AdminShellProps) {
   return (
     <div className="b3-shell print:block">
-      <div data-admin-chrome>
-        <AdminSidebar {...userProps} />
-      </div>
+      <AdminSidebar {...userProps} />
 
       <div className="b3-main">
-        <div data-admin-chrome>
-          <TopBar />
-          <MobileHeader {...userProps} />
-        </div>
+        <TopBar />
+        <MobileHeader {...userProps} />
 
         <main className="flex-1 px-4 pt-4 pb-12 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 lg:pb-12 print:px-0 print:py-0">
           {/*

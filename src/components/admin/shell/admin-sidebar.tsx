@@ -12,6 +12,7 @@ export function AdminSidebar(props: AdminSidebarProps) {
     <aside
       aria-label="Navegação principal"
       className="b3-side hidden lg:flex"
+      data-admin-chrome="sidebar"
     >
       <SidebarContent {...props} />
     </aside>

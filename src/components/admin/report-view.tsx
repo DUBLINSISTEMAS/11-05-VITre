@@ -2,6 +2,7 @@
 
 import { DownloadIcon, PrinterIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import type { FullReport } from "@/actions/reports/load";
 import { formatBRL } from "@/lib/pricing";
@@ -29,10 +30,23 @@ export function ReportView({
   filters: Record<string, string | undefined>;
 }) {
   const router = useRouter();
+  const currentPeriodo = filters.periodo ?? "30";
+  const [customStart, setCustomStart] = useState(filters.start ?? "");
+  const [customEnd, setCustomEnd] = useState(filters.end ?? "");
 
   function changePeriod(periodo: string) {
     const params = new URLSearchParams();
     params.set("periodo", periodo);
+    router.replace(`/admin/relatorios?${params.toString()}`);
+  }
+
+  function applyCustomRange() {
+    if (!customStart || !customEnd) return;
+    if (customStart > customEnd) return;
+    const params = new URLSearchParams();
+    params.set("periodo", "custom");
+    params.set("start", customStart);
+    params.set("end", customEnd);
     router.replace(`/admin/relatorios?${params.toString()}`);
   }
 
@@ -124,16 +138,49 @@ export function ReportView({
             Visão consolidada · {report.range.periodLabel}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <select
             className="b3-input"
-            value={filters.periodo ?? "30"}
+            value={currentPeriodo}
             onChange={(e) => changePeriod(e.target.value)}
+            aria-label="Período do relatório"
           >
             <option value="7">Últimos 7 dias</option>
             <option value="30">Últimos 30 dias</option>
             <option value="90">Últimos 90 dias</option>
+            <option value="custom">Período personalizado…</option>
           </select>
+          {currentPeriodo === "custom" && (
+            <>
+              <input
+                type="date"
+                className="b3-input"
+                value={customStart}
+                max={customEnd || undefined}
+                onChange={(e) => setCustomStart(e.target.value)}
+                aria-label="Data inicial"
+              />
+              <span className="text-ink-4 text-[12px]">até</span>
+              <input
+                type="date"
+                className="b3-input"
+                value={customEnd}
+                min={customStart || undefined}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                aria-label="Data final"
+              />
+              <button
+                type="button"
+                onClick={applyCustomRange}
+                disabled={
+                  !customStart || !customEnd || customStart > customEnd
+                }
+                className="b3-btn"
+              >
+                Aplicar
+              </button>
+            </>
+          )}
           <button
             type="button"
             onClick={downloadCsv}

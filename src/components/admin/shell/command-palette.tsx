@@ -289,8 +289,8 @@ export function CommandPalette() {
         </div>
 
         <div className="bg-ink-1/[0.03] text-ink-4 flex items-center justify-between border-t px-4 py-2 text-[10px]">
-          <span>↑↓ navegar · ↵ abrir · ESC fechar</span>
-          <span>⌘K / Ctrl+K</span>
+          <span>↑↓ navegar · Enter abrir · Esc fechar</span>
+          <span>Ctrl K (⌘ K no Mac)</span>
         </div>
       </div>
     </div>
