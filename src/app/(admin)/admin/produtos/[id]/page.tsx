@@ -1,5 +1,6 @@
 import { and, asc, eq, inArray, ne } from "drizzle-orm";
-import { HomeIcon, PackageIcon } from "lucide-react";
+import { ChevronLeftIcon } from "lucide-react";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ProductActionsMenu } from "@/components/admin/product-actions-menu";
@@ -8,7 +9,6 @@ import {
   type RelatedPickerItem,
   RelatedProductsCard,
 } from "@/components/admin/related-products-card";
-import { AdminPageHeader } from "@/components/admin/shell/page-header";
 import {
   categoryTable,
   productImageTable,
@@ -152,37 +152,53 @@ export default async function EditProdutoPage({ params }: EditProdutoPageProps) 
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <AdminPageHeader
-        title={headerTitle}
-        subtitle={
-          isDraft
-            ? "Complete os dados pra publicar."
-            : "Edite os dados e clique em Salvar."
-        }
-        breadcrumb={[
-          { label: "Início", icon: HomeIcon, href: "/admin" },
-          { label: "Produtos", icon: PackageIcon, href: "/admin/produtos" },
-          { label: headerTitle },
-        ]}
-        actions={
-          <>
-            <ProductPublishToggle
-              productId={product.id}
-              isActive={product.isActive}
-              disabled={isDraft}
-            />
-            <ProductActionsMenu
-              productId={product.id}
-              productName={product.name}
-              variants={variants.map((v) => ({
-                id: v.id,
-                name: v.name,
-                stockQuantity: v.stockQuantity ?? 0,
-              }))}
-            />
-          </>
-        }
-      />
+      {/* Back-row Dublin v3 (B3ProdutoDetalheScreen bagy-detail.jsx:119-134) */}
+      <div className="flex items-start gap-3">
+        <Link
+          href="/admin/produtos"
+          aria-label="Voltar para produtos"
+          className="b3-btn b3-btn--sm size-9 shrink-0 justify-center p-0"
+        >
+          <ChevronLeftIcon size={15} />
+        </Link>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-ink-1 truncate text-[22px] font-bold tracking-[-0.025em]">
+              {headerTitle}
+            </h1>
+            {!isDraft ? (
+              product.isActive ? (
+                <span className="b3-pill b3-pill--ok">Publicado</span>
+              ) : (
+                <span className="b3-pill b3-pill--gold">Despublicado</span>
+              )
+            ) : (
+              <span className="b3-pill">Rascunho</span>
+            )}
+          </div>
+          <p className="text-ink-4 mt-1 text-[13px]">
+            {isDraft
+              ? "Complete os dados pra publicar."
+              : "Edite os dados e clique em Salvar."}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <ProductPublishToggle
+            productId={product.id}
+            isActive={product.isActive}
+            disabled={isDraft}
+          />
+          <ProductActionsMenu
+            productId={product.id}
+            productName={product.name}
+            variants={variants.map((v) => ({
+              id: v.id,
+              name: v.name,
+              stockQuantity: v.stockQuantity ?? 0,
+            }))}
+          />
+        </div>
+      </div>
 
       <RelatedProductsCard
         productId={product.id}

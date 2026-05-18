@@ -1,7 +1,7 @@
 import { asc, eq } from "drizzle-orm";
-import { HomeIcon, PackageIcon } from "lucide-react";
+import { ChevronLeftIcon } from "lucide-react";
+import Link from "next/link";
 
-import { AdminPageHeader } from "@/components/admin/shell/page-header";
 import { categoryTable } from "@/db/schema";
 import { requireSession } from "@/lib/auth-server";
 import { getCurrentStore } from "@/lib/store-context";
@@ -11,6 +11,9 @@ import { NewProductForm } from "./new-product-form";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Novo produto — Onda A.17 pixel-perfect Dublin v3 (back-row pattern).
+ */
 export default async function NovoProdutoPage() {
   const session = await requireSession();
   const store = await getCurrentStore(session.user.id);
@@ -18,8 +21,6 @@ export default async function NovoProdutoPage() {
     throw new Error("UNREACHABLE: novo produto page sem loja");
   }
 
-  // Categorias do SSR — form abre com Select já populado, sem fetch
-  // client-side. RLS via withTenant.
   const categories = await withTenant(store.id, session.user.id, async (tx) =>
     tx
       .select({
@@ -34,15 +35,24 @@ export default async function NovoProdutoPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <AdminPageHeader
-        title="Novo produto"
-        subtitle="Preencha nome e preço pra começar. Fotos e categoria podem entrar agora ou depois."
-        breadcrumb={[
-          { label: "Início", icon: HomeIcon, href: "/admin" },
-          { label: "Produtos", icon: PackageIcon, href: "/admin/produtos" },
-          { label: "Novo" },
-        ]}
-      />
+      <div className="flex items-start gap-3">
+        <Link
+          href="/admin/produtos"
+          aria-label="Voltar para produtos"
+          className="b3-btn b3-btn--sm size-9 shrink-0 justify-center p-0"
+        >
+          <ChevronLeftIcon size={15} />
+        </Link>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-ink-1 text-[22px] font-bold tracking-[-0.025em]">
+            Novo produto
+          </h1>
+          <p className="text-ink-4 mt-1 text-[13px]">
+            Preencha nome e preço pra começar. Fotos e categoria podem entrar
+            agora ou depois.
+          </p>
+        </div>
+      </div>
       <NewProductForm categories={categories} />
     </div>
   );

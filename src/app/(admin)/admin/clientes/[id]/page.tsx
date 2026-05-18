@@ -1,8 +1,8 @@
-import { HomeIcon, UsersIcon } from "lucide-react";
+import { ChevronLeftIcon } from "lucide-react";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { loadCustomerDetail } from "@/actions/customer/load";
-import { AdminPageHeader } from "@/components/admin/shell/page-header";
 import { requireSession } from "@/lib/auth-server";
 
 import { EditCustomerForm } from "./edit-customer-form";
@@ -13,6 +13,11 @@ interface EditClientePageProps {
   params: Promise<{ id: string }>;
 }
 
+/**
+ * Edição cliente — Onda A.17 pixel-perfect Dublin v3.
+ * Back-row pattern + pill com count de pedidos vinculados (handoff
+ * B3ClienteDetalheScreen bagy-admin.jsx:331).
+ */
 export default async function EditClientePage({ params }: EditClientePageProps) {
   await requireSession();
   const { id } = await params;
@@ -25,19 +30,35 @@ export default async function EditClientePage({ params }: EditClientePageProps) 
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <AdminPageHeader
-        title={customer.name}
-        subtitle={
-          orderCount === 0
-            ? "Sem pedidos vinculados ainda."
-            : `${orderCount} ${orderCount === 1 ? "pedido vinculado" : "pedidos vinculados"}`
-        }
-        breadcrumb={[
-          { label: "Início", icon: HomeIcon, href: "/admin" },
-          { label: "Clientes", icon: UsersIcon, href: "/admin/clientes" },
-          { label: customer.name },
-        ]}
-      />
+      <div className="flex items-start gap-3">
+        <Link
+          href="/admin/clientes"
+          aria-label="Voltar para clientes"
+          className="b3-btn b3-btn--sm size-9 shrink-0 justify-center p-0"
+        >
+          <ChevronLeftIcon size={15} />
+        </Link>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-ink-1 truncate text-[22px] font-bold tracking-[-0.025em]">
+              {customer.name}
+            </h1>
+            {orderCount > 0 ? (
+              <span className="b3-pill b3-pill--brand">
+                {orderCount}{" "}
+                {orderCount === 1 ? "pedido" : "pedidos"}
+              </span>
+            ) : (
+              <span className="b3-pill">Sem pedidos</span>
+            )}
+          </div>
+          <p className="text-ink-4 mt-1 text-[13px]">
+            {orderCount === 0
+              ? "Sem pedidos vinculados ainda. Vincule pedidos antigos pelo /admin/pedidos."
+              : `${orderCount} ${orderCount === 1 ? "pedido vinculado" : "pedidos vinculados"}.`}
+          </p>
+        </div>
+      </div>
 
       <EditCustomerForm
         initialData={{
