@@ -55,6 +55,7 @@ import {
   type PdvProductVariantHit,
   searchProductsForPdv,
 } from "@/actions/product/search-for-pdv";
+import { formatDocument } from "@/lib/document";
 import { formatBRL, getEffectivePrice } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
@@ -1116,24 +1117,37 @@ function CustomerComboboxLight({
             </p>
           ) : (
             <ul>
-              {hits.map((c) => (
-                <li key={c.id}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onPick(c);
-                      setShowResults(false);
-                      setQ("");
-                    }}
-                    className="hover:bg-bg-app flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left"
-                  >
-                    <span className="text-sm">{c.name}</span>
-                    <span className="mono text-ink-4 text-[11px]">
-                      {c.phone}
-                    </span>
-                  </button>
-                </li>
-              ))}
+              {hits.map((c) => {
+                const docFmt = c.document
+                  ? formatDocument(c.document, c.type)
+                  : "";
+                return (
+                  <li key={c.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onPick(c);
+                        setShowResults(false);
+                        setQ("");
+                      }}
+                      className="hover:bg-bg-app flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left"
+                    >
+                      <span className="flex items-center gap-1.5 text-sm">
+                        {c.type === "company" ? (
+                          <span className="bg-brand-wash text-brand rounded px-1 py-px text-[9px] font-bold leading-[1] tracking-wide">
+                            PJ
+                          </span>
+                        ) : null}
+                        {c.name}
+                      </span>
+                      <span className="mono text-ink-4 text-[11px]">
+                        {c.phone}
+                        {docFmt ? ` · ${docFmt}` : ""}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

@@ -3,8 +3,9 @@
 import { and, eq, ilike, or, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 
-import { customerTable } from "@/db/schema";
+import { customerTable,type CustomerType } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { normalizeDocument } from "@/lib/document";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
@@ -14,6 +15,8 @@ export interface CustomerSearchHit {
   id: string;
   name: string;
   phone: string;
+  type: CustomerType;
+  document: string | null;
 }
 
 /**
@@ -44,6 +47,8 @@ export async function searchCustomers(
           id: customerTable.id,
           name: customerTable.name,
           phone: customerTable.phone,
+          type: customerTable.type,
+          document: customerTable.document,
         })
         .from(customerTable)
         .where(eq(customerTable.storeId, store.id))
@@ -54,6 +59,11 @@ export async function searchCustomers(
   }
 
   const safeQ = trimmed.replace(/[\\%_]/g, "\\$&");
+  // ADR-0021 — busca por documento usa só dígitos (sem máscara).
+  // Se a query for puramente dígitos com tamanho razoável, casamos
+  // contra document (normalizado no DB também é só dígitos).
+  const queryDigits = normalizeDocument(trimmed);
+  const matchesDocument = queryDigits.length >= 3;
 
   return withTenant(store.id, session.user.id, async (tx) => {
     const where = and(
@@ -61,6 +71,9 @@ export async function searchCustomers(
       or(
         ilike(customerTable.name, `%${safeQ}%`),
         ilike(customerTable.phone, `%${safeQ}%`),
+        matchesDocument
+          ? ilike(customerTable.document, `%${queryDigits}%`)
+          : undefined,
       ),
     );
     const rows = await tx
@@ -68,6 +81,8 @@ export async function searchCustomers(
         id: customerTable.id,
         name: customerTable.name,
         phone: customerTable.phone,
+        type: customerTable.type,
+        document: customerTable.document,
       })
       .from(customerTable)
       .where(where)

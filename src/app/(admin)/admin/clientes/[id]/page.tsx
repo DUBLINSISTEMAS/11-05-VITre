@@ -65,6 +65,8 @@ export default async function EditClientePage({ params }: EditClientePageProps) 
           id: customer.id,
           name: customer.name,
           phone: customer.phone,
+          type: customer.type,
+          document: customer.document,
           email: customer.email,
           addressStreet: customer.addressStreet,
           addressNumber: customer.addressNumber,

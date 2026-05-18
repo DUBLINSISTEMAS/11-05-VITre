@@ -23,10 +23,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { cn } from "@/lib/utils";
+
 interface CustomersToolbarProps {
   /** "X – Y de Z" string já calculada server-side. */
   rangeLabel: string;
 }
+
+type TypeFilter = "all" | "individual" | "company";
 
 export function CustomersToolbar({ rangeLabel }: CustomersToolbarProps) {
   const router = useRouter();
@@ -35,6 +39,24 @@ export function CustomersToolbar({ rangeLabel }: CustomersToolbarProps) {
 
   const initialQ = searchParams.get("q") ?? "";
   const [q, setQ] = useState(initialQ);
+
+  // ADR-0021 — filtro PF/PJ. URL-driven, sem state local (instant nav).
+  const currentType: TypeFilter =
+    searchParams.get("type") === "individual"
+      ? "individual"
+      : searchParams.get("type") === "company"
+        ? "company"
+        : "all";
+
+  const setTypeFilter = (next: TypeFilter) => {
+    const usp = new URLSearchParams(window.location.search);
+    if (next === "all") usp.delete("type");
+    else usp.set("type", next);
+    usp.delete("page");
+    startTransition(() => {
+      router.replace(`?${usp.toString()}`, { scroll: false });
+    });
+  };
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -71,6 +93,39 @@ export function CustomersToolbar({ rangeLabel }: CustomersToolbarProps) {
           onChange={(e) => setQ(e.target.value)}
           aria-label="Buscar clientes"
         />
+      </div>
+
+      {/* ADR-0021 — chips PF/PJ. URL-driven. */}
+      <div
+        role="group"
+        aria-label="Filtrar por tipo"
+        className="border-line inline-flex rounded-[8px] border p-0.5"
+      >
+        {(
+          [
+            { v: "all" as const, label: "Todos" },
+            { v: "individual" as const, label: "PF" },
+            { v: "company" as const, label: "PJ" },
+          ] as const
+        ).map((opt) => {
+          const active = currentType === opt.v;
+          return (
+            <button
+              key={opt.v}
+              type="button"
+              aria-pressed={active}
+              onClick={() => setTypeFilter(opt.v)}
+              className={cn(
+                "rounded-[6px] px-2.5 py-1 text-[12px] font-medium transition",
+                active
+                  ? "bg-surface text-ink-1 shadow-sm"
+                  : "text-ink-3 hover:text-ink-1",
+              )}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
       </div>
 
       <button

@@ -72,6 +72,8 @@ export async function createCustomer(
           storeId: store.id,
           name: data.name,
           phone: data.phone,
+          type: data.type,
+          document: data.document,
           email: data.email,
           addressStreet: data.addressStreet,
           addressNumber: data.addressNumber,
@@ -105,6 +107,13 @@ export async function createCustomer(
           ok: false,
           error: "Já existe um cliente cadastrado com este telefone.",
           fieldErrors: { phone: "Telefone já cadastrado." },
+        };
+      }
+      if (constraint === "customer_store_document_unique") {
+        return {
+          ok: false,
+          error: "Já existe um cliente cadastrado com este documento.",
+          fieldErrors: { document: "Documento já cadastrado." },
         };
       }
     }

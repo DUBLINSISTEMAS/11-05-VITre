@@ -80,6 +80,8 @@ export async function updateCustomer(
         .set({
           name: data.name,
           phone: data.phone,
+          type: data.type,
+          document: data.document,
           email: data.email,
           addressStreet: data.addressStreet,
           addressNumber: data.addressNumber,
@@ -117,6 +119,13 @@ export async function updateCustomer(
           ok: false,
           error: "Já existe outro cliente com este telefone.",
           fieldErrors: { phone: "Telefone em uso por outro cliente." },
+        };
+      }
+      if (constraint === "customer_store_document_unique") {
+        return {
+          ok: false,
+          error: "Já existe outro cliente com este documento.",
+          fieldErrors: { document: "Documento em uso por outro cliente." },
         };
       }
     }

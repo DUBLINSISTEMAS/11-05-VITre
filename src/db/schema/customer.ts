@@ -17,9 +17,19 @@
  * RLS em supabase/sql/21_customer_rls.sql.
  */
 import { relations } from "drizzle-orm";
-import { index, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { index, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
 import { storeTable } from "./store";
+
+/**
+ * ADR-0021 — PF (pessoa física) ou PJ (pessoa jurídica).
+ * Binário intencional — empresa estrangeira sem CNPJ vira `individual`
+ * com `document NULL`. Manter binário simplifica UI (toggle) + relatórios.
+ */
+export const customerTypeEnum = pgEnum("customer_type", [
+  "individual",
+  "company",
+]);
 
 export const customerTable = pgTable(
   "customer",
@@ -30,9 +40,25 @@ export const customerTable = pgTable(
       .references(() => storeTable.id, { onDelete: "cascade" }),
 
     // Identidade — name + phone obrigatórios. Telefone é a chave do
-    // varejo brasileiro; nome é como o lojista identifica.
+    // varejo brasileiro; nome é como o lojista identifica (PF "Nome",
+    // PJ "Razão social").
     name: text("name").notNull(),
     phone: text("phone").notNull(), // E.164: +5511999999999
+
+    /**
+     * ADR-0021 — tipo do cadastro. Default 'individual' (95% do varejo
+     * SMB BR). Migration 0020 backfilla existentes com este default.
+     */
+    type: customerTypeEnum("type").notNull().default("individual"),
+
+    /**
+     * ADR-0021 — CPF (11 dígitos) ou CNPJ (14), SEM máscara, só dígitos.
+     * Opcional — cliente pode existir sem documento. Length + digits
+     * validados em DB (SQL 28 CHECK); dígito verificador em Zod via
+     * src/lib/document.ts. UNIQUE parcial em (store_id, document) WHERE
+     * document IS NOT NULL — múltiplos NULL permitidos, doc não-NULL único.
+     */
+    document: text("document"),
 
     // Contato opcional
     email: text("email"),
@@ -77,3 +103,4 @@ export const customerRelations = relations(customerTable, ({ one }) => ({
 
 export type Customer = typeof customerTable.$inferSelect;
 export type NewCustomer = typeof customerTable.$inferInsert;
+export type CustomerType = (typeof customerTypeEnum.enumValues)[number];

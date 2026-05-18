@@ -7,6 +7,8 @@
  */
 import { z } from "zod";
 
+import { isValidDocument, normalizeDocument } from "@/lib/document";
+
 const E164 = /^\+[1-9][0-9]{6,14}$/;
 const UF = /^[A-Z]{2}$/;
 const CEP = /^[0-9]{8}$/;
@@ -89,15 +91,74 @@ const customerInputBase = z.object({
       message: "CEP inválido (use 8 dígitos).",
     }),
   notes: optionalString(1000),
+  /**
+   * ADR-0021 — PF (individual) ou PJ (company). Default individual.
+   * Required no schema (sempre vem do form), default cobre callers antigos.
+   */
+  type: z.enum(["individual", "company"]).default("individual"),
+  /**
+   * ADR-0021 — CPF (PF, 11 dígitos) ou CNPJ (PJ, 14). Pode chegar
+   * mascarado do form ("999.999.999-99") — normalizamos pra só dígitos
+   * antes de gravar. Vazio → null. Dígito verificador validado em
+   * `documentRefinement` abaixo (cross-field com `type`).
+   */
+  document: z
+    .string()
+    .trim()
+    .nullish()
+    .transform((v) => {
+      const digits = normalizeDocument(v ?? undefined);
+      return digits === "" ? null : digits;
+    }),
 });
 
-export const createCustomerSchema = customerInputBase;
+/**
+ * Validação cruzada documento × tipo. Roda APÓS o `.transform()` acima,
+ * então `data.document` já tá normalizado (só dígitos ou null).
+ *
+ * Extraída como callback nomeado pra reusar entre create/update (memory
+ * `zod-v4-zodeffects-not-exported.md` — duplicar inline também é aceito,
+ * mas helper com path: string[] simples roda OK no Zod v4).
+ */
+function documentRefinement(
+  data: { type: "individual" | "company"; document: string | null },
+  ctx: z.RefinementCtx,
+) {
+  if (data.document === null) return;
+  // Length sanity (DB CHECK também cobre, mas mensagem amigável em app):
+  const expectedLen = data.type === "individual" ? 11 : 14;
+  if (data.document.length !== expectedLen) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["document"],
+      message:
+        data.type === "individual"
+          ? "CPF deve ter 11 dígitos."
+          : "CNPJ deve ter 14 dígitos.",
+    });
+    return;
+  }
+  if (!isValidDocument(data.document, data.type)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["document"],
+      message:
+        data.type === "individual" ? "CPF inválido." : "CNPJ inválido.",
+    });
+  }
+}
+
+export const createCustomerSchema = customerInputBase.superRefine(
+  documentRefinement,
+);
 export type CreateCustomerInput = z.input<typeof createCustomerSchema>;
 export type CreateCustomerData = z.output<typeof createCustomerSchema>;
 
-export const updateCustomerSchema = customerInputBase.extend({
-  id: z.string().uuid("Identificador inválido."),
-});
+export const updateCustomerSchema = customerInputBase
+  .extend({
+    id: z.string().uuid("Identificador inválido."),
+  })
+  .superRefine(documentRefinement);
 export type UpdateCustomerInput = z.input<typeof updateCustomerSchema>;
 export type UpdateCustomerData = z.output<typeof updateCustomerSchema>;
 

@@ -22,6 +22,8 @@ export function NewCustomerForm() {
       initialData={{
         name: "",
         phone: "",
+        type: "individual",
+        document: null,
         email: null,
         addressStreet: null,
         addressNumber: null,

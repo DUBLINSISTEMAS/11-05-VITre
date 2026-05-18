@@ -18,6 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import type { CustomerType } from "@/db/schema";
+import { maskDocumentInput, normalizeDocument } from "@/lib/document";
 import { cn } from "@/lib/utils";
 
 /**
@@ -37,6 +39,10 @@ export interface CustomerInitialData {
   id?: string;
   name: string;
   phone: string;
+  /** ADR-0021 — PF/PJ. Default 'individual' pra create. */
+  type: CustomerType;
+  /** ADR-0021 — CPF/CNPJ só dígitos. Display formata via maskDocumentInput. */
+  document: string | null;
   email: string | null;
   addressStreet: string | null;
   addressNumber: string | null;
@@ -66,6 +72,8 @@ export function CustomerForm({ mode, initialData, onAfterSave }: CustomerFormPro
   const {
     handleSubmit,
     control,
+    watch,
+    setValue,
     formState: { errors, isDirty },
     setError,
   } = useForm<FormInput>({
@@ -74,6 +82,11 @@ export function CustomerForm({ mode, initialData, onAfterSave }: CustomerFormPro
       ...(mode === "edit" && initialData.id ? { id: initialData.id } : {}),
       name: initialData.name,
       phone: initialData.phone,
+      type: initialData.type,
+      // Mascarado já no initial pra não exibir só dígitos no edit.
+      document: initialData.document
+        ? maskDocumentInput(initialData.document, initialData.type)
+        : "",
       email: initialData.email ?? "",
       addressStreet: initialData.addressStreet ?? "",
       addressNumber: initialData.addressNumber ?? "",
@@ -85,6 +98,12 @@ export function CustomerForm({ mode, initialData, onAfterSave }: CustomerFormPro
       notes: initialData.notes ?? "",
     } as FormInput,
   });
+
+  // ADR-0021 — watch do type pra label dinâmica + máscara correta.
+  // Memory `zod-action-input-type-with-defaults.md` — usar watch
+  // destructurado em vez de useWatch generic.
+  const currentType = (watch("type") ?? "individual") as CustomerType;
+  const isCompany = currentType === "company";
 
   const onSubmit = (values: FormInput) => {
     if (submittingRef.current) return;
@@ -125,8 +144,57 @@ export function CustomerForm({ mode, initialData, onAfterSave }: CustomerFormPro
         title="Dados principais"
         description="Nome e telefone são obrigatórios — o telefone é a chave que identifica o cliente."
       >
+        {/* ADR-0021 — Toggle PF/PJ. Muda label do nome e máscara do documento.
+            Trocar de tipo limpa o documento (CPF e CNPJ têm length diferentes). */}
+        <div className="space-y-1.5">
+          <Label className="text-[12.5px]">Tipo</Label>
+          <Controller
+            name="type"
+            control={control}
+            render={({ field }) => (
+              <div
+                role="tablist"
+                aria-label="Tipo de cliente"
+                className="border-line inline-flex rounded-[8px] border bg-[var(--bg-app)] p-0.5"
+              >
+                {(
+                  [
+                    { v: "individual" as const, label: "Pessoa física" },
+                    { v: "company" as const, label: "Pessoa jurídica" },
+                  ] as const
+                ).map((opt) => {
+                  const active = field.value === opt.v;
+                  return (
+                    <button
+                      key={opt.v}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      disabled={isPending}
+                      onClick={() => {
+                        if (active) return;
+                        field.onChange(opt.v);
+                        // Trocar de tipo limpa documento — length diferente.
+                        setValue("document", "", { shouldDirty: true });
+                      }}
+                      className={cn(
+                        "rounded-[6px] px-3 py-1.5 text-[12.5px] font-medium transition",
+                        active
+                          ? "bg-surface text-ink-1 shadow-sm"
+                          : "text-ink-3 hover:text-ink-1",
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          />
+        </div>
+
         <Field
-          label="Nome"
+          label={isCompany ? "Razão social" : "Nome"}
           htmlFor="cust-name"
           error={errors.name?.message}
           required
@@ -137,12 +205,56 @@ export function CustomerForm({ mode, initialData, onAfterSave }: CustomerFormPro
             render={({ field }) => (
               <Input
                 id="cust-name"
-                placeholder="Maria da Silva"
+                placeholder={
+                  isCompany ? "Padaria do João Ltda" : "Maria da Silva"
+                }
                 disabled={isPending}
                 aria-invalid={!!errors.name}
                 {...field}
               />
             )}
+          />
+        </Field>
+
+        <Field
+          label={isCompany ? "CNPJ (opcional)" : "CPF (opcional)"}
+          htmlFor="cust-document"
+          error={errors.document?.message}
+          hint={
+            isCompany
+              ? "14 dígitos. Pode digitar com ou sem máscara."
+              : "11 dígitos. Pode digitar com ou sem máscara."
+          }
+        >
+          <Controller
+            name="document"
+            control={control}
+            render={({ field }) => {
+              const maxLen = isCompany ? 18 : 14; // com máscara
+              return (
+                <Input
+                  id="cust-document"
+                  inputMode="numeric"
+                  placeholder={
+                    isCompany
+                      ? "12.345.678/0001-99"
+                      : "999.999.999-99"
+                  }
+                  maxLength={maxLen}
+                  disabled={isPending}
+                  aria-invalid={!!errors.document}
+                  value={field.value ?? ""}
+                  onChange={(e) => {
+                    // Aplica máscara on-change pra UX, mas Zod normaliza
+                    // pra digits no boundary. Ambos lados consistentes.
+                    const digits = normalizeDocument(e.target.value);
+                    const cap = isCompany ? digits.slice(0, 14) : digits.slice(0, 11);
+                    field.onChange(maskDocumentInput(cap, currentType));
+                  }}
+                  onBlur={field.onBlur}
+                />
+              );
+            }}
           />
         </Field>
 

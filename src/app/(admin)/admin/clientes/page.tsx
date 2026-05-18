@@ -9,6 +9,7 @@ import { CustomersToolbar } from "@/components/admin/customers-toolbar";
 import { Pagination } from "@/components/common/pagination";
 import { customerTable } from "@/db/schema";
 import { requireSession } from "@/lib/auth-server";
+import { normalizeDocument } from "@/lib/document";
 import { pageNumberSchema, searchTextSchema } from "@/lib/page-search-params";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
@@ -18,6 +19,8 @@ const PAGE_SIZE = 20;
 const clientesSearchSchema = z.object({
   q: searchTextSchema,
   page: pageNumberSchema,
+  /** ADR-0021 — filtro PF/PJ. Vazio/inválido = todos. */
+  type: z.enum(["individual", "company"]).nullish().catch(null),
 });
 
 interface ClientesPageProps {
@@ -44,17 +47,30 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
     throw new Error("UNREACHABLE: clientes page sem loja");
   }
 
-  const { q: rawQ, page } = clientesSearchSchema.parse(await searchParams);
+  const { q: rawQ, page, type: typeFilter } = clientesSearchSchema.parse(
+    await searchParams,
+  );
   const q = rawQ.trim();
 
   const conditions: SQL[] = [eq(customerTable.storeId, store.id)];
   if (q) {
     const safeQ = q.replace(/[\\%_]/g, "\\$&");
+    // ADR-0021 — busca por documento (só dígitos). Se a query for >=3
+    // dígitos numéricos, casa também contra document. Vazio = ignora.
+    const queryDigits = normalizeDocument(q);
+    const docMatch =
+      queryDigits.length >= 3
+        ? ilike(customerTable.document, `%${queryDigits}%`)
+        : undefined;
     const condition = or(
       ilike(customerTable.name, `%${safeQ}%`),
       ilike(customerTable.phone, `%${safeQ}%`),
+      docMatch,
     );
     if (condition) conditions.push(condition);
+  }
+  if (typeFilter) {
+    conditions.push(eq(customerTable.type, typeFilter));
   }
   const whereClause = and(...conditions);
 
@@ -70,6 +86,8 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
           name: customerTable.name,
           phone: customerTable.phone,
           email: customerTable.email,
+          type: customerTable.type,
+          document: customerTable.document,
           addressCity: customerTable.addressCity,
           addressState: customerTable.addressState,
           createdAt: customerTable.createdAt,
@@ -90,7 +108,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
   );
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const hasFilters = q !== "";
+  const hasFilters = q !== "" || typeFilter != null;
 
   const rangeStart = total === 0 ? 0 : offset + 1;
   const rangeEnd = Math.min(offset + PAGE_SIZE, total);
@@ -99,6 +117,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
   const buildHref = (nextPage: number) => {
     const usp = new URLSearchParams();
     if (q) usp.set("q", q);
+    if (typeFilter) usp.set("type", typeFilter);
     if (nextPage > 1) usp.set("page", String(nextPage));
     const qs = usp.toString();
     return qs ? `?${qs}` : "?";

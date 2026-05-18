@@ -10,19 +10,21 @@
 //
 // Decisões pixel-perfect vs handoff (B3ClientesScreen) + schema:
 // - schema `customer` NÃO tem `group` (Padrão/Silver/Gold) — esses
-//   chegam com ADR-0022 (Onda B.3). Por enquanto coluna GRUPO sempre
-//   renderiza "Padrão" pill default. Não esconde a coluna pra preservar
-//   fidelidade visual da grid (memory `pixel-perfect-soon-placeholder-pattern`).
+//   chegam com ADR-0026 (Onda B3.2). Por enquanto coluna TIPO mostra
+//   PF/PJ (ADR-0021), quando B3.2 landa renomeia/adiciona Grupo.
 // - schema NÃO tem `status` (ativo/inativo) — coluna sempre "● Ativo"
 //   pill --ok. Soft-delete viria com B.x futuro.
-// - schema NÃO tem `doc` (CPF/CNPJ) — célula NOME mostra cidade/UF como
-//   segunda linha em vez de doc (handoff mostra doc, adaptamos pro que temos).
+// - schema agora TEM `document` (CPF/CNPJ) via ADR-0021 — segunda linha
+//   da célula Nome mostra documento formatado quando preenchido, senão
+//   cai pra cidade/UF como antes.
 // - WhatsApp pill (`b3-wa`) é link wa.me/<E.164> — clica e abre WA já com
 //   contato pronto.
 
 import { MessageCircleIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 
+import type { CustomerType } from "@/db/schema";
+import { formatDocument } from "@/lib/document";
 import { formatRelativeDate } from "@/lib/format";
 
 export interface CustomerTableRow {
@@ -31,6 +33,10 @@ export interface CustomerTableRow {
   /** E.164: +5511999999999 */
   phone: string;
   email: string | null;
+  /** ADR-0021 — PF/PJ. Pill na coluna Tipo. */
+  type: CustomerType;
+  /** ADR-0021 — CPF/CNPJ só dígitos. Renderizado formatado na 2ª linha do Nome. */
+  document: string | null;
   addressCity: string | null;
   addressState: string | null;
   createdAt: Date;
@@ -70,7 +76,7 @@ export function CustomersTable({ customers }: CustomersTableProps) {
           <th>Foto</th>
           <th>Nome</th>
           <th>Contato</th>
-          <th>Grupo</th>
+          <th>Tipo</th>
           <th style={{ paddingRight: 20, textAlign: "right" }}>Status</th>
         </tr>
       </thead>
@@ -79,6 +85,9 @@ export function CustomersTable({ customers }: CustomersTableProps) {
           const cityUf = [c.addressCity, c.addressState]
             .filter(Boolean)
             .join(" / ");
+          // ADR-0021 — doc tem prioridade sobre cidade/UF na 2ª linha do nome.
+          const docFormatted = c.document ? formatDocument(c.document, c.type) : "";
+          const secondaryLine = docFormatted || cityUf;
           return (
             <tr
               key={c.id}
@@ -120,7 +129,7 @@ export function CustomersTable({ customers }: CustomersTableProps) {
               </td>
               <td>
                 <div style={{ fontWeight: 600 }}>{c.name}</div>
-                {cityUf ? (
+                {secondaryLine ? (
                   <div
                     className="mono"
                     style={{
@@ -129,7 +138,7 @@ export function CustomersTable({ customers }: CustomersTableProps) {
                       marginTop: 2,
                     }}
                   >
-                    {cityUf}
+                    {secondaryLine}
                   </div>
                 ) : null}
               </td>
@@ -149,7 +158,9 @@ export function CustomersTable({ customers }: CustomersTableProps) {
                 ) : null}
               </td>
               <td>
-                <span className="b3-pill">Padrão</span>
+                <span className="b3-pill">
+                  {c.type === "company" ? "PJ" : "PF"}
+                </span>
               </td>
               <td style={{ textAlign: "right", paddingRight: 20 }}>
                 <span
