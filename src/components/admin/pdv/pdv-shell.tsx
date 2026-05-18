@@ -1,8 +1,24 @@
 "use client";
 
+// PDV / venda balcão — port Dublin v3 (ADR-0019, Onda A.11).
+// REWRITE estético do shell mantendo TODA a lógica funcional (cart state,
+// F-keys, debounced search, advisory lock no server, troco, etc.) — só
+// substitui shadcn Button/Input/Label/Textarea por primitivos `b3-*` e
+// adota layout do handoff B3PDVScreen (left scroll + right fixed panel).
+//
+// Decisões pixel-perfect vs handoff:
+// - Search 56px com badge mono "F2" absolute right (handoff é literal)
+// - Grid produtos: repeat(auto-fill, minmax(160px, 1fr)) gap 10
+// - Cards: padding 12 + border line + rounded 12; img placeholder 80px;
+//   estoque como `b3-pill b3-pill--ok` (ou warn se baixo, danger se zero)
+// - Right column: padding 18 nas seções, header "CLIENTE" 11px upper,
+//   empty cart com círculo 60×60 bg-app, footer fixed com total mono 22px
+// - Payment grid: 5 botões usando b3-btn (selected = b3-btn--cta)
+// - Tabs categoria do handoff NÃO implementadas (sem dados de "mais
+//   vendidos" ainda — placeholder vazio ou omitir)
+
 import {
   BanknoteIcon,
-  ChevronRightIcon,
   CreditCardIcon,
   MinusIcon,
   PackageIcon,
@@ -39,10 +55,6 @@ import {
   type PdvProductVariantHit,
   searchProductsForPdv,
 } from "@/actions/product/search-for-pdv";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { formatBRL, getEffectivePrice } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
@@ -121,7 +133,6 @@ export function PdvShell() {
             it.variantId === (variant?.id ?? null),
         );
         if (existing) {
-          // Aumenta qty se já está no carrinho
           const trackStock = variant?.trackStock ?? product.trackStock;
           const stockQuantity =
             variant?.stockQuantity ?? product.stockQuantity;
@@ -150,8 +161,7 @@ export function PdvShell() {
             quantity: 1,
             thumbUrl: product.thumbUrl,
             trackStock: variant?.trackStock ?? product.trackStock,
-            stockQuantity:
-              variant?.stockQuantity ?? product.stockQuantity,
+            stockQuantity: variant?.stockQuantity ?? product.stockQuantity,
           },
         ];
       });
@@ -173,9 +183,7 @@ export function PdvShell() {
         toast.error(`Estoque insuficiente — só tem ${item.stockQuantity}.`);
         return prev;
       }
-      return prev.map((it, i) =>
-        i === idx ? { ...it, quantity: next } : it,
-      );
+      return prev.map((it, i) => (i === idx ? { ...it, quantity: next } : it));
     });
   };
 
@@ -246,10 +254,8 @@ export function PdvShell() {
   };
 
   // Atalhos de teclado (follow-up Fase 5 — ADR-0016)
-  //
-  // F2 = busca produto, F3 = busca cliente, F4 = finalizar, ESC = limpar.
-  // Refs nas closures (handleSubmit/canSubmit/cart) pra evitar listener
-  // rebind a cada keystroke; dep array só contém o que muda raramente.
+  //   F2 = busca produto, F3 = busca cliente, F4 = finalizar, ESC = limpar
+  // Refs evitam rebind do listener a cada keystroke.
   const handleSubmitRef = useRef(handleSubmit);
   const canSubmitRef = useRef(canSubmit);
   const cartLengthRef = useRef(cart.length);
@@ -261,9 +267,7 @@ export function PdvShell() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      // Ignora se modifier pressionado — não pisar em atalhos do sistema
       if (e.ctrlKey || e.metaKey || e.altKey) return;
-
       switch (e.key) {
         case "F2": {
           e.preventDefault();
@@ -289,8 +293,6 @@ export function PdvShell() {
           return;
         }
         case "Escape": {
-          // Só zera se foco está no body (fora de inputs) E carrinho > 0
-          // — ESC dentro de um input fecha popovers/dropdowns nativamente.
           if (
             document.activeElement === document.body &&
             cartLengthRef.current > 0
@@ -315,14 +317,8 @@ export function PdvShell() {
         <ProductSearchPicker onAdd={addToCart} />
       </section>
 
-      {/* Coluna direita: carrinho + cliente + pagamento + finalizar */}
-      <aside className="space-y-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
-        <CartPanel
-          items={cart}
-          updateQty={updateQty}
-          removeItem={removeItem}
-        />
-
+      {/* Coluna direita: cliente + carrinho + pagamento + finalizar */}
+      <aside className="b3-card flex flex-col overflow-hidden lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]">
         <CustomerComboboxLight
           customerId={customerId}
           customerLabel={customerLabel}
@@ -332,120 +328,75 @@ export function PdvShell() {
           }}
         />
 
-        <section className="b3-card space-y-3 p-4">
-          <h3 className="text-[13.5px] font-semibold tracking-tight text-ink-1">
-            Pagamento
-          </h3>
-          <div className="grid grid-cols-2 gap-2">
-            {PAYMENT_METHODS.map((m) => (
-              <Button
-                key={m.value}
-                type="button"
-                variant={paymentMethod === m.value ? "default" : "outline"}
-                onClick={() => setPaymentMethod(m.value)}
-                className="justify-start gap-2 h-11"
-              >
-                <m.Icon className="size-4" />
-                {m.label}
-              </Button>
-            ))}
-          </div>
+        <CartPanel
+          items={cart}
+          updateQty={updateQty}
+          removeItem={removeItem}
+        />
 
-          {paymentMethod === "cash" ? (
-            <div className="space-y-1">
-              <Label htmlFor="cash-received" className="text-xs">
-                Valor recebido (opcional — pra calcular troco)
-              </Label>
-              <Input
-                id="cash-received"
-                inputMode="decimal"
-                placeholder="0,00"
-                value={cashReceivedInput}
-                onChange={(e) => setCashReceivedInput(e.target.value)}
-              />
-              {troco !== null ? (
-                <p className="text-xs text-ink-4">
-                  Troco:{" "}
-                  <span className="font-semibold text-ink-1">
-                    {formatBRL(troco)}
-                  </span>
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-
-          <div className="space-y-1">
-            <Label htmlFor="discount" className="text-xs">
-              Desconto manual (opcional)
-            </Label>
-            <Input
-              id="discount"
-              inputMode="decimal"
-              placeholder="0,00"
-              value={discountInput}
-              onChange={(e) => setDiscountInput(e.target.value)}
+        {cart.length > 0 ? (
+          <div className="border-t border-line bg-bg-app">
+            <PaymentSection
+              paymentMethod={paymentMethod}
+              setPaymentMethod={setPaymentMethod}
+              cashReceivedInput={cashReceivedInput}
+              setCashReceivedInput={setCashReceivedInput}
+              troco={troco}
+              discountInput={discountInput}
+              setDiscountInput={setDiscountInput}
+              notes={notes}
+              setNotes={setNotes}
             />
           </div>
+        ) : null}
 
-          <div className="space-y-1">
-            <Label htmlFor="notes" className="text-xs">
-              Observação (opcional)
-            </Label>
-            <Textarea
-              id="notes"
-              placeholder="Ex: cheque #123, vale, fiado..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-              maxLength={500}
-            />
-          </div>
-        </section>
-
-        <section className="b3-card space-y-2 p-4">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-ink-4">Subtotal</span>
-            <span className="font-mono text-ink-1">{formatBRL(subtotalInCents)}</span>
+        <div className="border-t border-line bg-bg-app p-[18px]">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[14px] font-bold text-ink-1">Total</span>
+            <span
+              className={cn(
+                "mono text-[22px] font-bold tracking-[-0.02em]",
+                cart.length === 0 ? "text-ink-4" : "text-ink-1",
+              )}
+            >
+              {formatBRL(totalInCents)}
+            </span>
           </div>
           {discountInCents > 0 ? (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-ink-4">Desconto</span>
-              <span className="font-mono text-danger">
+            <div className="mb-2 flex items-center justify-between text-xs text-ink-4">
+              <span>Subtotal {formatBRL(subtotalInCents)} · desconto</span>
+              <span className="mono text-danger">
                 −{formatBRL(discountInCents)}
               </span>
             </div>
           ) : null}
-          <div className="flex items-center justify-between border-t border-line pt-2 text-base">
-            <span className="font-semibold text-ink-1">Total</span>
-            <span className="font-mono text-lg font-bold text-ink-1">
-              {formatBRL(totalInCents)}
-            </span>
-          </div>
-
-          <Button
+          <button
             id="pdv-submit"
             type="button"
-            size="lg"
             disabled={!canSubmit}
             onClick={handleSubmit}
-            className="w-full h-12 text-base"
+            className={cn(
+              "b3-btn b3-btn--cta w-full",
+              !canSubmit && "cursor-not-allowed opacity-50",
+            )}
+            style={{ height: 44 }}
           >
-            {isSubmitting ? "Registrando..." : "Finalizar venda (F4)"}
-            <ChevronRightIcon className="size-4" />
-          </Button>
-
+            {isSubmitting
+              ? "Registrando…"
+              : cart.length === 0
+                ? "Adicione produtos pra finalizar"
+                : "Finalizar venda (F4)"}
+          </button>
           {cart.length > 0 ? (
-            <Button
+            <button
               type="button"
-              variant="ghost"
-              size="sm"
               onClick={reset}
-              className="w-full"
+              className="mt-2 w-full text-[12px] text-ink-4 hover:text-ink-1"
             >
               Limpar venda
-            </Button>
+            </button>
           ) : null}
-        </section>
+        </div>
       </aside>
     </div>
   );
@@ -494,45 +445,50 @@ function ProductSearchPicker({
     });
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      {/* Search bar 56px com badge F2 mono */}
       <div className="relative">
         <SearchIcon
           aria-hidden
-          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-4"
+          size={18}
+          className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-4"
         />
-        <Input
+        <input
           id="pdv-product-search"
           autoFocus
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar produto por nome... (F2)"
-          className="pl-9 h-12 text-base"
+          placeholder="Buscar produto · nome…"
+          className="border-line bg-surface focus:border-brand focus:ring-brand/20 h-14 w-full rounded-[12px] border pl-12 pr-16 text-[15px] outline-none transition focus:ring-2"
         />
         {q ? (
           <button
             type="button"
             onClick={() => setQ("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-4 hover:text-ink-1"
+            className="text-ink-4 hover:text-ink-1 absolute right-12 top-1/2 -translate-y-1/2"
             aria-label="Limpar busca"
           >
-            <XIcon className="size-4" />
+            <XIcon size={14} />
           </button>
         ) : null}
+        <span className="mono bg-bg-app text-ink-4 absolute right-4 top-1/2 -translate-y-1/2 rounded px-2 py-[2px] text-[11px]">
+          F2
+        </span>
       </div>
 
       {isSearching && hits.length === 0 ? (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
+        <div className="grid grid-cols-2 gap-[10px] sm:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
             <div
               key={i}
-              className="aspect-square animate-pulse rounded-lg bg-bg-app"
+              className="bg-bg-app aspect-[0.8] animate-pulse rounded-[12px]"
             />
           ))}
         </div>
       ) : hits.length === 0 ? (
         <EmptyHits hasQuery={q.trim() !== ""} />
       ) : (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-[10px] sm:grid-cols-3 lg:grid-cols-4">
           {hits.map((p) => {
             const effectivePrice = getEffectivePrice({
               basePriceInCents: p.basePriceInCents,
@@ -547,11 +503,19 @@ function ProductSearchPicker({
               p.stockQuantity !== null &&
               p.stockQuantity <= 0 &&
               !hasVariants;
+            const stockTone =
+              !p.trackStock || p.stockQuantity === null
+                ? "b3-pill"
+                : p.stockQuantity <= 0
+                  ? "b3-pill b3-pill--danger"
+                  : p.stockQuantity <= 3
+                    ? "b3-pill b3-pill--warn"
+                    : "b3-pill b3-pill--ok";
             return (
               <div
                 key={p.id}
                 className={cn(
-                  "group relative flex flex-col overflow-hidden rounded-lg border border-line bg-surface transition",
+                  "border-line bg-surface flex flex-col gap-2 overflow-hidden rounded-[12px] border p-3 transition",
                   isOutOfStock && "opacity-50",
                 )}
               >
@@ -559,15 +523,12 @@ function ProductSearchPicker({
                   type="button"
                   disabled={isOutOfStock}
                   onClick={() => {
-                    if (hasVariants) {
-                      toggleVariants(p.id);
-                    } else {
-                      onAdd(p, null, effectivePrice);
-                    }
+                    if (hasVariants) toggleVariants(p.id);
+                    else onAdd(p, null, effectivePrice);
                   }}
-                  className="flex flex-1 flex-col items-start gap-1 p-2 text-left hover:bg-bg-app disabled:cursor-not-allowed"
+                  className="hover:bg-bg-app flex w-full flex-col gap-2 rounded text-left disabled:cursor-not-allowed"
                 >
-                  <div className="relative aspect-square w-full overflow-hidden rounded bg-bg-app">
+                  <div className="bg-brand-wash text-brand flex h-20 w-full items-center justify-center overflow-hidden rounded-[8px]">
                     {p.thumbUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -576,24 +537,27 @@ function ProductSearchPicker({
                         className="size-full object-cover"
                       />
                     ) : (
-                      <div className="flex size-full items-center justify-center text-ink-4">
-                        <PackageIcon className="size-6" />
-                      </div>
+                      <PackageIcon size={22} />
                     )}
                   </div>
-                  <span className="line-clamp-2 text-xs font-medium">
+                  <span className="line-clamp-2 text-[12.5px] font-medium leading-tight">
                     {p.name}
                   </span>
-                  <span className="font-mono text-[13px] font-semibold">
-                    {formatBRL(effectivePrice)}
-                  </span>
-                  {p.trackStock ? (
-                    <span className="text-[11px] text-ink-4">
-                      {p.stockQuantity ?? 0} em estoque
+                  <div className="flex items-center justify-between">
+                    <span className="mono text-[13px] font-bold">
+                      {formatBRL(effectivePrice)}
                     </span>
-                  ) : null}
+                    {p.trackStock && p.stockQuantity !== null ? (
+                      <span
+                        className={stockTone}
+                        style={{ fontFamily: "var(--mono)" }}
+                      >
+                        {p.stockQuantity}
+                      </span>
+                    ) : null}
+                  </div>
                   {hasVariants ? (
-                    <span className="text-[11px] text-brand">
+                    <span className="text-brand text-[11px]">
                       {expanded ? "▲ ocultar" : "▼"} {p.variants.length}{" "}
                       variantes
                     </span>
@@ -601,7 +565,7 @@ function ProductSearchPicker({
                 </button>
 
                 {hasVariants && expanded ? (
-                  <div className="border-t border-line bg-bg-app p-2 space-y-1">
+                  <div className="bg-bg-app -mx-3 -mb-3 mt-1 space-y-1 border-t border-line p-2">
                     {p.variants.map((v) => {
                       const vPrice = v.priceInCents ?? effectivePrice;
                       const vOut =
@@ -614,12 +578,10 @@ function ProductSearchPicker({
                           type="button"
                           disabled={vOut}
                           onClick={() => onAdd(p, v, vPrice)}
-                          className="flex w-full items-center justify-between rounded px-2 py-1 text-xs hover:bg-bg-app disabled:opacity-50"
+                          className="hover:bg-surface flex w-full items-center justify-between rounded px-2 py-1 text-xs disabled:opacity-50"
                         >
                           <span className="truncate">{v.name}</span>
-                          <span className="font-mono">
-                            {formatBRL(vPrice)}
-                          </span>
+                          <span className="mono">{formatBRL(vPrice)}</span>
                         </button>
                       );
                     })}
@@ -636,9 +598,9 @@ function ProductSearchPicker({
 
 function EmptyHits({ hasQuery }: { hasQuery: boolean }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-line p-8 text-center">
-      <PackageIcon className="size-8 text-ink-4" />
-      <p className="text-sm text-ink-4">
+    <div className="border-line text-ink-4 flex flex-col items-center gap-2 rounded-[12px] border-2 border-dashed p-8 text-center">
+      <PackageIcon size={32} />
+      <p className="text-sm">
         {hasQuery
           ? "Nenhum produto encontrado."
           : "Cadastre produtos pra começar a vender no balcão."}
@@ -658,26 +620,31 @@ function CartPanel({
 }) {
   if (items.length === 0) {
     return (
-      <section className="b3-card p-4">
-        <div className="flex items-center gap-2 text-sm text-ink-4">
-          <ShoppingBagIcon className="size-4" />
-          Carrinho vazio
+      <div className="text-ink-4 flex flex-1 flex-col items-center justify-center gap-3 p-10 text-center">
+        <span className="bg-bg-app inline-flex size-[60px] items-center justify-center rounded-full">
+          <ShoppingBagIcon size={26} />
+        </span>
+        <div>
+          <div className="text-ink-2 text-sm font-semibold">
+            Carrinho vazio
+          </div>
+          <div className="mt-1 text-xs">Busque um produto pra começar</div>
         </div>
-      </section>
+      </div>
     );
   }
   return (
-    <section className="b3-card">
-      <header className="flex items-center justify-between border-b border-line px-4 py-3">
-        <h3 className="text-[13.5px] font-semibold tracking-tight text-ink-1">
+    <div className="flex-1 overflow-y-auto">
+      <header className="border-line bg-surface sticky top-0 z-10 flex items-center justify-between border-b px-[18px] py-3">
+        <h3 className="text-ink-1 text-[13.5px] font-semibold tracking-tight">
           Carrinho · {items.length} {items.length === 1 ? "item" : "itens"}
         </h3>
       </header>
-      <ul className="divide-y divide-line">
+      <ul className="divide-line divide-y">
         {items.map((it, idx) => (
           <li key={`${it.productId}-${it.variantId ?? "p"}`} className="p-3">
             <div className="flex gap-2">
-              <div className="size-12 shrink-0 overflow-hidden rounded bg-bg-app">
+              <div className="bg-bg-app size-12 shrink-0 overflow-hidden rounded">
                 {it.thumbUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -687,22 +654,18 @@ function CartPanel({
                   />
                 ) : (
                   <div className="flex size-full items-center justify-center">
-                    <PackageIcon className="size-4 text-ink-4" />
+                    <PackageIcon className="text-ink-4 size-4" />
                   </div>
                 )}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium line-clamp-1">
+              <div className="min-w-0 flex-1">
+                <p className="line-clamp-1 text-sm font-medium">
                   {it.productName}
                 </p>
                 {it.variantName ? (
-                  <p className="text-xs text-ink-4">
-                    {it.variantName}
-                  </p>
+                  <p className="text-ink-4 text-xs">{it.variantName}</p>
                 ) : null}
-                <p className="font-mono text-xs">
-                  {formatBRL(it.priceInCents)}
-                </p>
+                <p className="mono text-xs">{formatBRL(it.priceInCents)}</p>
               </div>
               <button
                 type="button"
@@ -715,34 +678,143 @@ function CartPanel({
             </div>
             <div className="mt-2 flex items-center justify-between">
               <div className="flex items-center gap-1">
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="size-8"
+                <button
+                  type="button"
                   onClick={() => updateQty(idx, -1)}
+                  className="b3-btn b3-btn--sm size-8 justify-center p-0"
+                  aria-label="Diminuir"
                 >
                   <MinusIcon className="size-3" />
-                </Button>
+                </button>
                 <span className="w-8 text-center text-sm font-medium">
                   {it.quantity}
                 </span>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="size-8"
+                <button
+                  type="button"
                   onClick={() => updateQty(idx, 1)}
+                  className="b3-btn b3-btn--sm size-8 justify-center p-0"
+                  aria-label="Aumentar"
                 >
                   <PlusIcon className="size-3" />
-                </Button>
+                </button>
               </div>
-              <span className="font-mono text-sm font-semibold">
+              <span className="mono text-sm font-semibold">
                 {formatBRL(it.priceInCents * it.quantity)}
               </span>
             </div>
           </li>
         ))}
       </ul>
-    </section>
+    </div>
+  );
+}
+
+function PaymentSection({
+  paymentMethod,
+  setPaymentMethod,
+  cashReceivedInput,
+  setCashReceivedInput,
+  troco,
+  discountInput,
+  setDiscountInput,
+  notes,
+  setNotes,
+}: {
+  paymentMethod: PaymentMethod | null;
+  setPaymentMethod: (m: PaymentMethod) => void;
+  cashReceivedInput: string;
+  setCashReceivedInput: (v: string) => void;
+  troco: number | null;
+  discountInput: string;
+  setDiscountInput: (v: string) => void;
+  notes: string;
+  setNotes: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-3 p-[18px]">
+      <div className="text-ink-4 text-[11px] font-bold uppercase tracking-[0.06em]">
+        Pagamento
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {PAYMENT_METHODS.map((m) => {
+          const selected = paymentMethod === m.value;
+          return (
+            <button
+              key={m.value}
+              type="button"
+              onClick={() => setPaymentMethod(m.value)}
+              className={cn(
+                "b3-btn justify-start gap-2",
+                selected && "b3-btn--cta",
+              )}
+              style={{ height: 40 }}
+            >
+              <m.Icon size={14} />
+              {m.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {paymentMethod === "cash" ? (
+        <div className="space-y-1">
+          <label
+            htmlFor="cash-received"
+            className="text-ink-4 text-[11px] font-medium"
+          >
+            Valor recebido (opcional — pra calcular troco)
+          </label>
+          <input
+            id="cash-received"
+            inputMode="decimal"
+            placeholder="0,00"
+            value={cashReceivedInput}
+            onChange={(e) => setCashReceivedInput(e.target.value)}
+            className="border-line bg-surface focus:border-brand h-9 w-full rounded-[8px] border px-3 text-[13px] outline-none transition"
+          />
+          {troco !== null ? (
+            <p className="text-ink-4 text-xs">
+              Troco:{" "}
+              <span className="text-ink-1 font-semibold">
+                {formatBRL(troco)}
+              </span>
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="space-y-1">
+        <label
+          htmlFor="discount"
+          className="text-ink-4 text-[11px] font-medium"
+        >
+          Desconto manual (opcional)
+        </label>
+        <input
+          id="discount"
+          inputMode="decimal"
+          placeholder="0,00"
+          value={discountInput}
+          onChange={(e) => setDiscountInput(e.target.value)}
+          className="border-line bg-surface focus:border-brand h-9 w-full rounded-[8px] border px-3 text-[13px] outline-none transition"
+        />
+      </div>
+
+      <div className="space-y-1">
+        <label htmlFor="notes" className="text-ink-4 text-[11px] font-medium">
+          Observação (opcional)
+        </label>
+        <textarea
+          id="notes"
+          placeholder="Ex: cheque #123, vale, fiado…"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={2}
+          maxLength={500}
+          className="border-line bg-surface focus:border-brand w-full resize-none rounded-[8px] border px-3 py-2 text-[13px] outline-none transition"
+        />
+      </div>
+    </div>
   );
 }
 
@@ -790,40 +862,42 @@ function CustomerComboboxLight({
 
   if (customerId) {
     return (
-      <section className="b3-card p-4">
-        <div className="flex items-center justify-between">
+      <div className="border-b border-line p-[18px]">
+        <div className="text-ink-4 mb-2 text-[11px] font-bold uppercase tracking-[0.06em]">
+          Cliente
+        </div>
+        <div className="bg-bg-app flex items-center justify-between rounded-[10px] p-3">
           <div className="flex items-center gap-2">
-            <UserIcon className="size-4 text-ink-4" />
+            <UserIcon className="text-ink-4 size-4" />
             <div>
               <p className="text-sm font-medium">{customerLabel}</p>
-              <p className="text-xs text-ink-4">
-                Cliente vinculado
-              </p>
+              <p className="text-ink-4 text-xs">Vinculado a esta venda</p>
             </div>
           </div>
-          <Button
-            size="sm"
-            variant="ghost"
+          <button
+            type="button"
             onClick={() => onPick(null)}
+            className="text-ink-4 hover:text-ink-1 text-xs"
           >
             Trocar
-          </Button>
+          </button>
         </div>
-      </section>
+      </div>
     );
   }
 
   return (
-    <section ref={containerRef} className="b3-card relative p-4">
-      <Label className="text-[13.5px] font-semibold tracking-tight text-ink-1">
-        Cliente (opcional)
-      </Label>
-      <div className="relative mt-2">
+    <div ref={containerRef} className="relative border-b border-line p-[18px]">
+      <div className="text-ink-4 mb-2 text-[11px] font-bold uppercase tracking-[0.06em]">
+        Cliente
+      </div>
+      <div className="relative">
         <SearchIcon
           aria-hidden
-          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-4"
+          size={14}
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-4"
         />
-        <Input
+        <input
           id="pdv-customer-search"
           value={q}
           onChange={(e) => {
@@ -831,15 +905,15 @@ function CustomerComboboxLight({
             setShowResults(true);
           }}
           onFocus={() => setShowResults(true)}
-          placeholder="Buscar por nome ou telefone... (F3)"
-          className="pl-9"
+          placeholder="Adicionar cliente · opcional (F3)"
+          className="bg-bg-app border-line-2 placeholder:text-ink-3 focus:border-brand h-10 w-full rounded-[10px] border border-dashed pl-9 pr-3 text-[13px] outline-none transition"
         />
       </div>
       {showResults ? (
-        <div className="absolute left-4 right-4 top-full z-10 mt-1 max-h-64 overflow-y-auto rounded-lg border border-line bg-popover shadow-md">
+        <div className="border-line bg-popover absolute left-[18px] right-[18px] top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-[10px] border shadow-md">
           {hits.length === 0 ? (
-            <p className="p-3 text-xs text-ink-4">
-              {isSearching ? "Buscando..." : "Nenhum cliente encontrado."}
+            <p className="text-ink-4 p-3 text-xs">
+              {isSearching ? "Buscando…" : "Nenhum cliente encontrado."}
             </p>
           ) : (
             <ul>
@@ -852,10 +926,10 @@ function CustomerComboboxLight({
                       setShowResults(false);
                       setQ("");
                     }}
-                    className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left hover:bg-bg-app"
+                    className="hover:bg-bg-app flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left"
                   >
                     <span className="text-sm">{c.name}</span>
-                    <span className="font-mono text-[11px] text-ink-4">
+                    <span className="mono text-ink-4 text-[11px]">
                       {c.phone}
                     </span>
                   </button>
@@ -865,6 +939,6 @@ function CustomerComboboxLight({
           )}
         </div>
       ) : null}
-    </section>
+    </div>
   );
 }
