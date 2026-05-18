@@ -1,14 +1,12 @@
 import { and, asc, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
-import { PlusIcon, SearchXIcon, UsersIcon } from "lucide-react";
+import { InfoIcon, PlusIcon, SearchXIcon, UsersIcon } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { z } from "zod";
 
-import { CustomersFilters } from "@/components/admin/customers-filters";
 import { CustomersTable } from "@/components/admin/customers-table";
-import { AdminPageHeader } from "@/components/admin/shell/page-header";
+import { CustomersToolbar } from "@/components/admin/customers-toolbar";
 import { Pagination } from "@/components/common/pagination";
-import { Button } from "@/components/ui/button";
 import { customerTable } from "@/db/schema";
 import { requireSession } from "@/lib/auth-server";
 import { pageNumberSchema, searchTextSchema } from "@/lib/page-search-params";
@@ -27,11 +25,17 @@ interface ClientesPageProps {
 }
 
 /**
- * Listagem de clientes (Fase 3 — ADR-0014).
+ * Listagem de clientes — port Dublin v3 (ADR-0019, Onda A.9). Continua
+ * URL-driven (CLAUDE.md #11). Busca cobre nome E telefone (ilike substring,
+ * escape de wildcards). Ordenação default por createdAt desc.
  *
- * URL-driven (convenção CLAUDE.md #11). Busca cobre nome (ilike substring)
- * E telefone (ilike substring) com escape de wildcards. Ordenação default
- * por createdAt desc — cliente mais recente em cima.
+ * Decisões pixel-perfect vs handoff (B3ClientesScreen):
+ * - H1 inline 24px font-bold tracking -0.025em (substitui AdminPageHeader)
+ * - CTA "Adicionar cliente" → `b3-btn b3-btn--cta` (Link prefetch pra /novo)
+ * - `b3-card` envolvendo helpbar + toolbar + tabela + pager
+ * - Tabs (Todos/Ativos/Inativos) OMITIDAS — schema customer não tem campo
+ *   status. Quando ADR futuro introduzir soft-delete, abrir como Onda separada
+ *   (memory `handoff-vs-schema-respect-data-model`).
  */
 export default async function ClientesPage({ searchParams }: ClientesPageProps) {
   const session = await requireSession();
@@ -88,6 +92,10 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const hasFilters = q !== "";
 
+  const rangeStart = total === 0 ? 0 : offset + 1;
+  const rangeEnd = Math.min(offset + PAGE_SIZE, total);
+  const rangeLabel = total === 0 ? "0 de 0" : `${rangeStart} – ${rangeEnd} de ${total}`;
+
   const buildHref = (nextPage: number) => {
     const usp = new URLSearchParams();
     if (q) usp.set("q", q);
@@ -98,45 +106,55 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <AdminPageHeader
-        title="Clientes"
-        subtitle={
-          total === 0
-            ? hasFilters
-              ? "Nenhum cliente bate com os filtros."
-              : "Cadastre seus clientes pra ter histórico e fechar venda balcão."
-            : `${total} ${total === 1 ? "cliente" : "clientes"} cadastrados`
-        }
-        actions={
-          <Button asChild>
-            <Link href="/admin/clientes/novo" prefetch>
-              <PlusIcon /> <span className="hidden sm:inline">Novo cliente</span>
-            </Link>
-          </Button>
-        }
-      />
+      {/* H1 + CTA Dublin v3 (substitui AdminPageHeader) */}
+      <div className="flex items-end justify-between gap-4">
+        <h1 className="text-[24px] font-bold tracking-[-0.025em] text-ink-1">
+          Meus clientes
+        </h1>
+        <Link href="/admin/clientes/novo" className="b3-btn b3-btn--cta" prefetch>
+          <PlusIcon size={14} aria-hidden />
+          <span className="hidden sm:inline">Adicionar cliente</span>
+          <span className="sm:hidden">Novo</span>
+        </Link>
+      </div>
 
-      <Suspense
-        fallback={<div className="bg-bg-app h-10 animate-pulse rounded-md" />}
-      >
-        <CustomersFilters />
-      </Suspense>
-
-      {customers.length === 0 ? (
-        hasFilters ? (
-          <NoResults />
-        ) : (
-          <EmptyState />
-        )
+      {customers.length === 0 && !hasFilters ? (
+        <EmptyState />
       ) : (
-        <>
-          <CustomersTable customers={customers} />
-          <Pagination
-            currentPage={page}
-            totalPages={totalPages}
-            buildHref={buildHref}
-          />
-        </>
+        <div className="b3-card overflow-hidden">
+          {/* Helpbar topo (cola via border-radius custom) */}
+          <div className="b3-helpbar" style={{ borderRadius: "12px 12px 0 0" }}>
+            <span className="b3-helpbar-ico">
+              <InfoIcon className="size-3.5" aria-hidden />
+            </span>
+            <span className="b3-helpbar-text">
+              Precisa de ajuda? <a>Assista o vídeo sobre clientes</a>
+            </span>
+          </div>
+
+          {/* Toolbar: busca + ordenar/filtros + counter */}
+          <Suspense
+            fallback={<div className="bg-bg-app h-14 animate-pulse" />}
+          >
+            <CustomersToolbar rangeLabel={rangeLabel} />
+          </Suspense>
+
+          {customers.length === 0 ? (
+            <NoResults />
+          ) : (
+            <CustomersTable customers={customers} />
+          )}
+
+          {customers.length > 0 ? (
+            <div className="border-t border-line p-3">
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                buildHref={buildHref}
+              />
+            </div>
+          ) : null}
+        </div>
       )}
     </div>
   );
@@ -153,18 +171,20 @@ function EmptyState() {
         Telefone é a chave. Vai ser útil pra venda balcão, follow-up no
         WhatsApp e histórico de compras.
       </p>
-      <Button asChild size="sm">
-        <Link href="/admin/clientes/novo" prefetch>
-          <PlusIcon /> Novo cliente
-        </Link>
-      </Button>
+      <Link
+        href="/admin/clientes/novo"
+        className="b3-btn b3-btn--cta"
+        prefetch
+      >
+        <PlusIcon size={14} aria-hidden /> Adicionar cliente
+      </Link>
     </div>
   );
 }
 
 function NoResults() {
   return (
-    <div className="border-line flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-12">
+    <div className="flex flex-col items-center gap-3 p-8 text-center sm:p-12">
       <div className="bg-bg-app text-ink-4 flex size-12 items-center justify-center rounded-full">
         <SearchXIcon className="size-6" />
       </div>

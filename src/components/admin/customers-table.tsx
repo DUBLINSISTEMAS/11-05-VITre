@@ -1,13 +1,34 @@
 "use client";
 
-import { ChevronRightIcon } from "lucide-react";
-import Link from "next/link";
+// Lista de clientes — port Dublin v3 (ADR-0019, Onda A.9).
+// REWRITE pra usar `b3-tbl` canônico (substitui grid custom Onda A.5i).
+// Mobile responsivo: CSS @media (max-width: 640px) em globals.css faz
+// thead esconder e tbody tr virar block stack (já no globals).
+//
+// Cada row é clicável (router.push pra /admin/clientes/[id]). Checkbox
+// per-row é placeholder visual (bulk actions ficam pra onda futura).
+//
+// Decisões pixel-perfect vs handoff (B3ClientesScreen) + schema:
+// - schema `customer` NÃO tem `group` (Padrão/Silver/Gold) — esses
+//   chegam com ADR-0022 (Onda B.3). Por enquanto coluna GRUPO sempre
+//   renderiza "Padrão" pill default. Não esconde a coluna pra preservar
+//   fidelidade visual da grid (memory `pixel-perfect-soon-placeholder-pattern`).
+// - schema NÃO tem `status` (ativo/inativo) — coluna sempre "● Ativo"
+//   pill --ok. Soft-delete viria com B.x futuro.
+// - schema NÃO tem `doc` (CPF/CNPJ) — célula NOME mostra cidade/UF como
+//   segunda linha em vez de doc (handoff mostra doc, adaptamos pro que temos).
+// - WhatsApp pill (`b3-wa`) é link wa.me/<E.164> — clica e abre WA já com
+//   contato pronto.
+
+import { MessageCircleIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { formatRelativeDate } from "@/lib/format";
 
 export interface CustomerTableRow {
   id: string;
   name: string;
+  /** E.164: +5511999999999 */
   phone: string;
   email: string | null;
   addressCity: string | null;
@@ -20,87 +41,128 @@ interface CustomersTableProps {
 }
 
 /**
- * Lista de clientes do admin (Fase 3 — ADR-0014).
- *
- * Cada row é um <Link> pra /admin/clientes/[id] (page-mode, padrão Vitrê
- * pra forms grandes — memory `admin-form-grande-page-not-modal.md`).
+ * Retorna iniciais (até 2) pra preencher avatar circular.
+ * "João Mario" → "JM", "Sandra" → "SA".
  */
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+/** wa.me URL a partir de E.164 — strip "+" porque wa.me não aceita. */
+function whatsappHref(phoneE164: string): string {
+  const digits = phoneE164.replace(/[^0-9]/g, "");
+  return `https://wa.me/${digits}`;
+}
+
 export function CustomersTable({ customers }: CustomersTableProps) {
+  const router = useRouter();
+
   return (
-    <>
-      {/* Desktop */}
-      <div className="b3-card hidden overflow-hidden lg:block">
-        <div
-          role="rowgroup"
-          className="text-eyebrow bg-bg-app grid grid-cols-[minmax(0,1.4fr)_minmax(0,160px)_minmax(0,1fr)_minmax(0,130px)_32px] items-center gap-4 border-b border-line px-4 py-2.5"
-        >
-          <span>Nome</span>
-          <span>Telefone</span>
-          <span>Cidade / E-mail</span>
-          <span>Cadastrado</span>
-          <span aria-hidden />
-        </div>
-
-        <ul className="divide-line divide-y">
-          {customers.map((c) => (
-            <li key={c.id}>
-              <Link
-                href={`/admin/clientes/${c.id}`}
-                prefetch
-                className="hocus:bg-bg-app group grid grid-cols-[minmax(0,1.4fr)_minmax(0,160px)_minmax(0,1fr)_minmax(0,130px)_32px] items-center gap-4 px-4 py-2.5 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
-              >
-                <span className="min-w-0 truncate font-medium text-ink-1">{c.name}</span>
-                <span className="font-mono text-[12.5px] tabular-nums text-ink-1">{c.phone}</span>
-                <span className="text-ink-4 min-w-0 truncate text-[12.5px]">
-                  {[
-                    [c.addressCity, c.addressState].filter(Boolean).join(" / "),
-                    c.email,
-                  ]
-                    .filter((v) => v && v.length > 0)
-                    .join(" · ") || "—"}
-                </span>
-                <span className="text-ink-4 text-[12.5px]">
-                  {formatRelativeDate(c.createdAt)}
-                </span>
-                <span
-                  aria-hidden
-                  className="text-ink-5 group-hover:text-ink-1 flex justify-end transition-colors"
-                >
-                  <ChevronRightIcon className="size-4" />
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Mobile */}
-      <ul className="b3-card divide-line divide-y overflow-hidden lg:hidden">
-        {customers.map((c) => (
-          <li key={c.id}>
-            <Link
-              href={`/admin/clientes/${c.id}`}
-              prefetch
-              className="hocus:bg-bg-app group flex w-full items-center gap-2.5 px-3 py-2.5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
+    <table className="b3-tbl">
+      <thead>
+        <tr>
+          <th style={{ paddingLeft: 20, width: 28 }}>
+            <span className="sr-only">Selecionar</span>
+          </th>
+          <th>Foto</th>
+          <th>Nome</th>
+          <th>Contato</th>
+          <th>Grupo</th>
+          <th style={{ paddingRight: 20, textAlign: "right" }}>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {customers.map((c) => {
+          const cityUf = [c.addressCity, c.addressState]
+            .filter(Boolean)
+            .join(" / ");
+          return (
+            <tr
+              key={c.id}
+              onClick={() => router.push(`/admin/clientes/${c.id}`)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  router.push(`/admin/clientes/${c.id}`);
+                }
+              }}
+              tabIndex={0}
+              role="button"
+              aria-label={`Abrir cliente ${c.name}`}
+              className="cursor-pointer outline-none focus-visible:bg-bg-app"
             >
-              <div className="bg-brand-wash text-brand flex size-9 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold">
-                {c.name.slice(0, 2).toUpperCase()}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[13.5px] font-medium leading-tight text-ink-1">{c.name}</p>
-                <p className="text-ink-4 mt-0.5 truncate text-[11.5px] leading-tight">
-                  <span className="font-mono tabular-nums">{c.phone}</span>
-                  {c.addressCity ? <> · {c.addressCity}</> : null}
-                </p>
-              </div>
-              <ChevronRightIcon
-                aria-hidden
-                className="text-ink-5 size-4 shrink-0"
-              />
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </>
+              <td style={{ paddingLeft: 20 }}>
+                <input
+                  type="checkbox"
+                  aria-label={`Selecionar ${c.name}`}
+                  onClick={(e) => e.stopPropagation()}
+                  disabled
+                  className="cursor-not-allowed opacity-50"
+                />
+              </td>
+              <td>
+                <div className="flex items-center gap-2.5">
+                  <span className="b3-avatar">{initialsOf(c.name)}</span>
+                  <a
+                    href={whatsappHref(c.phone)}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    onClick={(e) => e.stopPropagation()}
+                    className="b3-wa"
+                    aria-label={`Abrir WhatsApp de ${c.name}`}
+                  >
+                    <MessageCircleIcon size={14} aria-hidden />
+                  </a>
+                </div>
+              </td>
+              <td>
+                <div style={{ fontWeight: 600 }}>{c.name}</div>
+                {cityUf ? (
+                  <div
+                    className="mono"
+                    style={{
+                      fontSize: 11.5,
+                      color: "var(--ink-4)",
+                      marginTop: 2,
+                    }}
+                  >
+                    {cityUf}
+                  </div>
+                ) : null}
+              </td>
+              <td>
+                <div className="mono">{c.phone}</div>
+                {c.email ? (
+                  <div
+                    className="mono"
+                    style={{
+                      fontSize: 11.5,
+                      color: "var(--brand)",
+                      marginTop: 2,
+                    }}
+                  >
+                    {c.email}
+                  </div>
+                ) : null}
+              </td>
+              <td>
+                <span className="b3-pill">Padrão</span>
+              </td>
+              <td style={{ textAlign: "right", paddingRight: 20 }}>
+                <span
+                  className="b3-pill b3-pill--ok"
+                  title={`Cadastrado ${formatRelativeDate(c.createdAt)}`}
+                >
+                  ● Ativo
+                </span>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
