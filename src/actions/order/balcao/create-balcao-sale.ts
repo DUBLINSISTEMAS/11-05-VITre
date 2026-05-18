@@ -23,6 +23,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { headers } from "next/headers";
 
 import {
+  cashSessionTable,
   customerTable,
   orderItemTable,
   orderTable,
@@ -327,6 +328,23 @@ export async function createBalcaoSale(
           };
         }
 
+        // 10b. ADR-0022 D1 — auto-attach sessão de caixa ATIVA se houver.
+        //      Sem sessão aberta: cashSessionId = null (vendas sem caixa
+        //      formal continuam funcionando, opt-in adoption). Lookup
+        //      uma vez antes do retry loop — sessão não muda entre
+        //      tentativas. RLS-scoped via withTenant(storeId).
+        const [activeCashSession] = await tx
+          .select({ id: cashSessionTable.id })
+          .from(cashSessionTable)
+          .where(
+            and(
+              eq(cashSessionTable.storeId, store.id),
+              sql`${cashSessionTable.closedAt} IS NULL`,
+            ),
+          )
+          .limit(1);
+        const cashSessionIdForOrder = activeCashSession?.id ?? null;
+
         // 11. Tx aninhada: locks + estoque + INSERT order/items/movements
         let createdOrderId: string | null = null;
         let createdShortCode: string | null = null;
@@ -436,6 +454,8 @@ export async function createBalcaoSale(
                   // expiresAt nullable na Fase 5 — irrelevante pra balcão.
                   expiresAt: null,
                   confirmedAt: new Date(),
+                  // ADR-0022 — auto-attach (null se sem sessão aberta).
+                  cashSessionId: cashSessionIdForOrder,
                 })
                 .returning({ id: orderTable.id });
 

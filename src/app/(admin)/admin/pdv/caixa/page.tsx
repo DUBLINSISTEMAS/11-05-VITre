@@ -1,9 +1,14 @@
 import {
+  loadActiveCashSession,
+  loadCashSessionsList,
+} from "@/actions/cash-session/load";
+import {
   type DaySaleRow,
   type DaySummary,
   loadBalcaoDaySummary,
   type PaymentMethodKey,
 } from "@/actions/order/balcao/load-day-summary";
+import { CashSessionLanding } from "@/components/admin/pdv/cash-session-landing";
 import { PrintButton } from "@/components/admin/pdv/print-button";
 import { formatBRL } from "@/lib/pricing";
 
@@ -51,19 +56,23 @@ const METHOD_COLOR: Record<PaymentMethodKey, string> = {
  */
 export default async function CaixaPage({ searchParams }: CaixaPageProps) {
   const { data: dateParam } = await searchParams;
-  const summary = await loadBalcaoDaySummary({ date: dateParam });
+  const [summary, activeSession, sessionsList] = await Promise.all([
+    loadBalcaoDaySummary({ date: dateParam }),
+    loadActiveCashSession(),
+    loadCashSessionsList(10),
+  ]);
 
   return (
-    <div className="space-y-4 print:space-y-3">
+    <div className="space-y-6 print:space-y-3">
       <div className="flex items-end justify-between gap-4 print:hidden">
         <div>
           <h1 className="text-ink-1 text-[22px] font-bold tracking-[-0.025em]">
-            Caixa do dia
+            Caixa
           </h1>
           {summary ? (
             <div className="text-ink-4 mt-1 text-[13px]">
               {formatDateLabel(summary.date)} · {summary.totalCount}{" "}
-              {summary.totalCount === 1 ? "venda balcão" : "vendas balcão"}
+              {summary.totalCount === 1 ? "venda balcão" : "vendas balcão"} no dia
             </div>
           ) : null}
         </div>
@@ -73,7 +82,50 @@ export default async function CaixaPage({ searchParams }: CaixaPageProps) {
         </div>
       </div>
 
-      {summary ? <SummaryView summary={summary} /> : <EmptyState />}
+      {/* ADR-0022 — Caixa formal (sessão aberta + histórico) */}
+      <CashSessionLanding
+        active={
+          activeSession
+            ? {
+                id: activeSession.session.id,
+                openedAt: activeSession.session.openedAt,
+                openingAmountInCents:
+                  activeSession.session.openingAmountInCents,
+                cashSalesInCents: activeSession.cashSalesInCents,
+                sangriaInCents: activeSession.sangriaInCents,
+                reinforcementInCents: activeSession.reinforcementInCents,
+                expectedInCents: activeSession.expectedInCents,
+                saleCount: activeSession.saleCount,
+              }
+            : null
+        }
+        history={sessionsList.map((s) => ({
+          id: s.id,
+          openedAt: s.openedAt,
+          closedAt: s.closedAt,
+          openingAmountInCents: s.openingAmountInCents,
+          closingActualInCents: s.closingActualInCents,
+        }))}
+      />
+
+      {/* Visão geral do dia (independente de caixa) — KPIs + tabela */}
+      <section className="space-y-4 print:hidden">
+        <div>
+          <h2 className="text-ink-1 text-[16px] font-semibold tracking-[-0.015em]">
+            Vendas do dia · visão por método
+          </h2>
+          <p className="text-ink-4 text-[12px]">
+            Resumo independente de caixa — inclui PIX/cartão que não passam
+            pela gaveta física.
+          </p>
+        </div>
+        {summary ? <SummaryView summary={summary} /> : <EmptyState />}
+      </section>
+
+      {/* Resumo print (preservado pra fechamento informal sem caixa formal) */}
+      <div className="hidden print:block">
+        {summary ? <SummaryView summary={summary} /> : null}
+      </div>
     </div>
   );
 }

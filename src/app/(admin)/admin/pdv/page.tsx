@@ -1,6 +1,8 @@
 import { CalculatorIcon } from "lucide-react";
 import Link from "next/link";
 
+import { loadActiveCashSession } from "@/actions/cash-session/load";
+import { CashSessionStatus } from "@/components/admin/pdv/cash-session-status";
 import { PdvShell } from "@/components/admin/pdv/pdv-shell";
 
 /**
@@ -12,14 +14,13 @@ import { PdvShell } from "@/components/admin/pdv/pdv-shell";
  *
  * Mobile-first stack; desktop 2 colunas (grid lg:[1fr_400px]).
  *
- * Decisões pixel-perfect vs handoff (B3PDVScreen):
- * - H1 22px font-bold tracking -0.025em (substitui AdminPageHeader)
- * - Meta "Caixa do dia · N venda(s)" no canto direito (placeholder
- *   substituindo "Caixa #03 · aberto às 08:02" do handoff — sessão de
- *   caixa formal vira ADR-0024 / Onda B.8; por ora só CTA "Caixa do dia")
- * - Subtítulo removido (Dublin v3 não tem)
+ * ADR-0022 — banner de status de caixa aparece acima do PdvShell. Se
+ * sessão aberta: mostra esperado live + duração + CTA "Caixa". Se
+ * fechada: mostra CTA "Abrir caixa" (D1 = opt-in, não bloqueia venda).
  */
 export default async function PdvPage() {
+  const activeSession = await loadActiveCashSession();
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex items-end justify-between gap-4">
@@ -35,6 +36,20 @@ export default async function PdvPage() {
           <span>Caixa do dia</span>
         </Link>
       </div>
+      <CashSessionStatus
+        active={
+          activeSession
+            ? {
+                id: activeSession.session.id,
+                openedAt: activeSession.session.openedAt,
+                openingAmountInCents:
+                  activeSession.session.openingAmountInCents,
+                expectedInCents: activeSession.expectedInCents,
+                saleCount: activeSession.saleCount,
+              }
+            : null
+        }
+      />
       <PdvShell />
     </div>
   );

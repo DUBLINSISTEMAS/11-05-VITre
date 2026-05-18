@@ -148,6 +148,13 @@
       "when": 1779116547826,
       "tag": "0020_customer_pf_pj",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1779123848835,
+      "tag": "0021_cash_session",
+      "breakpoints": true
     }
   ]
 }

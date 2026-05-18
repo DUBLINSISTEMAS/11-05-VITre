@@ -14,6 +14,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
+import { cashSessionTable } from "./cash";
 import { customerTable } from "./customer";
 import { storeTable } from "./store";
 
@@ -130,6 +131,20 @@ export const orderTable = pgTable(
     surchargeInCents: integer("surcharge_in_cents"),
     /** Fase 5 — valor recebido em dinheiro (pra cálculo de troco). */
     cashReceivedInCents: integer("cash_received_in_cents"),
+
+    /**
+     * ADR-0022 — FK opcional para `cash_session`. Vendas balcão durante
+     * uma sessão de caixa ativa recebem o ID automaticamente (auto-attach
+     * em createBalcaoSale). NULL pra:
+     *   - Vendas balcão feitas sem caixa aberto (ADR-0022 D1 = opt-in)
+     *   - TODAS vendas channel='whatsapp' (canal não passa por caixa físico)
+     * ON DELETE SET NULL — sessão deletada (cascade da store) NÃO apaga
+     * pedido histórico.
+     */
+    cashSessionId: uuid("cash_session_id").references(
+      () => cashSessionTable.id,
+      { onDelete: "set null" },
+    ),
 
     whatsappOpenedAt: timestamp("whatsapp_opened_at"),
     confirmedAt: timestamp("confirmed_at"),

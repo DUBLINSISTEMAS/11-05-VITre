@@ -1,0 +1,239 @@
+"use server";
+
+import { and, eq, isNull, sql } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+
+import { cashAdjustmentTable, cashSessionTable, orderTable } from "@/db/schema";
+import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
+import {
+  checkRateLimit,
+  RateLimitError,
+  rateLimits,
+} from "@/lib/rate-limit";
+import { getCurrentStore } from "@/lib/store-context";
+import { withTenant } from "@/lib/tenant";
+
+import { type CloseCashSessionInput, closeCashSessionSchema } from "./schema";
+
+export type CloseCashSessionResult =
+  | { ok: true }
+  | {
+      ok: false;
+      error: string;
+      errorCode?:
+        | "VALIDATION"
+        | "UNAUTHORIZED"
+        | "RATE_LIMIT"
+        | "NOT_FOUND"
+        | "ALREADY_CLOSED"
+        | "EXPECTED_MISMATCH";
+      fieldErrors?: Record<string, string>;
+    };
+
+/**
+ * Fecha uma sessão de caixa (ADR-0022).
+ *
+ * Servidor RECALCULA `closing_expected` a partir das vendas + adjustments
+ * — não confia no valor enviado pelo cliente (UX exibe o esperado mas
+ * o servidor recomputa pra evitar tampering ou drift de cache).
+ *
+ * ADR-0022 D2 = bloqueia reabrir → UPDATE só funciona se `closed_at IS NULL`.
+ * Sessão já fechada retorna ALREADY_CLOSED.
+ * ADR-0022 D5 = aceita qualquer diferença + obriga notes se ≠ 0 (Zod
+ * `closeCashSessionSchema.superRefine` já valida client-side; aqui
+ * revalidamos pós-recompute server-side).
+ */
+export async function closeCashSession(
+  input: CloseCashSessionInput,
+): Promise<CloseCashSessionResult> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user) {
+    return {
+      ok: false,
+      error: "Sessão expirada. Faça login novamente.",
+      errorCode: "UNAUTHORIZED",
+    };
+  }
+  const userId = session.user.id;
+
+  try {
+    await checkRateLimit(rateLimits.mutation, userId);
+  } catch (e) {
+    if (e instanceof RateLimitError) {
+      return { ok: false, error: e.message, errorCode: "RATE_LIMIT" };
+    }
+    throw e;
+  }
+
+  const parsed = closeCashSessionSchema.safeParse(input);
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) {
+      const path = issue.path.join(".");
+      if (!fieldErrors[path]) fieldErrors[path] = issue.message;
+    }
+    return {
+      ok: false,
+      error: "Confira os campos destacados.",
+      errorCode: "VALIDATION",
+      fieldErrors,
+    };
+  }
+  const data = parsed.data;
+
+  const store = await getCurrentStore(userId);
+  if (!store) return { ok: false, error: "Loja não encontrada." };
+
+  try {
+    const result = await withTenant(store.id, userId, async (tx) => {
+      // 1. Buscar sessão alvo
+      const [target] = await tx
+        .select({
+          id: cashSessionTable.id,
+          storeId: cashSessionTable.storeId,
+          openingAmountInCents: cashSessionTable.openingAmountInCents,
+          closedAt: cashSessionTable.closedAt,
+        })
+        .from(cashSessionTable)
+        .where(
+          and(
+            eq(cashSessionTable.id, data.sessionId),
+            eq(cashSessionTable.storeId, store.id),
+          ),
+        )
+        .limit(1);
+
+      if (!target) {
+        return { ok: false as const, errorCode: "NOT_FOUND" as const };
+      }
+      if (target.closedAt !== null) {
+        return { ok: false as const, errorCode: "ALREADY_CLOSED" as const };
+      }
+
+      // 2. Recomputar closing_expected server-side:
+      //    expected = opening + vendas_dinheiro - sangria + reforço
+      //    Vendas em outros métodos (pix/cartão) NÃO entram — caixa físico
+      //    é só dinheiro. Cartão/PIX vão pra conta da loja, não pra gaveta.
+      const [salesAgg] = await tx
+        .select({
+          total: sql<string | null>`SUM(${orderTable.totalInCents})`,
+        })
+        .from(orderTable)
+        .where(
+          and(
+            eq(orderTable.cashSessionId, target.id),
+            eq(orderTable.paymentMethod, "cash"),
+            eq(orderTable.channel, "balcao"),
+          ),
+        );
+      const cashSalesInCents = Number(salesAgg?.total ?? 0);
+
+      const [adjAggSangria] = await tx
+        .select({
+          total: sql<string | null>`SUM(${cashAdjustmentTable.amountInCents})`,
+        })
+        .from(cashAdjustmentTable)
+        .where(
+          and(
+            eq(cashAdjustmentTable.cashSessionId, target.id),
+            eq(cashAdjustmentTable.type, "sangria"),
+          ),
+        );
+      const sangriaInCents = Number(adjAggSangria?.total ?? 0);
+
+      const [adjAggReinf] = await tx
+        .select({
+          total: sql<string | null>`SUM(${cashAdjustmentTable.amountInCents})`,
+        })
+        .from(cashAdjustmentTable)
+        .where(
+          and(
+            eq(cashAdjustmentTable.cashSessionId, target.id),
+            eq(cashAdjustmentTable.type, "reinforcement"),
+          ),
+        );
+      const reinforcementInCents = Number(adjAggReinf?.total ?? 0);
+
+      const closingExpectedInCents =
+        target.openingAmountInCents +
+        cashSalesInCents -
+        sangriaInCents +
+        reinforcementInCents;
+
+      // 3. Validar: se diferença ≠ 0 exige notes (defesa em profundidade
+      //    além do Zod, porque expected é recomputado server-side e pode
+      //    diferir do enviado pelo client)
+      const hasDelta = data.closingActualInCents !== closingExpectedInCents;
+      if (hasDelta && data.closingNotes === null) {
+        return {
+          ok: false as const,
+          errorCode: "VALIDATION" as const,
+          fieldErrors: {
+            closingNotes:
+              "Diferença detectada — descreva o motivo (sobra, falta, sangria não registrada…).",
+          },
+        };
+      }
+
+      // 4. UPDATE
+      const updated = await tx
+        .update(cashSessionTable)
+        .set({
+          closedByUserId: userId,
+          closedAt: new Date(),
+          closingExpectedInCents,
+          closingActualInCents: data.closingActualInCents,
+          closingNotes: data.closingNotes,
+        })
+        .where(
+          and(
+            eq(cashSessionTable.id, target.id),
+            isNull(cashSessionTable.closedAt), // defense-in-depth contra race
+          ),
+        )
+        .returning({ id: cashSessionTable.id });
+
+      if (updated.length === 0) {
+        return { ok: false as const, errorCode: "ALREADY_CLOSED" as const };
+      }
+
+      return { ok: true as const };
+    });
+
+    if (result.ok) {
+      revalidatePath("/admin/pdv");
+      revalidatePath("/admin/pdv/caixa");
+      revalidatePath(`/admin/pdv/caixa/${data.sessionId}`);
+      return { ok: true };
+    }
+
+    if (result.errorCode === "NOT_FOUND") {
+      return { ok: false, error: "Caixa não encontrado.", errorCode: "NOT_FOUND" };
+    }
+    if (result.errorCode === "ALREADY_CLOSED") {
+      return {
+        ok: false,
+        error: "Esse caixa já foi fechado.",
+        errorCode: "ALREADY_CLOSED",
+      };
+    }
+    if (result.errorCode === "VALIDATION") {
+      return {
+        ok: false,
+        error: "Confira os campos destacados.",
+        errorCode: "VALIDATION",
+        fieldErrors: result.fieldErrors,
+      };
+    }
+    return { ok: false, error: "Falha ao fechar caixa." };
+  } catch (e) {
+    logger.error("cash_session.close_failed", {
+      err: e,
+      storeId: store.id,
+      sessionId: data.sessionId,
+    });
+    return { ok: false, error: "Falha ao fechar caixa." };
+  }
+}
