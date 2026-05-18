@@ -66,3 +66,6 @@ next-env.d.ts
 /referencia de painel admin/
 /admin do concorrente/
 .claude/
+
+# design source Dublin v3 (Claude lê como SoT visual local, NÃO entra no repo)
+/PIXEL PERFECT/
