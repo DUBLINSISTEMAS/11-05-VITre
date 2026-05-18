@@ -8,5 +8,6 @@ export * from "./catalog";
 export * from "./coupon";
 export * from "./customer";
 export * from "./inventory";
+export * from "./lead";
 export * from "./order";
 export * from "./store";

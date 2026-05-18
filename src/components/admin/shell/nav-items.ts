@@ -84,7 +84,7 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
         subs: [
           { label: "Meus clientes", href: "/admin/clientes" },
           { label: "Grupos de clientes", href: "/admin/clientes/grupos" },
-          { label: "Contatos", href: "/admin/clientes/contatos", soon: true },
+          { label: "Contatos", href: "/admin/contatos" },
         ],
       },
       {
