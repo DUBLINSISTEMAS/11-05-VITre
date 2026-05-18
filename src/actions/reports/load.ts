@@ -31,7 +31,7 @@ const filterSchema = z.object({
 
 export type ReportFilters = z.input<typeof filterSchema>;
 
-export function resolveRange(rawFilters: Record<string, string | undefined>): ReportRange {
+function resolveRange(rawFilters: Record<string, string | undefined>): ReportRange {
   const parsed = filterSchema.parse(rawFilters);
   const end = new Date();
   end.setHours(23, 59, 59, 999);
