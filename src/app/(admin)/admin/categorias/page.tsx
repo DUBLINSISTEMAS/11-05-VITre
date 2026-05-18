@@ -3,7 +3,6 @@ import { TagIcon } from "lucide-react";
 
 import { CategoriesAdmin } from "@/components/admin/categories-admin";
 import { CategoryDialog } from "@/components/admin/category-dialog";
-import { AdminPageHeader } from "@/components/admin/shell/page-header";
 import { categoryTable, productTable } from "@/db/schema";
 import { requireSession } from "@/lib/auth-server";
 import { getCurrentStore } from "@/lib/store-context";
@@ -57,16 +56,21 @@ export default async function CategoriasPage() {
   const totalCount = categories.length;
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <AdminPageHeader
-        title="Categorias"
-        subtitle={
-          totalCount === 0
-            ? "Nenhuma categoria ainda."
-            : `${totalCount} ${totalCount === 1 ? "categoria" : "categorias"}`
-        }
-        actions={<CategoryDialog rootCategories={rootOptions} />}
-      />
+    <div className="space-y-5">
+      {/* Page header — H1 inline Dublin v3 (24px font-bold tracking -0.025em) */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-[24px] font-bold tracking-[-0.025em] text-ink-1">
+            Categorias
+          </h1>
+          <p className="text-ink-4 mt-1 text-sm">
+            {totalCount === 0
+              ? "Nenhuma categoria ainda."
+              : `${totalCount} ${totalCount === 1 ? "categoria" : "categorias"}`}
+          </p>
+        </div>
+        <CategoryDialog rootCategories={rootOptions} />
+      </div>
 
       {categories.length === 0 ? (
         <EmptyState />
@@ -74,6 +78,7 @@ export default async function CategoriasPage() {
         <CategoriesAdmin
           categories={categories}
           productCountByCategory={productCountByCategory}
+          rootOptions={rootOptions}
         />
       )}
     </div>

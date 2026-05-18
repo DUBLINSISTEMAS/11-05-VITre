@@ -584,6 +584,38 @@
   .b3-tree-l1 { margin-left: 0; }
   .b3-tree-l2 { margin-left: 28px; }
   .b3-tree-l3 { margin-left: 56px; }
+  .b3-tree-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: 4px;
+  }
+  .b3-tree-actions button {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-3);
+    cursor: pointer;
+    transition: color 120ms;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .b3-tree-actions button:hover {
+    color: var(--ink-1);
+  }
+  .b3-tree-actions button.danger {
+    color: var(--danger, #c0392b);
+  }
+  .b3-tree-actions button.danger:hover {
+    color: var(--danger-2, #a32d22);
+  }
+  .b3-tree-actions button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
 
   /* Drawer right slide-over (480px max — adoção restrita a forms curtos,
    * ver ADR-0019 decisão arquitetural #4) */

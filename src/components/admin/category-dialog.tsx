@@ -5,7 +5,6 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { createCategory } from "@/actions/category/create";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -15,8 +14,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -35,7 +32,7 @@ export interface CategoryOption {
 interface CategoryDialogProps {
   /** Categorias raiz da loja, pra opção "categoria pai". */
   rootCategories: CategoryOption[];
-  /** Trigger custom; se omitido, usa botão "+ Nova categoria" padrão. */
+  /** Trigger custom; se omitido, usa botão "Adicionar categoria" `b3-btn--cta`. */
   trigger?: React.ReactNode;
   /** Quando true, trigger fica desabilitado (ex: form pai está salvando). */
   disabled?: boolean;
@@ -52,9 +49,10 @@ interface CategoryDialogProps {
 const NO_PARENT = "__none__";
 
 /**
- * Modal de criar categoria. Curto, autocontido — lojista preenche nome
- * (obrigatório) e opcionalmente escolhe categoria pai. Salva, fecha,
- * volta pro contexto onde abriu.
+ * Modal de criar categoria — port Dublin v3 (ADR-0019, Onda A.8).
+ *
+ * Lojista preenche nome (obrigatório) + opcionalmente escolhe categoria
+ * pai. Salva, fecha, volta pro contexto onde abriu.
  *
  * Reusável: pode ser disparado de `/admin/categorias` ou inline no
  * ProductForm como "+ Nova categoria".
@@ -99,14 +97,13 @@ export function CategoryDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger ?? (
-          <Button
+          <button
             type="button"
-            variant="outline"
-            size="sm"
+            className="b3-btn b3-btn--cta"
             disabled={disabled}
           >
-            <PlusIcon /> Nova categoria
-          </Button>
+            <PlusIcon className="size-3.5" /> Adicionar categoria
+          </button>
         )}
       </DialogTrigger>
       <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-md">
@@ -119,10 +116,14 @@ export function CategoryDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="category-name">Nome</Label>
-            <Input
+          <div className="b3-field">
+            <label htmlFor="category-name" className="b3-field-label">
+              Nome
+            </label>
+            <input
               id="category-name"
+              type="text"
+              className="b3-input"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Ex: Vestidos"
@@ -134,19 +135,21 @@ export function CategoryDialog({
               required
             />
             {nameError ? (
-              <p className="text-destructive text-xs">{nameError}</p>
+              <p className="text-destructive mt-1.5 text-[11px]">{nameError}</p>
             ) : null}
           </div>
 
           {rootCategories.length > 0 ? (
-            <div className="space-y-1.5">
-              <Label htmlFor="category-parent">Categoria pai (opcional)</Label>
+            <div className="b3-field">
+              <label htmlFor="category-parent" className="b3-field-label">
+                Categoria pai (opcional)
+              </label>
               <Select
                 value={parentId}
                 onValueChange={setParentId}
                 disabled={isPending}
               >
-                <SelectTrigger id="category-parent">
+                <SelectTrigger id="category-parent" className="w-full">
                   <SelectValue placeholder="Sem categoria pai" />
                 </SelectTrigger>
                 <SelectContent>
@@ -160,31 +163,35 @@ export function CategoryDialog({
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-ink-4 text-xs">
-                Use pra criar subcategorias (ex: “Vestidos” → “Festa”). Máx 2
-                níveis.
+              <p className="text-ink-4 mt-1.5 text-[11px]">
+                Use pra criar subcategorias (ex: “Vestidos” → “Festa”). Máx
+                2 níveis.
               </p>
             </div>
           ) : null}
 
           <DialogFooter className="gap-2 sm:gap-2">
-            <Button
+            <button
               type="button"
-              variant="ghost"
+              className="b3-btn"
               onClick={() => setOpen(false)}
               disabled={isPending}
             >
               Cancelar
-            </Button>
-            <Button type="submit" disabled={isPending || !name.trim()}>
+            </button>
+            <button
+              type="submit"
+              className="b3-btn b3-btn--cta"
+              disabled={isPending || !name.trim()}
+            >
               {isPending ? (
                 <>
-                  <Loader2Icon className="animate-spin" /> Criando…
+                  <Loader2Icon className="size-3.5 animate-spin" /> Criando…
                 </>
               ) : (
                 "Criar categoria"
               )}
-            </Button>
+            </button>
           </DialogFooter>
         </form>
       </DialogContent>

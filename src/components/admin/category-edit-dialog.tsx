@@ -6,7 +6,6 @@ import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { updateCategory } from "@/actions/category/update";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -16,8 +15,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -42,17 +39,23 @@ interface CategoryEditDialogProps {
   rootCategories: CategoryOption[];
   /** True se a categoria atual já é raiz com filhas — bloqueia mudança pra subcategoria. */
   hasChildren: boolean;
+  /** Trigger custom; se omitido, usa ícone PencilIcon padrão. */
+  trigger?: React.ReactNode;
 }
 
 /**
- * Dialog de editar categoria. Trigger é o ícone de lápis. Servidor revalida
- * `/admin/categorias` ao salvar; chamamos `router.refresh()` pra atualizar
- * a lista atual sem reload.
+ * Dialog de editar categoria — port Dublin v3 (ADR-0019, Onda A.8).
+ *
+ * Trigger default é ícone de lápis. Pra usar dentro de actions inline
+ * (ex: b3-tree-actions), passe `trigger` custom. Servidor revalida
+ * `/admin/categorias` ao salvar; chamamos `router.refresh()` pra
+ * atualizar a lista atual sem reload.
  */
 export function CategoryEditDialog({
   category,
   rootCategories,
   hasChildren,
+  trigger,
 }: CategoryEditDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -86,7 +89,8 @@ export function CategoryEditDialog({
       });
       if (!result.ok) {
         if (result.fieldErrors?.name) setNameError(result.fieldErrors.name);
-        if (result.fieldErrors?.parentId) setParentError(result.fieldErrors.parentId);
+        if (result.fieldErrors?.parentId)
+          setParentError(result.fieldErrors.parentId);
         toast.error(result.error);
         return;
       }
@@ -99,14 +103,15 @@ export function CategoryEditDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label={`Editar ${category.name}`}
-        >
-          <PencilIcon className="size-4" />
-        </Button>
+        {trigger ?? (
+          <button
+            type="button"
+            aria-label={`Editar ${category.name}`}
+            className="rounded p-1 text-ink-4 outline-none transition-colors hocus:bg-bg-app hocus:text-ink-1 focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            <PencilIcon className="size-4" />
+          </button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
@@ -125,10 +130,14 @@ export function CategoryEditDialog({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-cat-name">Nome</Label>
-            <Input
+          <div className="b3-field">
+            <label htmlFor="edit-cat-name" className="b3-field-label">
+              Nome
+            </label>
+            <input
               id="edit-cat-name"
+              type="text"
+              className="b3-input"
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={60}
@@ -139,13 +148,15 @@ export function CategoryEditDialog({
               required
             />
             {nameError ? (
-              <p className="text-destructive text-xs">{nameError}</p>
+              <p className="text-destructive mt-1.5 text-[11px]">{nameError}</p>
             ) : null}
           </div>
 
           {rootCategories.length > 0 ? (
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-cat-parent">Categoria pai</Label>
+            <div className="b3-field">
+              <label htmlFor="edit-cat-parent" className="b3-field-label">
+                Categoria pai
+              </label>
               <Select
                 value={parentId}
                 onValueChange={setParentId}
@@ -166,35 +177,41 @@ export function CategoryEditDialog({
                 </SelectContent>
               </Select>
               {hasChildren ? (
-                <p className="text-ink-4 text-xs">
+                <p className="text-ink-4 mt-1.5 text-[11px]">
                   Esta categoria tem subcategorias — não pode virar
                   subcategoria. Mova ou apague as filhas primeiro.
                 </p>
               ) : null}
               {parentError ? (
-                <p className="text-destructive text-xs">{parentError}</p>
+                <p className="text-destructive mt-1.5 text-[11px]">
+                  {parentError}
+                </p>
               ) : null}
             </div>
           ) : null}
 
           <DialogFooter className="gap-2 sm:gap-2">
-            <Button
+            <button
               type="button"
-              variant="ghost"
+              className="b3-btn"
               onClick={() => setOpen(false)}
               disabled={isPending}
             >
               Cancelar
-            </Button>
-            <Button type="submit" disabled={isPending || !name.trim()}>
+            </button>
+            <button
+              type="submit"
+              className="b3-btn b3-btn--cta"
+              disabled={isPending || !name.trim()}
+            >
               {isPending ? (
                 <>
-                  <Loader2Icon className="animate-spin" /> Salvando…
+                  <Loader2Icon className="size-3.5 animate-spin" /> Salvando…
                 </>
               ) : (
                 "Salvar"
               )}
-            </Button>
+            </button>
           </DialogFooter>
         </form>
       </DialogContent>
