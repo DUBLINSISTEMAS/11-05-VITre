@@ -83,6 +83,7 @@ export async function createProductFromValues(
           cashDiscountOverrideBps: data.cashDiscountOverrideBps,
           isActive: data.isActive,
           isFeatured: data.isFeatured,
+          isPublishedToStorefront: data.isPublishedToStorefront,
           composition: data.composition,
           modeling: data.modeling,
           lining: data.lining,

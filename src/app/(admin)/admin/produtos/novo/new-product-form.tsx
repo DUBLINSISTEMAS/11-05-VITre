@@ -64,6 +64,7 @@ export function NewProductForm({ categories }: NewProductFormProps) {
         cashDiscountOverrideBps: null,
         isActive: true,
         isFeatured: false,
+        isPublishedToStorefront: true,
         composition: null,
         modeling: null,
         lining: null,

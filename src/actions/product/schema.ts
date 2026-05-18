@@ -169,6 +169,13 @@ const productFormFieldsSchema = z.object({
     .transform((v) => v ?? null),
   isActive: z.boolean(),
   isFeatured: z.boolean(),
+  /**
+   * ADR-0030 (Frente B) — Publicado na loja online?
+   * Default true em fixtures antigas via `.default(true)` no input schema.
+   * isActive=true && isPublishedToStorefront=false → produto existe pra
+   * estoque/PDV/relatórios mas NÃO aparece no storefront público.
+   */
+  isPublishedToStorefront: z.boolean().default(true),
   // Meta-fields canvas-v1 (PDP). Todos opcionais; "" → null no transform.
   composition: optionalTrimmedString(120, "Composição"),
   modeling: optionalTrimmedString(120, "Modelagem"),

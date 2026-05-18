@@ -71,6 +71,11 @@ export interface ProductFormInitialData {
   cashDiscountOverrideBps: number | null;
   isActive: boolean;
   isFeatured: boolean;
+  /**
+   * ADR-0030 (Frente B) — Publicado na loja online?
+   * Padrão true em produtos antigos (backfill via default true do DB).
+   */
+  isPublishedToStorefront: boolean;
   /** Meta-fields canvas-v1 — null quando lojista não preencheu. */
   composition: string | null;
   modeling: string | null;
@@ -162,6 +167,7 @@ export function ProductForm({
       cashDiscountOverrideBps: initialData.cashDiscountOverrideBps,
       isActive: initialData.isActive,
       isFeatured: initialData.isFeatured,
+      isPublishedToStorefront: initialData.isPublishedToStorefront,
       composition: initialData.composition ?? "",
       modeling: initialData.modeling ?? "",
       lining: initialData.lining ?? "",
@@ -639,13 +645,27 @@ export function ProductForm({
             ) : null}
 
             <Controller
+              name="isPublishedToStorefront"
+              control={control}
+              render={({ field }) => (
+                <ToggleRow
+                  id="product-published-storefront"
+                  label="Publicado na loja online"
+                  description="Se desligado, o produto fica no estoque e pode ser vendido no PDV, mas não aparece na vitrine pública."
+                  checked={field.value ?? true}
+                  onCheckedChange={field.onChange}
+                  disabled={isPending}
+                />
+              )}
+            />
+            <Controller
               name="isFeatured"
               control={control}
               render={({ field }) => (
                 <ToggleRow
                   id="product-featured"
                   label="Em destaque"
-                  description="Aparece em primeiro na vitrine."
+                  description="Aparece em primeiro na vitrine (se publicado)."
                   checked={field.value}
                   onCheckedChange={field.onChange}
                   disabled={isPending}

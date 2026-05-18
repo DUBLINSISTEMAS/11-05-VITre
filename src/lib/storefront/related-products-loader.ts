@@ -64,7 +64,7 @@ async function loadRelatedFromDb(
         .where(
           and(
             eq(productTable.storeId, storeId),
-            eq(productTable.isActive, true),
+            eq(productTable.isActive, true), eq(productTable.isPublishedToStorefront, true),
             inArray(productTable.id, manualIds),
           ),
         );
@@ -86,7 +86,7 @@ async function loadRelatedFromDb(
           and(
             eq(productTable.storeId, storeId),
             eq(productTable.categoryId, categoryId),
-            eq(productTable.isActive, true),
+            eq(productTable.isActive, true), eq(productTable.isPublishedToStorefront, true),
             notInArray(productTable.id, excludedIds),
           ),
         )
@@ -105,7 +105,7 @@ async function loadRelatedFromDb(
         .where(
           and(
             eq(productTable.storeId, storeId),
-            eq(productTable.isActive, true),
+            eq(productTable.isActive, true), eq(productTable.isPublishedToStorefront, true),
             notInArray(productTable.id, alreadyIds),
           ),
         )

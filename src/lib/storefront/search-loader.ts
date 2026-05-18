@@ -54,7 +54,7 @@ async function runSearch(
     // Se q tem valor, filtra por nome com ILIKE
     const baseConditions = [
       eq(productTable.storeId, storeId),
-      eq(productTable.isActive, true),
+      eq(productTable.isActive, true), eq(productTable.isPublishedToStorefront, true),
     ];
     
     const where = q.length > 0

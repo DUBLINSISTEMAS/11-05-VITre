@@ -139,7 +139,7 @@ async function loadProductsFromDb(
   return withTenant(storeId, null, async (tx) => {
     const conditions = [
       eq(productTable.storeId, storeId),
-      eq(productTable.isActive, true),
+      eq(productTable.isActive, true), eq(productTable.isPublishedToStorefront, true),
     ];
 
     if (categoryIds && categoryIds.length > 0) {
@@ -259,7 +259,7 @@ async function loadProductBySlugFromDb(
       where: and(
         eq(productTable.storeId, storeId),
         eq(productTable.slug, productSlug),
-        eq(productTable.isActive, true),
+        eq(productTable.isActive, true), eq(productTable.isPublishedToStorefront, true),
       ),
     });
     if (!product) return null;
@@ -322,7 +322,7 @@ async function loadHomeProductsFromDb(
   return withTenant(storeId, null, async (tx) => {
     const conditions = [
       eq(productTable.storeId, storeId),
-      eq(productTable.isActive, true),
+      eq(productTable.isActive, true), eq(productTable.isPublishedToStorefront, true),
     ];
     if (onlyFeatured) conditions.push(eq(productTable.isFeatured, true));
 

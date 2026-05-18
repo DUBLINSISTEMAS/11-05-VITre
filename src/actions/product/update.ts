@@ -156,6 +156,7 @@ export async function updateProduct(
           cashDiscountOverrideBps: data.cashDiscountOverrideBps,
           isActive: data.isActive,
           isFeatured: data.isFeatured,
+          isPublishedToStorefront: data.isPublishedToStorefront,
           // Meta-fields canvas-v1 — null quando lojista deixou em branco
           // (Zod transform "" → null já normalizou).
           composition: data.composition,

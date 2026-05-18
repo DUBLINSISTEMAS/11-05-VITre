@@ -85,7 +85,7 @@ async function loadFullSitemap(
       .from(productTable)
       .where(
         and(
-          eq(productTable.isActive, true),
+          eq(productTable.isActive, true), eq(productTable.isPublishedToStorefront, true),
           inArray(productTable.storeId, storeIds),
         ),
       );

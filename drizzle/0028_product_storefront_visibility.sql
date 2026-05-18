@@ -1,0 +1,1 @@
+ALTER TABLE "product" ADD COLUMN "is_published_to_storefront" boolean DEFAULT true NOT NULL;

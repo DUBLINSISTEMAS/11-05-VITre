@@ -32,6 +32,7 @@ export interface ProductTableRow {
   promoStartsAt: Date | null;
   promoEndsAt: Date | null;
   isActive: boolean;
+  isPublishedToStorefront: boolean;
   trackStock: boolean;
   stockQuantity: number | null;
   cover: string | null;
@@ -189,6 +190,7 @@ export function ProductsTable({ products }: ProductsTableProps) {
                 <td>
                   <StatusPill
                     isActive={p.isActive}
+                    isPublishedToStorefront={p.isPublishedToStorefront}
                     trackStock={p.trackStock}
                     quantity={p.stockQuantity}
                     isDraft={isDraft}
@@ -227,11 +229,13 @@ function StockCell({
 
 function StatusPill({
   isActive,
+  isPublishedToStorefront,
   trackStock,
   quantity,
   isDraft,
 }: {
   isActive: boolean;
+  isPublishedToStorefront: boolean;
   trackStock: boolean;
   quantity: number | null;
   isDraft: boolean;
@@ -240,11 +244,18 @@ function StatusPill({
   if (isDraft) {
     return <span className="b3-pill">Rascunho</span>;
   }
+  if (!isActive) {
+    return <span className="b3-pill b3-pill--gold">Pausado</span>;
+  }
   if (isOutOfStock) {
     return <span className="b3-pill b3-pill--danger">Sem estoque</span>;
   }
-  if (isActive) {
-    return <span className="b3-pill b3-pill--ok">Publicado</span>;
+  if (!isPublishedToStorefront) {
+    return (
+      <span className="b3-pill b3-pill--silver" title="Ativo no sistema mas oculto da vitrine pública. Disponível pra venda no PDV.">
+        Só PDV
+      </span>
+    );
   }
-  return <span className="b3-pill b3-pill--gold">Despublicado</span>;
+  return <span className="b3-pill b3-pill--ok">Na loja online</span>;
 }

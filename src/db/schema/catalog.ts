@@ -119,6 +119,19 @@ export const productTable = pgTable(
 
     isActive: boolean("is_active").notNull().default(true),
     isFeatured: boolean("is_featured").notNull().default(false),
+    /**
+     * ADR-0030 (Frente B) — Separação Gestão × Loja Online.
+     *
+     * `isActive` = produto existe no sistema (PDV, estoque, relatórios).
+     * `isPublishedToStorefront` = produto APARECE na vitrine pública.
+     *
+     * Default true pra compat. Backfill em SQL 36 garante produtos
+     * existentes seguem visíveis. Storefront filtra
+     * `isActive=true AND isPublishedToStorefront=true`.
+     */
+    isPublishedToStorefront: boolean("is_published_to_storefront")
+      .notNull()
+      .default(true),
     // Meta fields canvas-v1 (PDP linhas 326-338) — todos opcionais.
     // Renderizados em meta-grid 2-col só quando algum deles tem valor.
     composition: text("composition"), // ex: "100% linho"

@@ -221,6 +221,7 @@ export default async function EditProdutoPage({ params }: EditProdutoPageProps) 
           cashDiscountOverrideBps: product.cashDiscountOverrideBps,
           isActive: product.isActive,
           isFeatured: product.isFeatured,
+          isPublishedToStorefront: product.isPublishedToStorefront,
           composition: product.composition,
           modeling: product.modeling,
           lining: product.lining,

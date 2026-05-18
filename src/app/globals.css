@@ -852,29 +852,38 @@
     flex: 1;
     max-width: 420px;
     position: relative;
-  }
-  .b3-search input {
-    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
     height: 38px;
-    padding: 0 14px 0 38px;
+    padding: 0 10px 0 14px;
     border: 1px solid var(--line);
     background: var(--bg-app);
     border-radius: 8px;
     font-size: 13.5px;
     color: var(--ink-1);
   }
-  .b3-search input:focus {
+  .b3-search:hover {
+    background: var(--surface);
+  }
+  .b3-search:focus-visible {
     outline: none;
     background: var(--surface);
     border-color: var(--brand);
     box-shadow: 0 0 0 3px var(--brand-wash);
   }
-  .b3-search svg {
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
+  .b3-search input {
+    flex: 1;
+    height: 100%;
+    border: none;
+    background: transparent;
+    font-size: 13.5px;
+    color: var(--ink-1);
+    outline: none;
+  }
+  .b3-search > svg {
     color: var(--ink-4);
+    flex-shrink: 0;
   }
   .b3-top-icbtn {
     width: 38px;

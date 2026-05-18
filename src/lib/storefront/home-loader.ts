@@ -71,7 +71,7 @@ async function loadHomePageDataFromDb(storeId: string): Promise<HomePageData> {
       .where(
         and(
           eq(productTable.storeId, storeId),
-          eq(productTable.isActive, true),
+          eq(productTable.isActive, true), eq(productTable.isPublishedToStorefront, true),
           eq(productTable.isFeatured, true),
         ),
       )
@@ -84,7 +84,7 @@ async function loadHomePageDataFromDb(storeId: string): Promise<HomePageData> {
       .where(
         and(
           eq(productTable.storeId, storeId),
-          eq(productTable.isActive, true),
+          eq(productTable.isActive, true), eq(productTable.isPublishedToStorefront, true),
         ),
       )
       .orderBy(desc(productTable.createdAt))
