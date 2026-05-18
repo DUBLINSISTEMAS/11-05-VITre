@@ -4,11 +4,18 @@
 // 3 seções nomeadas (CONTROLE INTERNO / MINHA LOJA / CONTA) com items que
 // podem ter sub-items recolhíveis.
 //
-// Items marcados `soon: true` apontam pra módulos AINDA não implementados
-// (Atributos, Grupos de clientes, Promoções, Marketing, Relatórios, Equipe,
-// Assinatura, etc). Eles são renderizados visualmente como cinza-claro
-// não-clicáveis com badge "em breve" — quando ADR-0020/21/22/23 fecharem,
-// basta tirar a flag e o item passa a navegar.
+// Items marcados `soon: true` apontam pra módulos AINDA não implementados.
+// Eles são renderizados visualmente como cinza-claro não-clicáveis com badge
+// "em breve" — quando o ADR correspondente fechar, basta tirar a flag e o item
+// passa a navegar. Roadmap pós-Onda A.17 (2026-05-18):
+//   B2.4 Horários       → /admin/configuracoes/horarios
+//   B3.1 Atributos      → /admin/produtos/atributos
+//   B3.2 Grupos clientes→ /admin/clientes/grupos
+//   B3.3 Cupons         → /admin/promocoes/cupons
+//   B3.4 Contatos       → /admin/clientes/contatos  (inbox WhatsApp)
+//   B4.1 Relatórios     → /admin/relatorios
+//   B4.2 Equipe         → /admin/configuracoes/equipe
+//   B.5  Assinatura     → /admin/assinatura  (founder implementa)
 import {
   ArchiveIcon,
   BoxesIcon,
@@ -20,7 +27,6 @@ import {
   PaletteIcon,
   ShoppingCartIcon,
   SparklesIcon,
-  StarIcon,
   TagIcon,
   UsersIcon,
 } from "lucide-react";
@@ -98,38 +104,24 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
         dot: true,
         subs: [
           { label: "Cupons", href: "/admin/promocoes/cupons", soon: true },
-          { label: "Ofertas", href: "/admin/promocoes/ofertas", soon: true },
         ],
       },
-      { k: "marketing", label: "Marketing", icon: StarIcon, href: "/admin/marketing", soon: true },
       { k: "relatorios", label: "Relatórios", icon: ArchiveIcon, href: "/admin/relatorios", soon: true },
     ],
   },
   {
     label: "MINHA LOJA",
     items: [
-      {
-        k: "lojavirtual",
-        label: "Loja virtual",
-        icon: PaletteIcon,
-        subs: [
-          { label: "Aparência", href: "/admin/aparencia" },
-          { label: "Produtos da loja", href: "/admin/loja/produtos", soon: true },
-          { label: "Categorias da loja", href: "/admin/loja/categorias", soon: true },
-          { label: "Banners", href: "/admin/loja/banners", soon: true },
-        ],
-      },
+      { k: "lojavirtual", label: "Aparência", icon: PaletteIcon, href: "/admin/aparencia" },
       { k: "pagamentos", label: "Pagamentos", icon: CreditCardIcon, href: "/admin/pagamento" },
       {
         k: "config",
         label: "Configurações",
         icon: TagIcon,
         subs: [
-          { label: "Identidade", href: "/admin/configuracoes/identidade", soon: true },
-          { label: "WhatsApp", href: "/admin/configuracoes/whatsapp", soon: true },
+          { label: "Geral", href: "/admin/configuracoes" },
           { label: "Horários", href: "/admin/configuracoes/horarios", soon: true },
           { label: "Equipe", href: "/admin/configuracoes/equipe", soon: true },
-          { label: "Geral", href: "/admin/configuracoes" },
         ],
       },
     ],
