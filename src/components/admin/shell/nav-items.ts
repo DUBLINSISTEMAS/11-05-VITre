@@ -129,8 +129,8 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
   {
     label: "CONTA",
     items: [
-      { k: "assinatura", label: "Assinatura", icon: SparklesIcon, href: "/admin/assinatura", soon: true },
-      { k: "suporte", label: "Suporte", icon: InfoIcon, href: "mailto:contato@vitre.site" },
+      { k: "assinatura", label: "Assinatura", icon: SparklesIcon, href: "/admin/assinatura" },
+      { k: "suporte", label: "Suporte", icon: InfoIcon, href: "/admin/suporte" },
     ],
   },
 ] as const;
