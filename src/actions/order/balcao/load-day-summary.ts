@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 
 import { orderTable } from "@/db/schema";
 import { requireSession } from "@/lib/auth-server";
@@ -21,12 +21,24 @@ export interface DaySummaryByMethod {
   total: number; // soma de total_in_cents
 }
 
+export interface DaySaleRow {
+  id: string;
+  shortCode: string;
+  /** HH:mm local-time da venda (string já formatada). */
+  hour: string;
+  customerName: string;
+  method: PaymentMethodKey;
+  totalInCents: number;
+}
+
 export interface DaySummary {
   /** ISO yyyy-mm-dd da janela. */
   date: string;
   byMethod: DaySummaryByMethod[];
   totalCount: number;
   totalCents: number;
+  /** Lista das vendas balcão do dia, mais recentes primeiro. */
+  sales: DaySaleRow[];
 }
 
 /**
@@ -99,6 +111,41 @@ export async function loadBalcaoDaySummary(params: {
     const totalCount = byMethod.reduce((s, r) => s + r.count, 0);
     const totalCents = byMethod.reduce((s, r) => s + r.total, 0);
 
-    return { date: iso, byMethod, totalCount, totalCents };
+    const saleRows = await tx
+      .select({
+        id: orderTable.id,
+        shortCode: orderTable.shortCode,
+        createdAt: orderTable.createdAt,
+        customerName: orderTable.customerName,
+        method: orderTable.paymentMethod,
+        totalInCents: orderTable.totalInCents,
+      })
+      .from(orderTable)
+      .where(
+        and(
+          eq(orderTable.storeId, store.id),
+          eq(orderTable.channel, "balcao"),
+          gte(orderTable.createdAt, dayStart),
+          lte(orderTable.createdAt, dayEnd),
+        ),
+      )
+      .orderBy(desc(orderTable.createdAt))
+      .limit(100);
+
+    const sales: DaySaleRow[] = saleRows.map((r) => {
+      const d = new Date(r.createdAt);
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mm = String(d.getMinutes()).padStart(2, "0");
+      return {
+        id: r.id,
+        shortCode: r.shortCode,
+        hour: `${hh}:${mm}`,
+        customerName: r.customerName,
+        method: (r.method ?? "unknown") as PaymentMethodKey,
+        totalInCents: r.totalInCents,
+      };
+    });
+
+    return { date: iso, byMethod, totalCount, totalCents, sales };
   });
 }

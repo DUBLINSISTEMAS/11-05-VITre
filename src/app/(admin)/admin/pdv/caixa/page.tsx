@@ -1,21 +1,10 @@
 import {
-  ArrowLeftIcon,
-  BanknoteIcon,
-  CreditCardIcon,
-  HomeIcon,
-  ShoppingBagIcon,
-} from "lucide-react";
-import Link from "next/link";
-
-import {
+  type DaySaleRow,
   type DaySummary,
   loadBalcaoDaySummary,
   type PaymentMethodKey,
 } from "@/actions/order/balcao/load-day-summary";
 import { PrintButton } from "@/components/admin/pdv/print-button";
-import { AdminPageHeader } from "@/components/admin/shell/page-header";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { formatBRL } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
@@ -29,163 +18,255 @@ const METHOD_LABEL: Record<PaymentMethodKey, string> = {
   pix: "PIX",
   debit: "Débito",
   credit: "Crédito",
-  other: "Outro",
+  other: "Outros",
   unknown: "Sem método",
 };
 
-const METHOD_ICON: Record<PaymentMethodKey, React.ComponentType<{ className?: string }>> = {
-  cash: BanknoteIcon,
-  pix: ShoppingBagIcon,
-  debit: CreditCardIcon,
-  credit: CreditCardIcon,
-  other: ShoppingBagIcon,
-  unknown: ShoppingBagIcon,
+/**
+ * Cor canônica por método (handoff B3CaixaScreen bagy-routes.jsx:79-84).
+ * `unknown` fica neutro (ink-4).
+ */
+const METHOD_COLOR: Record<PaymentMethodKey, string> = {
+  pix: "var(--brand)",
+  cash: "var(--ok)",
+  debit: "var(--warn)",
+  credit: "#6B2A8C",
+  other: "var(--ink-4)",
+  unknown: "var(--ink-4)",
 };
 
 /**
- * Página "Fechar caixa" — resumo de vendas balcão do dia, agrupado por
- * método de pagamento. Follow-up Fase 5 / ADR-0016.
+ * Página "Caixa do dia" — Onda A.12 pixel-perfect Dublin v3 (B3CaixaScreen).
  *
- * Não fecha caixa de verdade (não muda estado nem trava operações) — é
- * uma view de conferência. "Fechar" = imprimir/anotar e bater o dinheiro
- * da gaveta com o total cash.
+ * Layout handoff:
+ *  - H1 "Caixa do dia" + meta "DDD DD MMM · N vendas balcão"
+ *  - CTA "Imprimir fechamento" b3-btn--cta no canto direito
+ *  - KPI cards auto-fit minmax(180px, 1fr) — 1 por método com cor + total
+ *    mono 20px + count + barra de progresso proporcional ao topo do dia
+ *  - b3-card com b3-tbl: HORA mono / RECIBO mono brand / CLIENTE / PAGAMENTO pill /
+ *    TOTAL mono right
+ *
+ * Não fecha caixa de verdade (não trava operações) — só conferência.
+ * Sessão formal de caixa (abrir/fechar/sangria/Z) fica como gap Onda B.8 / ADR-0024.
  */
 export default async function CaixaPage({ searchParams }: CaixaPageProps) {
   const { data: dateParam } = await searchParams;
   const summary = await loadBalcaoDaySummary({ date: dateParam });
 
   return (
-    <div className="space-y-4 sm:space-y-6 print:space-y-3">
-      <AdminPageHeader
-        title="Fechar caixa"
-        subtitle="Resumo das vendas balcão do dia para conferência."
-        breadcrumb={[
-          { label: "Início", icon: HomeIcon, href: "/admin" },
-          { label: "PDV", icon: ShoppingBagIcon, href: "/admin/pdv" },
-          { label: "Caixa" },
-        ]}
-        actions={
-          <div className="flex items-center gap-2 print:hidden">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/admin/pdv">
-                <ArrowLeftIcon />
-                Voltar
-              </Link>
-            </Button>
-            <PrintButton />
-          </div>
-        }
-      />
-
-      <form
-        method="get"
-        className="flex items-center gap-2 print:hidden"
-        action="/admin/pdv/caixa"
-      >
-        <label htmlFor="caixa-date" className="text-ink-4 text-sm">
-          Dia:
-        </label>
-        <Input
-          id="caixa-date"
-          type="date"
-          name="data"
-          defaultValue={summary?.date}
-          className="w-auto"
-        />
-        <Button type="submit" variant="outline" size="sm">
-          Atualizar
-        </Button>
-      </form>
+    <div className="space-y-4 print:space-y-3">
+      <div className="flex items-end justify-between gap-4 print:hidden">
+        <div>
+          <h1 className="text-ink-1 text-[22px] font-bold tracking-[-0.025em]">
+            Caixa do dia
+          </h1>
+          {summary ? (
+            <div className="text-ink-4 mt-1 text-[13px]">
+              {formatDateLabel(summary.date)} · {summary.totalCount}{" "}
+              {summary.totalCount === 1 ? "venda balcão" : "vendas balcão"}
+            </div>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-2">
+          <DateForm currentDate={summary?.date} />
+          <PrintButton />
+        </div>
+      </div>
 
       {summary ? <SummaryView summary={summary} /> : <EmptyState />}
     </div>
   );
 }
 
+function DateForm({ currentDate }: { currentDate?: string }) {
+  return (
+    <form
+      method="get"
+      action="/admin/pdv/caixa"
+      className="flex items-center gap-2"
+    >
+      <input
+        id="caixa-date"
+        type="date"
+        name="data"
+        defaultValue={currentDate}
+        className="border-line bg-surface focus:border-brand h-9 rounded-[8px] border px-3 text-[13px] outline-none"
+      />
+      <button type="submit" className="b3-btn b3-btn--sm">
+        Atualizar
+      </button>
+    </form>
+  );
+}
+
 function SummaryView({ summary }: { summary: DaySummary }) {
-  const [yyyy, mm, dd] = summary.date.split("-");
-  const dateLabel = `${dd}/${mm}/${yyyy}`;
+  // Ordem canônica do handoff: PIX > Dinheiro > Débito > Crédito > Outros > Sem método
+  const order: PaymentMethodKey[] = [
+    "pix",
+    "cash",
+    "debit",
+    "credit",
+    "other",
+    "unknown",
+  ];
+  const byMethodMap = new Map(summary.byMethod.map((m) => [m.method, m]));
+  const topMethodTotal = Math.max(
+    1,
+    ...summary.byMethod.map((m) => m.total),
+  );
 
   return (
     <div className="space-y-4">
-      <div className="b3-card p-4">
-        <span className="text-ink-4 text-xs uppercase tracking-wider">
-          {dateLabel}
-        </span>
-        <div className="mt-1 flex items-baseline gap-4">
-          <div className="font-mono text-3xl font-semibold tabular-nums">
-            {formatBRL(summary.totalCents)}
-          </div>
-          <div className="text-ink-4 text-sm">
-            {summary.totalCount}{" "}
-            {summary.totalCount === 1 ? "venda" : "vendas"}
-          </div>
+      {/* KPI cards por método */}
+      {summary.byMethod.length > 0 ? (
+        <div
+          className="grid gap-3"
+          style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}
+        >
+          {order
+            .filter((m) => byMethodMap.has(m))
+            .map((m) => {
+              const row = byMethodMap.get(m)!;
+              const color = METHOD_COLOR[m];
+              const pct = (row.total / topMethodTotal) * 100;
+              return (
+                <div key={m} className="b3-card b3-card-pad">
+                  <div
+                    className="text-[11px] font-bold uppercase tracking-[0.06em]"
+                    style={{ color, marginBottom: 6 }}
+                  >
+                    {METHOD_LABEL[m]}
+                  </div>
+                  <div
+                    className="mono text-[20px] font-bold"
+                    style={{ letterSpacing: "-0.02em" }}
+                  >
+                    {formatBRL(row.total)}
+                  </div>
+                  <div className="text-ink-4 mt-1 text-[12px]">
+                    {row.count} {row.count === 1 ? "venda" : "vendas"}
+                  </div>
+                  <div
+                    className="mt-3 h-1 overflow-hidden rounded-[2px]"
+                    style={{ background: color + "26" }}
+                  >
+                    <div
+                      style={{
+                        width: `${pct}%`,
+                        height: "100%",
+                        background: color,
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
         </div>
-      </div>
+      ) : null}
 
-      {summary.byMethod.length === 0 ? (
-        <div className="border-line text-ink-4 rounded-xl border-2 border-dashed p-8 text-center text-sm">
-          Sem vendas no balcão neste dia.
+      {/* Tabela de vendas individuais */}
+      <div className="b3-card overflow-hidden">
+        <div className="b3-card-hd">
+          <h3>
+            Vendas do dia · {summary.totalCount}
+          </h3>
         </div>
-      ) : (
-        <div className="b3-card overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-bg-app text-ink-4 text-xs uppercase tracking-wider">
+        {summary.sales.length === 0 ? (
+          <div className="text-ink-4 p-8 text-center text-sm">
+            Sem vendas balcão registradas neste dia.
+          </div>
+        ) : (
+          <table className="b3-tbl">
+            <thead>
               <tr>
-                <th className="px-4 py-2 text-left font-medium">Método</th>
-                <th className="px-4 py-2 text-right font-medium">Vendas</th>
-                <th className="px-4 py-2 text-right font-medium">Total</th>
+                <th style={{ paddingLeft: 20 }}>HORA</th>
+                <th>RECIBO</th>
+                <th>CLIENTE</th>
+                <th>PAGAMENTO</th>
+                <th style={{ textAlign: "right", paddingRight: 20 }}>TOTAL</th>
               </tr>
             </thead>
             <tbody>
-              {summary.byMethod.map((row) => {
-                const Icon = METHOD_ICON[row.method];
-                return (
-                  <tr
-                    key={row.method}
-                    className="border-line border-t last:border-b-0"
-                  >
-                    <td className="px-4 py-3">
-                      <span className="flex items-center gap-2">
-                        <Icon className="text-ink-4 size-4" />
-                        {METHOD_LABEL[row.method]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono tabular-nums">
-                      {row.count}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono tabular-nums">
-                      {formatBRL(row.total)}
-                    </td>
-                  </tr>
-                );
-              })}
-              <tr className="bg-bg-app border-line border-t font-semibold">
-                <td className="px-4 py-3">Total</td>
-                <td className="px-4 py-3 text-right font-mono tabular-nums">
-                  {summary.totalCount}
-                </td>
-                <td className="px-4 py-3 text-right font-mono tabular-nums">
-                  {formatBRL(summary.totalCents)}
-                </td>
-              </tr>
+              {summary.sales.map((s) => (
+                <SaleRow key={s.id} sale={s} />
+              ))}
             </tbody>
           </table>
-        </div>
-      )}
+        )}
+      </div>
 
       <p className="text-ink-4 print:hidden text-xs">
-        Confira o dinheiro da gaveta com o total {METHOD_LABEL.cash}. Outros
-        métodos passam por POS/PIX do lojista.
+        Confira o dinheiro da gaveta com o total Dinheiro. PIX/POS passam pela
+        conta/maquineta do lojista — registro aqui é só metadado.
       </p>
+
+      {/* Resumo no fim do papel impresso (oculto na tela) */}
+      <div className="hidden print:block">
+        <div className="mt-4 border-t border-line pt-3 text-[13px]">
+          <div className="flex justify-between">
+            <span>Total geral</span>
+            <span className="mono font-bold">
+              {formatBRL(summary.totalCents)}
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
+  );
+}
+
+function SaleRow({ sale }: { sale: DaySaleRow }) {
+  return (
+    <tr>
+      <td
+        className="mono text-ink-4"
+        style={{ paddingLeft: 20, fontSize: 12 }}
+      >
+        {sale.hour}
+      </td>
+      <td>
+        <span
+          className="mono text-brand font-semibold"
+          style={{ fontSize: 12.5 }}
+        >
+          BLC-{sale.shortCode}
+        </span>
+      </td>
+      <td>{sale.customerName}</td>
+      <td>
+        <span className="b3-pill">{METHOD_LABEL[sale.method]}</span>
+      </td>
+      <td
+        className="mono font-bold"
+        style={{ textAlign: "right", paddingRight: 20 }}
+      >
+        {formatBRL(sale.totalInCents)}
+      </td>
+    </tr>
   );
 }
 
 function EmptyState() {
   return (
-    <div className="border-line text-ink-4 rounded-xl border-2 border-dashed p-8 text-center text-sm">
+    <div className="b3-card b3-card-pad text-ink-4 text-center text-sm">
       Loja não encontrada ou data inválida.
     </div>
   );
 }
+
+/** "2026-05-18" → "seg 18 mai" (handoff format). */
+function formatDateLabel(iso: string): string {
+  const [yyyy, mm, dd] = iso.split("-").map(Number);
+  if (!yyyy || !mm || !dd) return iso;
+  const d = new Date(yyyy, mm - 1, dd);
+  const weekday = d
+    .toLocaleDateString("pt-BR", { weekday: "short" })
+    .replace(".", "")
+    .toLowerCase();
+  const month = d
+    .toLocaleDateString("pt-BR", { month: "short" })
+    .replace(".", "")
+    .toLowerCase();
+  return `${weekday} ${String(dd).padStart(2, "0")} ${month}`;
+}
+
