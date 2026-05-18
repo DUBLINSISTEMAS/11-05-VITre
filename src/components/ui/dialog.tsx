@@ -39,8 +39,8 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        // 120ms = motion-tokens.fast. Curto pra não "atrasar" a percepção
-        // de abrir/fechar do modal. globals.css zera em prefers-reduced-motion.
+        // 120ms — curto pra não "atrasar" a percepção de abrir/fechar do
+        // modal. globals.css zera em prefers-reduced-motion.
         "fixed inset-0 z-50 bg-black/50 duration-[120ms] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
         className
       )}

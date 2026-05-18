@@ -18,7 +18,10 @@
     "db:check": "tsx scripts/check-db.ts",
     "db:check-storage": "tsx scripts/check-storage.ts",
     "db:check-anon": "node scripts/check-anon-grants.mjs",
-    "db:apply": "tsx scripts/apply-sql.ts"
+    "db:check-sql": "tsx scripts/check-sql-applied.mjs",
+    "db:audit": "tsx scripts/full-audit.mjs",
+    "db:apply": "tsx scripts/apply-sql.ts",
+    "pwa:icons": "node scripts/generate-pwa-icons.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
