@@ -32,28 +32,13 @@ export default function RedefinirPage() {
   );
 }
 
+// Onda C #13 (auditoria 2026-05-19): useForm + useTransition + useRouter
+// agora rodam SÓ quando o token está presente. Antes esses hooks
+// instanciavam state mesmo no caso "Link inválido" (Suspense + sem token).
+// Split em RedefinirForm (faz a guarda + token) + RedefinirFormBody (forma).
 function RedefinirForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
-  const [isPending, startTransition] = useTransition();
-
-  const form = useForm<ResetPasswordInput>({
-    resolver: zodResolver(resetPasswordSchema),
-    defaultValues: { token, password: "", confirmPassword: "" },
-  });
-
-  const onSubmit = (values: ResetPasswordInput) => {
-    startTransition(async () => {
-      const result = await resetPassword(values);
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-      toast.success("Senha redefinida.");
-      router.push(result.redirectTo);
-    });
-  };
 
   if (!token) {
     return (
@@ -75,6 +60,30 @@ function RedefinirForm() {
       </AuthShell>
     );
   }
+
+  return <RedefinirFormBody token={token} />;
+}
+
+function RedefinirFormBody({ token }: { token: string }) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  const form = useForm<ResetPasswordInput>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: { token, password: "", confirmPassword: "" },
+  });
+
+  const onSubmit = (values: ResetPasswordInput) => {
+    startTransition(async () => {
+      const result = await resetPassword(values);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Senha redefinida.");
+      router.push(result.redirectTo);
+    });
+  };
 
   const passwordError = form.formState.errors.password?.message;
   const confirmError = form.formState.errors.confirmPassword?.message;

@@ -5,7 +5,7 @@
  * Lê DIRECT_URL de .env.local. Nunca escreve no banco.
  * Uso: pnpm exec tsx scripts/check-sql-applied.mjs
  *
- * Cobertura: SQLs 11–39 (estruturais). SQLs 01–10 são bootstrap inicial
+ * Cobertura: SQLs 11–43 (estruturais). SQLs 01–10 são bootstrap inicial
  * e SQL 17_cleanup / 99_cleanup são one-shot DELETE — sem auditoria.
  */
 import { config } from "dotenv";
@@ -46,6 +46,10 @@ const checks = [
   { id: "37",  desc: "product_image RLS active-only (auditoria C4 — 2026-05-18)", q: "SELECT 1 FROM pg_policies WHERE tablename='product_image' AND policyname='product_image_public_read_active'" },
   { id: "38",  desc: "order_whatsapp_no_pos_fields inclui surcharge (auditoria C5 — 2026-05-18)", q: "SELECT 1 FROM pg_constraint WHERE conname='order_whatsapp_no_pos_fields' AND pg_get_constraintdef(oid) ILIKE '%surcharge_in_cents IS NULL%'" },
   { id: "39",  desc: "storefront_collection RLS (renomeado de 36_*)", q: "SELECT 1 FROM pg_policies WHERE tablename='storefront_collection'" },
+  { id: "40",  desc: "coupon uses<=max CHECK defensivo (S5 — 2026-05-18)", q: "SELECT 1 FROM pg_constraint WHERE conname='coupon_uses_within_max'" },
+  { id: "41",  desc: "lead_anon_insert hardened com store ativa (S4 — 2026-05-19)", q: "SELECT 1 FROM pg_policies WHERE tablename='lead' AND policyname='lead_anon_insert' AND with_check ILIKE '%is_active%'" },
+  { id: "42",  desc: "DROP order_anonymous_insert policy redundante (A3 — 2026-05-19)", q: "SELECT 1 FROM pg_policies WHERE tablename='order' AND policyname='order_anonymous_insert'", expectEmpty: true },
+  { id: "43",  desc: "sync_stock trigger respeita track_stock (Onda C #8 — 2026-05-19)", q: "SELECT 1 FROM pg_proc WHERE proname='sync_stock_cache_on_movement' AND prosrc ILIKE '%track_stock%'" },
 ];
 
 const url = process.env.DIRECT_URL;

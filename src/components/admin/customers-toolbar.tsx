@@ -18,10 +18,9 @@
 // - Handoff tem checkbox master + refresh button — checkbox preservado
 //   disabled; refresh OMITIDO (não há ação clara fora da page reload).
 
-import { FilterIcon, SearchIcon, SlidersHorizontalIcon } from "lucide-react";
+import { SearchIcon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 
@@ -128,22 +127,7 @@ export function CustomersToolbar({ rangeLabel }: CustomersToolbarProps) {
         })}
       </div>
 
-      <button
-        type="button"
-        onClick={() => toast.info("Em breve.")}
-        className="b3-btn b3-btn--sm"
-      >
-        <SlidersHorizontalIcon size={13} /> Ordenar
-      </button>
-
-      <button
-        type="button"
-        onClick={() => toast.info("Em breve.")}
-        className="b3-btn b3-btn--sm"
-      >
-        <FilterIcon size={13} /> Filtros
-      </button>
-
+      {/* Onda C #12 (auditoria 2026-05-19): "Em breve" buttons removidos. */}
       <div className="flex-1" />
 
       <span className="mono text-[12px] text-ink-4">{rangeLabel}</span>

@@ -19,7 +19,10 @@
  *    exige user gesture e silenciosamente falha em iOS Safari quando
  *    chamado de setTimeout.
  *  - Se a aba estiver inativa quando o timer disparar, abortamos o
- *    redirect — o usuário não estava esperando, vai voltar manualmente.
+ *    redirect automático e mostramos um CTA explícito "Abrir WhatsApp"
+ *    quando o usuário voltar pra aba. Onda C #14 (auditoria 2026-05-19):
+ *    antes mostrava `null` (componente sumia), confundia o usuário que
+ *    voltava sem saber o que aconteceu.
  */
 import { Loader2Icon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -74,7 +77,30 @@ export function WhatsAppAutoHandoff({
     };
   }, [publicToken, whatsappUrl]);
 
-  if (aborted) return null;
+  // Fallback quando o redirect automático foi abortado (aba estava em
+  // background). Mostra CTA explícito em vez de sumir.
+  if (aborted) {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className="mb-6 flex flex-col items-center gap-3 rounded-2xl border border-whatsapp/20 bg-whatsapp/5 px-5 py-6 text-center"
+      >
+        <p className="text-[15px] font-semibold tracking-tight text-foreground">
+          Pedido pronto — clique para abrir o WhatsApp
+        </p>
+        <p className="text-[12px] text-muted-foreground">
+          O envio automático pausou porque você estava em outra aba.
+        </p>
+        <a
+          href={whatsappUrl}
+          className="rounded-full bg-whatsapp px-5 py-2 text-[13px] font-semibold text-white hover:opacity-90"
+        >
+          Abrir WhatsApp
+        </a>
+      </div>
+    );
+  }
 
   return (
     <div

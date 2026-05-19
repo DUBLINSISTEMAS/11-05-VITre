@@ -64,7 +64,21 @@ function serializeError(e: unknown): LogRecord["err"] | undefined {
   };
 }
 
+// Onda C #11 (auditoria 2026-05-19): gate de verbosidade por ambiente.
+// `debug` é silenciado em prod (NODE_ENV === 'production'). `info`/`warn`/
+// `error` continuam — `error` é o único que sobe pro Sentry. Em test
+// também silenciamos `debug`/`info` pra não poluir output da suite.
+const IS_PROD = process.env.NODE_ENV === "production";
+const IS_TEST = process.env.NODE_ENV === "test";
+const LEVEL_ENABLED: Record<LogLevel, boolean> = {
+  debug: !IS_PROD && !IS_TEST,
+  info: !IS_TEST,
+  warn: true,
+  error: true,
+};
+
 function emit(level: LogLevel, event: string, payload: LogPayload = {}): void {
+  if (!LEVEL_ENABLED[level]) return;
   const { err, ...rest } = payload;
   const record: LogRecord = {
     level,

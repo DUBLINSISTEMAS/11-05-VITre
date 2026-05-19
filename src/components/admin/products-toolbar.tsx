@@ -12,10 +12,9 @@
 //   button "Filtros" placeholder (toast — bandeja avançada onda futura)
 //   flex spacer
 //   counter mono "X – Y de Z"
-import { FilterIcon, SearchIcon, SlidersHorizontalIcon } from "lucide-react";
+import { SearchIcon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { toast } from "sonner";
 
 import {
   Select,
@@ -140,21 +139,11 @@ export function ProductsToolbar({ categories, rangeLabel }: ProductsToolbarProps
         </SelectContent>
       </Select>
 
-      <button
-        type="button"
-        onClick={() => toast.info("Em breve.")}
-        className="b3-btn b3-btn--sm"
-      >
-        <SlidersHorizontalIcon size={13} /> Ordenar
-      </button>
-
-      <button
-        type="button"
-        onClick={() => toast.info("Em breve.")}
-        className="b3-btn b3-btn--sm"
-      >
-        <FilterIcon size={13} /> Filtros
-      </button>
+      {/* Onda C #12 (auditoria 2026-05-19): botões "Ordenar"/"Filtros"
+       * eram toast.info("Em breve") em prod — pior que ausentes (frustra
+       * lojista clicando achando que abre filtro). Removidos até ter
+       * implementação real. Pattern de URL state já existe em /pedidos
+       * (server-rendered + ?status= via Link) — replicar quando voltar. */}
 
       <div className="flex-1" />
 

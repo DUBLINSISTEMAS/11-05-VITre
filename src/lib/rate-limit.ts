@@ -29,10 +29,16 @@ export const rateLimits = {
     prefix: "rl:order",
     analytics: true,
   }),
-  /** Login / signup / reset password (por IP). 10 tentativas / 10min. */
+  /**
+   * Login / signup / reset password (por IP). 5 tentativas / 10min.
+   * Onda C #10 (auditoria 2026-05-19): apertado de 10/10min → 5/10min.
+   * Brute-force típico via credential stuffing tenta 1k passwords/min;
+   * 10/10 era folgado demais. 5/10 ainda permite usuário legítimo
+   * recuperar senha errada algumas vezes sem virar DoS de UX.
+   */
   auth: new Ratelimit({
     redis,
-    limiter: Ratelimit.slidingWindow(10, "10 m"),
+    limiter: Ratelimit.slidingWindow(5, "10 m"),
     prefix: "rl:auth",
     analytics: true,
   }),

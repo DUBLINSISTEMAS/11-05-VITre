@@ -49,7 +49,14 @@ export const cashSessionTable = pgTable(
       .notNull()
       .references(() => storeTable.id, { onDelete: "cascade" }),
 
-    /** Quem abriu a sessão. Snapshot pra audit em B4.2 Equipe. */
+    /**
+     * Quem abriu a sessão. Snapshot pra audit em B4.2 Equipe.
+     * Onda C #3 (auditoria 2026-05-19): sem `onDelete` explícito —
+     * Postgres aplica NO ACTION default, bloqueia DELETE de user que
+     * tem sessão historiada. Decisão consciente: audit > flexibilidade.
+     * Quando precisar deletar user, tornar coluna nullable + migrar
+     * pra `set null` (preserva audit do histórico).
+     */
     openedByUserId: text("opened_by_user_id")
       .notNull()
       .references(() => userTable.id),
