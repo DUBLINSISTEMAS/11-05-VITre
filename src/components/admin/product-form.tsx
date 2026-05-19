@@ -45,7 +45,13 @@ import {
   type StagedImageFile,
 } from "./image-uploader";
 import { PriceInput } from "./price-input";
-import { CommercialFieldsCard } from "./product-commercial-fields";
+import {
+  CommercialCard,
+  CostMarginCard,
+  IdentityExtraCard,
+  InventoryExtraCard,
+  NcmField,
+} from "./product-commercial-fields";
 import { StockInput } from "./stock-input";
 import { type VariantData,VariantEditor } from "./variant-editor";
 
@@ -383,10 +389,10 @@ export function ProductForm({
           </FormCard>
 
           <FormCard
-            title="Detalhes"
+            title="Detalhes & Tributação"
             description="Aparecem na ficha do produto. Tudo opcional."
           >
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <MetaField
                 id="product-composition"
                 label="Composição"
@@ -419,6 +425,9 @@ export function ProductForm({
                 disabled={isPending}
                 {...register("washing")}
               />
+            </div>
+            <div className="border-t border-line pt-3">
+              <NcmField register={register} errors={errors} isPending={isPending} />
             </div>
           </FormCard>
 
@@ -652,15 +661,39 @@ export function ProductForm({
           </FormCard>
 
           {/*
-            === ADR-0034 Camada 2 — Gestão da loja ===
-            Concentra os 10 campos de gestão (custo, margem, estoque
-            mín/máx, GTIN, marca, unidade, código interno, comissão, NCM,
-            preço atacado). Onda B.2 (próxima) vai distribuir em abas
-            (Identidade / Comercial / Custo & Margem / Estoque /
-            Loja Online) via shadcn Tabs. Por enquanto, FormCard única
-            entrega funcionalidade completa sem refator estrutural.
+            === ADR-0034 Camada 2 Onda B.2 — Layout denso horizontal ===
+            Identidade extra (marca/unidade/GTIN/código) em banda única
+            de 4 colunas, depois grid 3 colunas (Atacado · Custo & Margem ·
+            Estoque mín/máx) — informações densas, sem scroll quando
+            possível em desktop. NCM compacto dentro de "Detalhes".
           */}
-          <CommercialFieldsCard control={control} register={register} errors={errors} isPending={isPending} />
+          <IdentityExtraCard
+            control={control}
+            register={register}
+            errors={errors}
+            isPending={isPending}
+          />
+
+          <div className="grid gap-3 lg:grid-cols-3">
+            <CommercialCard
+              control={control}
+              register={register}
+              errors={errors}
+              isPending={isPending}
+            />
+            <CostMarginCard
+              control={control}
+              register={register}
+              errors={errors}
+              isPending={isPending}
+            />
+            <InventoryExtraCard
+              control={control}
+              register={register}
+              errors={errors}
+              isPending={isPending}
+            />
+          </div>
         </div>
 
         {/* === Coluna direita (lg col-span-1, sticky) === */}
