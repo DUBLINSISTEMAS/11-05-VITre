@@ -11,14 +11,16 @@
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { isCronAuthorized } from "@/lib/cron-auth";
+import { isAuthorizedCron } from "@/lib/cron-auth";
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+const CRON_PATHNAME = "/api/cron/keep-alive";
+
 export async function GET(request: Request) {
-  if (!isCronAuthorized(request)) {
+  if (!isAuthorizedCron(request, CRON_PATHNAME)) {
     return new Response("Unauthorized", { status: 401 });
   }
 

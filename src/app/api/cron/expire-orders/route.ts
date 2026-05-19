@@ -30,13 +30,15 @@ import { and, eq, lt, sql } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 
 import { orderTable, storeTable } from "@/db/schema";
-import { isCronAuthorized } from "@/lib/cron-auth";
+import { isAuthorizedCron } from "@/lib/cron-auth";
 import { logger } from "@/lib/logger";
 import { restockOrderItems } from "@/lib/order/restock";
 import { ANON_USER_ID, withServiceRole, withTenant } from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+const CRON_PATHNAME = "/api/cron/expire-orders";
 
 interface ExpiredCandidate {
   orderId: string;
@@ -45,7 +47,7 @@ interface ExpiredCandidate {
 }
 
 export async function GET(request: Request) {
-  if (!isCronAuthorized(request)) {
+  if (!isAuthorizedCron(request, CRON_PATHNAME)) {
     return new Response("Unauthorized", { status: 401 });
   }
 

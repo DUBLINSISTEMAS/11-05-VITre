@@ -46,19 +46,47 @@ test("cron expire-orders: rejeita request sem Authorization (401)", () => {
   assert.match(source, /new Response\("Unauthorized",\s*\{\s*status:\s*401\s*\}\)/);
 });
 
-test("cron expire-orders: delega auth pro helper compartilhado isCronAuthorized", () => {
+test("cron expire-orders: delega auth pro helper compartilhado isAuthorizedCron", () => {
   // Onda 2 da auditoria 2026-05-10 extraiu auth pra `@/lib/cron-auth`
-  // (DRY entre expire-orders e keep-alive). Route deve usar o helper,
-  // não reimplementar crypto.
+  // (DRY entre expire-orders e keep-alive). Onda A 2026-05-18 trocou
+  // o nome pra `isAuthorizedCron(request, pathname)` — pathname entra
+  // no HMAC pra evitar replay cross-route (Hobby usa query ?sig=...
+  // porque Vercel Hobby não injeta Authorization header).
   const source = loadCronSource();
-  assert.match(source, /isCronAuthorized/);
+  assert.match(source, /isAuthorizedCron/);
   assert.match(source, /from\s+["']@\/lib\/cron-auth["']/);
+  // Pathname canônico passado pro helper (hard-coded — sem smuggling
+  // via X-Forwarded-Host).
+  assert.match(source, /CRON_PATHNAME\s*=\s*["']\/api\/cron\/expire-orders["']/);
   // Sanidade: header NÃO pode ser comparado direto com === em string
   // (timing attack). Helper centralizado evita drift.
   assert.doesNotMatch(
     source,
     /authHeader\s*!==\s*`Bearer \$\{env\.CRON_SECRET\}`/,
   );
+});
+
+test("cron-auth helper: aceita header Bearer OU query ?sig HMAC (Hobby fallback)", () => {
+  // Vercel Hobby NÃO injeta `Authorization` header — sem este fallback,
+  // os crons retornam 401 silencioso e nunca executam (memory team
+  // `vercel-cron-hobby-no-auth-header`).
+  const source = loadCronAuthSource();
+  // Header Bearer continua válido (Pro+).
+  assert.match(source, /headers\.get\(["']authorization["']\)/);
+  // Query ?sig=<hmac>.
+  assert.match(source, /searchParams\.get\(["']sig["']\)/);
+  // HMAC-SHA256 sobre pathname.
+  assert.match(source, /createHmac\(["']sha256["'],\s*env\.CRON_SECRET\)/);
+});
+
+test("cron-auth helper: signCronUrl gera path?sig=<hex> e rejeita pathname desconhecido", () => {
+  // signCronUrl é o helper que scripts/sign-cron-urls.ts chama pra
+  // gerar o valor que vai em vercel.json. Pathname unknown DEVE jogar —
+  // senão founder gera HMAC pra rota errada e cron quebra silencioso.
+  const source = loadCronAuthSource();
+  assert.match(source, /export function signCronUrl/);
+  assert.match(source, /CRON_PATHS\s*=\s*new Set/);
+  assert.match(source, /pathname desconhecido/);
 });
 
 test("cron-auth helper: usa crypto.timingSafeEqual (não comparação ===)", () => {
@@ -193,12 +221,19 @@ test("vercel.json: cron expire-orders registrado sem mexer no keep-alive", () =>
     crons?: Array<{ path: string; schedule: string }>;
   };
   const crons = config.crons ?? [];
-  // Keep-alive intacto.
-  const keepAlive = crons.find((c) => c.path === "/api/cron/keep-alive");
+  // Path agora inclui `?sig=<hmac>` (Onda A 2026-05-18) — placeholder
+  // local até founder gerar via `pnpm exec tsx scripts/sign-cron-urls.ts`.
+  // Test casa contra o pathname-base, ignorando query.
+  const keepAlive = crons.find((c) =>
+    c.path.startsWith("/api/cron/keep-alive"),
+  );
   assert.ok(keepAlive, "keep-alive cron deve continuar registrado");
   assert.equal(keepAlive!.schedule, "0 9 * * *");
-  // Expire-orders presente com schedule diário 06:00 UTC.
-  const expire = crons.find((c) => c.path === "/api/cron/expire-orders");
+  assert.match(keepAlive!.path, /\?sig=/);
+  const expire = crons.find((c) =>
+    c.path.startsWith("/api/cron/expire-orders"),
+  );
   assert.ok(expire, "expire-orders cron deve estar registrado");
   assert.equal(expire!.schedule, "0 6 * * *");
+  assert.match(expire!.path, /\?sig=/);
 });
