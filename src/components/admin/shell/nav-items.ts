@@ -55,6 +55,7 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
         icon: PackageIcon,
         subs: [
           { label: "Meus produtos", href: "/admin/produtos" },
+          { label: "Custo & Margem", href: "/admin/produtos/custos" },
           { label: "Categorias", href: "/admin/categorias" },
           { label: "Banners", href: "/admin/banners" },
         ],
