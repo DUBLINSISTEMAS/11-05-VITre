@@ -58,12 +58,26 @@ export const createBalcaoSaleSchema = z
       )
       .default(null),
     paymentMethod: z.enum(PAYMENT_METHOD_VALUES),
-    /** Desconto manual em centavos. NULL = sem desconto. */
+    /**
+     * Desconto manual em centavos. NULL = sem desconto.
+     * Quando `couponId` é fornecido, o server IGNORA este valor e
+     * recalcula a partir do cupom — defesa contra tampering (ver
+     * create-balcao-sale.ts).
+     */
     discountInCents: z
       .number()
       .int()
       .min(0, "Desconto não pode ser negativo")
       .nullable(),
+    /**
+     * ADR-0026 / fix auditoria 2026-05-18 — FK opcional para cupom.
+     * NULL = desconto manual (lojista digitou) OU sem desconto.
+     * Quando setado, server revalida cupom no tx do INSERT order e
+     * recomputa discount (não confia em `discountInCents` do payload).
+     * UI do PDV chama `validateCoupon({code,subtotal})` antes pra
+     * preview, depois envia o `couponId` retornado.
+     */
+    couponId: z.string().uuid().nullable().default(null),
     /**
      * ADR-0020 — acréscimo manual em centavos (taxa cartão, frete, embalagem,
      * "fechar redondo"). NULL = sem acréscimo. Simétrico a discountInCents.

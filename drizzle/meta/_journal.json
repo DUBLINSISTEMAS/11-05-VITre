@@ -211,6 +211,13 @@
       "when": 1779131563294,
       "tag": "0029_storefront_collections",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1779145736400,
+      "tag": "0030_hesitant_gladiator",
+      "breakpoints": true
     }
   ]
 }

@@ -15,6 +15,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { cashSessionTable } from "./cash";
+import { couponTable } from "./coupon";
 import { customerTable } from "./customer";
 import { storeTable } from "./store";
 
@@ -146,6 +147,23 @@ export const orderTable = pgTable(
       { onDelete: "set null" },
     ),
 
+    /**
+     * ADR-0026 / fix auditoria 2026-05-18 — FK opcional para `coupon`.
+     * NULL quando venda não usou cupom (incluindo desconto manual no PDV
+     * sem cupom). ON DELETE SET NULL preserva o pedido histórico se o
+     * cupom for deletado depois (auditoria via tabela coupon mantém
+     * trilha; desconto aplicado permanece na coluna discount_in_cents).
+     *
+     * Snapshot do código NÃO é gravado — usuário do PDV recompõe via
+     * JOIN. Se cupom é renomeado, ID continua válido.
+     *
+     * Incremento de uses_count é atomic (WHERE uses_count < max_uses) no
+     * mesmo tx do INSERT order — ver coupon/index.ts incrementCouponUses.
+     */
+    couponId: uuid("coupon_id").references(() => couponTable.id, {
+      onDelete: "set null",
+    }),
+
     whatsappOpenedAt: timestamp("whatsapp_opened_at"),
     confirmedAt: timestamp("confirmed_at"),
     /**
@@ -181,6 +199,10 @@ export const orderRelations = relations(orderTable, ({ one, many }) => ({
   customer: one(customerTable, {
     fields: [orderTable.customerId],
     references: [customerTable.id],
+  }),
+  coupon: one(couponTable, {
+    fields: [orderTable.couponId],
+    references: [couponTable.id],
   }),
   items: many(orderItemTable),
 }));

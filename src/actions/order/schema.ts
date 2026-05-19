@@ -80,5 +80,22 @@ export const createOrderInputSchema = customerInputSchema.extend({
     .regex(/^[a-z0-9-]+$/, "Slug inválido"),
   idempotencyKey: z.string().uuid("Chave de idempotência inválida"),
   items: z.array(cartItemInputSchema).min(1, "Sacola vazia").max(99),
+  /**
+   * ADR-0026 / fix auditoria 2026-05-18 — cupom opcional no storefront.
+   * Aceita CÓDIGO (não couponId) porque storefront é anônimo. Server
+   * revalida + recalcula desconto + incrementa uses_count atomic no
+   * mesmo tx do INSERT order. NULL/undefined = sem cupom.
+   *
+   * Hoje storefront NÃO usa este campo (UX 1.6 segue zero cupom
+   * automático — lojista combina via WhatsApp). Campo opt-in pra
+   * futuro UI de input de código no storefront.
+   */
+  couponCode: z
+    .preprocess(
+      (v) => (typeof v === "string" && v.trim() === "" ? null : v),
+      z.string().trim().toUpperCase().nullable(),
+    )
+    .optional()
+    .default(null),
 });
-export type CreateOrderInput = z.infer<typeof createOrderInputSchema>;
+export type CreateOrderInput = z.input<typeof createOrderInputSchema>;

@@ -25,6 +25,11 @@ import { revalidateTag } from "next/cache";
 import { headers } from "next/headers";
 
 import {
+  CouponError,
+  incrementCouponUsesTx,
+  validateCouponInTx,
+} from "@/actions/coupon";
+import {
   type CreateOrderInput,
   createOrderInputSchema,
 } from "@/actions/order/schema";
@@ -63,6 +68,7 @@ export type CreateOrderErrorCode =
   | "PRODUCT_NOT_FOUND"
   | "OUT_OF_STOCK"
   | "EMPTY_CART"
+  | "COUPON_INVALID"
   | "SHORTCODE_RETRY_EXHAUSTED"
   | "UNKNOWN";
 
@@ -330,6 +336,40 @@ export async function createOrderFromCart(
         };
       }
 
+      // ADR-0026 / fix auditoria 2026-05-18 — cupom opcional no
+      // storefront. Validação acontece UMA vez aqui (fora do inner tx
+      // de estoque) pra dar feedback antes de bloquear locks; o
+      // increment ATOMIC acontece dentro do inner tx pra evitar race
+      // (2 carrinhos consumindo o último uso). Caso de idempotency
+      // (mesma key 2x): só incrementa no PRIMEIRO insert; o catch
+      // de unique violation lá embaixo retorna o pedido existente
+      // sem reincrementar.
+      let validatedCoupon: { couponId: string; discountInCents: number } | null = null;
+      let totalAfterCoupon = totalInCents;
+      if (data.couponCode) {
+        try {
+          const result = await validateCouponInTx(tx, {
+            storeId: store.id,
+            code: data.couponCode,
+            subtotalInCents: totalInCents,
+          });
+          validatedCoupon = {
+            couponId: result.couponId,
+            discountInCents: result.discountInCents,
+          };
+          totalAfterCoupon = totalInCents - result.discountInCents;
+        } catch (err) {
+          if (err instanceof CouponError) {
+            return {
+              ok: false,
+              errorCode: "COUPON_INVALID",
+              errorMessage: err.message,
+            };
+          }
+          throw err;
+        }
+      }
+
       // Anexa imageUrl (1ª foto position=0) — 1 query batch
       const imgs = await tx
         .select({
@@ -469,9 +509,11 @@ export async function createOrderFromCart(
                 customerName: data.customerName,
                 customerPhone: phone.e164,
                 customerNotes: data.customerNotes || null,
-                totalInCents,
+                totalInCents: totalAfterCoupon,
                 status: "awaiting_whatsapp",
                 expiresAt,
+                discountInCents: validatedCoupon?.discountInCents ?? null,
+                couponId: validatedCoupon?.couponId ?? null,
               })
               .returning({ id: orderTable.id });
 
@@ -502,6 +544,20 @@ export async function createOrderFromCart(
               sales: salesToRecord,
             });
 
+            // ADR-0026 — increment atomic uses_count se cupom usado.
+            // Roda DENTRO do inner tx — se 2 carrinhos race no último
+            // uso, o segundo falha aqui (CouponError EXHAUSTED) e
+            // rollback completo do tx (inclusive movements). Idempotency
+            // ON CONFLICT do INSERT order garante que NÃO incrementamos
+            // 2x mesmo com retry (este caminho só roda no PRIMEIRO insert
+            // bem-sucedido; recover-by-catch retorna sem entrar aqui).
+            if (validatedCoupon) {
+              await incrementCouponUsesTx(innerTx as unknown as Tx, {
+                storeId: store.id,
+                couponId: validatedCoupon.couponId,
+              });
+            }
+
             createdOrderId = orderRow.id;
             createdShortCode = candidate;
             createdPublicToken = publicToken;
@@ -516,6 +572,14 @@ export async function createOrderFromCart(
               errorMessage:
                 "Algum item não tem mais estoque suficiente. Atualize a sacola.",
               outOfStockProductIds: [err.productId],
+            };
+            break;
+          }
+          if (err instanceof CouponError) {
+            softFailure = {
+              ok: false,
+              errorCode: "COUPON_INVALID",
+              errorMessage: err.message,
             };
             break;
           }

@@ -23,6 +23,11 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { headers } from "next/headers";
 
 import {
+  CouponError,
+  incrementCouponUsesTx,
+  validateCouponInTx,
+} from "@/actions/coupon";
+import {
   cashSessionTable,
   customerTable,
   orderItemTable,
@@ -60,6 +65,7 @@ export type CreateBalcaoSaleErrorCode =
   | "CUSTOMER_NOT_FOUND"
   | "CASH_RECEIVED_TOO_LOW"
   | "DISCOUNT_OVER_TOTAL"
+  | "COUPON_INVALID"
   | "SHORTCODE_RETRY_EXHAUSTED"
   | "UNKNOWN";
 
@@ -308,8 +314,43 @@ export async function createBalcaoSale(
           });
         }
 
-        // 9. Aplicar desconto + acréscimo (ADR-0020)
-        const discount = data.discountInCents ?? 0;
+        // 9. Aplicar cupom (se fornecido) — server RECALCULA discount.
+        //
+        // ADR-0026 / fix auditoria 2026-05-18: quando UI envia couponId,
+        // o server revalida cupom dentro do tx e descarta o
+        // `discountInCents` do payload (anti-tampering). Se o cupom
+        // não passar (esgotado, expirado, etc), retorna COUPON_INVALID
+        // — UI deve recarregar e mostrar erro.
+        //
+        // Sem couponId, `discountInCents` do payload é desconto manual
+        // do lojista (operador digitou %/valor sem cupom cadastrado).
+        let validatedCoupon: { couponId: string; discountInCents: number } | null = null;
+        if (data.couponId) {
+          try {
+            const result = await validateCouponInTx(tx, {
+              storeId: store.id,
+              couponId: data.couponId,
+              subtotalInCents,
+            });
+            validatedCoupon = {
+              couponId: result.couponId,
+              discountInCents: result.discountInCents,
+            };
+          } catch (err) {
+            if (err instanceof CouponError) {
+              return {
+                ok: false,
+                errorCode: "COUPON_INVALID" as const,
+                errorMessage: err.message,
+              };
+            }
+            throw err;
+          }
+        }
+
+        const discount = validatedCoupon
+          ? validatedCoupon.discountInCents
+          : data.discountInCents ?? 0;
         const surcharge = data.surchargeInCents ?? 0;
         if (discount > subtotalInCents) {
           return {
@@ -448,8 +489,7 @@ export async function createBalcaoSale(
                   status: "fulfilled",
                   channel: "balcao",
                   paymentMethod: data.paymentMethod,
-                  discountInCents:
-                    data.discountInCents ?? null,
+                  discountInCents: discount > 0 ? discount : null,
                   surchargeInCents:
                     data.surchargeInCents ?? null,
                   cashReceivedInCents:
@@ -461,6 +501,8 @@ export async function createBalcaoSale(
                   confirmedAt: new Date(),
                   // ADR-0022 — auto-attach (null se sem sessão aberta).
                   cashSessionId: cashSessionIdForOrder,
+                  // ADR-0026 — FK pra cupom usado (NULL se desconto manual).
+                  couponId: validatedCoupon?.couponId ?? null,
                 })
                 .returning({ id: orderTable.id });
 
@@ -488,6 +530,19 @@ export async function createBalcaoSale(
                 sales: salesToRecord,
               });
 
+              // ADR-0026 — increment atomic uses_count se cupom usado.
+              // WHERE uses_count < max_uses RETURNING garante que se 2
+              // PDVs simultâneos consumirem o último uso, o segundo
+              // falha aqui e rollback (CouponError EXHAUSTED). Defesa
+              // em profundidade: CHECK constraint coupon_uses_within_max
+              // (supabase/sql/40_coupon_uses_check.sql).
+              if (validatedCoupon) {
+                await incrementCouponUsesTx(innerTx as unknown as Tx, {
+                  storeId: store.id,
+                  couponId: validatedCoupon.couponId,
+                });
+              }
+
               createdOrderId = orderRow.id;
               createdShortCode = candidate;
               createdPublicToken = publicToken;
@@ -502,6 +557,14 @@ export async function createBalcaoSale(
                 errorMessage:
                   "Algum item não tem estoque suficiente.",
                 outOfStockProductIds: [err.productId],
+              };
+              break;
+            }
+            if (err instanceof CouponError) {
+              softFailure = {
+                ok: false,
+                errorCode: "COUPON_INVALID",
+                errorMessage: err.message,
               };
               break;
             }
