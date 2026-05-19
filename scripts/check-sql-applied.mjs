@@ -5,7 +5,7 @@
  * Lê DIRECT_URL de .env.local. Nunca escreve no banco.
  * Uso: pnpm exec tsx scripts/check-sql-applied.mjs
  *
- * Cobertura: SQLs 11–36 (estruturais). SQLs 01–10 são bootstrap inicial
+ * Cobertura: SQLs 11–39 (estruturais). SQLs 01–10 são bootstrap inicial
  * e SQL 17_cleanup / 99_cleanup são one-shot DELETE — sem auditoria.
  */
 import { config } from "dotenv";
@@ -37,12 +37,15 @@ const checks = [
   { id: "28",  desc: "customer document CHECK (PF/PJ — ADR-0021)", q: "SELECT 1 FROM pg_constraint WHERE conrelid='customer'::regclass AND (conname ILIKE '%document%' OR conname ILIKE '%customer_type%')" },
   { id: "29",  desc: "cash_session CHECK constraints", q: "SELECT 1 FROM pg_constraint WHERE conrelid=to_regclass('cash_session') AND contype='c'" },
   { id: "30",  desc: "store_business_hours_object CHECK (ADR-0023)", q: "SELECT 1 FROM pg_constraint WHERE conname='store_business_hours_object'" },
-  { id: "31",  desc: "attributes RLS (ADR-0024)", q: "SELECT 1 FROM pg_policies WHERE tablename IN ('attribute','attribute_value','product_attribute','attribute_option') HAVING count(*) > 0" },
+  { id: "31",  desc: "attributes RLS (ADR-0024)", q: "SELECT 1 FROM pg_policies WHERE tablename IN ('attribute','attribute_value','product_attribute_value') HAVING count(*) > 0" },
   { id: "32",  desc: "customer_groups RLS (ADR-0025)", q: "SELECT 1 FROM pg_policies WHERE tablename IN ('customer_group','customer_group_member') HAVING count(*) > 0" },
   { id: "33",  desc: "coupon RLS (ADR-0026)", q: "SELECT 1 FROM pg_policies WHERE tablename='coupon'" },
   { id: "34",  desc: "lead RLS (ADR-0027)", q: "SELECT 1 FROM pg_policies WHERE tablename='lead'" },
   { id: "35",  desc: "store_membership RLS (ADR-0029)", q: "SELECT 1 FROM pg_policies WHERE tablename='store_membership'" },
   { id: "36",  desc: "FORCE RLS consistency (customer/product_related/stock_movement)", q: "SELECT 1 FROM pg_class WHERE relname IN ('product_related','stock_movement','customer') AND relrowsecurity AND relforcerowsecurity HAVING count(*) = 3" },
+  { id: "37",  desc: "product_image RLS active-only (auditoria C4 — 2026-05-18)", q: "SELECT 1 FROM pg_policies WHERE tablename='product_image' AND policyname='product_image_public_read_active'" },
+  { id: "38",  desc: "order_whatsapp_no_pos_fields inclui surcharge (auditoria C5 — 2026-05-18)", q: "SELECT 1 FROM pg_constraint WHERE conname='order_whatsapp_no_pos_fields' AND pg_get_constraintdef(oid) ILIKE '%surcharge_in_cents IS NULL%'" },
+  { id: "39",  desc: "storefront_collection RLS (renomeado de 36_*)", q: "SELECT 1 FROM pg_policies WHERE tablename='storefront_collection'" },
 ];
 
 const url = process.env.DIRECT_URL;
