@@ -26,12 +26,20 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { CashAdjustmentType } from "@/db/schema";
+
+/**
+ * Subset do CashAdjustmentType que este dialog cobre HOJE.
+ * ADR-0034 Camada 1 estendeu o enum DB com `pay_supplier`, `pay_bill`,
+ * `other_in`, `other_out` — UI desses 4 valores entra em Camada 4
+ * (Caixa de verdade). Manter dialog atual restrito aos 2 antigos
+ * evita undefined em CONFIG[type] em runtime.
+ */
+type AdjustmentDialogType = "sangria" | "reinforcement";
 
 interface AdjustmentDialogProps {
   open: boolean;
   sessionId: string;
-  type: CashAdjustmentType;
+  type: AdjustmentDialogType;
   onOpenChange: (next: boolean) => void;
 }
 
@@ -44,7 +52,7 @@ function inputToCents(value: string): number | null {
 }
 
 const CONFIG: Record<
-  CashAdjustmentType,
+  AdjustmentDialogType,
   { title: string; description: string; placeholder: string }
 > = {
   sangria: {

@@ -34,11 +34,28 @@ import { storeTable } from "./store";
 /**
  * ADR-0022 D3 — tabela separada `cash_adjustment` em vez de `cash_movement`
  * unificado. Sale fica em `order` (já existe via ADR-0016). Adjustment é
- * sangria (saída pra cofre/banco) ou reforço (entrada extra de troco).
+ * lançamento avulso de caixa.
+ *
+ * ADR-0034 Camada 4 — enum estendido (mantém decisão D3 de tabela separada).
+ * Sinal mapeado em app-layer:
+ *   - sangria, pay_supplier, pay_bill, other_out → saída (resta do caixa)
+ *   - reinforcement, other_in → entrada
+ *
+ * Valores:
+ *   - sangria:        saída pra cofre/banco/dono (já existia)
+ *   - reinforcement:  reforço de troco / entrada extra (já existia)
+ *   - pay_supplier:   pagar fornecedor (vinculável a purchase em Camada 6)
+ *   - pay_bill:       pagar conta (luz, água, internet, aluguel)
+ *   - other_in:       entrada avulsa não-venda (estorno, recebimento de fiado)
+ *   - other_out:      saída avulsa (combustível, pequena compra de material)
  */
 export const cashAdjustmentTypeEnum = pgEnum("cash_adjustment_type", [
   "sangria",
   "reinforcement",
+  "pay_supplier",
+  "pay_bill",
+  "other_in",
+  "other_out",
 ]);
 
 export const cashSessionTable = pgTable(

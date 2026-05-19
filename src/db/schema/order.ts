@@ -14,6 +14,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
+import { userTable } from "./auth";
 import { cashSessionTable } from "./cash";
 import { couponTable } from "./coupon";
 import { customerTable } from "./customer";
@@ -58,6 +59,21 @@ export const orderPaymentMethodEnum = pgEnum("order_payment_method", [
   "debit",
   "credit",
   "other",
+]);
+
+/**
+ * ADR-0034 Camada 1 — tabela de preço aplicada no pedido. NULL pra canais
+ * que não usam tabela (whatsapp herda preço do catálogo público). NOT NULL
+ * obrigatório no app-layer pra `channel='balcao'`.
+ *
+ *   - retail:    varejo (preço de venda padrão)
+ *   - wholesale: atacado (preço alternativo configurado no produto)
+ *   - promo:     promoção ativa (lojista escolheu aplicar o preço promocional)
+ */
+export const orderPriceTableEnum = pgEnum("order_price_table", [
+  "retail",
+  "wholesale",
+  "promo",
 ]);
 
 // =====================================================================
@@ -120,7 +136,16 @@ export const orderTable = pgTable(
      * `channel='balcao'` exige payment_method NOT NULL.
      */
     channel: orderChannelEnum("channel").notNull().default("whatsapp"),
-    /** Fase 5 — apenas metadado. Vitrê não processa cartão. */
+    /**
+     * Fase 5 — apenas metadado. Vitrê não processa cartão.
+     *
+     * @deprecated ADR-0034 Camada 1 — migrar pra tabela filha
+     * `order_payment` (pagamento dividido). Coluna fica por 2 release
+     * cycles após Camada 1 fechar (backfill já populou order_payment) e
+     * então é removida em ADR de cleanup futuro. Novas escritas devem
+     * popular APENAS order_payment; leituras transitórias podem cair
+     * neste campo se order_payment estiver vazia (pedido antigo).
+     */
     paymentMethod: orderPaymentMethodEnum("payment_method"),
     /** Fase 5 — desconto manual no balcão (em centavos). */
     discountInCents: integer("discount_in_cents"),
@@ -130,8 +155,46 @@ export const orderTable = pgTable(
      * CHECK >= 0 via supabase/sql/27_pdv_surcharge_check.sql.
      */
     surchargeInCents: integer("surcharge_in_cents"),
-    /** Fase 5 — valor recebido em dinheiro (pra cálculo de troco). */
+    /**
+     * Fase 5 — valor recebido em dinheiro (pra cálculo de troco).
+     *
+     * @deprecated ADR-0034 Camada 1 — migrar pra `order_payment.cash_received_in_cents`
+     * na linha de method='cash'. Mesma estratégia de transição do
+     * `paymentMethod` acima.
+     */
     cashReceivedInCents: integer("cash_received_in_cents"),
+
+    /**
+     * ADR-0034 Camada 1 — vendedor responsável pela venda (FK para
+     * `user.id`, Better Auth). NULL pra:
+     *   - Pedidos whatsapp (sem vendedor — autoatendimento storefront)
+     *   - Backfill de pedidos balcão pré-Camada 1
+     * Validation no app-layer força NOT NULL pra channel='balcao'
+     * quando existe ≥1 store_membership ativo (ou seja, equipe ativa).
+     * Lojista solo continua sem obrigação.
+     *
+     * ON DELETE SET NULL: vendedor que sai da equipe NÃO apaga pedidos
+     * históricos — apenas perde o vínculo. Snapshot do nome do vendedor
+     * pode ser adicionado em coluna futura se relatório precisar.
+     */
+    sellerId: text("seller_id").references(() => userTable.id, {
+      onDelete: "set null",
+    }),
+
+    /**
+     * ADR-0034 Camada 1 + ADR-0033 D2 — campo livre onde lojista anota
+     * número da NF emitida em OUTRO sistema (Bling, contadora, emissor da
+     * prefeitura). Vitrê NÃO emite NF. Texto cru, sem máscara, sem
+     * validação SEFAZ.
+     */
+    externalFiscalDoc: text("external_fiscal_doc"),
+
+    /**
+     * ADR-0034 Camada 1 — tabela de preço aplicada na venda. NULL pra
+     * whatsapp (storefront usa preço público). NOT NULL no app-layer
+     * pra balcão. Permite relatório "vendas no atacado vs varejo".
+     */
+    priceTableUsed: orderPriceTableEnum("price_table_used"),
 
     /**
      * ADR-0022 — FK opcional para `cash_session`. Vendas balcão durante
@@ -204,6 +267,10 @@ export const orderRelations = relations(orderTable, ({ one, many }) => ({
     fields: [orderTable.couponId],
     references: [couponTable.id],
   }),
+  seller: one(userTable, {
+    fields: [orderTable.sellerId],
+    references: [userTable.id],
+  }),
   items: many(orderItemTable),
 }));
 
@@ -230,6 +297,18 @@ export const orderItemTable = pgTable(
     variantNameSnapshot: text("variant_name_snapshot"),
     imageUrlSnapshot: text("image_url_snapshot"),
     priceInCentsSnapshot: integer("price_in_cents_snapshot").notNull(),
+
+    /**
+     * ADR-0034 Camada 1 — snapshot do custo unitário NO MOMENTO da venda.
+     * Sem isso, margem histórica reescreve quando lojista reajusta o
+     * preço de custo do produto (custo médio móvel de novas compras
+     * altera product.cost_price_in_cents).
+     *
+     * NULL pra itens antigos (backfill defere) e pra produtos sem
+     * cost_price_in_cents preenchido na hora da venda — relatório de
+     * margem trata NULL como "custo desconhecido", não como 0.
+     */
+    unitCostSnapshotInCents: integer("unit_cost_snapshot_in_cents"),
 
     quantity: integer("quantity").notNull(),
     createdAt: timestamp("created_at").notNull().defaultNow(),

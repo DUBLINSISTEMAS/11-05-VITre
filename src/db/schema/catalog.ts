@@ -71,6 +71,24 @@ export const categoryRelations = relations(categoryTable, ({ one, many }) => ({
 export type Category = typeof categoryTable.$inferSelect;
 export type NewCategory = typeof categoryTable.$inferInsert;
 
+/**
+ * ADR-0034 Camada 1 — unidade de venda. Default `un` cobre 95% varejo SMB BR.
+ * Adicionar valor novo se aparecer caso real (ex: `caixa`, `pacote`). Não
+ * usar pra cálculo automático — Vitrê não converte unidades.
+ */
+export const productUnitEnum = pgEnum("product_unit", [
+  "un",
+  "pc",
+  "kg",
+  "g",
+  "m",
+  "cm",
+  "ml",
+  "L",
+  "m2",
+  "m3",
+]);
+
 // =====================================================================
 // Product
 // =====================================================================
@@ -81,6 +99,9 @@ export type NewCategory = typeof categoryTable.$inferInsert;
 //
 // CHECK constraints (base_price >= 0, promo_price >= 0|NULL, stock_quantity
 // >= 0|NULL) vivem em supabase/sql/07_check_constraints.sql.
+// CHECKs ADR-0034 Camada 1 (cost_price >= 0, min_stock >= 0, max_stock >= 0,
+// gtin length IN (8,12,13,14), ncm length = 8, commission_bps 0..10000) em
+// supabase/sql/44_product_commercial_check_constraints.sql.
 // =====================================================================
 export const productTable = pgTable(
   "product",
@@ -101,6 +122,52 @@ export const productTable = pgTable(
     promoEndsAt: timestamp("promo_ends_at"),
     trackStock: boolean("track_stock").notNull().default(false),
     stockQuantity: integer("stock_quantity"),
+
+    // =====================================================================
+    // ADR-0034 Camada 1 — Dado-fonte de gestão.
+    // Sem esses campos, margem é impossível e prospects chamam de amador.
+    // Todos NULL-tolerant: lojista preenche aos poucos; UI mostra warning
+    // mas não bloqueia operação.
+    // =====================================================================
+    /** Preço de custo unitário em centavos. NULL = ainda não preenchido. */
+    costPriceInCents: integer("cost_price_in_cents"),
+    /** Estoque mínimo — dispara alerta de reposição no relatório. */
+    minStockQuantity: integer("min_stock_quantity"),
+    /** Estoque máximo — projeção de compra (sem alerta visual no MVP). */
+    maxStockQuantity: integer("max_stock_quantity"),
+    /**
+     * GTIN (EAN-8/12/13 ou DUN-14). Sem máscara, só dígitos. CHECK
+     * length IN (8,12,13,14) no SQL 44. UNIQUE parcial (store, gtin)
+     * WHERE gtin IS NOT NULL — duas peças com mesmo código no MESMO
+     * tenant é erro de cadastro; tenants diferentes podem ter overlap.
+     */
+    gtin: text("gtin"),
+    /**
+     * Marca livre — texto. Sem tabela `brand` separada no MVP (varejo BR
+     * usa nomes diretos: Adidas, Vivara, Lacoste). Promover pra tabela
+     * quando aparecer caso real de hierarquia/filtro estruturado.
+     */
+    brand: text("brand"),
+    /** Unidade de venda. Default 'un'. */
+    unit: productUnitEnum("unit").notNull().default("un"),
+    /**
+     * Código interno do lojista (SKU manual, código de etiqueta).
+     * UNIQUE parcial (store, internal_code) WHERE internal_code IS NOT NULL.
+     */
+    internalCode: text("internal_code"),
+    /**
+     * Comissão padrão de vendedor pra esse produto, em basis points
+     * (0..10000 = 0..100%). NULL = usa fallback da store (a ser adicionado
+     * em Camada 5 quando comissão virar feature exposta).
+     */
+    defaultCommissionBps: integer("default_commission_bps"),
+    /**
+     * NCM brasileiro (8 dígitos sem máscara) pra futura integração com
+     * Bling/Tiny. **Vitrê NÃO valida nem calcula imposto a partir disso**
+     * (ADR-0033 veto fiscal). Campo livre — lojista anota o que o
+     * contador disser.
+     */
+    ncm: text("ncm"),
 
     // Override do max-parcelas APENAS deste produto. null = usa
     // store.cardMaxInstallments. Range 1..12 (CHECK no SQL 17).

@@ -1,9 +1,18 @@
 # ADR-0019: Port "Dublin v3 (BAGY-style)" — refresh visual completo
 
 - **Data**: 2026-05-17
-- **Status**: aceito
+- **Status**: **parcialmente entregue → PARKED** (atualizado 2026-05-19). Ondas 0-5i fechadas em prod (tokens + sidebar 248px + login split + onboarding 4-passos). High-fidelity 44 telas + módulos novos **suspensos** após conselho-5-agentes diagnosticar que o feedback dos prospects ("amador") era gap funcional, não cosmético. Ver [ADR-0034](./0034-camada-comercial-vitre.md).
+- **Suspenso por**: [ADR-0034 Camada Comercial Vitrê](./0034-camada-comercial-vitre.md)
 - **Substitui parcialmente**: [ADR-0007](./0007-identidade-visual-vitre.md) (paleta primary `#1E3FE6` → navy `#1A3A8F`); [ADR-0009](./0009-design-system-tokens-navy.md) (tokens base `--brand` + utilities + sombras)
-- **Convive com**: [ADR-0010 redesign canvas-v1](./0010-redesign-canvas-v1.md) (canvas-v1 era a base anterior; Dublin v3 é o próximo estágio), [ADR-0011](./0011-brand-color-restrita-bottom-nav-sacola.md) (escopo `--brand-store` preservado)
+- **Convive com**: [ADR-0010 redesign canvas-v1](./0010-redesign-canvas-v1.md) (canvas-v1 era a base anterior; Dublin v3 Ondas 0-5i é o próximo estágio entregue), [ADR-0011](./0011-brand-color-restrita-bottom-nav-sacola.md) (escopo `--brand-store` preservado)
+
+## Atualização 2026-05-19 — PARKED
+
+Após feedback de prospects vendo demo + screenshots GFIL trazidos pra sessão (`PAINEL REF/`), conselho-5-agentes diagnosticou que o veredito "amador" é **gap funcional arquitetônico** (sem custo, margem, GTIN, vendedor, pagamento dividido, fiado), não cosmético. Polir 44 telas pixel-perfect sem ter dado-fonte é fazer trabalho que precisa ser refeito quando dado-fonte chegar.
+
+**Trabalho entregue (Ondas 0-5i) permanece em prod** — é base suficiente pra Camada Comercial ser construída em cima. **Trabalho parked**: high-fidelity pixel-perfect 44 telas + módulos UI novos (Atributos / Cupons / Grupos / Equipe — backends JÁ implementados sob 0024/0026/0025/0029, falta apenas UI pixel-perfect dos painéis correspondentes).
+
+**Gatilho pra retomar** (mesma régua do ADR-0033 fiscal): ≥5 clientes pagantes ativos pedirem refresh visual como bloqueador de uso. Até lá, foco é Camada Comercial (ADR-0034).
 
 ## Contexto
 
