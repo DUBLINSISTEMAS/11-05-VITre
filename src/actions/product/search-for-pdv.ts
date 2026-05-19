@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 
 import {
@@ -98,7 +98,10 @@ export async function searchProductsForPdv(
 
     const productIds = products.map((p) => p.id);
 
-    // Thumbnail: pega primeira imagem de cada produto (position asc)
+    // Thumbnail: pega primeira imagem de cada produto (position asc).
+    // FIX 2026-05-19: `sql\`... = ANY(\${array})\`` quebrou em prod —
+    // Drizzle interpolava o array elemento-por-elemento (= ANY(uuid)),
+    // não como array PG. inArray() gera `IN (?, ?, ...)` corretamente.
     const images = await tx
       .select({
         productId: productImageTable.productId,
@@ -109,9 +112,7 @@ export async function searchProductsForPdv(
       .where(
         and(
           eq(productImageTable.storeId, store.id),
-          // inArray equivalente — drizzle inArray funciona com array
-          // direto, mas mantenho com sql pra simplificar import
-          sql`${productImageTable.productId} = ANY(${productIds})`,
+          inArray(productImageTable.productId, productIds),
         ),
       )
       .orderBy(asc(productImageTable.position));
@@ -123,7 +124,7 @@ export async function searchProductsForPdv(
       }
     }
 
-    // Variantes ativas
+    // Variantes ativas — mesmo fix do query de imagens (ver acima).
     const variants = await tx
       .select({
         id: productVariantTable.id,
@@ -137,7 +138,7 @@ export async function searchProductsForPdv(
       .where(
         and(
           eq(productVariantTable.storeId, store.id),
-          sql`${productVariantTable.productId} = ANY(${productIds})`,
+          inArray(productVariantTable.productId, productIds),
         ),
       )
       .orderBy(asc(productVariantTable.name));
