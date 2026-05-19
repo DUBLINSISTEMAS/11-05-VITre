@@ -158,7 +158,7 @@ export const orderTable = pgTable(
      * JOIN. Se cupom é renomeado, ID continua válido.
      *
      * Incremento de uses_count é atomic (WHERE uses_count < max_uses) no
-     * mesmo tx do INSERT order — ver coupon/index.ts incrementCouponUses.
+     * mesmo tx do INSERT order — ver coupon/internal.ts incrementCouponUsesTx.
      */
     couponId: uuid("coupon_id").references(() => couponTable.id, {
       onDelete: "set null",

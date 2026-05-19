@@ -5,11 +5,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { headers } from "next/headers";
 import { z } from "zod";
 
-import {
-  CouponError,
-  incrementCouponUsesTx,
-  validateCouponInTx,
-} from "@/actions/coupon/internal";
+import { CouponError, validateCouponInTx } from "@/actions/coupon/internal";
 import { couponTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
@@ -258,23 +254,3 @@ export async function validateCoupon(
   }
 }
 
-/**
- * @deprecated Use `incrementCouponUsesTx` dentro do tx do INSERT order.
- * Mantido pra compatibilidade — chamada NÃO atômica com o pedido vira
- * race window. Pattern correto: incrementCouponUsesTx + soft failure.
- *
- * Hoje sem callers — preservado caso alguma migração de admin precise.
- * Pode ser removido em refator futuro.
- */
-export async function incrementCouponUses(couponId: string): Promise<void> {
-  const requestHeaders = await headers();
-  const session = await auth.api.getSession({ headers: requestHeaders });
-  if (!session?.user) return;
-  const userId = session.user.id;
-  const store = await getCurrentStore(userId);
-  if (!store) return;
-
-  await withTenant(store.id, userId, (tx) =>
-    incrementCouponUsesTx(tx, { storeId: store.id, couponId }),
-  );
-}

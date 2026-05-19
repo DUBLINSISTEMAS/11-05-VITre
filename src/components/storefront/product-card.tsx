@@ -177,7 +177,6 @@ export function ProductCard({
           product={favoriteInput}
           className="absolute right-2 top-2"
           size="sm"
-          showParticles
         />
       </article>
     );
@@ -233,7 +232,6 @@ export function ProductCard({
         product={favoriteInput}
         className="absolute right-2 top-2"
         size="sm"
-        showParticles
       />
     </article>
   );

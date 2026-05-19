@@ -2,9 +2,9 @@
  * Cron de keep-alive para evitar auto-pausa do Supabase Free (7 dias inativo).
  * Vercel chama esta rota pelo schedule definido em `vercel.json` (09:00 UTC).
  *
- * Proteção: Vercel Cron envia `Authorization: Bearer ${CRON_SECRET}` automaticamente
- * quando a env `CRON_SECRET` está setada. Validamos via `isCronAuthorized`
- * (constant-time, compartilhado com expire-orders).
+ * Proteção: Hobby plan não injeta Authorization header — usamos query param
+ * assinado HMAC via `isAuthorizedCron(request, CRON_PATHNAME)` (constant-time,
+ * compartilhado com expire-orders).
  *
  * Documentação: docs/decisoes/0005-free-tier-supabase-vercel-resend.md
  */

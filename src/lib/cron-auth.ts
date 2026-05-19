@@ -147,14 +147,3 @@ export function signCronUrl(pathname: string): string {
   return `${pathname}?sig=${sig}`;
 }
 
-/**
- * @deprecated Use `isAuthorizedCron(request, pathname)`. Mantida pra evitar
- * quebra de imports em outras files durante a transição.
- */
-export function isCronAuthorized(request: Request): boolean {
-  // Sem pathname conhecido: só aceita header (modo legacy Pro+).
-  const header = request.headers.get("authorization");
-  if (!header) return false;
-  const expected = `Bearer ${env.CRON_SECRET}`;
-  return safeEqualUtf8(header, expected);
-}

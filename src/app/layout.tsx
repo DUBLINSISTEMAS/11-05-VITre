@@ -6,7 +6,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { PwaRegister } from "@/components/pwa-register";
 import { Toaster } from "@/components/ui/sonner";
 import { env } from "@/lib/env";
-import { ReactQueryProvider } from "@/providers/react-query";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -65,7 +64,7 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ReactQueryProvider>{children}</ReactQueryProvider>
+        {children}
         <Toaster position="top-center" richColors closeButton />
         <PwaRegister />
       </body>

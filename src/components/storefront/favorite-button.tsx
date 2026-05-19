@@ -21,8 +21,6 @@ export interface FavoriteButtonProps {
   product: AddFavoriteInput;
   className?: string;
   size?: "sm" | "md" | "lg";
-  /** @deprecated mantido por compat de API; partículas foram removidas. */
-  showParticles?: boolean;
 }
 
 export function FavoriteButton({
