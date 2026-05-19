@@ -16,9 +16,16 @@ export type ResetPasswordResult =
  * Conclui o reset de senha com token + nova senha.
  * Better Auth invalida o token após o uso (1 chance).
  *
- * TODO Fase 2: revogar todas as outras sessões ativas após reset
- * (proteção contra atacante com cookie roubado pré-reset). Hoje cookie
- * sessão expira em 30d — risco aceitável no MVP, mas documentado.
+ * S2 (auditoria 2026-05-19): a revogacao de sessoes existentes acontece
+ * automaticamente via `emailAndPassword.revokeSessionsOnPasswordReset: true`
+ * em `src/lib/auth.ts`. Apos o reset bem-sucedido, TODAS as sessoes do
+ * usuario sao destruidas no banco — incluindo cookies que um atacante
+ * pudesse ter roubado antes do reset. O proprio usuario tem que fazer
+ * login na pagina `/entrar?reset=ok`.
+ *
+ * O redirect aqui devolve `ok: true` + path; layout client chama signOut
+ * implicitamente porque o cookie da sessao corrente tambem foi invalidado
+ * server-side (`/entrar` mostra o form normalmente).
  */
 export async function resetPassword(input: ResetPasswordInput): Promise<ResetPasswordResult> {
   let parsed: ResetPasswordInput;

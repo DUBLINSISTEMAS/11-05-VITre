@@ -5,7 +5,18 @@
  *
  * Decisões:
  * - emailAndPassword com `requireEmailVerification: false` no MVP (Fase 1).
- *   Trocar para `true` na Fase 2.
+ *   BLOQUEADO até a fase do Resend domain (T1-7) + tela `/verificar-email`
+ *   estarem prontas. Memory: `better-auth-require-email-verification-flow-break`.
+ *   Plano para ativar (3 passos):
+ *     1) Provisionar dominio em Resend + DKIM/SPF/DMARC.
+ *     2) Criar pagina `/verificar-email` com Suspense + reenvio (cooldown 60s).
+ *     3) Trocar `requireEmailVerification: true` + `sendOnSignUp: true` +
+ *        adicionar `callbackURL: "/verificar-email"` no signUp do client.
+ *   Sem essas peças, signup -> protegida quebra ("sessao expirada").
+ * - `revokeSessionsOnPasswordReset: true` (S2 da auditoria 2026-05-19):
+ *   apos reset bem-sucedido, Better Auth invalida TODAS as sessoes do
+ *   usuario (incluindo cookies roubados pre-reset). Usuario refaz login
+ *   na pagina `/entrar?reset=ok`.
  * - Drizzle adapter com mapeamento explícito do schema custom (importante:
  *   nossas tabelas têm nomes singulares ("user" não "users") e campo `role`
  *   adicional em `userTable`).
@@ -48,7 +59,17 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
-    requireEmailVerification: false, // false: substituído por verificação via Stripe na Fase 2.
+    // BLOQUEADO em false ate /verificar-email + Resend domain (T1-7). Ver
+    // header do arquivo para plano de ativacao em 3 passos. Trocar para
+    // true quebra signup -> protegida ("sessao expirada").
+    requireEmailVerification: false,
+    /**
+     * S2 da auditoria 2026-05-19: ao concluir reset, Better Auth invalida
+     * TODAS as sessoes ativas do usuario via `internalAdapter.deleteSessions`.
+     * Defesa contra atacante com cookie roubado pre-reset. Usuario faz
+     * login novo na pagina `/entrar?reset=ok` (toast "Senha atualizada").
+     */
+    revokeSessionsOnPasswordReset: true,
     sendResetPassword: async ({ user, url }) => {
       await sendPasswordResetEmail({
         to: user.email,

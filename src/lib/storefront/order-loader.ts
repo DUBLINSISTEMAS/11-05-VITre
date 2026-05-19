@@ -88,13 +88,25 @@ export async function getOrderByPublicToken(
 }
 
 /**
- * ATENÇÃO: NÃO usar em fluxos públicos. shortCode (4 chars, ~14M combos)
- * é adivinhável via rate-limit-burst. Use {@link getOrderByPublicToken}
- * para qualquer rota acessível por anônimo (/sucesso, /p/[token]).
+ * ATENÇÃO — USO ADMIN/INTERNO APENAS. NÃO expor em rota anonima.
  *
- * Reservado pra uso interno: suporte manual, busca admin por código
- * curto que o cliente forneceu, ou ferramentas internas. shortCode
- * continua sendo o identificador "amigável" pra exibir/falar.
+ * S3 da auditoria 2026-05-19: shortCode tem 4-6 chars (pedidos antigos
+ * pre-2026-05-11 sao 4 chars / ~14M combos = enumeravel via
+ * rate-limit-burst). Para qualquer rota publica use
+ * {@link getOrderByPublicToken} (32 chars opaco).
+ *
+ * Callers atuais (grep `getOrderByShortCode` em src/, 2026-05-19):
+ *   - NENHUM. A funcao esta exportada mas nao e chamada em lugar nenhum
+ *     do codigo de produto. Mantida como contrato disponivel para:
+ *     (a) busca admin por codigo curto que o cliente forneceu por voz/WA
+ *     (b) suporte manual (psql/Studio)
+ *   - Se algum dia for chamada de rota publica, ADICIONAR rate-limit por
+ *     IP (`rateLimits.publicApi`) E protecao contra timing-attack
+ *     (constant-time compare ou wrapper anti-bruteforce). Hoje o caller
+ *     unico potencial seria uma pagina admin atras de auth — ok.
+ *
+ * shortCode continua sendo o identificador "amigavel" pra exibir/falar.
+ * O publicToken e a chave de URL em fluxos publicos.
  */
 export async function getOrderByShortCode(
   shortCode: string,
@@ -102,6 +114,6 @@ export async function getOrderByShortCode(
   return getOrderByColumn(
     orderTable.shortCode,
     shortCode,
-    "internal: order by short code",
+    "internal: order by short code (admin/support only)",
   );
 }
