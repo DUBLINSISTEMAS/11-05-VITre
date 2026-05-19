@@ -226,6 +226,17 @@ export default async function EditProdutoPage({ params }: EditProdutoPageProps) 
           modeling: product.modeling,
           lining: product.lining,
           washing: product.washing,
+          // ADR-0034 Camada 2 — campos de gestão.
+          wholesalePriceInCents: product.wholesalePriceInCents,
+          costPriceInCents: product.costPriceInCents,
+          minStockQuantity: product.minStockQuantity,
+          maxStockQuantity: product.maxStockQuantity,
+          gtin: product.gtin,
+          brand: product.brand,
+          unit: product.unit,
+          internalCode: product.internalCode,
+          defaultCommissionBps: product.defaultCommissionBps,
+          ncm: product.ncm,
           variants: variants.map((v) => ({
             id: v.id,
             name: v.name,

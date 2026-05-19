@@ -69,6 +69,17 @@ export function NewProductForm({ categories }: NewProductFormProps) {
         modeling: null,
         lining: null,
         washing: null,
+        // ADR-0034 Camada 2 — defaults pra criação.
+        wholesalePriceInCents: null,
+        costPriceInCents: null,
+        minStockQuantity: null,
+        maxStockQuantity: null,
+        gtin: null,
+        brand: null,
+        unit: "un",
+        internalCode: null,
+        defaultCommissionBps: null,
+        ncm: null,
         variants: [],
         images: [],
       }}

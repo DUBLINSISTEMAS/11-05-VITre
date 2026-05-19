@@ -10,7 +10,7 @@ import {
   useState,
   useTransition,
 } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import {
@@ -45,6 +45,7 @@ import {
   type StagedImageFile,
 } from "./image-uploader";
 import { PriceInput } from "./price-input";
+import { CommercialFieldsCard } from "./product-commercial-fields";
 import { StockInput } from "./stock-input";
 import { type VariantData,VariantEditor } from "./variant-editor";
 
@@ -81,6 +82,28 @@ export interface ProductFormInitialData {
   modeling: string | null;
   lining: string | null;
   washing: string | null;
+  // ADR-0034 Camada 2 — campos de gestão. Todos opcionais; null = não cadastrado.
+  wholesalePriceInCents: number | null;
+  costPriceInCents: number | null;
+  minStockQuantity: number | null;
+  maxStockQuantity: number | null;
+  gtin: string | null;
+  brand: string | null;
+  /** Espelha enum DB product_unit; default 'un' aplicado se NULL no banco. */
+  unit:
+    | "un"
+    | "pc"
+    | "kg"
+    | "g"
+    | "m"
+    | "cm"
+    | "ml"
+    | "L"
+    | "m2"
+    | "m3";
+  internalCode: string | null;
+  defaultCommissionBps: number | null;
+  ncm: string | null;
   variants: VariantData[];
   images: ProductImageData[];
 }
@@ -172,6 +195,18 @@ export function ProductForm({
       modeling: initialData.modeling ?? "",
       lining: initialData.lining ?? "",
       washing: initialData.washing ?? "",
+      // ADR-0034 Camada 2 — gestão. `null` direto pra numbers; "" pra strings
+      // (Zod transform "" → null no submit).
+      wholesalePriceInCents: initialData.wholesalePriceInCents,
+      costPriceInCents: initialData.costPriceInCents,
+      minStockQuantity: initialData.minStockQuantity,
+      maxStockQuantity: initialData.maxStockQuantity,
+      gtin: initialData.gtin ?? "",
+      brand: initialData.brand ?? "",
+      unit: initialData.unit,
+      internalCode: initialData.internalCode ?? "",
+      defaultCommissionBps: initialData.defaultCommissionBps,
+      ncm: initialData.ncm ?? "",
       variants: initialData.variants.map((v) => ({
         id: v.id,
         name: v.name,
@@ -615,6 +650,17 @@ export function ProductForm({
               )}
             />
           </FormCard>
+
+          {/*
+            === ADR-0034 Camada 2 — Gestão da loja ===
+            Concentra os 10 campos de gestão (custo, margem, estoque
+            mín/máx, GTIN, marca, unidade, código interno, comissão, NCM,
+            preço atacado). Onda B.2 (próxima) vai distribuir em abas
+            (Identidade / Comercial / Custo & Margem / Estoque /
+            Loja Online) via shadcn Tabs. Por enquanto, FormCard única
+            entrega funcionalidade completa sem refator estrutural.
+          */}
+          <CommercialFieldsCard control={control} register={register} errors={errors} isPending={isPending} />
         </div>
 
         {/* === Coluna direita (lg col-span-1, sticky) === */}
