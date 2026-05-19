@@ -180,11 +180,12 @@ test("Checkout: COUPON_INVALID é error code tipado", () => {
 });
 
 // ---------------------------------------------------------------------
-// coupon/index.ts — atomic increment + helpers internos
+// coupon/internal.ts — atomic increment + helpers internos
+// (movido de index.ts pra resolver "use server" export class — 2026-05-19)
 // ---------------------------------------------------------------------
 
 test("incrementCouponUsesTx usa WHERE atomic anti-race (uses_count < max_uses)", () => {
-  const s = loadSrc("src/actions/coupon/index.ts");
+  const s = loadSrc("src/actions/coupon/internal.ts");
   // Verifica que o UPDATE tem cláusula WHERE com checagem de max_uses
   // (essa é a defesa anti-race — sem advisory lock).
   assert.match(s, /incrementCouponUsesTx/);
@@ -195,21 +196,21 @@ test("incrementCouponUsesTx usa WHERE atomic anti-race (uses_count < max_uses)",
 });
 
 test("incrementCouponUsesTx faz RETURNING + throw CouponError EXHAUSTED se rowcount=0", () => {
-  const s = loadSrc("src/actions/coupon/index.ts");
+  const s = loadSrc("src/actions/coupon/internal.ts");
   assert.match(s, /\.returning\(/);
   assert.match(s, /rows\.length\s*===\s*0/);
   assert.match(s, /CouponError\(\s*["']EXHAUSTED["']/);
 });
 
 test("validateCouponInTx aceita couponId OU code (PDV vs storefront)", () => {
-  const s = loadSrc("src/actions/coupon/index.ts");
+  const s = loadSrc("src/actions/coupon/internal.ts");
   assert.match(s, /args\.couponId/);
   assert.match(s, /args\.code/);
 });
 
 test("validateCouponInTx é PURE function (sem getSession nem getCurrentStore)", () => {
   // Garante que pode rodar dentro de tx anon (storefront) sem session.
-  const s = loadSrc("src/actions/coupon/index.ts");
+  const s = loadSrc("src/actions/coupon/internal.ts");
   const fnStart = s.indexOf("export async function validateCouponInTx");
   const fnEnd = s.indexOf("export async function incrementCouponUsesTx");
   assert.ok(fnStart > 0 && fnEnd > fnStart);

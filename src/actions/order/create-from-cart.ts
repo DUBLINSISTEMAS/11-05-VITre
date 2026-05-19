@@ -28,7 +28,7 @@ import {
   CouponError,
   incrementCouponUsesTx,
   validateCouponInTx,
-} from "@/actions/coupon";
+} from "@/actions/coupon/internal";
 import {
   type CreateOrderInput,
   createOrderInputSchema,
