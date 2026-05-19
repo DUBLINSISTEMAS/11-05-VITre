@@ -138,6 +138,7 @@ export async function searchProductsForPdv(
       .where(
         and(
           eq(productVariantTable.storeId, store.id),
+          eq(productVariantTable.isActive, true),
           inArray(productVariantTable.productId, productIds),
         ),
       )

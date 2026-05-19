@@ -3,7 +3,7 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { headers } from "next/headers";
 
-import { productTable, productVariantTable } from "@/db/schema";
+import { productTable, productVariantTable, stockMovementTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import {
@@ -67,6 +67,11 @@ export async function createProductFromValues(
         client: tx,
       });
 
+      const productInitialStock =
+        data.variants.length === 0 && data.trackStock
+          ? (data.stockQuantity ?? 0)
+          : 0;
+
       const [created] = await tx
         .insert(productTable)
         .values({
@@ -78,7 +83,7 @@ export async function createProductFromValues(
           basePriceInCents: data.basePriceInCents,
           promoPriceInCents: data.promoPriceInCents,
           trackStock: data.trackStock,
-          stockQuantity: data.trackStock ? data.stockQuantity : null,
+          stockQuantity: data.trackStock ? 0 : null,
           installmentsOverride: data.installmentsOverride,
           cashDiscountOverrideBps: data.cashDiscountOverrideBps,
           isActive: data.isActive,
@@ -93,20 +98,58 @@ export async function createProductFromValues(
 
       if (!created) return null;
 
+      if (productInitialStock > 0) {
+        await tx.insert(stockMovementTable).values({
+          storeId: store.id,
+          productId: created.id,
+          variantId: null,
+          movementType: "initial",
+          quantityDelta: productInitialStock,
+          referenceType: "manual",
+          notes: "Saldo inicial cadastrado no produto.",
+          createdBy: userId,
+        });
+      }
+
       if (data.variants.length > 0) {
-        await tx.insert(productVariantTable).values(
-          data.variants.map((v) => ({
+        const createdVariants = await tx
+          .insert(productVariantTable)
+          .values(
+            data.variants.map((v) => ({
+              storeId: store.id,
+              productId: created.id,
+              name: v.name,
+              priceInCents: v.priceInCents,
+              stockQuantity: v.stockQuantity !== null ? 0 : null,
+              trackStock: v.stockQuantity !== null,
+              axis: v.axis,
+              colorHex: v.axis === "color" ? v.colorHex : null,
+              featuredImageId: v.featuredImageId,
+            })),
+          )
+          .returning({
+            id: productVariantTable.id,
+            stockQuantity: productVariantTable.stockQuantity,
+          });
+
+        const movements = createdVariants.flatMap((variant, index) => {
+          const initial = data.variants[index]?.stockQuantity ?? 0;
+          if (initial <= 0) return [];
+          return [{
             storeId: store.id,
             productId: created.id,
-            name: v.name,
-            priceInCents: v.priceInCents,
-            stockQuantity: v.stockQuantity,
-            trackStock: v.stockQuantity !== null,
-            axis: v.axis,
-            colorHex: v.axis === "color" ? v.colorHex : null,
-            featuredImageId: v.featuredImageId,
-          })),
-        );
+            variantId: variant.id,
+            movementType: "initial" as const,
+            quantityDelta: initial,
+            referenceType: "manual",
+            notes: "Saldo inicial cadastrado na variante.",
+            createdBy: userId,
+          }];
+        });
+
+        if (movements.length > 0) {
+          await tx.insert(stockMovementTable).values(movements);
+        }
       }
 
       return created;
@@ -115,6 +158,7 @@ export async function createProductFromValues(
     if (!row) return { ok: false, error: "Falha ao criar produto." };
 
     revalidatePath("/admin/produtos");
+    revalidatePath("/admin/estoque");
     revalidateTag(`store-${store.slug}`);
 
     return { ok: true, productId: row.id };

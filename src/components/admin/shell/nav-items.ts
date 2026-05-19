@@ -1,33 +1,16 @@
 // Estrutura de navegação do admin — Port Dublin v3 (ADR-0019 reabertura, Onda A.3).
 //
-// Replica fielmente o handoff `PIXEL PERFECT/admin/v3/bagy-admin.jsx`:
-// 3 seções nomeadas (CONTROLE INTERNO / MINHA LOJA / CONTA) com items que
-// podem ter sub-items recolhíveis.
-//
-// Items marcados `soon: true` apontam pra módulos AINDA não implementados.
-// Eles são renderizados visualmente como cinza-claro não-clicáveis com badge
-// "em breve" — quando o ADR correspondente fechar, basta tirar a flag e o item
-// passa a navegar. Roadmap pós-Onda A.17 (2026-05-18):
-//   B2.4 Horários       → /admin/configuracoes/horarios
-//   B3.1 Atributos      → /admin/atributos (ADR-0024)
-//   B3.2 Grupos clientes→ /admin/clientes/grupos
-//   B3.3 Cupons         → /admin/promocoes/cupons
-//   B3.4 Contatos       → /admin/clientes/contatos  (inbox WhatsApp)
-//   B4.1 Relatórios     → /admin/relatorios
-//   B4.2 Equipe         → /admin/configuracoes/equipe
-//   B.5  Assinatura     → /admin/assinatura  (founder implementa)
+// Estabilização P0/P1 (2026-05-19): a sidebar só expõe módulos operacionais.
+// Módulos rasos/placeholder ficam ocultos até terem fluxo maduro, evitando
+// comunicar “sistema em obra” para o lojista.
 import {
-  ArchiveIcon,
   BoxesIcon,
   CreditCardIcon,
   HomeIcon,
-  InfoIcon,
-  LayersIcon,
   type LucideIcon,
   PackageIcon,
   PaletteIcon,
   ShoppingCartIcon,
-  SparklesIcon,
   TagIcon,
   UsersIcon,
 } from "lucide-react";
@@ -35,7 +18,7 @@ import {
 export interface AdminNavSubItem {
   label: string;
   href: string;
-  /** Módulo ainda não implementado — renderiza disabled com badge "em breve". */
+  /** Módulo ainda não exposto na estabilização P0/P1. Mantido para compatibilidade do renderer. */
   soon?: boolean;
 }
 
@@ -50,9 +33,9 @@ export interface AdminNavItem {
   exact?: boolean;
   /** Sub-itens recolhíveis. Quando presente, ignora `href` no header. */
   subs?: AdminNavSubItem[];
-  /** Bolinha indicadora ("tem novidade"). */
+  /** Bolinha indicadora opcional. Mantida no tipo porque o renderer suporta. */
   dot?: boolean;
-  /** Módulo ainda não implementado. */
+  /** Módulo ainda não exposto na estabilização P0/P1. Mantido para compatibilidade do renderer. */
   soon?: boolean;
 }
 
@@ -73,7 +56,6 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
         subs: [
           { label: "Meus produtos", href: "/admin/produtos" },
           { label: "Categorias", href: "/admin/categorias" },
-          { label: "Atributos", href: "/admin/atributos" },
           { label: "Banners", href: "/admin/banners" },
         ],
       },
@@ -82,11 +64,7 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
         k: "clientes",
         label: "Clientes",
         icon: UsersIcon,
-        subs: [
-          { label: "Meus clientes", href: "/admin/clientes" },
-          { label: "Grupos de clientes", href: "/admin/clientes/grupos" },
-          { label: "Contatos", href: "/admin/contatos" },
-        ],
+        subs: [{ label: "Meus clientes", href: "/admin/clientes" }],
       },
       {
         k: "vendas",
@@ -98,23 +76,12 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
           { label: "Caixa", href: "/admin/pdv/caixa" },
         ],
       },
-      {
-        k: "promocoes",
-        label: "Promoções",
-        icon: SparklesIcon,
-        dot: true,
-        subs: [
-          { label: "Cupons", href: "/admin/promocoes/cupons" },
-        ],
-      },
-      { k: "relatorios", label: "Relatórios", icon: ArchiveIcon, href: "/admin/relatorios" },
     ],
   },
   {
     label: "MINHA LOJA",
     items: [
       { k: "lojavirtual", label: "Aparência", icon: PaletteIcon, href: "/admin/aparencia" },
-      { k: "colecoes", label: "Coleções", icon: LayersIcon, href: "/admin/colecoes" },
       { k: "pagamentos", label: "Pagamentos", icon: CreditCardIcon, href: "/admin/pagamento" },
       {
         k: "config",
@@ -123,16 +90,8 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
         subs: [
           { label: "Geral", href: "/admin/configuracoes" },
           { label: "Horários", href: "/admin/configuracoes#horarios" },
-          { label: "Equipe", href: "/admin/equipe" },
         ],
       },
-    ],
-  },
-  {
-    label: "CONTA",
-    items: [
-      { k: "assinatura", label: "Assinatura", icon: SparklesIcon, href: "/admin/assinatura" },
-      { k: "suporte", label: "Suporte", icon: InfoIcon, href: "/admin/suporte" },
     ],
   },
 ] as const;
@@ -148,7 +107,7 @@ export function isItemActive(item: AdminNavItem, pathname: string): boolean {
     return item.exact ? pathname === item.href : pathname.startsWith(item.href);
   }
   if (item.subs) {
-    return item.subs.some((s) => !s.soon && isSubItemActive(s, pathname));
+    return item.subs.some((s) => isSubItemActive(s, pathname));
   }
   return false;
 }

@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import {
   loadActiveCashSession,
   loadCashSessionsList,
@@ -235,7 +237,8 @@ function SummaryView({ summary }: { summary: DaySummary }) {
                 <th>RECIBO</th>
                 <th>CLIENTE</th>
                 <th>PAGAMENTO</th>
-                <th style={{ textAlign: "right", paddingRight: 20 }}>TOTAL</th>
+                <th style={{ textAlign: "right" }}>TOTAL</th>
+                <th style={{ paddingRight: 20, textAlign: "right" }}>AÇÃO</th>
               </tr>
             </thead>
             <tbody>
@@ -290,9 +293,17 @@ function SaleRow({ sale }: { sale: DaySaleRow }) {
       </td>
       <td
         className="mono font-bold"
-        style={{ textAlign: "right", paddingRight: 20 }}
+        style={{ textAlign: "right" }}
       >
         {formatBRL(sale.totalInCents)}
+      </td>
+      <td style={{ paddingRight: 20, textAlign: "right" }}>
+        <Link
+          href={`/admin/pdv/recibo/${sale.publicToken}`}
+          className="b3-btn b3-btn--sm"
+        >
+          Recibo
+        </Link>
       </td>
     </tr>
   );

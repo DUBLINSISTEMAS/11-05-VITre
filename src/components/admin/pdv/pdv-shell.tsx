@@ -87,6 +87,11 @@ interface PaymentMethodOption {
   Icon: typeof BanknoteIcon;
 }
 
+interface LastSale {
+  publicToken: string | null;
+  totalInCents: number;
+}
+
 const PAYMENT_METHODS: PaymentMethodOption[] = [
   { value: "cash", label: "Dinheiro", Icon: BanknoteIcon },
   { value: "pix", label: "PIX", Icon: ReceiptIcon },
@@ -157,6 +162,7 @@ export function PdvShell() {
   const [walkInName, setWalkInName] = useState<string>("");
   const [walkInPhone, setWalkInPhone] = useState<string>("");
   const [isSubmitting, startSubmit] = useTransition();
+  const [lastSale, setLastSale] = useState<LastSale | null>(null);
 
   const subtotalInCents = useMemo(
     () => cart.reduce((s, it) => s + it.priceInCents * it.quantity, 0),
@@ -385,12 +391,12 @@ export function PdvShell() {
         return;
       }
       toast.success("Venda registrada!");
-      if (result.publicToken) {
-        router.push(`/admin/pdv/recibo/${result.publicToken}`);
-      } else {
-        reset();
-        router.refresh();
-      }
+      setLastSale({
+        publicToken: result.publicToken ?? null,
+        totalInCents,
+      });
+      reset();
+      router.refresh();
     });
   };
 
@@ -463,54 +469,102 @@ export function PdvShell() {
         <ProductSearchPicker onAdd={addToCart} />
       </section>
 
-      {/* Coluna direita: cliente + carrinho + pagamento + finalizar */}
+      {/* Coluna direita: cliente + carrinho + pagamento + finalizar.
+          FIX 2026-05-19 ("campos sumindo"): a aside era flex-col com
+          overflow-hidden + max-h. Cliente + Cart + PaymentSection + Footer
+          (Total+Submit) somavam >viewport quando user preenchia desconto +
+          acréscimo + observação. Como TODOS os filhos tinham flex-shrink:1
+          default, o footer (último) era encolhido a 0 — botão Finalizar
+          sumia. Fix: middle scrollable (Cart + PaymentSection num wrapper
+          flex-1 overflow-y-auto min-h-0); Customer e Footer marcados
+          shrink-0; CartPanel perde overflow próprio (parent agora cuida). */}
       <aside className="b3-card flex flex-col overflow-hidden lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]">
-        <CustomerComboboxLight
-          customerId={customerId}
-          customerLabel={customerLabel}
-          walkInName={walkInName}
-          walkInPhone={walkInPhone}
-          setWalkInName={setWalkInName}
-          setWalkInPhone={setWalkInPhone}
-          onPick={(c) => {
-            setCustomerId(c?.id ?? null);
-            setCustomerLabel(c ? `${c.name} · ${c.phone}` : "");
-            if (c) {
-              setWalkInName("");
-              setWalkInPhone("");
-            }
-          }}
-        />
+        <div className="shrink-0">
+          <CustomerComboboxLight
+            customerId={customerId}
+            customerLabel={customerLabel}
+            walkInName={walkInName}
+            walkInPhone={walkInPhone}
+            setWalkInName={setWalkInName}
+            setWalkInPhone={setWalkInPhone}
+            onPick={(c) => {
+              setCustomerId(c?.id ?? null);
+              setCustomerLabel(c ? `${c.name} · ${c.phone}` : "");
+              if (c) {
+                setWalkInName("");
+                setWalkInPhone("");
+              }
+            }}
+          />
+        </div>
 
-        <CartPanel
-          items={cart}
-          updateQty={updateQty}
-          removeItem={removeItem}
-        />
+        {/* Scrollable middle — Cart + PaymentSection rolam juntos quando
+            extrapolam altura. Footer (Total + Submit) FICA SEMPRE VISÍVEL. */}
+        <div className="flex flex-1 min-h-0 flex-col overflow-y-auto">
+          <CartPanel
+            items={cart}
+            updateQty={updateQty}
+            removeItem={removeItem}
+          />
 
-        {cart.length > 0 ? (
-          <div className="border-t border-line bg-bg-app">
-            <PaymentSection
-              paymentMethod={paymentMethod}
-              setPaymentMethod={setPaymentMethod}
-              cashReceivedInput={cashReceivedInput}
-              setCashReceivedInput={setCashReceivedInput}
-              troco={troco}
-              discountAmountInput={discountAmountInput}
-              discountPctInput={discountPctInput}
-              onDiscountAmountChange={onDiscountAmountChange}
-              onDiscountPctChange={onDiscountPctChange}
-              surchargeAmountInput={surchargeAmountInput}
-              surchargePctInput={surchargePctInput}
-              onSurchargeAmountChange={onSurchargeAmountChange}
-              onSurchargePctChange={onSurchargePctChange}
-              notes={notes}
-              setNotes={setNotes}
-            />
-          </div>
-        ) : null}
+          {cart.length > 0 ? (
+            <div className="border-t border-line bg-bg-app">
+              <PaymentSection
+                paymentMethod={paymentMethod}
+                setPaymentMethod={setPaymentMethod}
+                cashReceivedInput={cashReceivedInput}
+                setCashReceivedInput={setCashReceivedInput}
+                troco={troco}
+                discountAmountInput={discountAmountInput}
+                discountPctInput={discountPctInput}
+                onDiscountAmountChange={onDiscountAmountChange}
+                onDiscountPctChange={onDiscountPctChange}
+                surchargeAmountInput={surchargeAmountInput}
+                surchargePctInput={surchargePctInput}
+                onSurchargeAmountChange={onSurchargeAmountChange}
+                onSurchargePctChange={onSurchargePctChange}
+                notes={notes}
+                setNotes={setNotes}
+              />
+            </div>
+          ) : null}
+        </div>
 
-        <div className="border-t border-line bg-bg-app p-[18px]">
+        <div className="shrink-0 border-t border-line bg-bg-app p-[18px]">
+          {lastSale ? (
+            <div className="mb-3 rounded-[10px] border border-brand-line bg-brand-wash p-3">
+              <div className="text-[12px] font-bold uppercase tracking-[0.06em] text-brand">
+                Venda registrada
+              </div>
+              <div className="mt-1 text-sm text-ink-2">
+                Total {formatBRL(lastSale.totalInCents)}. Pronto para nova venda.
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  className="b3-btn b3-btn--sm"
+                  onClick={() => setLastSale(null)}
+                >
+                  Nova venda
+                </button>
+                {lastSale.publicToken ? (
+                  <button
+                    type="button"
+                    className="b3-btn b3-btn--sm b3-btn--brand"
+                    onClick={() => {
+                      window.open(
+                        `/admin/pdv/recibo/${lastSale.publicToken}`,
+                        "_blank",
+                        "noopener,noreferrer",
+                      );
+                    }}
+                  >
+                    Imprimir recibo
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
           <div className="mb-2 flex items-center justify-between">
             <span className="text-[14px] font-bold text-ink-1">Total</span>
             <span
@@ -794,9 +848,12 @@ function CartPanel({
   updateQty: (idx: number, delta: number) => void;
   removeItem: (idx: number) => void;
 }) {
+  // FIX 2026-05-19: removido `flex-1 overflow-y-auto` (era scroll próprio).
+  // Wrapper na aside agora cuida do scroll do middle (Cart + PaymentSection).
+  // Sem isso, duplicava scroll e empurrava footer pra fora do viewport.
   if (items.length === 0) {
     return (
-      <div className="text-ink-4 flex flex-1 flex-col items-center justify-center gap-3 p-10 text-center">
+      <div className="text-ink-4 flex min-h-[180px] flex-col items-center justify-center gap-3 p-10 text-center">
         <span className="bg-bg-app inline-flex size-[60px] items-center justify-center rounded-full">
           <ShoppingBagIcon size={26} />
         </span>
@@ -810,7 +867,7 @@ function CartPanel({
     );
   }
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div>
       <header className="border-line bg-surface sticky top-0 z-10 flex items-center justify-between border-b px-[18px] py-3">
         <h3 className="text-ink-1 text-[13.5px] font-semibold tracking-tight">
           Carrinho · {items.length} {items.length === 1 ? "item" : "itens"}

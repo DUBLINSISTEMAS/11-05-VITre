@@ -12,7 +12,6 @@ import {
   or,
   type SQL,
   sql,
-  sum,
 } from "drizzle-orm";
 
 import {
@@ -78,7 +77,7 @@ export async function listStockMovements(
       conditions.push(eq(stockMovementTable.movementType, params.movementType));
     }
 
-    // Busca por nome — exige resolver productIds que batem antes
+    // Busca por nome de produto ou variante.
     if (params.q) {
       const safeQ = params.q.replace(/[\\%_]/g, "\\$&");
       const matchingProducts = await tx
@@ -91,11 +90,29 @@ export async function listStockMovements(
           ),
         )
         .limit(200);
+      const matchingVariants = await tx
+        .select({ id: productVariantTable.id })
+        .from(productVariantTable)
+        .where(
+          and(
+            eq(productVariantTable.storeId, store.id),
+            ilike(productVariantTable.name, `%${safeQ}%`),
+          ),
+        )
+        .limit(200);
       const productIds = matchingProducts.map((p) => p.id);
-      if (productIds.length === 0) {
+      const variantIds = matchingVariants.map((v) => v.id);
+      if (productIds.length === 0 && variantIds.length === 0) {
         return { items: [], total: 0 };
       }
-      conditions.push(inArray(stockMovementTable.productId, productIds));
+      const searchConditions: SQL[] = [];
+      if (productIds.length > 0) {
+        searchConditions.push(inArray(stockMovementTable.productId, productIds));
+      }
+      if (variantIds.length > 0) {
+        searchConditions.push(inArray(stockMovementTable.variantId, variantIds));
+      }
+      conditions.push(or(...searchConditions)!);
     }
 
     const where = and(...conditions);
@@ -181,8 +198,8 @@ export async function loadStockKpis(): Promise<StockKpis> {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
   return withTenant(store.id, session.user.id, async (tx) => {
-    // 1) saldo atual via cache (mais barato que ressomar event log inteiro)
-    const totalRow = await tx
+    // 1) saldo atual via cache (produto sem variantes + variantes)
+    const productTotalRow = await tx
       .select({
         value: sql<string>`COALESCE(SUM(${productTable.stockQuantity}), 0)`,
       })
@@ -191,9 +208,29 @@ export async function loadStockKpis(): Promise<StockKpis> {
         and(
           eq(productTable.storeId, store.id),
           eq(productTable.trackStock, true),
+          sql`NOT EXISTS (
+            SELECT 1
+              FROM product_variant pv
+             WHERE pv.product_id = ${productTable.id}
+               AND pv.store_id = ${store.id}
+               AND pv.track_stock = true
+          )`,
         ),
       );
-    const currentTotal = Number(totalRow[0]?.value ?? 0);
+    const variantTotalRow = await tx
+      .select({
+        value: sql<string>`COALESCE(SUM(${productVariantTable.stockQuantity}), 0)`,
+      })
+      .from(productVariantTable)
+      .where(
+        and(
+          eq(productVariantTable.storeId, store.id),
+          eq(productVariantTable.trackStock, true),
+        ),
+      );
+    const currentTotal =
+      Number(productTotalRow[0]?.value ?? 0) +
+      Number(variantTotalRow[0]?.value ?? 0);
 
     // 2) entradas/saídas/ajustes do mês via stock_movement
     const monthWhere = and(
@@ -230,6 +267,3 @@ export async function loadStockKpis(): Promise<StockKpis> {
 
 // Re-export pra outros lugares que precisarem do tipo
 export type { StockMovement };
-// Avoid unused import warning
-void or;
-void sum;

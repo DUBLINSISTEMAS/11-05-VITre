@@ -80,11 +80,7 @@ export default function CriarLojaTipoNegocioPage() {
       } catch {
         /* ignore */
       }
-      const params = new URLSearchParams({
-        nome: identity.name,
-        slug: identity.slug,
-      });
-      router.push(`/criar-loja/bem-vindo?${params.toString()}`);
+      router.push(result.redirectTo);
       router.refresh();
     });
   };

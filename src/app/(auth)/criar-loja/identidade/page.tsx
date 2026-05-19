@@ -20,7 +20,7 @@ import {
 } from "@/components/onboarding/storage-keys";
 import { WhatsAppInput } from "@/components/onboarding/whatsapp-input";
 import { clientEnv } from "@/lib/env-client";
-import { generateSlug, isValidSlugFormat } from "@/lib/slug";
+import { generateSlug, isReservedSlug, isValidSlugFormat } from "@/lib/slug";
 import { isValidWhatsAppBR } from "@/lib/whatsapp-format";
 
 const APP_URL_HOST =
@@ -41,7 +41,7 @@ const COLOR_SWATCHES = [
 export default function CriarLojaIdentidadePage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [slugAvailable, setSlugAvailable] = useState(false);
+  const [, setSlugAvailable] = useState(false);
   const slugManuallyEdited = useRef(false);
 
   const form = useForm<CreateStoreInput>({
@@ -96,11 +96,14 @@ export default function CriarLojaIdentidadePage() {
   }, [watchedName, form]);
 
   const watchedWhatsapp = form.watch("whatsappNumber");
+  const watchedSlug = form.watch("slug");
   const showWhatsappInline = !isValidWhatsAppBR(watchedWhatsapp);
+  const slugCanAttemptSubmit =
+    isValidSlugFormat(watchedSlug) && !isReservedSlug(watchedSlug);
 
   const onSubmit = (values: CreateStoreInput) => {
-    if (!slugAvailable) {
-      toast.error("Confirme um endereço disponível.");
+    if (!slugCanAttemptSubmit) {
+      toast.error("Informe um endereço válido para continuar.");
       return;
     }
     startTransition(() => {
@@ -117,7 +120,8 @@ export default function CriarLojaIdentidadePage() {
           }),
         );
       } catch {
-        /* private mode */
+        toast.error("Não consegui salvar esta etapa no navegador. Tente novamente.");
+        return;
       }
       router.push("/criar-loja/tipo-negocio");
     });
@@ -138,7 +142,7 @@ export default function CriarLojaIdentidadePage() {
           type="button"
           onClick={form.handleSubmit(onSubmit)}
           className="b3-btn b3-btn--cta"
-          disabled={isPending || !slugAvailable}
+          disabled={isPending || !slugCanAttemptSubmit}
         >
           {isPending ? (
             <>

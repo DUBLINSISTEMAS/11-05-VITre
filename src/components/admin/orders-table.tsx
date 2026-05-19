@@ -59,9 +59,6 @@ export function OrdersTable({ orders }: OrdersTableProps) {
       <table className="b3-tbl">
         <thead>
           <tr>
-            <th style={{ paddingLeft: 20, width: 28 }}>
-              <span className="sr-only">Selecionar</span>
-            </th>
             <th>Código</th>
             <th>Cliente</th>
             <th>Canal</th>
@@ -87,15 +84,6 @@ export function OrdersTable({ orders }: OrdersTableProps) {
               aria-label={`Abrir pedido ${o.shortCode}`}
               className="cursor-pointer outline-none focus-visible:bg-bg-app"
             >
-              <td style={{ paddingLeft: 20 }}>
-                <input
-                  type="checkbox"
-                  aria-label={`Selecionar pedido ${o.shortCode}`}
-                  onClick={(e) => e.stopPropagation()}
-                  disabled
-                  className="cursor-not-allowed opacity-50"
-                />
-              </td>
               <td
                 className="mono"
                 style={{ color: "var(--brand)", fontWeight: 600 }}

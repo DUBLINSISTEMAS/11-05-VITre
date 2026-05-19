@@ -8,6 +8,7 @@ import {
   categoryTable,
   productTable,
   productVariantTable,
+  stockMovementTable,
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getConstraintName, isUniqueViolation } from "@/lib/db-errors";
@@ -34,11 +35,11 @@ export type UpdateProductResult =
  * Estratégia de variantes (diff por id):
  * - mantidas (com `id`): UPDATE
  * - novas (sem `id`): INSERT
- * - removidas (id existia no banco mas sumiu do array): DELETE
+ * - removidas (id existia no banco mas sumiu do array): inativação
  *
- * Por que diff e não delete-insert? Variantes já vendidas vão estar referenciadas
- * em `order_item` no futuro (Fase 1.6). Recriar variant gera id novo e quebra
- * histórico. Diff preserva ids existentes.
+ * Por que diff e não delete-insert? Variantes já vendidas podem estar referenciadas
+ * em `order_item` e `stock_movement`. Recriar/apagar variant gera id novo,
+ * quebra histórico e pode apagar movimentos por cascade. Diff preserva ids existentes.
  *
  * Slug: regenera quando o nome muda, com sufixo `-2/-3/...` se duplicado na loja.
  *
@@ -99,7 +100,13 @@ export async function updateProduct(
           eq(productTable.id, data.productId),
           eq(productTable.storeId, store.id),
         ),
-        columns: { id: true, slug: true, name: true },
+        columns: {
+          id: true,
+          slug: true,
+          name: true,
+          trackStock: true,
+          stockQuantity: true,
+        },
       });
       if (!existing) {
         return { ok: false, error: "Produto não encontrado." } as const;
@@ -139,6 +146,14 @@ export async function updateProduct(
         });
       }
 
+      const productStockDelta =
+        data.variants.length === 0 && data.trackStock
+          ? (data.stockQuantity ?? 0) - (existing.stockQuantity ?? 0)
+          : 0;
+      const nextProductStockCache = data.trackStock
+        ? existing.stockQuantity ?? 0
+        : null;
+
       // 8. Mutação: produto + variantes (diff). Defesa em profundidade:
       // todo WHERE carrega `storeId` mesmo com RLS já filtrando.
       await tx
@@ -151,7 +166,7 @@ export async function updateProduct(
           promoPriceInCents: data.promoPriceInCents,
           categoryId: data.categoryId,
           trackStock: data.trackStock,
-          stockQuantity: data.trackStock ? data.stockQuantity : null,
+          stockQuantity: nextProductStockCache,
           installmentsOverride: data.installmentsOverride,
           cashDiscountOverrideBps: data.cashDiscountOverrideBps,
           isActive: data.isActive,
@@ -172,12 +187,28 @@ export async function updateProduct(
           ),
         );
 
+      if (productStockDelta !== 0) {
+        await tx.insert(stockMovementTable).values({
+          storeId: store.id,
+          productId: data.productId,
+          variantId: null,
+          movementType: "adjustment",
+          quantityDelta: productStockDelta,
+          referenceType: "manual",
+          notes: "Ajuste de estoque pelo editor do produto.",
+          createdBy: userId,
+        });
+      }
+
       // --- Diff de variantes ---
       const incomingWithId = data.variants.filter((v) => v.id);
       const incomingNew = data.variants.filter((v) => !v.id);
 
       const dbVariants = await tx
-        .select({ id: productVariantTable.id })
+        .select({
+          id: productVariantTable.id,
+          stockQuantity: productVariantTable.stockQuantity,
+        })
         .from(productVariantTable)
         .where(
           and(
@@ -187,15 +218,21 @@ export async function updateProduct(
         );
 
       const dbIds = new Set(dbVariants.map((v) => v.id));
+      const dbVariantById = new Map(dbVariants.map((v) => [v.id, v]));
       const incomingIds = new Set(incomingWithId.map((v) => v.id!));
 
-      const toDelete = [...dbIds].filter((id) => !incomingIds.has(id));
-      if (toDelete.length > 0) {
+      const toDeactivate = [...dbIds].filter((id) => !incomingIds.has(id));
+      if (toDeactivate.length > 0) {
         await tx
-          .delete(productVariantTable)
+          .update(productVariantTable)
+          .set({
+            isActive: false,
+            trackStock: false,
+            stockQuantity: null,
+          })
           .where(
             and(
-              inArray(productVariantTable.id, toDelete),
+              inArray(productVariantTable.id, toDeactivate),
               eq(productVariantTable.productId, data.productId),
               eq(productVariantTable.storeId, store.id),
             ),
@@ -203,12 +240,16 @@ export async function updateProduct(
       }
 
       for (const v of incomingWithId) {
+        const currentVariantStock = dbVariantById.get(v.id!)?.stockQuantity ?? 0;
+        const nextVariantStock = v.stockQuantity ?? 0;
+        const delta = v.stockQuantity !== null ? nextVariantStock - currentVariantStock : 0;
+
         await tx
           .update(productVariantTable)
           .set({
             name: v.name,
             priceInCents: v.priceInCents,
-            stockQuantity: v.stockQuantity,
+            stockQuantity: v.stockQuantity !== null ? currentVariantStock : null,
             trackStock: v.stockQuantity !== null,
             // Eixo canvas-v1: zera colorHex quando axis="size" pra não
             // arrastar valor antigo se lojista trocou tamanho ↔ cor.
@@ -223,22 +264,57 @@ export async function updateProduct(
               eq(productVariantTable.storeId, store.id),
             ),
           );
+
+        if (delta !== 0) {
+          await tx.insert(stockMovementTable).values({
+            storeId: store.id,
+            productId: data.productId,
+            variantId: v.id!,
+            movementType: "adjustment",
+            quantityDelta: delta,
+            referenceType: "manual",
+            notes: "Ajuste de estoque pelo editor do produto.",
+            createdBy: userId,
+          });
+        }
       }
 
       if (incomingNew.length > 0) {
-        await tx.insert(productVariantTable).values(
-          incomingNew.map((v) => ({
+        const createdVariants = await tx
+          .insert(productVariantTable)
+          .values(
+            incomingNew.map((v) => ({
+              storeId: store.id,
+              productId: data.productId,
+              name: v.name,
+              priceInCents: v.priceInCents,
+              stockQuantity: v.stockQuantity !== null ? 0 : null,
+              trackStock: v.stockQuantity !== null,
+              axis: v.axis,
+              colorHex: v.axis === "color" ? v.colorHex : null,
+              featuredImageId: v.featuredImageId,
+            })),
+          )
+          .returning({ id: productVariantTable.id });
+
+        const movements = createdVariants.flatMap((variant, index) => {
+          const initial = incomingNew[index]?.stockQuantity ?? 0;
+          if (initial <= 0) return [];
+          return [{
             storeId: store.id,
             productId: data.productId,
-            name: v.name,
-            priceInCents: v.priceInCents,
-            stockQuantity: v.stockQuantity,
-            trackStock: v.stockQuantity !== null,
-            axis: v.axis,
-            colorHex: v.axis === "color" ? v.colorHex : null,
-            featuredImageId: v.featuredImageId,
-          })),
-        );
+            variantId: variant.id,
+            movementType: "initial" as const,
+            quantityDelta: initial,
+            referenceType: "manual",
+            notes: "Saldo inicial cadastrado na variante.",
+            createdBy: userId,
+          }];
+        });
+
+        if (movements.length > 0) {
+          await tx.insert(stockMovementTable).values(movements);
+        }
       }
 
       return { ok: true, nextSlug } as const;
@@ -268,6 +344,7 @@ export async function updateProduct(
 
   // 9. Invalida caches: admin (lista) + storefront público
   revalidatePath("/admin/produtos");
+  revalidatePath("/admin/estoque");
   revalidateTag(`store-${store.slug}`);
 
   return { ok: true, productId: data.productId, slug: stepResult.nextSlug };

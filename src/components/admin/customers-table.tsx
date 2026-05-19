@@ -5,8 +5,8 @@
 // Mobile responsivo: CSS @media (max-width: 640px) em globals.css faz
 // thead esconder e tbody tr virar block stack (já no globals).
 //
-// Cada row é clicável (router.push pra /admin/clientes/[id]). Checkbox
-// per-row é placeholder visual (bulk actions ficam pra onda futura).
+// Cada row é clicável (router.push pra /admin/clientes/[id]).
+// Bulk actions ficam fora desta onda; não renderizamos controles mortos.
 //
 // Decisões pixel-perfect vs handoff (B3ClientesScreen) + schema:
 // - schema `customer` NÃO tem `group` (Padrão/Silver/Gold) — esses
@@ -70,9 +70,6 @@ export function CustomersTable({ customers }: CustomersTableProps) {
     <table className="b3-tbl">
       <thead>
         <tr>
-          <th style={{ paddingLeft: 20, width: 28 }}>
-            <span className="sr-only">Selecionar</span>
-          </th>
           <th>Foto</th>
           <th>Nome</th>
           <th>Contato</th>
@@ -103,15 +100,6 @@ export function CustomersTable({ customers }: CustomersTableProps) {
               aria-label={`Abrir cliente ${c.name}`}
               className="cursor-pointer outline-none focus-visible:bg-bg-app"
             >
-              <td style={{ paddingLeft: 20 }}>
-                <input
-                  type="checkbox"
-                  aria-label={`Selecionar ${c.name}`}
-                  onClick={(e) => e.stopPropagation()}
-                  disabled
-                  className="cursor-not-allowed opacity-50"
-                />
-              </td>
               <td>
                 <div className="flex items-center gap-2.5">
                   <span className="b3-avatar">{initialsOf(c.name)}</span>

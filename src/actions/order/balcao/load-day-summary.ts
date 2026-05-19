@@ -24,6 +24,7 @@ export interface DaySummaryByMethod {
 export interface DaySaleRow {
   id: string;
   shortCode: string;
+  publicToken: string;
   /** HH:mm local-time da venda (string já formatada). */
   hour: string;
   customerName: string;
@@ -115,6 +116,7 @@ export async function loadBalcaoDaySummary(params: {
       .select({
         id: orderTable.id,
         shortCode: orderTable.shortCode,
+        publicToken: orderTable.publicToken,
         createdAt: orderTable.createdAt,
         customerName: orderTable.customerName,
         method: orderTable.paymentMethod,
@@ -139,6 +141,7 @@ export async function loadBalcaoDaySummary(params: {
       return {
         id: r.id,
         shortCode: r.shortCode,
+        publicToken: r.publicToken,
         hour: `${hh}:${mm}`,
         customerName: r.customerName,
         method: (r.method ?? "unknown") as PaymentMethodKey,

@@ -67,7 +67,7 @@ export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
               <li key={o.id}>
                 {/* Desktop */}
                 <Link
-                  href={`/admin/pedidos/${o.id}`}
+                  href="/admin/pedidos"
                   prefetch
                   className={`hocus:bg-bg-app group hidden ${GRID_COLS} items-center gap-3 px-4 py-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 sm:grid sm:px-5`}
                 >
@@ -96,7 +96,7 @@ export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
 
                 {/* Mobile: card compacto */}
                 <Link
-                  href={`/admin/pedidos/${o.id}`}
+                  href="/admin/pedidos"
                   prefetch
                   className="hocus:bg-bg-app group flex items-center gap-3 px-4 py-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 sm:hidden"
                 >
