@@ -57,6 +57,14 @@ import {
   type PdvProductVariantHit,
   searchProductsForPdv,
 } from "@/actions/product/search-for-pdv";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { formatDocument } from "@/lib/document";
 import { formatBRL, getEffectivePrice } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
@@ -161,25 +169,44 @@ export function PdvShell() {
   const surchargeInCents = inputToCents(surchargeAmountInput) ?? 0;
 
   // Reconcile com subtotal: se usuário digitou em %, mantém % e recomputa R$;
-  // se digitou em R$, recomputa % a partir de R$. Executa quando subtotal muda.
+  // se digitou em R$, recomputa % a partir de R$. Executa SÓ quando subtotal
+  // muda (delta de carrinho). Inputs/edits lidos via ref pra não disparar
+  // re-execução em loop — se eles entrassem no dep array, cada keystroke
+  // re-rodaria este efeito (que chama setX desses mesmos inputs → loop).
+  const reconcileRefs = useRef({
+    discountPctInput,
+    discountInCents,
+    lastDiscountEdit,
+    surchargePctInput,
+    surchargeInCents,
+    lastSurchargeEdit,
+  });
+  reconcileRefs.current = {
+    discountPctInput,
+    discountInCents,
+    lastDiscountEdit,
+    surchargePctInput,
+    surchargeInCents,
+    lastSurchargeEdit,
+  };
   useEffect(() => {
-    if (lastDiscountEdit === "pct") {
-      const pct = inputToPct(discountPctInput);
+    const r = reconcileRefs.current;
+    if (r.lastDiscountEdit === "pct") {
+      const pct = inputToPct(r.discountPctInput);
       const newCents =
         pct === null ? 0 : Math.round((pct / 100) * subtotalInCents);
       setDiscountAmountInput(centsToInput(newCents));
-    } else if (lastDiscountEdit === "amount") {
-      setDiscountPctInput(pctFromCents(discountInCents, subtotalInCents));
+    } else if (r.lastDiscountEdit === "amount") {
+      setDiscountPctInput(pctFromCents(r.discountInCents, subtotalInCents));
     }
-    if (lastSurchargeEdit === "pct") {
-      const pct = inputToPct(surchargePctInput);
+    if (r.lastSurchargeEdit === "pct") {
+      const pct = inputToPct(r.surchargePctInput);
       const newCents =
         pct === null ? 0 : Math.round((pct / 100) * subtotalInCents);
       setSurchargeAmountInput(centsToInput(newCents));
-    } else if (lastSurchargeEdit === "amount") {
-      setSurchargePctInput(pctFromCents(surchargeInCents, subtotalInCents));
+    } else if (r.lastSurchargeEdit === "amount") {
+      setSurchargePctInput(pctFromCents(r.surchargeInCents, subtotalInCents));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subtotalInCents]);
 
   const totalInCents = Math.max(
@@ -1315,45 +1342,49 @@ function QuickSaleDialog({
   const [phone, setPhone] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    inputRef.current?.focus();
-    inputRef.current?.select();
-  }, []);
-
   const canConfirm = name.trim().length > 0;
 
+  // shadcn Dialog (radix) já gerencia focus-trap, ESC pra fechar, e
+  // aria-labelledby/describedby via DialogTitle/Description. Auto-focus
+  // no input principal via onOpenAutoFocus pra não roubar focus do trigger.
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4"
-      onClick={onClose}
-      role="presentation"
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
     >
-      <div
-        className="bg-surface w-full max-w-md rounded-xl border shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal
-        aria-label="Venda rápida"
+      <DialogContent
+        className="sm:max-w-md"
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          inputRef.current?.focus();
+          inputRef.current?.select();
+        }}
       >
-        <div className="border-b px-5 py-4">
-          <h2 className="text-ink-1 text-[16px] font-bold">Venda rápida</h2>
-          <p className="text-ink-4 mt-1 text-[12px]">
+        <DialogHeader>
+          <DialogTitle>Venda rápida</DialogTitle>
+          <DialogDescription>
             Só o nome é obrigatório. O cliente NÃO será cadastrado no sistema —
             o nome fica salvo apenas neste pedido.
-          </p>
-        </div>
+          </DialogDescription>
+        </DialogHeader>
         <form
           onSubmit={(e) => {
             e.preventDefault();
             if (canConfirm) onConfirm(name.trim(), phone.trim());
           }}
-          className="space-y-3 px-5 py-4"
+          className="space-y-3"
         >
           <div>
-            <label className="text-ink-2 mb-1 block text-[12px] font-medium">
+            <label
+              htmlFor="quicksale-name"
+              className="text-ink-2 mb-1 block text-[12px] font-medium"
+            >
               Nome do cliente *
             </label>
             <input
+              id="quicksale-name"
               ref={inputRef}
               type="text"
               value={name}
@@ -1365,10 +1396,14 @@ function QuickSaleDialog({
             />
           </div>
           <div>
-            <label className="text-ink-2 mb-1 block text-[12px] font-medium">
+            <label
+              htmlFor="quicksale-phone"
+              className="text-ink-2 mb-1 block text-[12px] font-medium"
+            >
               Telefone (opcional)
             </label>
             <input
+              id="quicksale-phone"
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
@@ -1379,7 +1414,7 @@ function QuickSaleDialog({
               Use formato internacional. Em branco se não tiver.
             </p>
           </div>
-          <div className="flex justify-end gap-2 pt-2">
+          <DialogFooter>
             <button
               type="button"
               onClick={onClose}
@@ -1394,10 +1429,10 @@ function QuickSaleDialog({
             >
               Usar este nome
             </button>
-          </div>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1419,10 +1454,6 @@ function FullCustomerCreateDialog({
   const [submitting, startSubmit] = useTransition();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1453,27 +1484,26 @@ function FullCustomerCreateDialog({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4"
-      onClick={onClose}
-      role="presentation"
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
     >
-      <div
-        className="bg-surface w-full max-w-lg rounded-xl border shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal
-        aria-label="Cadastrar cliente"
+      <DialogContent
+        className="sm:max-w-lg"
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          inputRef.current?.focus();
+        }}
       >
-        <div className="border-b px-5 py-4">
-          <h2 className="text-ink-1 text-[16px] font-bold">
-            Cadastrar cliente completo
-          </h2>
-          <p className="text-ink-4 mt-1 text-[12px]">
+        <DialogHeader>
+          <DialogTitle>Cadastrar cliente completo</DialogTitle>
+          <DialogDescription>
             Cliente fica salvo na base e pode ser vinculado a futuras vendas.
-          </p>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-3 px-5 py-4">
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-3">
           <div className="flex gap-2">
             <label
               className={`flex-1 cursor-pointer rounded-[8px] border px-3 py-2 text-center text-[12px] ${
@@ -1553,7 +1583,7 @@ function FullCustomerCreateDialog({
               maxLength={1000}
             />
           </div>
-          <div className="flex justify-end gap-2 pt-2">
+          <DialogFooter>
             <button
               type="button"
               onClick={onClose}
@@ -1568,10 +1598,10 @@ function FullCustomerCreateDialog({
             >
               {submitting ? "Salvando…" : "Cadastrar e vincular"}
             </button>
-          </div>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

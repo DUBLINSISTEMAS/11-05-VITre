@@ -2,6 +2,7 @@
   "name": "Vitrê — Gestão",
   "short_name": "Vitrê",
   "description": "Sistema de gestão de loja: catálogo, PDV, estoque.",
+  "id": "/admin",
   "start_url": "/admin",
   "scope": "/",
   "display": "standalone",

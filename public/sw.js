@@ -8,12 +8,28 @@
  *
  * NÃO usa Workbox de propósito — overhead pra problema simples.
  * Manter este arquivo curto e legível.
+ *
+ * CACHE_VERSION:
+ *   ⚠️ BUMP THIS ON DEPLOY (ou troque a data abaixo). Sem bump, clients
+ *   antigos continuam servindo chunks velhos mesmo após push novo. O hash
+ *   ideal seria injetar process.env.NEXT_PUBLIC_BUILD_ID em build, mas
+ *   service workers são servidos como arquivo estático bruto (sem
+ *   bundling), então a forma robusta exigiria um script de build (`scripts/
+ *   stamp-sw.mjs`) substituindo o token na hora do `next build`.
+ *
+ *   Por ora, regra operacional:
+ *     1. Mudou /sw.js, /_next/static, ou qualquer asset em /public que
+ *        seja servido cache-first → bumpar a data abaixo.
+ *     2. /_next/static já tem hash no nome do arquivo (Next.js fingerprinting),
+ *        então mudanças em chunks JS/CSS NÃO precisam de bump aqui — só
+ *        bump se mudar a estratégia de cache ou os assets de /public.
  */
 
-const CACHE_VERSION = "vitre-v1";
+// Formato: vitre-YYYYMMDD — BUMP THIS ON DEPLOY se mudou estratégia de cache.
+const CACHE_VERSION = "vitre-20260519";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 
-self.addEventListener("install", (event) => {
+self.addEventListener("install", () => {
   self.skipWaiting();
 });
 

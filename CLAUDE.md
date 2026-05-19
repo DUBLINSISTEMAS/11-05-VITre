@@ -86,7 +86,7 @@ npm run db:seed          # popula Sandra Brito + placeholders
 
 - ❌ Adicionar Stripe ao checkout do catálogo (lojista vende pelo WhatsApp, ponto). PDV da Fase 5 também não processa cartão — apenas registra a forma de pagamento escolhida como metadado.
 - ❌ **Cadastro/login/perfil/favoritos/histórico/foto/endereço de CLIENTE FINAL NO STOREFRONT** — wedge é "zero login no storefront". Reafirmado em [ADR-0008](docs/decisoes/0008-ux-catalogo-publico-storefront.md). Carrinho em localStorage. **Atenção:** [ADR-0012](docs/decisoes/0012-pivot-vitre-gestao.md) → [ADR-0014](docs/decisoes/0014-customer-admin-vs-storefront.md) introduz tabela `customer` cadastrável **pelo admin** (CRUD interno do lojista, sem login, sem exposição no storefront). Isso **não** viola esta regra — é categoria diferente. Storefront continua anônimo.
-- ❌ Bottom nav do storefront com mais de 4 itens. ADR-0008 fixou: Home · Categorias · Buscar · Sacola.
+- ❌ Bottom nav do storefront com mais de 5 itens ([ADR-0032](docs/decisoes/0032-storefront-bottom-nav-5-tabs.md) ratificou override do ADR-0008). Lista canônica: Início · Categorias · Favoritos · Buscar · Sacola. Favoritos precisa continuar **localStorage-only** — qualquer tentativa de persistir favoritos em DB ou exigir login pra acessá-los exige novo ADR.
 - ❌ Pular RLS "pra facilitar" — vazamento entre tenants é catastrófico. Vale também para `customer`, `stock_movement` e qualquer tabela nova das fases 2+.
 - ❌ Subir imagens sem compressão.
 - ❌ Fazer mutação sem `revalidateTag`.
