@@ -1667,3 +1667,50 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* ========================================================
+ * Print rules — ADR-0034 Camada 2 Onda D (ReportLayout)
+ * ========================================================
+ * Quando lojista clica "Imprimir" numa rota de relatório, o shell admin
+ * (sidebar + topbar) some e só a folha A4 aparece.
+ *
+ * Convenção: rota /admin/.../relatorio renderiza ReportLayout que envolve
+ * conteúdo em .report-print-root. Em modo print, esconde TUDO exceto esse
+ * root (subindo pelo DOM via display:contents pra herdar layout natural).
+ */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  /* Ancestrais do root viram transparentes pra empurrar pra folha. */
+  body,
+  body > *,
+  body > * > *,
+  body > * > * > * {
+    background: white !important;
+  }
+
+  /* Esconde tudo que NÃO é descendente do report-print-root */
+  body :not(.report-print-root):not(.report-print-root *):not(:has(.report-print-root)) {
+    display: none !important;
+  }
+
+  .report-print-root,
+  .report-print-root * {
+    color: black !important;
+    box-shadow: none !important;
+  }
+
+  .report-print-root {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Evita quebra de linha de tabela no meio (já no Tailwind via print:break-inside-avoid) */
+  tr {
+    break-inside: avoid;
+  }
+}

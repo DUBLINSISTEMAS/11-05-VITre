@@ -96,21 +96,32 @@ export default async function EstoquePage({ searchParams }: EstoquePageProps) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* H1 + CTA Dublin v3 (substitui AdminPageHeader) */}
+      {/* H1 + CTAs Dublin v3 (substitui AdminPageHeader) */}
       <div className="flex items-end justify-between gap-4">
         <h1 className="text-[24px] font-bold tracking-[-0.025em] text-ink-1">
           Estoque
         </h1>
-        <Link
-          href="/admin/produtos"
-          className="b3-btn b3-btn--cta"
-          prefetch
-          title="Selecione um produto pra lançar movimentação manual"
-        >
-          <PackageIcon size={14} aria-hidden />
-          <span className="hidden sm:inline">Nova movimentação</span>
-          <span className="sm:hidden">Nova</span>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/estoque/relatorio"
+            className="b3-btn"
+            prefetch
+            title="Gera relatório A4 imprimível com logo e dados da loja"
+          >
+            <span className="hidden sm:inline">Gerar relatório</span>
+            <span className="sm:hidden">Relatório</span>
+          </Link>
+          <Link
+            href="/admin/produtos"
+            className="b3-btn b3-btn--cta"
+            prefetch
+            title="Selecione um produto pra lançar movimentação manual"
+          >
+            <PackageIcon size={14} aria-hidden />
+            <span className="hidden sm:inline">Nova movimentação</span>
+            <span className="sm:hidden">Nova</span>
+          </Link>
+        </div>
       </div>
 
       {/* KPI cards Vitrê — preservados sobre layout BAGY */}
