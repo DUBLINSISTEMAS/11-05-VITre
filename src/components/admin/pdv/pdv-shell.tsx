@@ -407,14 +407,19 @@ export function PdvShell() {
           return;
         }
         case "Escape": {
-          if (
-            document.activeElement === document.body &&
-            cartLengthRef.current > 0
-          ) {
-            e.preventDefault();
-            if (window.confirm("Limpar a venda atual?")) {
-              reset();
-            }
+          // Skip se há dialog/modal aberto — deixa o componente consumir
+          // o ESC (QuickSale/FullCreate, shadcn Dialog em DialogContent etc).
+          const openDialog = document.querySelector(
+            '[role="dialog"][aria-modal="true"], [role="dialog"][data-state="open"]',
+          );
+          if (openDialog) return;
+          // Skip se foco em textarea (não roubar ESC do campo de observação).
+          const ae = document.activeElement;
+          if (ae instanceof HTMLTextAreaElement) return;
+          if (cartLengthRef.current === 0) return;
+          e.preventDefault();
+          if (window.confirm("Limpar a venda atual?")) {
+            reset();
           }
           return;
         }

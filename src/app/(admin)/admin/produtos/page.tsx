@@ -304,7 +304,7 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
             </span>
             <span className="b3-helpbar-text">
               Precisa de ajuda? Em breve teremos vídeos curtos sobre{" "}
-              <button type="button" onClick={() => {}}>produtos</button>.
+              <strong>produtos</strong>.
             </span>
           </div>
 
