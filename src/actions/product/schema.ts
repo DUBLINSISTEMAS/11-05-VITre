@@ -42,6 +42,77 @@ const optionalTrimmedString = (max: number, fieldLabel: string) =>
 export const variantAxisSchema = z.enum(["size", "color"]);
 export type VariantAxis = z.infer<typeof variantAxisSchema>;
 
+/**
+ * ADR-0034 Camada 2 — unidade de venda do produto. Espelha DB enum
+ * `product_unit`. Default `un` cobre 95% varejo SMB BR.
+ */
+export const productUnitSchema = z.enum([
+  "un",
+  "pc",
+  "kg",
+  "g",
+  "m",
+  "cm",
+  "ml",
+  "L",
+  "m2",
+  "m3",
+]);
+export type ProductUnit = z.infer<typeof productUnitSchema>;
+
+/**
+ * ADR-0034 Camada 2 — helpers de validação Zod pros campos novos.
+ * Replicam CHECKs do DB (SQLs 44 e 48) pra dar feedback no form sem
+ * round-trip ao server. Database continua sendo a SoT — se algo passa
+ * por aqui mas viola CHECK, action retorna erro.
+ */
+
+/** Inteiro nullable não-negativo em centavos. */
+const optionalNonnegativeIntInCents = (fieldLabel: string) =>
+  z
+    .number()
+    .int("Use um número inteiro.")
+    .min(0, `${fieldLabel} não pode ser negativo.`)
+    .max(999_999_999, `${fieldLabel} acima do máximo permitido.`)
+    .nullish()
+    .transform((v) => v ?? null);
+
+/** Quantidade inteira nullable não-negativa. */
+const optionalNonnegativeQuantity = (fieldLabel: string) =>
+  z
+    .number()
+    .int("Use um número inteiro.")
+    .min(0, `${fieldLabel} não pode ser negativo.`)
+    .nullish()
+    .transform((v) => v ?? null);
+
+/** GTIN — só dígitos, 8/12/13/14. Vazio "" → null. */
+const optionalGtin = z
+  .union([
+    z
+      .string()
+      .trim()
+      .regex(/^[0-9]+$/, "Use apenas dígitos.")
+      .refine((s) => [8, 12, 13, 14].includes(s.length), {
+        message: "GTIN precisa ter 8, 12, 13 ou 14 dígitos.",
+      }),
+    z.literal(""),
+    z.null(),
+  ])
+  .transform((v) => (v === null || v === "" ? null : v));
+
+/** NCM — só dígitos, 8 caracteres exatos. Vazio → null. */
+const optionalNcm = z
+  .union([
+    z
+      .string()
+      .trim()
+      .regex(/^[0-9]{8}$/, "NCM precisa ter exatamente 8 dígitos."),
+    z.literal(""),
+    z.null(),
+  ])
+  .transform((v) => (v === null || v === "" ? null : v));
+
 export const variantInputSchema = z
   .object({
     /** Presente quando já está no banco; ausente em variante nova. */
@@ -124,6 +195,12 @@ const productFormFieldsSchema = z.object({
     .int()
     .min(0, "Preço não pode ser negativo.")
     .max(999_999_999, "Preço acima do máximo permitido."),
+  /**
+   * ADR-0034 Camada 2 — preço de atacado em centavos. NULL = não configurado.
+   * CHECK wholesale <= base no DB (SQL 48); refine no Zod abaixo replica
+   * pra feedback em tempo real.
+   */
+  wholesalePriceInCents: optionalNonnegativeIntInCents("Preço de atacado"),
   promoPriceInCents: z
     .number()
     .int()
@@ -182,6 +259,44 @@ const productFormFieldsSchema = z.object({
   lining: optionalTrimmedString(120, "Forro"),
   washing: optionalTrimmedString(120, "Lavagem"),
   variants: z.array(variantInputSchema).max(20, "Máximo de 20 variantes."),
+
+  // =====================================================================
+  // ADR-0034 Camada 2 — campos de gestão (custo, estoque mín/máx, GTIN,
+  // marca, unidade, código interno, comissão padrão, NCM). Todos opcionais
+  // — UI mostra warning quando custo está NULL ("margem desconhecida").
+  // =====================================================================
+
+  /** Preço de custo em centavos. NULL = lojista ainda não cadastrou. */
+  costPriceInCents: optionalNonnegativeIntInCents("Preço de custo"),
+  /** Estoque mínimo — dispara alerta de reposição em /admin/estoque/baixo. */
+  minStockQuantity: optionalNonnegativeQuantity("Estoque mínimo"),
+  /** Estoque máximo — projeção de compra. CHECK max >= min no DB (SQL 44). */
+  maxStockQuantity: optionalNonnegativeQuantity("Estoque máximo"),
+  /** GTIN (EAN-8/12/13 ou DUN-14). Só dígitos, sem máscara. */
+  gtin: optionalGtin,
+  /** Marca livre. Sem tabela `brand` separada no MVP. */
+  brand: optionalTrimmedString(80, "Marca"),
+  /** Unidade de venda. Default 'un'. */
+  unit: productUnitSchema.default("un"),
+  /** Código interno do lojista (SKU manual / código de etiqueta). */
+  internalCode: optionalTrimmedString(60, "Código interno"),
+  /**
+   * Comissão padrão de vendedor em basis points (0..10000 = 0..100%).
+   * NULL = sem comissão configurada pra este produto. UI mostra "%" no
+   * input mas grava em bps (input 5.5 → 550 bps).
+   */
+  defaultCommissionBps: z
+    .number()
+    .int("Use um número inteiro.")
+    .min(0, "Comissão não pode ser negativa.")
+    .max(10000, "Comissão máxima 100%.")
+    .nullish()
+    .transform((v) => v ?? null),
+  /**
+   * NCM brasileiro pra integração futura com Bling/Tiny. Texto livre 8
+   * dígitos. Vitrê NÃO valida tabela TIPI nem calcula imposto (ADR-0033).
+   */
+  ncm: optionalNcm,
 });
 
 // ⚠️ MANTENHA SINCRONIZADO: estes 4 refines aparecem em
@@ -225,13 +340,38 @@ const SINGLE_VARIANT_AXIS_MSG: { message: string; path: string[] } = {
   message: "Use apenas um tipo de variante por produto: tamanho ou cor.",
   path: ["variants"],
 };
+/** ADR-0034 Camada 2 — atacado nunca pode ser maior que varejo (CHECK no SQL 48). */
+const WHOLESALE_LTE_BASE = (v: {
+  basePriceInCents: number;
+  wholesalePriceInCents: number | null;
+}) =>
+  v.wholesalePriceInCents === null ||
+  v.wholesalePriceInCents <= v.basePriceInCents;
+const WHOLESALE_LTE_BASE_MSG: { message: string; path: string[] } = {
+  message: "Preço de atacado precisa ser menor ou igual ao preço de venda.",
+  path: ["wholesalePriceInCents"],
+};
+/** ADR-0034 Camada 2 — estoque máximo >= mínimo (CHECK no SQL 44). */
+const MAX_STOCK_GTE_MIN = (v: {
+  minStockQuantity: number | null;
+  maxStockQuantity: number | null;
+}) =>
+  v.minStockQuantity === null ||
+  v.maxStockQuantity === null ||
+  v.maxStockQuantity >= v.minStockQuantity;
+const MAX_STOCK_GTE_MIN_MSG: { message: string; path: string[] } = {
+  message: "Estoque máximo precisa ser maior ou igual ao mínimo.",
+  path: ["maxStockQuantity"],
+};
 
 /** Schema do form (sem `productId`) — usado pelo RHF no client. */
 export const productFormSchema = productFormFieldsSchema
   .refine(PROMO_LESS_THAN_BASE, PROMO_LESS_THAN_BASE_MSG)
   .refine(STOCK_REQUIRED_WHEN_TRACKED, STOCK_REQUIRED_MSG)
   .refine(ACTIVE_REQUIRES_PRICE, ACTIVE_REQUIRES_PRICE_MSG)
-  .refine(SINGLE_VARIANT_AXIS, SINGLE_VARIANT_AXIS_MSG);
+  .refine(SINGLE_VARIANT_AXIS, SINGLE_VARIANT_AXIS_MSG)
+  .refine(WHOLESALE_LTE_BASE, WHOLESALE_LTE_BASE_MSG)
+  .refine(MAX_STOCK_GTE_MIN, MAX_STOCK_GTE_MIN_MSG);
 /**
  * RHF: defaultValues = INPUT (pré-transform — `composition` é string `""`).
  * Server: data = OUTPUT (pós-transform — `composition` é `string|null`).
@@ -247,7 +387,9 @@ export const updateProductSchema = productFormFieldsSchema
   .refine(PROMO_LESS_THAN_BASE, PROMO_LESS_THAN_BASE_MSG)
   .refine(STOCK_REQUIRED_WHEN_TRACKED, STOCK_REQUIRED_MSG)
   .refine(ACTIVE_REQUIRES_PRICE, ACTIVE_REQUIRES_PRICE_MSG)
-  .refine(SINGLE_VARIANT_AXIS, SINGLE_VARIANT_AXIS_MSG);
+  .refine(SINGLE_VARIANT_AXIS, SINGLE_VARIANT_AXIS_MSG)
+  .refine(WHOLESALE_LTE_BASE, WHOLESALE_LTE_BASE_MSG)
+  .refine(MAX_STOCK_GTE_MIN, MAX_STOCK_GTE_MIN_MSG);
 /**
  * Tipo do INPUT da action (pré-Zod-parse). Usamos `z.input<>` porque a action
  * faz `safeParse` internamente — defaults (`axis: "size"`) e transforms
@@ -296,3 +438,46 @@ export const bulkDeleteProductsSchema = z.object({
     ),
 });
 export type BulkDeleteProductsInput = z.infer<typeof bulkDeleteProductsSchema>;
+
+// ---------- Bulk update custo (ADR-0034 Camada 2 — /admin/produtos/custos) ----------
+
+/**
+ * Linha do batch de atualização de custo. Cada linha representa um produto
+ * que o lojista editou na grid bulk-edit. Linhas com `null` em ambos os
+ * campos viram no-op (lojista limpou ambos os campos).
+ *
+ * `costPriceInCents` undefined = "não tocou" (mantém valor atual no DB).
+ * `costPriceInCents` null = "limpou explicitamente" (zera no DB).
+ * Mesma semântica pra `defaultCommissionBps`.
+ */
+export const productCostBatchRowSchema = z.object({
+  productId: z.string().uuid(),
+  costPriceInCents: z
+    .number()
+    .int()
+    .min(0, "Custo não pode ser negativo.")
+    .max(999_999_999, "Custo acima do máximo permitido.")
+    .nullable()
+    .optional(),
+  defaultCommissionBps: z
+    .number()
+    .int()
+    .min(0, "Comissão não pode ser negativa.")
+    .max(10000, "Comissão máxima 100%.")
+    .nullable()
+    .optional(),
+});
+export type ProductCostBatchRow = z.infer<typeof productCostBatchRowSchema>;
+
+export const updateProductCostBatchSchema = z.object({
+  rows: z
+    .array(productCostBatchRowSchema)
+    .min(1, "Nenhuma alteração pra salvar.")
+    .max(
+      BULK_PRODUCTS_MAX,
+      `Máximo ${BULK_PRODUCTS_MAX} produtos por vez.`,
+    ),
+});
+export type UpdateProductCostBatchInput = z.infer<
+  typeof updateProductCostBatchSchema
+>;

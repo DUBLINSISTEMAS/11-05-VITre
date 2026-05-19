@@ -1,0 +1,1 @@
+ALTER TABLE "product" ADD COLUMN "wholesale_price_in_cents" integer;

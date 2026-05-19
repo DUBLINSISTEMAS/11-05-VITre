@@ -163,6 +163,7 @@ export async function updateProduct(
           slug: nextSlug,
           description: data.description,
           basePriceInCents: data.basePriceInCents,
+          wholesalePriceInCents: data.wholesalePriceInCents,
           promoPriceInCents: data.promoPriceInCents,
           categoryId: data.categoryId,
           trackStock: data.trackStock,
@@ -178,6 +179,16 @@ export async function updateProduct(
           modeling: data.modeling,
           lining: data.lining,
           washing: data.washing,
+          // ADR-0034 Camada 2 — campos de gestão.
+          costPriceInCents: data.costPriceInCents,
+          minStockQuantity: data.minStockQuantity,
+          maxStockQuantity: data.maxStockQuantity,
+          gtin: data.gtin,
+          brand: data.brand,
+          unit: data.unit,
+          internalCode: data.internalCode,
+          defaultCommissionBps: data.defaultCommissionBps,
+          ncm: data.ncm,
           updatedAt: new Date(),
         })
         .where(

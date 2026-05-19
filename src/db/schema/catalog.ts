@@ -117,6 +117,14 @@ export const productTable = pgTable(
     slug: text("slug").notNull(),
     description: text("description").notNull().default(""),
     basePriceInCents: integer("base_price_in_cents").notNull(),
+    /**
+     * ADR-0034 Camada 2 — preço de atacado em centavos. NULL = produto não
+     * tem preço de atacado configurado (default). Quando NOT NULL, o PDV
+     * permite selecionar `price_table_used='wholesale'` e usa este valor.
+     * CHECK: wholesale <= base (atacado nunca pode ser maior que varejo)
+     * em supabase/sql/48_product_wholesale_check.sql.
+     */
+    wholesalePriceInCents: integer("wholesale_price_in_cents"),
     promoPriceInCents: integer("promo_price_in_cents"),
     promoStartsAt: timestamp("promo_starts_at"),
     promoEndsAt: timestamp("promo_ends_at"),
