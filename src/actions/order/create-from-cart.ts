@@ -44,7 +44,7 @@ import {
 import { isStockExhausted, resolveStockState } from "@/lib/cart/stock";
 import { env } from "@/lib/env";
 import { recordSaleMovements } from "@/lib/order/record-sale-movements";
-import { getEffectivePrice } from "@/lib/pricing";
+import { resolveVariantPrice } from "@/lib/pricing";
 import { generatePublicOrderToken } from "@/lib/public-order";
 import {
   checkRateLimit,
@@ -293,18 +293,24 @@ export async function createOrderFromCart(
           continue;
         }
 
-        // Preço efetivo: variante manda se tem priceInCents próprio.
-        const basePriceInCents =
-          variant?.priceInCents ?? product.basePriceInCents;
-        const promoPriceInCents =
-          variant?.promoPriceInCents ?? product.promoPriceInCents;
-        const promoFields = {
-          basePriceInCents,
-          promoPriceInCents,
-          promoStartsAt: product.promoStartsAt,
-          promoEndsAt: product.promoEndsAt,
-        };
-        const effective = getEffectivePrice(promoFields, now);
+        // Preço efetivo via helper compartilhado com PDV (B3 auditoria
+        // 2026-05-19) — variant.priceInCents/promoPriceInCents fazem
+        // override; janela de promo é sempre do product.
+        const effective = resolveVariantPrice(
+          variant
+            ? {
+                priceInCents: variant.priceInCents,
+                promoPriceInCents: variant.promoPriceInCents,
+              }
+            : null,
+          {
+            basePriceInCents: product.basePriceInCents,
+            promoPriceInCents: product.promoPriceInCents,
+            promoStartsAt: product.promoStartsAt,
+            promoEndsAt: product.promoEndsAt,
+          },
+          now,
+        );
 
         computedItems.push({
           productId: product.id,

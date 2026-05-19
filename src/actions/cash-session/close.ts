@@ -88,7 +88,29 @@ export async function closeCashSession(
 
   try {
     const result = await withTenant(store.id, userId, async (tx) => {
-      // 1. Buscar sessão alvo
+      // B1 auditoria 2026-05-19 — race close-vs-venda:
+      //
+      // Antes: SELECT sem lock + UPDATE com `closed_at IS NULL` no WHERE.
+      // Janela: entre o snapshot dos aggregates e o UPDATE, uma venda
+      // concorrente (createBalcaoSale auto-attach na sessão aberta) podia
+      // anexar um movimento que NÃO entrava no `closingExpectedInCents`.
+      // O UPDATE ainda ia rodar (sessão ainda IS NULL), mas o snapshot
+      // ficava stale → relatório errado.
+      //
+      // Fix em 2 camadas:
+      //  1) pg_advisory_xact_lock(hashtext('cash-session-close-' || storeId))
+      //     — serializa concorrência dentro da MESMA loja.
+      //  2) SELECT ... FOR UPDATE na cashSession — vendas concorrentes que
+      //     leiam essa sessão via `SELECT ... WHERE closed_at IS NULL`
+      //     ficam bloqueadas até o COMMIT do close (auto-attach espera).
+      //
+      // Custo: vendas concorrentes na MESMA loja durante o close serializam.
+      // Aceitável — close é raro e rápido (segundos).
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${"cash-session-close-" + store.id}))`,
+      );
+
+      // 1. Buscar sessão alvo (com FOR UPDATE pra bloquear race)
       const [target] = await tx
         .select({
           id: cashSessionTable.id,
@@ -103,7 +125,8 @@ export async function closeCashSession(
             eq(cashSessionTable.storeId, store.id),
           ),
         )
-        .limit(1);
+        .limit(1)
+        .for("update");
 
       if (!target) {
         return { ok: false as const, errorCode: "NOT_FOUND" as const };

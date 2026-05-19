@@ -53,6 +53,69 @@ export function formatBRL(cents: number): string {
   return `R$ ${(cents / 100).toFixed(2).replace(".", ",")}`;
 }
 
+// ============================================================
+// Variant pricing — resolução compartilhada (PDV + checkout)
+// ============================================================
+//
+// Variant tem override de preço base (`priceInCents`) e de promo
+// (`promoPriceInCents`). NÃO tem janela própria — a janela de promo
+// é sempre `product.promoStartsAt`/`product.promoEndsAt` (compartilhada).
+//
+// Regra de fallback (espelha o que `create-from-cart.ts` já fazia):
+//   - base efetivo: `variant.priceInCents ?? product.basePriceInCents`
+//   - promo efetiva: `variant.promoPriceInCents ?? product.promoPriceInCents`
+//   - janela: sempre vinda do product
+//
+// PDV (`createBalcaoSale`) ignorava `variant.promoPriceInCents` antes
+// desta consolidação — storefront/checkout honrava. Helper unifica.
+
+export interface VariantPriceInput {
+  /** Override de preço base da variante (null = herda do product). */
+  priceInCents: number | null;
+  /** Override de promo da variante (null = herda do product). */
+  promoPriceInCents: number | null;
+}
+
+export interface ProductPriceInput {
+  basePriceInCents: number;
+  promoPriceInCents: number | null;
+  promoStartsAt?: Date | null;
+  promoEndsAt?: Date | null;
+}
+
+/**
+ * Resolve o preço efetivo (em centavos) considerando override de variante.
+ *
+ * Quando `variant` é null, equivale a `getEffectivePrice(product, now)`.
+ *
+ * Quando `variant` é informada:
+ *   - base = variant.priceInCents ?? product.basePriceInCents
+ *   - promo = variant.promoPriceInCents ?? product.promoPriceInCents
+ *   - janela de promo = product.promoStartsAt/promoEndsAt
+ *
+ * Helper PURO. Sem acesso a DB / agora externo. Use o mesmo `now` que
+ * você usa pra demais snapshots da venda pra evitar drift.
+ */
+export function resolveVariantPrice(
+  variant: VariantPriceInput | null,
+  product: ProductPriceInput,
+  now: Date = new Date(),
+): number {
+  const basePriceInCents =
+    variant?.priceInCents ?? product.basePriceInCents;
+  const promoPriceInCents =
+    variant?.promoPriceInCents ?? product.promoPriceInCents;
+  return getEffectivePrice(
+    {
+      basePriceInCents,
+      promoPriceInCents,
+      promoStartsAt: product.promoStartsAt,
+      promoEndsAt: product.promoEndsAt,
+    },
+    now,
+  );
+}
+
 /**
  * Label de preço pra listagem: mostra promoção ativa quando aplicável.
  *  - "R$ 19,90" (sem promo)

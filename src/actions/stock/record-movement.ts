@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { headers } from "next/headers";
 
@@ -111,6 +111,24 @@ export async function recordStockMovement(
         });
         if (!variant) return null;
       }
+
+      // B2 auditoria 2026-05-19 — advisory lock por entidade alvo.
+      //
+      // Antes: dois manual_out simultâneos no mesmo produto/variante
+      // batiam na trigger `stock_movement_sync_cache` que atualiza
+      // `stock_quantity`; com CHECK ≥0 no schema, o segundo update
+      // estourava com erro genérico do Postgres ("new row violates
+      // check constraint") — sem feedback útil pra UI.
+      //
+      // Pattern igual ao create-from-cart.ts / create-balcao-sale.ts:
+      // lock por hashtext("stock-" + entityId), variant tem prioridade
+      // sobre product. Lock segura até COMMIT do tx; serializa
+      // movements concorrentes na mesma entidade sem bloquear vendas
+      // de outros itens.
+      const lockTarget = data.variantId ?? data.productId;
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${"stock-" + lockTarget}))`,
+      );
 
       const [inserted] = await tx
         .insert(stockMovementTable)

@@ -39,7 +39,7 @@ import {
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { recordSaleMovements } from "@/lib/order/record-sale-movements";
-import { getEffectivePrice } from "@/lib/pricing";
+import { resolveVariantPrice } from "@/lib/pricing";
 import { generatePublicOrderToken } from "@/lib/public-order";
 import {
   checkRateLimit,
@@ -247,6 +247,7 @@ export async function createBalcaoSale(
                   productId: true,
                   name: true,
                   priceInCents: true,
+                  promoPriceInCents: true,
                   trackStock: true,
                   stockQuantity: true,
                 },
@@ -291,17 +292,25 @@ export async function createBalcaoSale(
             }
           }
 
-          const effectivePrice = variant?.priceInCents
-            ? variant.priceInCents
-            : getEffectivePrice(
-                {
-                  basePriceInCents: product.basePriceInCents,
-                  promoPriceInCents: product.promoPriceInCents,
-                  promoStartsAt: product.promoStartsAt,
-                  promoEndsAt: product.promoEndsAt,
-                },
-                now,
-              );
+          // ADR-0026 / fix auditoria B3 — usa helper que honra
+          // `variant.promoPriceInCents` quando presente (storefront/
+          // checkout já honrava; PDV antes ignorava). Janela é sempre
+          // do product (variant não tem startsAt/endsAt própria).
+          const effectivePrice = resolveVariantPrice(
+            variant
+              ? {
+                  priceInCents: variant.priceInCents,
+                  promoPriceInCents: variant.promoPriceInCents,
+                }
+              : null,
+            {
+              basePriceInCents: product.basePriceInCents,
+              promoPriceInCents: product.promoPriceInCents,
+              promoStartsAt: product.promoStartsAt,
+              promoEndsAt: product.promoEndsAt,
+            },
+            now,
+          );
 
           subtotalInCents += effectivePrice * it.quantity;
           computedItems.push({
@@ -348,11 +357,38 @@ export async function createBalcaoSale(
           }
         }
 
-        const discount = validatedCoupon
-          ? validatedCoupon.discountInCents
-          : data.discountInCents ?? 0;
+        // S8 auditoria 2026-05-19 — server-side authoritative:
+        //
+        //   - com couponId: server usa validatedCoupon.discountInCents e
+        //     IGNORA `data.discountInCents` (recomputado de coupon table
+        //     dentro do tx; client não dita o número).
+        //   - sem couponId: aceita `data.discountInCents` como desconto
+        //     manual do lojista (operador digitou %/valor), mas valida
+        //     contra subtotal pra impedir total negativo.
+        //
+        // Se o client mandou `discountInCents` JUNTO com couponId, logamos
+        // como warning pra rastrear UI quebrada/tampering, mas NÃO falhamos
+        // (cupom server-side vence — não vale punir UX por bug do cliente).
+        let discount: number;
+        if (validatedCoupon) {
+          discount = validatedCoupon.discountInCents;
+          if (
+            data.discountInCents !== null &&
+            data.discountInCents !== undefined &&
+            data.discountInCents !== validatedCoupon.discountInCents
+          ) {
+            logger.warn("balcao.discount_payload_overridden_by_coupon", {
+              storeId: store.id,
+              couponId: validatedCoupon.couponId,
+              payloadDiscount: data.discountInCents,
+              serverDiscount: validatedCoupon.discountInCents,
+            });
+          }
+        } else {
+          discount = data.discountInCents ?? 0;
+        }
         const surcharge = data.surchargeInCents ?? 0;
-        if (discount > subtotalInCents) {
+        if (discount < 0 || discount > subtotalInCents) {
           return {
             ok: false,
             errorCode: "DISCOUNT_OVER_TOTAL" as const,
