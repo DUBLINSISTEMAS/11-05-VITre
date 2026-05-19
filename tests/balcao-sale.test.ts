@@ -32,6 +32,9 @@ function validBase() {
     customerId: null,
     paymentMethod: "cash" as const,
     discountInCents: null,
+    // ADR-0020 — campo obrigatório do schema (nullable, mas precisa estar
+    // presente). Default null = sem acréscimo.
+    surchargeInCents: null,
     cashReceivedInCents: null,
     notes: null,
   };

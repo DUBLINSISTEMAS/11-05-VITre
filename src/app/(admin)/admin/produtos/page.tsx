@@ -1,7 +1,6 @@
 import {
   and,
   asc,
-  count,
   desc,
   eq,
   gte,
@@ -139,8 +138,25 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
     : [...baseConditions, ...statusConditions(statusFilter)];
   const whereClause = and(...listConditions);
 
-  // ---- Fetch paralelo: lista + total + categorias + capas + counts ----
+  // ---- Fetch sequencial dentro do tx: 4 queries em vez de 9 ----
+  // Counts por status agregados num único SELECT via `count(*) FILTER`
+  // (mesmo pattern de /admin/pedidos:108). Antes eram 7 queries seriais
+  // só de count (cAll/cActive/cInactive/cDraft/cNoStock/cPromo/total) —
+  // agora 1 query cobre todos os buckets + total da listagem.
   const offset = (page - 1) * PAGE_SIZE;
+
+  // Helpers SQL pra montar os filtros de count dentro do FILTER (...) sem
+  // duplicar lógica. CADA bucket aplica os mesmos `baseConditions` (loja
+  // + busca + categoria) — o WHERE externo já garante isso, então
+  // FILTER só precisa do recorte específico da aba.
+  const draftCond = sql`(${productTable.slug} like 'draft-%' or btrim(${productTable.name}) = '')`;
+  const notDraftCond = sql`${productTable.slug} not like 'draft-%' and btrim(${productTable.name}) <> ''`;
+  const promoActiveCond = sql`${productTable.promoPriceInCents} is not null
+    and (${productTable.promoStartsAt} is null or ${productTable.promoStartsAt} <= now())
+    and (${productTable.promoEndsAt} is null or ${productTable.promoEndsAt} >= now())`;
+
+  const whereCounts = and(...baseConditions);
+
   const {
     products,
     total,
@@ -148,12 +164,6 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
     coversByProduct,
     tabCounts,
   } = await withTenant(store.id, session.user.id, async (tx) => {
-    const countByStatus = (s: StatusFilter | null) =>
-      tx
-        .select({ value: count() })
-        .from(productTable)
-        .where(and(...baseConditions, ...statusConditions(s)));
-
     // SÉRIE dentro do tx — `pg` deprecou queries paralelas no mesmo client.
     const products = await tx.query.productTable.findMany({
       where: whereClause,
@@ -175,32 +185,59 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
         categoryId: true,
       },
     });
-    const totalRows = await tx
-      .select({ value: count() })
+
+    // 1 query × 7 buckets via FILTER. Respeita baseConditions (loja + q +
+    // categoria) mas NÃO statusFilter/promoFilter — esses são EIXOS de
+    // tab. Inclui também o `total` da listagem (mesmas condições que
+    // whereClause aplica) recomputado em memória abaixo.
+    const aggRow = await tx
+      .select({
+        all: sql<number>`count(*) filter (where ${notDraftCond})::int`,
+        active: sql<number>`count(*) filter (where ${productTable.isActive} = true and ${notDraftCond})::int`,
+        inactive: sql<number>`count(*) filter (where ${productTable.isActive} = false and ${notDraftCond})::int`,
+        draft: sql<number>`count(*) filter (where ${draftCond})::int`,
+        noStock: sql<number>`count(*) filter (where ${productTable.trackStock} = true and ${productTable.stockQuantity} = 0 and ${notDraftCond})::int`,
+        promo: sql<number>`count(*) filter (where ${promoActiveCond} and ${notDraftCond})::int`,
+      })
       .from(productTable)
-      .where(whereClause);
+      .where(whereCounts);
+
+    const agg = aggRow[0] ?? {
+      all: 0,
+      active: 0,
+      inactive: 0,
+      draft: 0,
+      noStock: 0,
+      promo: 0,
+    };
+
+    // total da listagem corrente: deriva do bucket relevante da aba.
+    // Evita uma segunda query agregada com whereClause completo.
+    const total = onlyPromo
+      ? agg.promo
+      : statusFilter === "active"
+        ? agg.active
+        : statusFilter === "inactive"
+          ? agg.inactive
+          : statusFilter === "draft"
+            ? agg.draft
+            : statusFilter === "no-stock"
+              ? agg.noStock
+              : agg.all;
+
     const categories = await tx.query.categoryTable.findMany({
       where: eq(categoryTable.storeId, store.id),
       orderBy: [asc(categoryTable.position), asc(categoryTable.name)],
       columns: { id: true, name: true, parentId: true },
     });
-    const cAll = await countByStatus(null);
-    const cActive = await countByStatus("active");
-    const cInactive = await countByStatus("inactive");
-    const cDraft = await countByStatus("draft");
-    const cNoStock = await countByStatus("no-stock");
-    const cPromo = await tx
-      .select({ value: count() })
-      .from(productTable)
-      .where(and(...baseConditions, ...promoConditions(), ...NOT_DRAFT));
 
     const tabCounts = {
-      all: cAll[0]?.value ?? 0,
-      active: cActive[0]?.value ?? 0,
-      inactive: cInactive[0]?.value ?? 0,
-      draft: cDraft[0]?.value ?? 0,
-      "no-stock": cNoStock[0]?.value ?? 0,
-      promo: cPromo[0]?.value ?? 0,
+      all: agg.all,
+      active: agg.active,
+      inactive: agg.inactive,
+      draft: agg.draft,
+      "no-stock": agg.noStock,
+      promo: agg.promo,
     };
 
     let coversByProduct = new Map<string, string>();
@@ -224,7 +261,7 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
 
     return {
       products,
-      total: totalRows[0]?.value ?? 0,
+      total,
       categories,
       coversByProduct,
       tabCounts,

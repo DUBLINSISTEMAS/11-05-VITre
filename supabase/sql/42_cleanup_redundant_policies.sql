@@ -1,0 +1,33 @@
+-- =====================================================================
+-- Vitrê — Cleanup de policy redundante em "order"
+-- =====================================================================
+-- Auditoria 2026-05-19 (A3): a policy `order_anonymous_insert` (SQL 01:127-136)
+-- aplica `WITH CHECK (store_id = current GUC)` em INSERT — exatamente a
+-- mesma condição que `order_tenant_isolation` (FOR ALL) já aplica.
+--
+-- Comportamento do Postgres com `FOR ALL`:
+--   - USING <expr> é avaliado em SELECT/UPDATE/DELETE.
+--   - Quando WITH CHECK é OMITIDO, o Postgres usa a USING como WITH CHECK
+--     pra INSERT/UPDATE.
+--   - Logo `order_tenant_isolation` (FOR ALL com USING `store_id = GUC`)
+--     já permite INSERT só quando store_id casa com o GUC.
+--
+-- Policies múltiplas em Postgres combinam com OR (any-match). `order_anonymous_insert`
+-- portanto NUNCA adiciona acesso novo: a condição é idêntica e a permissiva
+-- "ALL" já cobre. Pior: o nome "anonymous_insert" sugere SELECT/INSERT pra
+-- anon role, o que não existe — confunde leitor.
+--
+-- Decisão: DROP. Mantém só `order_tenant_isolation` cobrindo INSERT.
+--
+-- Idempotente: DROP IF EXISTS roda múltiplas vezes sem erro.
+-- =====================================================================
+
+DROP POLICY IF EXISTS order_anonymous_insert ON "order";
+
+-- Verificação (rode manual após apply):
+--   SELECT policyname, cmd
+--     FROM pg_policies
+--    WHERE schemaname = 'public' AND tablename = 'order'
+--    ORDER BY policyname;
+--
+-- Esperado: apenas `order_tenant_isolation` (cmd = ALL).
