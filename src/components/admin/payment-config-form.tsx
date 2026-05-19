@@ -61,7 +61,7 @@ export function PaymentConfigForm({ initialData }: PaymentConfigFormProps) {
     handleSubmit,
     control,
     watch,
-    formState: { errors, isDirty },
+    formState: { errors },
     setError,
   } = useForm<UpdatePaymentInput>({
     resolver: zodResolver(updatePaymentSchema),
@@ -325,7 +325,7 @@ export function PaymentConfigForm({ initialData }: PaymentConfigFormProps) {
       <div className="hidden justify-end pt-4 lg:flex">
         <Button
           type="submit"
-          disabled={isPending || !isDirty}
+          disabled={isPending}
           className="min-w-32"
         >
           {isPending ? (
@@ -351,7 +351,7 @@ export function PaymentConfigForm({ initialData }: PaymentConfigFormProps) {
       >
         <Button
           type="submit"
-          disabled={isPending || !isDirty}
+          disabled={isPending}
           className="w-full"
           size="lg"
         >

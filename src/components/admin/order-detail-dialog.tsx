@@ -6,6 +6,7 @@ import {
   PhoneIcon,
   PrinterIcon,
 } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useState, useTransition } from "react";
 
 import {
@@ -229,11 +230,12 @@ function OrderDetailContent({
                 >
                   <div className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-bg-app sm:size-14">
                     {it.imageUrlSnapshot ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <Image
                         src={it.imageUrlSnapshot}
                         alt=""
-                        className="size-full object-cover"
+                        fill
+                        sizes="56px"
+                        className="object-cover"
                       />
                     ) : null}
                   </div>

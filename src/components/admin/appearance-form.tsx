@@ -48,7 +48,7 @@ export function AppearanceForm({ initialData }: AppearanceFormProps) {
   const {
     handleSubmit,
     control,
-    formState: { errors, isDirty },
+    formState: { errors },
     setError,
   } = useForm<UpdateAppearanceInput>({
     resolver: zodResolver(updateAppearanceSchema),
@@ -184,7 +184,7 @@ export function AppearanceForm({ initialData }: AppearanceFormProps) {
       <div className="hidden justify-end pt-4 lg:flex">
         <button
           type="submit"
-          disabled={isPending || !isDirty}
+          disabled={isPending}
           className="b3-btn b3-btn--cta min-w-32 justify-center disabled:cursor-not-allowed disabled:opacity-50"
           style={{ height: 40 }}
         >
@@ -211,7 +211,7 @@ export function AppearanceForm({ initialData }: AppearanceFormProps) {
       >
         <button
           type="submit"
-          disabled={isPending || !isDirty}
+          disabled={isPending}
           className="b3-btn b3-btn--cta w-full justify-center disabled:cursor-not-allowed disabled:opacity-50"
           style={{ height: 44 }}
         >

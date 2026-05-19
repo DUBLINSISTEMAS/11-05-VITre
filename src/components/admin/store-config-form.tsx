@@ -66,7 +66,7 @@ export function StoreConfigForm({
     register,
     handleSubmit,
     control,
-    formState: { errors, isDirty },
+    formState: { errors },
     setError,
   } = useForm<UpdateStoreInput>({
     resolver: zodResolver(updateStoreSchema),
@@ -331,7 +331,7 @@ export function StoreConfigForm({
       <div className="hidden justify-end pt-4 lg:flex">
         <Button
           type="submit"
-          disabled={isPending || !isDirty}
+          disabled={isPending}
           className="min-w-32"
         >
           {isPending ? (
@@ -357,7 +357,7 @@ export function StoreConfigForm({
       >
         <Button
           type="submit"
-          disabled={isPending || !isDirty}
+          disabled={isPending}
           className="w-full"
           size="lg"
         >

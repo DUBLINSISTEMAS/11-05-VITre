@@ -331,11 +331,13 @@ export function ImageUploader({
                 key={s.id}
                 className="group bg-bg-app relative aspect-[3/4] overflow-hidden rounded-xl border border-line"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={s.previewUrl}
                   alt={`Foto ${idx + 1}`}
-                  className="size-full object-cover"
+                  fill
+                  sizes="(max-width: 640px) 33vw, 200px"
+                  unoptimized
+                  className="object-cover"
                 />
                 {idx === 0 ? (
                   <span className="bg-ink-1 text-white absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.04em]">
@@ -406,11 +408,13 @@ export function ImageUploader({
             key={p.id}
             className="bg-bg-app relative aspect-[3/4] overflow-hidden rounded-xl border border-line"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={p.previewUrl}
               alt=""
-              className="size-full object-cover opacity-60"
+              fill
+              sizes="(max-width: 640px) 33vw, 200px"
+              unoptimized
+              className="object-cover opacity-60"
             />
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/40">
               <Loader2Icon className="size-6 animate-spin text-white" />
