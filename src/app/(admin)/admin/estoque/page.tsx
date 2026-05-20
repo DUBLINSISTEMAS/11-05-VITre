@@ -6,8 +6,8 @@ import { z } from "zod";
 import {
   listStockMovements,
   loadStockKpis,
-  type StockMovement,
 } from "@/actions/stock/load";
+import type { StockMovement } from "@/actions/stock/types";
 import { StockKpiCards } from "@/components/admin/stock-kpis";
 import { StockMovementsTable } from "@/components/admin/stock-movements-table";
 import { StockToolbar } from "@/components/admin/stock-toolbar";

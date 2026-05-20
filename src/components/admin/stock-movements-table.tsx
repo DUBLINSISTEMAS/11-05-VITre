@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-import type { StockMovementRow } from "@/actions/stock/load";
+import type { StockMovementRow } from "@/actions/stock/types";
 import { formatRelativeDate } from "@/lib/format";
 
 interface StockMovementsTableProps {

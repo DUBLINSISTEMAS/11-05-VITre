@@ -17,38 +17,17 @@ import {
 import {
   productTable,
   productVariantTable,
-  type StockMovement,
   stockMovementTable,
 } from "@/db/schema";
 import { requireSession } from "@/lib/auth-server";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
-
-export interface StockMovementRow {
-  id: string;
-  productId: string;
-  productName: string;
-  variantId: string | null;
-  variantName: string | null;
-  movementType: StockMovement["movementType"];
-  quantityDelta: number;
-  referenceType: string | null;
-  referenceId: string | null;
-  notes: string | null;
-  createdAt: Date;
-}
-
-export interface ListMovementsParams {
-  q?: string;
-  movementType?: StockMovement["movementType"] | null;
-  page?: number;
-  pageSize?: number;
-}
-
-export interface ListMovementsResult {
-  items: StockMovementRow[];
-  total: number;
-}
+import type {
+  ListMovementsParams,
+  ListMovementsResult,
+  StockKpis,
+  StockMovementRow,
+} from "./types";
 
 /**
  * Lista movimentações de estoque do tenant atual com filtros (Fase 4 —
@@ -168,17 +147,6 @@ export async function listStockMovements(
   });
 }
 
-export interface StockKpis {
-  /** Soma de product.stockQuantity (cache) — saldo atual estimado. */
-  currentTotal: number;
-  /** Soma de deltas positivos no mês corrente (manual_in + sale return + initial). */
-  monthIn: number;
-  /** Soma de deltas negativos no mês corrente (valor absoluto: manual_out + sale). */
-  monthOut: number;
-  /** Contagem de movimentos type=adjustment no mês corrente. */
-  monthAdjustments: number;
-}
-
 /**
  * Estatísticas de estoque pro topo da página /admin/estoque
  * (follow-up Fase 4 — ADR-0015).
@@ -265,5 +233,3 @@ export async function loadStockKpis(): Promise<StockKpis> {
   });
 }
 
-// Re-export pra outros lugares que precisarem do tipo
-export type { StockMovement };

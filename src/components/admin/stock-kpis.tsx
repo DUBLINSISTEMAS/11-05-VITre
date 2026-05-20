@@ -5,7 +5,7 @@ import {
   WarehouseIcon,
 } from "lucide-react";
 
-import type { StockKpis } from "@/actions/stock/load";
+import type { StockKpis } from "@/actions/stock/types";
 import { cn } from "@/lib/utils";
 
 interface StockKpiCardsProps {
