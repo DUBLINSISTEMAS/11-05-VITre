@@ -95,10 +95,42 @@ interface LastSale {
 const PAYMENT_METHODS: PaymentMethodOption[] = [
   { value: "cash", label: "Dinheiro", Icon: BanknoteIcon },
   { value: "pix", label: "PIX", Icon: ReceiptIcon },
-  { value: "debit", label: "Débito", Icon: CreditCardIcon },
-  { value: "credit", label: "Crédito", Icon: CreditCardIcon },
+  { value: "debit", label: "Cartão débito", Icon: CreditCardIcon },
+  { value: "credit", label: "Cartão crédito", Icon: CreditCardIcon },
   { value: "other", label: "Outro", Icon: PackageIcon },
 ];
+
+const MAX_PAYMENT_LINES = 5;
+
+/**
+ * Sprint 1A — uma linha do pagamento dividido no form do PDV.
+ * Strings em vez de cents pra acomodar UX de digitação (vírgula, vazio).
+ * Conversão pra cents acontece no submit.
+ */
+interface PaymentLineState {
+  id: string;
+  method: PaymentMethod;
+  amountInput: string;
+  cashReceivedInput: string;
+  notes: string;
+}
+
+function nextPaymentLineId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `pline-${Math.random().toString(36).slice(2, 11)}`;
+}
+
+function makeDefaultPaymentLine(): PaymentLineState {
+  return {
+    id: nextPaymentLineId(),
+    method: "cash",
+    amountInput: "",
+    cashReceivedInput: "",
+    notes: "",
+  };
+}
 
 function inputToCents(value: string): number | null {
   const trimmed = value.trim();
@@ -136,9 +168,11 @@ function pctFromCents(cents: number, base: number): string {
 export function PdvShell() {
   const router = useRouter();
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(
-    null,
-  );
+  // Sprint 1A — pagamento dividido. Lista de 1..5 linhas. Substitui o
+  // antigo state `paymentMethod` + `cashReceivedInput`.
+  const [paymentLines, setPaymentLines] = useState<PaymentLineState[]>(() => [
+    makeDefaultPaymentLine(),
+  ]);
   // ADR-0020 — desconto e acréscimo duais (R$ ou %). R$ é canônico no DB; %
   // é UX. `lastEdit` evita stomp quando o subtotal muda: se usuário digitou
   // em %, manter % e recomputar R$; se digitou em R$, manter R$ e recomputar %.
@@ -153,7 +187,6 @@ export function PdvShell() {
     "amount" | "pct" | null
   >(null);
 
-  const [cashReceivedInput, setCashReceivedInput] = useState("");
   const [notes, setNotes] = useState("");
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [customerLabel, setCustomerLabel] = useState<string>("");
@@ -219,13 +252,35 @@ export function PdvShell() {
     0,
     subtotalInCents - discountInCents + surchargeInCents,
   );
-  const cashReceivedInCents = inputToCents(cashReceivedInput);
-  const troco =
-    paymentMethod === "cash" &&
-    cashReceivedInCents !== null &&
-    cashReceivedInCents >= totalInCents
-      ? cashReceivedInCents - totalInCents
-      : null;
+  // Sprint 1A — derivação do pagamento dividido.
+  // Cada linha tem amountInput (string) → centavos para soma/comparação.
+  const paymentsSumInCents = paymentLines.reduce(
+    (acc, line) => acc + (inputToCents(line.amountInput) ?? 0),
+    0,
+  );
+  const paymentsRemainingInCents = totalInCents - paymentsSumInCents;
+  // Troco total: soma dos (cashReceived - amount) das linhas cash onde
+  // cashReceived > amount. Visualmente mostrado per-linha; aqui é só
+  // pra exibir num só lugar abaixo da lista (preserva UX antiga).
+  const trocoTotalInCents = paymentLines.reduce((acc, line) => {
+    if (line.method !== "cash") return acc;
+    const amt = inputToCents(line.amountInput) ?? 0;
+    const recv = inputToCents(line.cashReceivedInput);
+    if (recv === null || amt === 0) return acc;
+    const diff = recv - amt;
+    return diff > 0 ? acc + diff : acc;
+  }, 0);
+  const troco = trocoTotalInCents > 0 ? trocoTotalInCents : null;
+  // Validação per-linha de cash com recebido < amount (bloqueia submit).
+  const paymentLinesAllValid = paymentLines.every((line) => {
+    const amt = inputToCents(line.amountInput) ?? 0;
+    if (amt <= 0) return false;
+    if (line.method === "cash") {
+      const recv = inputToCents(line.cashReceivedInput);
+      if (recv !== null && recv < amt) return false;
+    }
+    return true;
+  });
 
   // Handlers de mudança bidirecional —————————————————————————————
   const onDiscountAmountChange = (v: string) => {
@@ -329,14 +384,13 @@ export function PdvShell() {
 
   const reset = useCallback(() => {
     setCart([]);
-    setPaymentMethod(null);
+    setPaymentLines([makeDefaultPaymentLine()]);
     setDiscountAmountInput("");
     setDiscountPctInput("");
     setLastDiscountEdit(null);
     setSurchargeAmountInput("");
     setSurchargePctInput("");
     setLastSurchargeEdit(null);
-    setCashReceivedInput("");
     setNotes("");
     setCustomerId(null);
     setCustomerLabel("");
@@ -344,26 +398,43 @@ export function PdvShell() {
     setWalkInPhone("");
   }, []);
 
+  // Sprint 1A — canSubmit cobre pagamento dividido:
+  //   - carrinho não vazio + não está submetendo + desconto válido
+  //   - soma dos pagamentos === total
+  //   - todas as linhas válidas (amount > 0; cash com recv não pode ser < amount)
   const canSubmit =
     cart.length > 0 &&
-    paymentMethod !== null &&
     !isSubmitting &&
     discountInCents <= subtotalInCents &&
-    (paymentMethod !== "cash" ||
-      cashReceivedInCents === null ||
-      cashReceivedInCents >= totalInCents);
+    paymentLinesAllValid &&
+    paymentLines.length > 0 &&
+    paymentLines.length <= MAX_PAYMENT_LINES &&
+    paymentsSumInCents === totalInCents;
 
   const handleSubmit = () => {
-    if (!paymentMethod) {
-      toast.error("Escolha o método de pagamento.");
-      return;
-    }
     if (cart.length === 0) {
       toast.error("Adicione pelo menos um item.");
       return;
     }
     if (discountInCents > subtotalInCents) {
       toast.error("Desconto maior que o subtotal.");
+      return;
+    }
+    if (paymentLines.length === 0) {
+      toast.error("Adicione pelo menos uma forma de pagamento.");
+      return;
+    }
+    if (!paymentLinesAllValid) {
+      toast.error("Linha de pagamento inválida — confira valores e troco.");
+      return;
+    }
+    if (paymentsSumInCents !== totalInCents) {
+      const diff = totalInCents - paymentsSumInCents;
+      toast.error(
+        diff > 0
+          ? `Falta R$ ${(diff / 100).toFixed(2)} no pagamento.`
+          : `Sobra R$ ${(Math.abs(diff) / 100).toFixed(2)} no pagamento.`,
+      );
       return;
     }
 
@@ -376,11 +447,15 @@ export function PdvShell() {
       customerId,
       walkInName: customerId ? null : walkInName.trim() || null,
       walkInPhone: customerId ? null : walkInPhone.trim() || null,
-      paymentMethod,
+      payments: paymentLines.map((line) => ({
+        method: line.method,
+        amountInCents: inputToCents(line.amountInput) ?? 0,
+        cashReceivedInCents:
+          line.method === "cash" ? inputToCents(line.cashReceivedInput) : null,
+        notes: line.method === "other" ? line.notes.trim() || null : null,
+      })),
       discountInCents: discountInCents > 0 ? discountInCents : null,
       surchargeInCents: surchargeInCents > 0 ? surchargeInCents : null,
-      cashReceivedInCents:
-        paymentMethod === "cash" ? cashReceivedInCents : null,
       notes: notes.trim() || null,
     };
 
@@ -510,10 +585,11 @@ export function PdvShell() {
           {cart.length > 0 ? (
             <div className="border-t border-line bg-bg-app">
               <PaymentSection
-                paymentMethod={paymentMethod}
-                setPaymentMethod={setPaymentMethod}
-                cashReceivedInput={cashReceivedInput}
-                setCashReceivedInput={setCashReceivedInput}
+                paymentLines={paymentLines}
+                setPaymentLines={setPaymentLines}
+                totalInCents={totalInCents}
+                paymentsSumInCents={paymentsSumInCents}
+                paymentsRemainingInCents={paymentsRemainingInCents}
                 troco={troco}
                 discountAmountInput={discountAmountInput}
                 discountPctInput={discountPctInput}
@@ -943,10 +1019,11 @@ function CartPanel({
 }
 
 function PaymentSection({
-  paymentMethod,
-  setPaymentMethod,
-  cashReceivedInput,
-  setCashReceivedInput,
+  paymentLines,
+  setPaymentLines,
+  totalInCents,
+  paymentsSumInCents,
+  paymentsRemainingInCents,
   troco,
   discountAmountInput,
   discountPctInput,
@@ -959,10 +1036,11 @@ function PaymentSection({
   notes,
   setNotes,
 }: {
-  paymentMethod: PaymentMethod | null;
-  setPaymentMethod: (m: PaymentMethod) => void;
-  cashReceivedInput: string;
-  setCashReceivedInput: (v: string) => void;
+  paymentLines: PaymentLineState[];
+  setPaymentLines: React.Dispatch<React.SetStateAction<PaymentLineState[]>>;
+  totalInCents: number;
+  paymentsSumInCents: number;
+  paymentsRemainingInCents: number;
   troco: number | null;
   discountAmountInput: string;
   discountPctInput: string;
@@ -977,58 +1055,200 @@ function PaymentSection({
 }) {
   const inputCls =
     "border-line bg-surface focus:border-brand h-9 w-full rounded-[8px] border px-3 text-[13px] outline-none transition";
+
+  const updateLine = (id: string, patch: Partial<PaymentLineState>) => {
+    setPaymentLines((prev) =>
+      prev.map((line) => (line.id === id ? { ...line, ...patch } : line)),
+    );
+  };
+  const removeLine = (id: string) => {
+    setPaymentLines((prev) =>
+      prev.length <= 1 ? prev : prev.filter((line) => line.id !== id),
+    );
+  };
+  const addLine = () => {
+    setPaymentLines((prev) => {
+      if (prev.length >= MAX_PAYMENT_LINES) return prev;
+      // Sugere a forma com saldo restante na nova linha pra ajudar lojista.
+      const remaining = totalInCents - prev.reduce(
+        (acc, l) => acc + (inputToCents(l.amountInput) ?? 0),
+        0,
+      );
+      const newLine: PaymentLineState = {
+        ...makeDefaultPaymentLine(),
+        method: "pix",
+        amountInput: remaining > 0 ? centsToInput(remaining) : "",
+      };
+      return [...prev, newLine];
+    });
+  };
+
   return (
     <div className="space-y-3 p-[18px]">
       <div className="text-ink-4 text-[11px] font-bold uppercase tracking-[0.06em]">
         Pagamento
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        {PAYMENT_METHODS.map((m) => {
-          const selected = paymentMethod === m.value;
+
+      {/* Lista de linhas de pagamento (Sprint 1A) */}
+      <div className="flex flex-col gap-2">
+        {paymentLines.map((line, idx) => {
+          const amt = inputToCents(line.amountInput) ?? 0;
+          const recv = inputToCents(line.cashReceivedInput);
+          const lineTroco =
+            line.method === "cash" && recv !== null && recv > amt
+              ? recv - amt
+              : null;
+          const lineInvalid =
+            line.method === "cash" && recv !== null && recv < amt;
           return (
-            <button
-              key={m.value}
-              type="button"
-              onClick={() => setPaymentMethod(m.value)}
-              className={cn(
-                "b3-btn justify-start gap-2",
-                selected && "b3-btn--cta",
-              )}
-              style={{ height: 40 }}
+            <div
+              key={line.id}
+              className="rounded-[10px] border border-line bg-surface p-2.5"
             >
-              <m.Icon size={14} />
-              {m.label}
-            </button>
+              <div className="flex items-center gap-2">
+                <select
+                  aria-label="Forma de pagamento"
+                  className="b3-select h-9 text-[12.5px]"
+                  style={{ width: 140 }}
+                  value={line.method}
+                  onChange={(e) =>
+                    updateLine(line.id, {
+                      method: e.target.value as PaymentMethod,
+                      // Limpa cash/notes ao mudar de método
+                      cashReceivedInput:
+                        e.target.value === "cash"
+                          ? line.cashReceivedInput
+                          : "",
+                      notes: e.target.value === "other" ? line.notes : "",
+                    })
+                  }
+                >
+                  {PAYMENT_METHODS.map((m) => (
+                    <option key={m.value} value={m.value}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  aria-label="Valor desta forma de pagamento"
+                  inputMode="decimal"
+                  placeholder="0,00"
+                  value={line.amountInput}
+                  onChange={(e) =>
+                    updateLine(line.id, { amountInput: e.target.value })
+                  }
+                  className={inputCls}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeLine(line.id)}
+                  disabled={paymentLines.length <= 1}
+                  aria-label="Remover forma de pagamento"
+                  className={cn(
+                    "flex size-9 shrink-0 items-center justify-center rounded-[8px] border border-line text-ink-4 transition",
+                    paymentLines.length > 1
+                      ? "hover:border-danger hover:text-danger"
+                      : "cursor-not-allowed opacity-30",
+                  )}
+                >
+                  <XIcon className="size-3.5" />
+                </button>
+              </div>
+
+              {line.method === "cash" ? (
+                <div className="mt-2 grid grid-cols-[140px_1fr] items-center gap-2">
+                  <label
+                    htmlFor={`cash-recv-${line.id}`}
+                    className="text-ink-4 text-[11px]"
+                  >
+                    Recebido (pra troco)
+                  </label>
+                  <input
+                    id={`cash-recv-${line.id}`}
+                    inputMode="decimal"
+                    placeholder="0,00"
+                    value={line.cashReceivedInput}
+                    onChange={(e) =>
+                      updateLine(line.id, {
+                        cashReceivedInput: e.target.value,
+                      })
+                    }
+                    className={cn(
+                      inputCls,
+                      lineInvalid && "border-danger",
+                    )}
+                  />
+                  {lineTroco !== null ? (
+                    <p className="col-span-2 text-ink-4 text-[11px]">
+                      Troco desta linha:{" "}
+                      <span className="text-ink-1 font-semibold">
+                        {formatBRL(lineTroco)}
+                      </span>
+                    </p>
+                  ) : null}
+                  {lineInvalid ? (
+                    <p className="col-span-2 text-danger text-[11px]">
+                      Valor recebido menor que o valor da linha.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {line.method === "other" ? (
+                <div className="mt-2">
+                  <input
+                    aria-label="Descrição da forma (TED, vale, cheque, etc)"
+                    placeholder="TED, vale, cheque #..."
+                    value={line.notes}
+                    onChange={(e) =>
+                      updateLine(line.id, { notes: e.target.value })
+                    }
+                    maxLength={60}
+                    className={inputCls}
+                  />
+                </div>
+              ) : null}
+
+              {idx === paymentLines.length - 1 ? null : (
+                <></>
+              )}
+            </div>
           );
         })}
-      </div>
 
-      {paymentMethod === "cash" ? (
-        <div className="space-y-1">
-          <label
-            htmlFor="cash-received"
-            className="text-ink-4 text-[11px] font-medium"
+        {paymentLines.length < MAX_PAYMENT_LINES ? (
+          <button
+            type="button"
+            onClick={addLine}
+            className="b3-btn b3-btn--sm self-start gap-2"
           >
-            Valor recebido (opcional — pra calcular troco)
-          </label>
-          <input
-            id="cash-received"
-            inputMode="decimal"
-            placeholder="0,00"
-            value={cashReceivedInput}
-            onChange={(e) => setCashReceivedInput(e.target.value)}
-            className={inputCls}
-          />
-          {troco !== null ? (
-            <p className="text-ink-4 text-xs">
-              Troco:{" "}
-              <span className="text-ink-1 font-semibold">
-                {formatBRL(troco)}
-              </span>
-            </p>
+            <PlusIcon className="size-3" /> Adicionar forma
+          </button>
+        ) : null}
+
+        {/* Indicador Falta / Sobra / Completo */}
+        <div className="mt-1 text-[12px]">
+          {paymentsRemainingInCents === 0 && paymentsSumInCents > 0 ? (
+            <span className="text-ok font-semibold">
+              ✓ Pagamento completo ({formatBRL(paymentsSumInCents)})
+            </span>
+          ) : paymentsRemainingInCents > 0 ? (
+            <span className="text-warn font-semibold">
+              Falta {formatBRL(paymentsRemainingInCents)}
+            </span>
+          ) : (
+            <span className="text-danger font-semibold">
+              Sobra {formatBRL(Math.abs(paymentsRemainingInCents))} —
+              ajuste os valores
+            </span>
+          )}
+          {troco !== null && paymentsRemainingInCents === 0 ? (
+            <span className="text-ink-4 ml-2">
+              · Troco total {formatBRL(troco)}
+            </span>
           ) : null}
         </div>
-      ) : null}
+      </div>
 
       {/* ADR-0020 — desconto + acréscimo 2x2 com auto-cálculo bidirecional R$/% */}
       <div className="space-y-2">
