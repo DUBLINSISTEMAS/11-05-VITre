@@ -14,6 +14,7 @@
  * como props serializáveis.
  */
 import { MoreVerticalIcon } from "lucide-react";
+import Link from "next/link";
 
 import { DeleteProductDialog } from "@/components/admin/delete-product-dialog";
 import { StockMovementDialog } from "@/components/admin/stock-movement-dialog";
@@ -62,6 +63,11 @@ export function ProductActionsMenu({
             </DropdownMenuItem>
           }
         />
+        <DropdownMenuItem asChild>
+          <Link href={`/admin/produtos/${productId}/etiqueta`} prefetch>
+            Imprimir etiqueta (barcode)
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DeleteProductDialog
           productId={productId}
