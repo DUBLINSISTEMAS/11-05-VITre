@@ -100,6 +100,7 @@ export async function createProductFromValues(
           maxStockQuantity: data.maxStockQuantity,
           gtin: data.gtin,
           brand: data.brand,
+          brandId: data.brandId,
           unit: data.unit,
           internalCode: data.internalCode,
           defaultCommissionBps: data.defaultCommissionBps,

@@ -9,16 +9,18 @@ import type {
 } from "react-hook-form";
 import { Controller } from "react-hook-form";
 
+import type { BrandOption } from "@/actions/brand/types";
 import type { ProductFormValues } from "@/actions/product/schema";
+import { BrandField } from "@/components/admin/brand-field";
 import type { CategoryOption } from "@/components/admin/category-dialog";
 import {
   ImageUploader,
   type ProductImageData,
   type StagedImageFile,
 } from "@/components/admin/image-uploader";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 
 import { CategoryField, SubCard } from "./shared";
 
@@ -42,6 +44,9 @@ interface TabIdentidadeProps {
     slug: string;
     parentId: string | null;
   }) => void;
+  // Sprint 2A — marca
+  localBrands: BrandOption[];
+  onBrandCreated: (b: BrandOption) => void;
 }
 
 export function TabIdentidade({
@@ -57,6 +62,8 @@ export function TabIdentidade({
   onStagedChange,
   localCategories,
   onCategoryCreated,
+  localBrands,
+  onBrandCreated,
 }: TabIdentidadeProps) {
   return (
     <div className="flex flex-col gap-4">
@@ -101,18 +108,37 @@ export function TabIdentidade({
           <div className="space-y-1.5">
             <Label htmlFor="product-brand">Marca</Label>
             {/*
-              TODO (Sprint 2): substituir por Select com botão "+ Nova marca"
-              inline assim que a tabela `brand` for ativada via migration
-              49_create_brand_table.sql. Por enquanto é input texto livre
-              (preserva comportamento atual).
+              Sprint 2A — BrandField permite escolher marca cadastrada OU
+              digitar texto livre. Quando escolhe do select: brandId + brand
+              (snapshot do nome). Quando digita: brandId=null, brand=texto.
+              Botão "+ Nova marca" abre dialog inline.
             */}
-            <Input
-              id="product-brand"
-              placeholder="Ex: Vivara, Nike"
-              disabled={isPending}
-              maxLength={80}
-              aria-invalid={!!errors.brand}
-              {...register("brand")}
+            <Controller
+              name="brandId"
+              control={control}
+              render={({ field: brandIdField }) => (
+                <Controller
+                  name="brand"
+                  control={control}
+                  render={({ field: brandTextField }) => (
+                    <BrandField
+                      brandId={brandIdField.value ?? null}
+                      brandText={brandTextField.value ?? ""}
+                      brands={localBrands}
+                      disabled={isPending}
+                      onChange={(next) => {
+                        brandIdField.onChange(next.brandId);
+                        brandTextField.onChange(next.brandText);
+                      }}
+                      onBrandCreated={(b) => {
+                        onBrandCreated(b);
+                        brandIdField.onChange(b.id);
+                        brandTextField.onChange(b.name);
+                      }}
+                    />
+                  )}
+                />
+              )}
             />
             {errors.brand?.message ? (
               <p className="text-destructive text-xs">{errors.brand.message}</p>

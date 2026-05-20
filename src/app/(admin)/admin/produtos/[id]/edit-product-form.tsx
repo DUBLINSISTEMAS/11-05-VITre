@@ -15,6 +15,7 @@
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
+import type { BrandOption } from "@/actions/brand/types";
 import type { CategoryOption } from "@/components/admin/category-dialog";
 import type { ProductImageData } from "@/components/admin/image-uploader";
 import {
@@ -26,15 +27,17 @@ import type { VariantData } from "@/components/admin/variant-editor";
 interface EditProductFormProps {
   initialData: ProductFormInitialData;
   categories: CategoryOption[];
+  brands: BrandOption[];
 }
 
-export function EditProductForm({ initialData, categories }: EditProductFormProps) {
+export function EditProductForm({ initialData, categories, brands }: EditProductFormProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   return (
     <ProductForm
       isDraft={false}
       categories={categories}
+      brands={brands}
       initialData={initialData}
       onAfterSave={() => {
         // Refresh em vez de push — lojista fica na página com toggle e

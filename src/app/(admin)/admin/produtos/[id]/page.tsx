@@ -10,6 +10,7 @@ import {
   RelatedProductsCard,
 } from "@/components/admin/related-products-card";
 import {
+  brandTable,
   categoryTable,
   productImageTable,
   productRelatedTable,
@@ -76,6 +77,16 @@ export default async function EditProdutoPage({ params }: EditProdutoPageProps) 
       .where(eq(categoryTable.storeId, store.id))
       .orderBy(asc(categoryTable.position), asc(categoryTable.name));
 
+    // Sprint 2A — lista de marcas pro Select inline no form.
+    const brands = await tx
+      .select({
+        id: brandTable.id,
+        name: brandTable.name,
+      })
+      .from(brandTable)
+      .where(eq(brandTable.storeId, store.id))
+      .orderBy(asc(brandTable.name));
+
     // Curadoria manual atual de "Você pode gostar também".
     const relatedRows = await tx
       .select({ id: productRelatedTable.relatedProductId })
@@ -137,6 +148,7 @@ export default async function EditProdutoPage({ params }: EditProdutoPageProps) 
       images,
       variants,
       categories,
+      brands,
       relatedIds: relatedRows.map((r) => r.id),
       candidatesWithCover,
     };
@@ -144,7 +156,7 @@ export default async function EditProdutoPage({ params }: EditProdutoPageProps) 
 
   if (!result) notFound();
 
-  const { product, images, variants, categories, relatedIds, candidatesWithCover } =
+  const { product, images, variants, categories, brands, relatedIds, candidatesWithCover } =
     result;
   const isDraft =
     !product.name.trim() || product.slug.startsWith("draft-");
@@ -208,6 +220,7 @@ export default async function EditProdutoPage({ params }: EditProdutoPageProps) 
 
       <EditProductForm
         categories={categories}
+        brands={brands}
         initialData={{
           productId: product.id,
           name: product.name,
@@ -233,6 +246,7 @@ export default async function EditProdutoPage({ params }: EditProdutoPageProps) 
           maxStockQuantity: product.maxStockQuantity,
           gtin: product.gtin,
           brand: product.brand,
+          brandId: product.brandId,
           unit: product.unit,
           internalCode: product.internalCode,
           defaultCommissionBps: product.defaultCommissionBps,

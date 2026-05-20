@@ -152,10 +152,20 @@ export const productTable = pgTable(
     gtin: text("gtin"),
     /**
      * Marca livre — texto. Sem tabela `brand` separada no MVP (varejo BR
-     * usa nomes diretos: Adidas, Vivara, Lacoste). Promover pra tabela
-     * quando aparecer caso real de hierarquia/filtro estruturado.
+     * usa nomes diretos: Adidas, Vivara, Lacoste).
+     *
+     * Sprint 2A: virou snapshot histórico. Quando lojista escolhe do select
+     * de marcas cadastradas, salvamos brand_id + brand (nome no momento).
+     * Rename ou delete da marca NÃO afeta produtos antigos (preserva relatórios
+     * históricos).
      */
     brand: text("brand"),
+    /**
+     * Sprint 2A — FK opcional para tabela `brand`. NULL quando lojista digitou
+     * texto livre em `brand` (sem escolher do select). ON DELETE SET NULL
+     * mantém o snapshot em `brand` mesmo se a marca for deletada.
+     */
+    brandId: uuid("brand_id"),
     /** Unidade de venda. Default 'un'. */
     unit: productUnitEnum("unit").notNull().default("un"),
     /**

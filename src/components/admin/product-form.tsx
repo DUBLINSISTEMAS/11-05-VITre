@@ -21,6 +21,8 @@ import { uploadProductImage } from "@/actions/product/upload-image";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+import type { BrandOption } from "@/actions/brand/types";
+
 import {
   type CategoryOption,
 } from "./category-dialog";
@@ -80,6 +82,8 @@ export interface ProductFormInitialData {
   maxStockQuantity: number | null;
   gtin: string | null;
   brand: string | null;
+  /** Sprint 2A: FK opcional pra brand.id. NULL quando texto livre. */
+  brandId: string | null;
   /** Espelha enum DB product_unit; default 'un' aplicado se NULL no banco. */
   unit:
     | "un"
@@ -103,6 +107,12 @@ interface ProductFormProps {
   initialData: ProductFormInitialData;
   /** Lista de categorias da loja, pra popular o Select. Pode ser vazia. */
   categories: CategoryOption[];
+  /**
+   * Lista de marcas da loja, pra popular o Select de marca. Pode ser vazia.
+   * Sprint 2A: passada do page (loadBrands). Manager inline cria/edita
+   * marcas direto do form sem perder estado do produto.
+   */
+  brands: BrandOption[];
   /**
    * Produto é rascunho (sem nome ou slug `draft-*`)? Define se o botão
    * "Salvar e adicionar outro" aparece — fluxo de cadastro contínuo só
@@ -152,6 +162,7 @@ const TAB_NAV: { key: TabKey; label: string }[] = [
 export function ProductForm({
   initialData,
   categories,
+  brands,
   isDraft,
   onAfterSave,
   onCreateProduct,
@@ -163,6 +174,9 @@ export function ProductForm({
   const [images, setImages] = useState<ProductImageData[]>(initialData.images);
   const [localCategories, setLocalCategories] =
     useState<CategoryOption[]>(categories);
+  // Sprint 2A — lista local de marcas (sincronizada com cadastro inline
+  // de nova marca via BrandField).
+  const [localBrands, setLocalBrands] = useState<BrandOption[]>(brands);
   const [stagedFiles, setStagedFiles] = useState<StagedImageFile[]>([]);
   const isCreating = !!onCreateProduct;
 
@@ -197,6 +211,7 @@ export function ProductForm({
       maxStockQuantity: initialData.maxStockQuantity,
       gtin: initialData.gtin ?? "",
       brand: initialData.brand ?? "",
+      brandId: initialData.brandId,
       unit: initialData.unit,
       internalCode: initialData.internalCode ?? "",
       defaultCommissionBps: initialData.defaultCommissionBps,
@@ -382,6 +397,10 @@ export function ProductForm({
           onStagedChange={setStagedFiles}
           localCategories={localCategories}
           onCategoryCreated={handleCategoryCreated}
+          localBrands={localBrands}
+          onBrandCreated={(b) =>
+            setLocalBrands((prev) => [...prev, b].sort((a, b) => a.name.localeCompare(b.name)))
+          }
         />
       </div>
 

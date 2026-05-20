@@ -72,7 +72,7 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
     items: [
       { k: "produtos",       label: "Produtos",          icon: PackageIcon,    href: "/admin/produtos",       exact: true },
       { k: "categorias",     label: "Categorias",        icon: FolderIcon,     href: "/admin/categorias"                  },
-      { k: "marcas",         label: "Marcas",            icon: TagIcon,        soon: true                                 },
+      { k: "marcas",         label: "Marcas",            icon: TagIcon,        href: "/admin/marcas"                      },
       { k: "clientes",       label: "Clientes",          icon: UsersIcon,      href: "/admin/clientes",       exact: true },
       { k: "grupos-cliente", label: "Grupos de cliente", icon: UsersRoundIcon, href: "/admin/clientes/grupos"             },
       { k: "fornecedores",   label: "Fornecedores",      icon: TruckIcon,      soon: true                                 },

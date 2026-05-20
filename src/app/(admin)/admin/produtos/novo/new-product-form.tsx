@@ -19,15 +19,17 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import type { BrandOption } from "@/actions/brand/types";
 import { createProductFromValues } from "@/actions/product/create-from-values";
 import type { CategoryOption } from "@/components/admin/category-dialog";
 import { ProductForm } from "@/components/admin/product-form";
 
 interface NewProductFormProps {
   categories: CategoryOption[];
+  brands: BrandOption[];
 }
 
-export function NewProductForm({ categories }: NewProductFormProps) {
+export function NewProductForm({ categories, brands }: NewProductFormProps) {
   const router = useRouter();
   const [resetKey, setResetKey] = useState(0);
 
@@ -36,6 +38,7 @@ export function NewProductForm({ categories }: NewProductFormProps) {
       key={resetKey}
       isDraft
       categories={categories}
+      brands={brands}
       onCreateProduct={createProductFromValues}
       onAfterSave={(opts) => {
         if (opts.continueCreating) {
@@ -76,6 +79,7 @@ export function NewProductForm({ categories }: NewProductFormProps) {
         maxStockQuantity: null,
         gtin: null,
         brand: null,
+        brandId: null,
         unit: "un",
         internalCode: null,
         defaultCommissionBps: null,

@@ -274,8 +274,22 @@ const productFormFieldsSchema = z.object({
   maxStockQuantity: optionalNonnegativeQuantity("Estoque máximo"),
   /** GTIN (EAN-8/12/13 ou DUN-14). Só dígitos, sem máscara. */
   gtin: optionalGtin,
-  /** Marca livre. Sem tabela `brand` separada no MVP. */
+  /**
+   * Marca como texto. Sprint 2A: vira snapshot histórico do nome da marca
+   * no momento do save. Quando lojista escolhe do select de marcas
+   * cadastradas, gravamos AMBOS brandId + brand (nome). Quando digita
+   * texto livre (sem escolher), brandId=null e brand=texto.
+   */
   brand: optionalTrimmedString(80, "Marca"),
+  /**
+   * Sprint 2A: FK opcional pra brand.id. NULL quando lojista digitou
+   * texto livre. Aceita UUID ou null.
+   */
+  brandId: z
+    .string()
+    .uuid()
+    .nullish()
+    .transform((v) => v ?? null),
   /** Unidade de venda. Default 'un'. */
   unit: productUnitSchema.default("un"),
   /** Código interno do lojista (SKU manual / código de etiqueta). */

@@ -2,7 +2,7 @@ import { asc, eq } from "drizzle-orm";
 import { ChevronLeftIcon } from "lucide-react";
 import Link from "next/link";
 
-import { categoryTable } from "@/db/schema";
+import { brandTable, categoryTable } from "@/db/schema";
 import { requireSession } from "@/lib/auth-server";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
@@ -21,16 +21,30 @@ export default async function NovoProdutoPage() {
     throw new Error("UNREACHABLE: novo produto page sem loja");
   }
 
-  const categories = await withTenant(store.id, session.user.id, async (tx) =>
-    tx
-      .select({
-        id: categoryTable.id,
-        name: categoryTable.name,
-        parentId: categoryTable.parentId,
-      })
-      .from(categoryTable)
-      .where(eq(categoryTable.storeId, store.id))
-      .orderBy(asc(categoryTable.position), asc(categoryTable.name)),
+  const { categories, brands } = await withTenant(
+    store.id,
+    session.user.id,
+    async (tx) => {
+      const categories = await tx
+        .select({
+          id: categoryTable.id,
+          name: categoryTable.name,
+          parentId: categoryTable.parentId,
+        })
+        .from(categoryTable)
+        .where(eq(categoryTable.storeId, store.id))
+        .orderBy(asc(categoryTable.position), asc(categoryTable.name));
+      // Sprint 2A — marcas pro Select inline no form.
+      const brands = await tx
+        .select({
+          id: brandTable.id,
+          name: brandTable.name,
+        })
+        .from(brandTable)
+        .where(eq(brandTable.storeId, store.id))
+        .orderBy(asc(brandTable.name));
+      return { categories, brands };
+    },
   );
 
   return (
@@ -53,7 +67,7 @@ export default async function NovoProdutoPage() {
           </p>
         </div>
       </div>
-      <NewProductForm categories={categories} />
+      <NewProductForm categories={categories} brands={brands} />
     </div>
   );
 }
