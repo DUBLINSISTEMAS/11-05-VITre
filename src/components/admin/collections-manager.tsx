@@ -48,14 +48,14 @@ export function CollectionsManager({
   const [busy, startBusy] = useTransition();
 
   const handleDelete = (id: string, name: string) => {
-    if (!confirm(`Apagar coleção "${name}"? Os produtos não são apagados — só a coleção.`)) return;
+    if (!confirm(`Apagar vitrine "${name}"? Os produtos não são apagados — só a vitrine.`)) return;
     startBusy(async () => {
       const r = await deleteCollection(id);
       if (!r.ok) {
         toast.error("Falha ao apagar.");
         return;
       }
-      toast.success("Coleção apagada.");
+      toast.success("Vitrine apagada.");
       setCollections((cs) => cs.filter((c) => c.id !== id));
     });
   };
@@ -70,17 +70,17 @@ export function CollectionsManager({
           onClick={() => setShowCreate(true)}
           className="b3-btn b3-btn--cta"
         >
-          <PlusIcon size={14} /> Nova coleção
+          <PlusIcon size={14} /> Nova vitrine
         </button>
       </div>
 
       {collections.length === 0 ? (
         <div className="b3-card b3-card-pad text-center">
           <p className="text-ink-3 text-[13px]">
-            Nenhuma coleção criada ainda.
+            Nenhuma vitrine criada ainda.
           </p>
           <p className="text-ink-4 mt-1 text-[12px]">
-            Coleções aparecem como seções na home da sua loja online e em rotas
+            Vitrines aparecem como seções na home da sua loja online e em rotas
             dedicadas tipo <code>/colecao/promocoes-maio</code>.
           </p>
         </div>
@@ -298,7 +298,7 @@ function CollectionEditor({
         toast.error(itemsResult.error ?? "Falha nos produtos.");
         return;
       }
-      toast.success(isEdit ? "Coleção atualizada." : "Coleção criada.");
+      toast.success(isEdit ? "Vitrine atualizada." : "Vitrine criada.");
       onSaved({
         id: result.id,
         name: name.trim(),
@@ -317,7 +317,7 @@ function CollectionEditor({
       <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>
-            {isEdit ? "Editar coleção" : "Nova coleção"}
+            {isEdit ? "Editar vitrine" : "Nova vitrine"}
           </DialogTitle>
         </DialogHeader>
 
@@ -369,7 +369,7 @@ function CollectionEditor({
                 rows={3}
                 maxLength={500}
                 className="border-line bg-surface focus:border-brand w-full resize-none rounded-[8px] border px-3 py-2 text-[13px] outline-none"
-                placeholder="Texto curto que aparece no topo da coleção."
+                placeholder="Texto curto que aparece no topo da vitrine."
               />
             </div>
             <label className="flex items-center gap-2 text-[12.5px]">
@@ -378,7 +378,7 @@ function CollectionEditor({
                 checked={isActive}
                 onChange={(e) => setIsActive(e.target.checked)}
               />
-              <span>Coleção ativa (visível na loja)</span>
+              <span>Vitrine ativa (visível na loja)</span>
             </label>
             <label className="flex items-center gap-2 text-[12.5px]">
               <input
@@ -411,7 +411,7 @@ function CollectionEditor({
             {selectedIds.length > 0 && (
               <div className="mb-3">
                 <div className="text-ink-4 mb-1 text-[10px] font-bold uppercase tracking-wider">
-                  Ordem da coleção
+                  Ordem da vitrine
                 </div>
                 <ol className="bg-bg-app divide-line divide-y rounded-[8px]">
                   {selectedIds.map((pid, idx) => {
@@ -518,7 +518,7 @@ function CollectionEditor({
             disabled={busy || !name.trim()}
             className="b3-btn b3-btn--cta"
           >
-            {busy ? "Salvando…" : isEdit ? "Salvar alterações" : "Criar coleção"}
+            {busy ? "Salvando…" : isEdit ? "Salvar alterações" : "Criar vitrine"}
           </button>
         </div>
       </DialogContent>

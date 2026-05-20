@@ -18,7 +18,7 @@ export default async function ColecoesPage() {
     <div className="space-y-5">
       <div>
         <h1 className="text-ink-1 text-[22px] font-bold tracking-[-0.025em]">
-          Coleções da loja online
+          Vitrines da loja online
         </h1>
         <p className="text-ink-4 mt-1 text-[13px]">
           Crie rotas e seções customizadas — &quot;Destaques&quot;, &quot;Promoções de maio&quot;,
