@@ -61,6 +61,11 @@ export default async function AdminHomePage({
 
   const sp = await searchParams;
   const periodo = periodoSchema.parse(sp.periodo);
+  // Sprint 1.5 (auditoria 2026-05-21 doc 04): eliminamos `sql.raw(String(periodo))`
+  // em favor de Date calculada server-side. Mais seguro (parametrizado, zero
+  // chance de injection mesmo se Zod schema for trocado por engano) e mais
+  // rápido (PG recebe timestamp como bind var em vez de fazer cast de string).
+  const periodStartDate = new Date(Date.now() - periodo * 24 * 60 * 60 * 1000);
 
   // Sessão de caixa ativa (faz seu próprio withTenant — cache() em getCurrentStore
   // deduplica a query da loja). Roda em paralelo com o bloco principal.
@@ -77,16 +82,16 @@ export default async function AdminHomePage({
     // 5 buckets de status × (count + sum) em 1 SELECT via FILTER
     const salesStats = await tx
       .select({
-        totalCount: sql<number>`count(*) filter (where ${orderTable.createdAt} >= now() - interval '${sql.raw(String(periodo))} days')::int`,
-        totalSum: sql<number>`coalesce(sum(${orderTable.totalInCents}) filter (where ${orderTable.createdAt} >= now() - interval '${sql.raw(String(periodo))} days'), 0)::int`,
-        aprovadosCount: sql<number>`count(*) filter (where ${orderTable.status} in ('confirmed','fulfilled') and ${orderTable.createdAt} >= now() - interval '${sql.raw(String(periodo))} days')::int`,
-        aprovadosSum: sql<number>`coalesce(sum(${orderTable.totalInCents}) filter (where ${orderTable.status} in ('confirmed','fulfilled') and ${orderTable.createdAt} >= now() - interval '${sql.raw(String(periodo))} days'), 0)::int`,
-        pendentesCount: sql<number>`count(*) filter (where ${orderTable.status} = 'awaiting_whatsapp' and ${orderTable.createdAt} >= now() - interval '${sql.raw(String(periodo))} days')::int`,
-        pendentesSum: sql<number>`coalesce(sum(${orderTable.totalInCents}) filter (where ${orderTable.status} = 'awaiting_whatsapp' and ${orderTable.createdAt} >= now() - interval '${sql.raw(String(periodo))} days'), 0)::int`,
-        canceladosCount: sql<number>`count(*) filter (where ${orderTable.status} = 'canceled' and ${orderTable.createdAt} >= now() - interval '${sql.raw(String(periodo))} days')::int`,
-        canceladosSum: sql<number>`coalesce(sum(${orderTable.totalInCents}) filter (where ${orderTable.status} = 'canceled' and ${orderTable.createdAt} >= now() - interval '${sql.raw(String(periodo))} days'), 0)::int`,
-        expiradosCount: sql<number>`count(*) filter (where ${orderTable.status} = 'expired' and ${orderTable.createdAt} >= now() - interval '${sql.raw(String(periodo))} days')::int`,
-        expiradosSum: sql<number>`coalesce(sum(${orderTable.totalInCents}) filter (where ${orderTable.status} = 'expired' and ${orderTable.createdAt} >= now() - interval '${sql.raw(String(periodo))} days'), 0)::int`,
+        totalCount: sql<number>`count(*) filter (where ${orderTable.createdAt} >= ${periodStartDate})::int`,
+        totalSum: sql<number>`coalesce(sum(${orderTable.totalInCents}) filter (where ${orderTable.createdAt} >= ${periodStartDate}), 0)::int`,
+        aprovadosCount: sql<number>`count(*) filter (where ${orderTable.status} in ('confirmed','fulfilled') and ${orderTable.createdAt} >= ${periodStartDate})::int`,
+        aprovadosSum: sql<number>`coalesce(sum(${orderTable.totalInCents}) filter (where ${orderTable.status} in ('confirmed','fulfilled') and ${orderTable.createdAt} >= ${periodStartDate}), 0)::int`,
+        pendentesCount: sql<number>`count(*) filter (where ${orderTable.status} = 'awaiting_whatsapp' and ${orderTable.createdAt} >= ${periodStartDate})::int`,
+        pendentesSum: sql<number>`coalesce(sum(${orderTable.totalInCents}) filter (where ${orderTable.status} = 'awaiting_whatsapp' and ${orderTable.createdAt} >= ${periodStartDate}), 0)::int`,
+        canceladosCount: sql<number>`count(*) filter (where ${orderTable.status} = 'canceled' and ${orderTable.createdAt} >= ${periodStartDate})::int`,
+        canceladosSum: sql<number>`coalesce(sum(${orderTable.totalInCents}) filter (where ${orderTable.status} = 'canceled' and ${orderTable.createdAt} >= ${periodStartDate}), 0)::int`,
+        expiradosCount: sql<number>`count(*) filter (where ${orderTable.status} = 'expired' and ${orderTable.createdAt} >= ${periodStartDate})::int`,
+        expiradosSum: sql<number>`coalesce(sum(${orderTable.totalInCents}) filter (where ${orderTable.status} = 'expired' and ${orderTable.createdAt} >= ${periodStartDate}), 0)::int`,
       })
       .from(orderTable)
       .where(eq(orderTable.storeId, store.id));
@@ -99,7 +104,7 @@ export default async function AdminHomePage({
       })
       .from(orderTable)
       .where(
-        sql`${orderTable.storeId} = ${store.id} and ${orderTable.status} in ('confirmed','fulfilled') and ${orderTable.createdAt} >= now() - interval '${sql.raw(String(periodo))} days'`,
+        sql`${orderTable.storeId} = ${store.id} and ${orderTable.status} in ('confirmed','fulfilled') and ${orderTable.createdAt} >= ${periodStartDate}`,
       )
       .groupBy(sql`date_trunc('day', ${orderTable.createdAt})`)
       .orderBy(sql`date_trunc('day', ${orderTable.createdAt})`);

@@ -22,6 +22,11 @@ import {
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import {
+  checkRateLimit,
+  RateLimitError,
+  rateLimits,
+} from "@/lib/rate-limit";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
@@ -173,6 +178,16 @@ export async function upsertCollection(
   const ctx = await getSessionAndStore();
   if (!ctx) return { ok: false, error: "Sessão expirada." };
 
+  // Sprint 1.5 — rate limit mutation por userId (auditoria 2026-05-21 doc 04).
+  try {
+    await checkRateLimit(rateLimits.mutation, ctx.session.user.id);
+  } catch (err) {
+    if (err instanceof RateLimitError) {
+      return { ok: false, error: err.message };
+    }
+    throw err;
+  }
+
   const parsed = upsertSchema.safeParse(input);
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
@@ -270,6 +285,17 @@ export async function upsertCollection(
 export async function deleteCollection(id: string): Promise<{ ok: boolean }> {
   const ctx = await getSessionAndStore();
   if (!ctx) return { ok: false };
+
+  // Sprint 1.5 — rate limit mutation (auditoria 2026-05-21 doc 04).
+  try {
+    await checkRateLimit(rateLimits.mutation, ctx.session.user.id);
+  } catch (err) {
+    if (err instanceof RateLimitError) {
+      return { ok: false };
+    }
+    throw err;
+  }
+
   try {
     await withTenant(ctx.store.id, ctx.session.user.id, async (tx) => {
       await tx
@@ -300,6 +326,16 @@ export async function setCollectionProducts(
 ): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getSessionAndStore();
   if (!ctx) return { ok: false, error: "Sessão expirada." };
+
+  // Sprint 1.5 — rate limit mutation (auditoria 2026-05-21 doc 04).
+  try {
+    await checkRateLimit(rateLimits.mutation, ctx.session.user.id);
+  } catch (err) {
+    if (err instanceof RateLimitError) {
+      return { ok: false, error: err.message };
+    }
+    throw err;
+  }
 
   const parsed = setProductsSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Dados inválidos." };
