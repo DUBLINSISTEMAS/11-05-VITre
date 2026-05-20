@@ -93,7 +93,7 @@ export function PaymentConfigForm({ initialData }: PaymentConfigFormProps) {
           toast.error(result.error);
           return;
         }
-        toast.success("Pagamento salvo.");
+        toast.success("Configurações salvas.");
         router.refresh();
       } finally {
         submittingRef.current = false;

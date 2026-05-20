@@ -31,7 +31,7 @@ export default async function ContatosPage({
           Recados do site
         </h1>
         <p className="text-ink-4 mt-1 text-[13px]">
-          Inbox de recados do site — toda intenção de compra via WhatsApp aparece aqui.
+          Toda intenção de compra via WhatsApp aparece aqui.
         </p>
       </div>
 
