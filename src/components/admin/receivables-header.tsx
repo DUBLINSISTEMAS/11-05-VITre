@@ -8,7 +8,8 @@
  * server + client conflict do dialog.
  */
 
-import { HandCoinsIcon, PlusIcon } from "lucide-react";
+import { HandCoinsIcon, PlusIcon, PrinterIcon } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
@@ -32,15 +33,26 @@ export function ReceivablesHeader() {
             entrada automática no caixa aberto (quando houver sessão ativa).
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="b3-btn b3-btn--cta whitespace-nowrap"
-          title="Lance empréstimo, adiantamento ou débito histórico"
-        >
-          <PlusIcon size={14} />
-          Lançar fiado avulso
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/admin/financeiro/receber/relatorio"
+            prefetch
+            className="b3-btn whitespace-nowrap"
+            title="Gera relatório A4 imprimível com saldo de cada fiado"
+          >
+            <PrinterIcon size={14} />
+            Imprimir
+          </Link>
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="b3-btn b3-btn--cta whitespace-nowrap"
+            title="Lance empréstimo, adiantamento ou débito histórico"
+          >
+            <PlusIcon size={14} />
+            Lançar fiado avulso
+          </button>
+        </div>
       </div>
 
       {open ? (

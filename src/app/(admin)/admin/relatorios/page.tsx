@@ -1,4 +1,5 @@
 import { loadFullReport } from "@/actions/reports/load";
+import { RelatoriosIndexCards } from "@/components/admin/relatorios-index-cards";
 import { ReportView } from "@/components/admin/report-view";
 import { requireSession } from "@/lib/auth-server";
 
@@ -24,5 +25,10 @@ export default async function RelatoriosPage({
     );
   }
 
-  return <ReportView report={report} filters={params} />;
+  return (
+    <div className="space-y-6">
+      <RelatoriosIndexCards />
+      <ReportView report={report} filters={params} />
+    </div>
+  );
 }
