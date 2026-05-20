@@ -804,6 +804,20 @@ export async function createBalcaoSale(
           cashReceivedInCents: number | null;
           notes: string | null;
         };
+
+        // Sprint 4C — saldo a virar fiado (NULL ou 0 = sem fiado).
+        const creditAmountInCents = data.creditAmountInCents ?? 0;
+        const hasCredit = creditAmountInCents > 0;
+
+        if (hasCredit && !data.customerId) {
+          return {
+            ok: false,
+            errorCode: "CUSTOMER_REQUIRED_FOR_FIADO" as const,
+            errorMessage:
+              "Cliente obrigatório quando há saldo a fiado.",
+          };
+        }
+
         let payments: NormalizedPayment[];
         if (data.payments && data.payments.length > 0) {
           payments = data.payments.map((p) => ({
@@ -820,7 +834,7 @@ export async function createBalcaoSale(
           payments = [
             {
               method: data.paymentMethod,
-              amountInCents: totalInCents,
+              amountInCents: totalInCents - creditAmountInCents,
               cashReceivedInCents:
                 data.paymentMethod === "cash"
                   ? data.cashReceivedInCents ?? null
@@ -828,6 +842,10 @@ export async function createBalcaoSale(
               notes: null,
             },
           ];
+        } else if (hasCredit) {
+          // Sprint 4C — venda 100% fiada via campo novo (equivalente a
+          // mode='fiado', mas dentro de mode='sale' pro fluxo unificado).
+          payments = [];
         } else {
           // Zod superRefine já barra isso, mas fallback defensivo.
           return {
@@ -837,16 +855,19 @@ export async function createBalcaoSale(
           };
         }
 
-        // Validar soma === total.
+        // Sprint 4C — validar soma considerando saldo a fiado:
+        //   SUM(payments) + creditAmount === totalInCents
         const paymentsSum = payments.reduce(
           (acc, p) => acc + p.amountInCents,
           0,
         );
-        if (paymentsSum !== totalInCents) {
+        if (paymentsSum + creditAmountInCents !== totalInCents) {
           return {
             ok: false,
             errorCode: "PAYMENTS_SUM_MISMATCH" as const,
-            errorMessage: `Soma dos pagamentos (R$ ${(paymentsSum / 100).toFixed(2)}) difere do total da venda (R$ ${(totalInCents / 100).toFixed(2)}).`,
+            errorMessage: hasCredit
+              ? `Soma pagamentos (R$ ${(paymentsSum / 100).toFixed(2)}) + fiado (R$ ${(creditAmountInCents / 100).toFixed(2)}) difere do total (R$ ${(totalInCents / 100).toFixed(2)}).`
+              : `Soma dos pagamentos (R$ ${(paymentsSum / 100).toFixed(2)}) difere do total da venda (R$ ${(totalInCents / 100).toFixed(2)}).`,
           };
         }
 
@@ -870,7 +891,9 @@ export async function createBalcaoSale(
         // Campos legados gravados no orderTable (compat com UI/queries que
         // ainda leem `order.paymentMethod`/`order.cashReceivedInCents`).
         // Primeira linha vence; soma dos cashReceived das linhas cash.
-        const legacyPaymentMethod = payments[0]!.method;
+        // Sprint 4C — quando payments=[] (venda 100% fiada via creditAmount),
+        // legacyPaymentMethod fica NULL — mesma semântica de mode='fiado'.
+        const legacyPaymentMethod = payments[0]?.method ?? null;
         const legacyCashReceived = payments
           .filter((p) => p.method === "cash" && p.cashReceivedInCents !== null)
           .reduce((acc, p) => acc + (p.cashReceivedInCents ?? 0), 0);
@@ -1029,16 +1052,41 @@ export async function createBalcaoSale(
               // Backfill SQL 47 garantiu que pedidos antigos já têm 1 linha
               // baseada em order.payment_method. Daqui pra frente, esta
               // tabela é a fonte da verdade (order.payment_method é compat).
-              await innerTx.insert(orderPaymentTable).values(
-                payments.map((p) => ({
+              //
+              // Sprint 4C — quando payments=[] (venda 100% fiada via
+              // creditAmountInCents), pula o INSERT — o saldo vai pra
+              // receivable abaixo.
+              if (payments.length > 0) {
+                await innerTx.insert(orderPaymentTable).values(
+                  payments.map((p) => ({
+                    storeId: store.id,
+                    orderId: orderRow.id,
+                    method: p.method,
+                    amountInCents: p.amountInCents,
+                    cashReceivedInCents: p.cashReceivedInCents,
+                    notes: p.notes,
+                  })),
+                );
+              }
+
+              // Sprint 4C — fiado parcial dentro de mode='sale': cria
+              // receivable do saldo restante. Mesma due_date convention
+              // do mode='fiado' (now + dueDaysFromNow). customerId já
+              // foi validado lá em cima (hasCredit && !customerId rejeita).
+              if (hasCredit) {
+                const dueDate = new Date(
+                  Date.now() + data.dueDaysFromNow * 24 * 60 * 60 * 1000,
+                );
+                await innerTx.insert(receivableTable).values({
                   storeId: store.id,
+                  customerId: data.customerId!,
                   orderId: orderRow.id,
-                  method: p.method,
-                  amountInCents: p.amountInCents,
-                  cashReceivedInCents: p.cashReceivedInCents,
-                  notes: p.notes,
-                })),
-              );
+                  amountInCents: creditAmountInCents,
+                  dueDate,
+                  paidAt: null,
+                  createdByUserId: userId,
+                });
+              }
 
               await recordSaleMovements(innerTx as unknown as Tx, {
                 storeId: store.id,

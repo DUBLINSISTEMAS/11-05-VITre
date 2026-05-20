@@ -20,6 +20,7 @@
 import {
   BanknoteIcon,
   CreditCardIcon,
+  HandCoinsIcon,
   MinusIcon,
   PackageIcon,
   PlusIcon,
@@ -28,6 +29,7 @@ import {
   SearchIcon,
   ShoppingBagIcon,
   Trash2Icon,
+  TriangleAlertIcon,
   UserIcon,
   XIcon,
 } from "lucide-react";
@@ -174,6 +176,9 @@ export function PdvShell() {
   const [paymentLines, setPaymentLines] = useState<PaymentLineState[]>(() => [
     makeDefaultPaymentLine(),
   ]);
+  // Sprint 4C — saldo a virar fiado dentro de mode='sale'. String BRL pro
+  // input ("100,00"); conversão pra cents no submit. Vazio = sem fiado.
+  const [creditAmountInput, setCreditAmountInput] = useState("");
   // ADR-0020 — desconto e acréscimo duais (R$ ou %). R$ é canônico no DB; %
   // é UX. `lastEdit` evita stomp quando o subtotal muda: se usuário digitou
   // em %, manter % e recomputar R$; se digitou em R$, manter R$ e recomputar %.
@@ -259,7 +264,11 @@ export function PdvShell() {
     (acc, line) => acc + (inputToCents(line.amountInput) ?? 0),
     0,
   );
-  const paymentsRemainingInCents = totalInCents - paymentsSumInCents;
+  // Sprint 4C — saldo a virar fiado (creditAmountInCents). Conta na soma
+  // do total (paymentsSum + creditAmount === total) e na quantia restante.
+  const creditAmountInCents = inputToCents(creditAmountInput) ?? 0;
+  const paymentsRemainingInCents =
+    totalInCents - paymentsSumInCents - creditAmountInCents;
   // Troco total: soma dos (cashReceived - amount) das linhas cash onde
   // cashReceived > amount. Visualmente mostrado per-linha; aqui é só
   // pra exibir num só lugar abaixo da lista (preserva UX antiga).
@@ -386,6 +395,7 @@ export function PdvShell() {
   const reset = useCallback(() => {
     setCart([]);
     setPaymentLines([makeDefaultPaymentLine()]);
+    setCreditAmountInput("");
     setDiscountAmountInput("");
     setDiscountPctInput("");
     setLastDiscountEdit(null);
@@ -399,18 +409,28 @@ export function PdvShell() {
     setWalkInPhone("");
   }, []);
 
-  // Sprint 1A — canSubmit cobre pagamento dividido:
+  // Sprint 1A + Sprint 4C — canSubmit cobre pagamento dividido + saldo fiado:
   //   - carrinho não vazio + não está submetendo + desconto válido
-  //   - soma dos pagamentos === total
+  //   - paymentsSum + creditAmount === total
   //   - todas as linhas válidas (amount > 0; cash com recv não pode ser < amount)
+  //   - se creditAmount > 0: customerId obrigatório
+  //   - se creditAmount === total: payments vazio é OK (caminho 100% fiado);
+  //     senão, payments não pode estar vazio
+  const hasCreditAmount = creditAmountInCents > 0;
+  const isFullyOnCredit = creditAmountInCents === totalInCents && totalInCents > 0;
+  const paymentsValidForCheckout = isFullyOnCredit
+    ? true
+    : paymentLinesAllValid &&
+      paymentLines.length > 0 &&
+      paymentLines.length <= MAX_PAYMENT_LINES;
+
   const canSubmit =
     cart.length > 0 &&
     !isSubmitting &&
     discountInCents <= subtotalInCents &&
-    paymentLinesAllValid &&
-    paymentLines.length > 0 &&
-    paymentLines.length <= MAX_PAYMENT_LINES &&
-    paymentsSumInCents === totalInCents;
+    paymentsValidForCheckout &&
+    paymentsSumInCents + creditAmountInCents === totalInCents &&
+    (!hasCreditAmount || !!customerId);
 
   const handleSubmit = () => {
     if (cart.length === 0) {
@@ -421,23 +441,42 @@ export function PdvShell() {
       toast.error("Desconto maior que o subtotal.");
       return;
     }
-    if (paymentLines.length === 0) {
-      toast.error("Adicione pelo menos uma forma de pagamento.");
-      return;
+    // Sprint 4C — quando NÃO é 100% fiado, payments[] é obrigatório.
+    if (!isFullyOnCredit) {
+      if (paymentLines.length === 0) {
+        toast.error("Adicione pelo menos uma forma de pagamento.");
+        return;
+      }
+      if (!paymentLinesAllValid) {
+        toast.error("Linha de pagamento inválida — confira valores e troco.");
+        return;
+      }
     }
-    if (!paymentLinesAllValid) {
-      toast.error("Linha de pagamento inválida — confira valores e troco.");
-      return;
-    }
-    if (paymentsSumInCents !== totalInCents) {
-      const diff = totalInCents - paymentsSumInCents;
+    if (paymentsSumInCents + creditAmountInCents !== totalInCents) {
+      const diff = totalInCents - paymentsSumInCents - creditAmountInCents;
       toast.error(
         diff > 0
-          ? `Falta R$ ${(diff / 100).toFixed(2)} no pagamento.`
-          : `Sobra R$ ${(Math.abs(diff) / 100).toFixed(2)} no pagamento.`,
+          ? `Falta R$ ${(diff / 100).toFixed(2)} (pagamento + fiado abaixo do total).`
+          : `Sobra R$ ${(Math.abs(diff) / 100).toFixed(2)} (pagamento + fiado acima do total).`,
       );
       return;
     }
+    if (hasCreditAmount && !customerId) {
+      toast.error("Selecione um cliente para registrar o saldo a fiado.");
+      return;
+    }
+
+    // Quando 100% fiado, mande payments=[] (ações suporta isso pelo
+    // creditAmountInCents). Caso contrário, mande as linhas digitadas.
+    const payloadPayments = isFullyOnCredit
+      ? []
+      : paymentLines.map((line) => ({
+          method: line.method,
+          amountInCents: inputToCents(line.amountInput) ?? 0,
+          cashReceivedInCents:
+            line.method === "cash" ? inputToCents(line.cashReceivedInput) : null,
+          notes: line.method === "other" ? line.notes.trim() || null : null,
+        }));
 
     const payload: CreateBalcaoSaleInput = {
       items: cart.map((it) => ({
@@ -448,13 +487,9 @@ export function PdvShell() {
       customerId,
       walkInName: customerId ? null : walkInName.trim() || null,
       walkInPhone: customerId ? null : walkInPhone.trim() || null,
-      payments: paymentLines.map((line) => ({
-        method: line.method,
-        amountInCents: inputToCents(line.amountInput) ?? 0,
-        cashReceivedInCents:
-          line.method === "cash" ? inputToCents(line.cashReceivedInput) : null,
-        notes: line.method === "other" ? line.notes.trim() || null : null,
-      })),
+      payments: payloadPayments,
+      creditAmountInCents:
+        creditAmountInCents > 0 ? creditAmountInCents : null,
       discountInCents: discountInCents > 0 ? discountInCents : null,
       surchargeInCents: surchargeInCents > 0 ? surchargeInCents : null,
       notes: notes.trim() || null,
@@ -726,6 +761,10 @@ export function PdvShell() {
                 paymentsSumInCents={paymentsSumInCents}
                 paymentsRemainingInCents={paymentsRemainingInCents}
                 troco={troco}
+                creditAmountInput={creditAmountInput}
+                setCreditAmountInput={setCreditAmountInput}
+                creditAmountInCents={creditAmountInCents}
+                hasCustomerSelected={customerId !== null}
                 discountAmountInput={discountAmountInput}
                 discountPctInput={discountPctInput}
                 onDiscountAmountChange={onDiscountAmountChange}
@@ -1258,6 +1297,10 @@ function PaymentSection({
   paymentsSumInCents,
   paymentsRemainingInCents,
   troco,
+  creditAmountInput,
+  setCreditAmountInput,
+  creditAmountInCents,
+  hasCustomerSelected,
   discountAmountInput,
   discountPctInput,
   onDiscountAmountChange,
@@ -1275,6 +1318,10 @@ function PaymentSection({
   paymentsSumInCents: number;
   paymentsRemainingInCents: number;
   troco: number | null;
+  creditAmountInput: string;
+  setCreditAmountInput: (v: string) => void;
+  creditAmountInCents: number;
+  hasCustomerSelected: boolean;
   discountAmountInput: string;
   discountPctInput: string;
   onDiscountAmountChange: (v: string) => void;
@@ -1459,11 +1506,83 @@ function PaymentSection({
           </button>
         ) : null}
 
-        {/* Indicador Falta / Sobra / Completo */}
+        {/* Sprint 4C — fiado parcial direto na venda */}
+        <div className="border-line mt-1 rounded-[10px] border bg-bg-card p-3">
+          <div className="mb-2 flex items-center gap-2">
+            <HandCoinsIcon size={13} className="text-brand" />
+            <span className="text-ink-2 text-[12px] font-medium">
+              Lançar saldo como fiado
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <span className="text-ink-4 absolute top-1/2 left-3 -translate-y-1/2 text-[12px]">
+                R$
+              </span>
+              <input
+                aria-label="Saldo a virar fiado"
+                inputMode="decimal"
+                placeholder="0,00"
+                value={creditAmountInput}
+                onChange={(e) => setCreditAmountInput(e.target.value)}
+                className={`${inputCls} pl-9 tabular-nums`}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                // Quitar saldo restante (paymentsRemaining = total - sum - credit).
+                // Preset: somar o que falta ao creditAmount atual.
+                const remainingNow =
+                  totalInCents - paymentsSumInCents - creditAmountInCents;
+                if (remainingNow <= 0) return;
+                const newCredit = creditAmountInCents + remainingNow;
+                setCreditAmountInput(
+                  (newCredit / 100).toFixed(2).replace(".", ","),
+                );
+              }}
+              className="b3-btn b3-btn--sm whitespace-nowrap"
+              title="Atribuir o saldo restante ao fiado"
+            >
+              Saldo restante
+            </button>
+            <button
+              type="button"
+              onClick={() => setCreditAmountInput("")}
+              className="b3-btn b3-btn--sm whitespace-nowrap"
+              title="Limpar fiado"
+              disabled={creditAmountInCents === 0}
+            >
+              Limpar
+            </button>
+          </div>
+          {creditAmountInCents > 0 ? (
+            <div className="mt-2 space-y-1 text-[11px]">
+              {!hasCustomerSelected ? (
+                <div className="text-danger flex items-center gap-1">
+                  <TriangleAlertIcon size={11} />
+                  Selecione um cliente cadastrado pra registrar o fiado.
+                </div>
+              ) : (
+                <div className="text-ink-4">
+                  Vence em 30 dias. Será criado automaticamente em
+                  /admin/financeiro/receber.
+                </div>
+              )}
+            </div>
+          ) : null}
+        </div>
+
+        {/* Indicador Falta / Sobra / Completo (considera fiado também) */}
         <div className="mt-1 text-[12px]">
-          {paymentsRemainingInCents === 0 && paymentsSumInCents > 0 ? (
+          {paymentsRemainingInCents === 0 &&
+          (paymentsSumInCents > 0 || creditAmountInCents > 0) ? (
             <span className="text-ok font-semibold">
-              Pagamento completo ({formatBRL(paymentsSumInCents)})
+              Total fechado ({formatBRL(paymentsSumInCents + creditAmountInCents)}
+              {creditAmountInCents > 0
+                ? ` · fiado ${formatBRL(creditAmountInCents)}`
+                : ""}
+              )
             </span>
           ) : paymentsRemainingInCents > 0 ? (
             <span className="text-warn font-semibold">

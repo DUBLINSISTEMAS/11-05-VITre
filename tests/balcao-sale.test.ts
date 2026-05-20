@@ -637,9 +637,31 @@ test("Sprint 1A: createBalcaoSale normaliza legacy paymentMethod -> payments[]",
 });
 
 test("Sprint 1A: createBalcaoSale valida sum(payments) === totalInCents", () => {
+  // Sprint 4C — fórmula virou paymentsSum + creditAmount === totalInCents
+  // pra acomodar fiado parcial dentro de mode='sale'. Quando não há fiado
+  // (creditAmount=0), comportamento idêntico ao original.
   const s = loadActionSource();
   assert.match(s, /paymentsSum/);
-  assert.match(s, /paymentsSum\s*!==\s*totalInCents/);
+  assert.match(s, /paymentsSum\s*\+\s*creditAmountInCents\s*!==\s*totalInCents/);
+});
+
+test("Sprint 4C: createBalcaoSale aceita fiado parcial via creditAmountInCents", () => {
+  const s = loadActionSource();
+  assert.match(s, /creditAmountInCents\s*=\s*data\.creditAmountInCents/);
+  assert.match(s, /hasCredit/);
+  assert.match(s, /if\s*\(hasCredit\)/);
+  assert.match(s, /amountInCents:\s*creditAmountInCents/);
+});
+
+test("Sprint 4C: createBalcaoSale exige customerId quando creditAmount > 0", () => {
+  const s = loadActionSource();
+  assert.match(s, /CUSTOMER_REQUIRED_FOR_FIADO/);
+  assert.match(s, /Cliente obrigatório quando há saldo a fiado/);
+});
+
+test("Sprint 4C: createBalcaoSale pula INSERT orderPayment quando payments=[]", () => {
+  const s = loadActionSource();
+  assert.match(s, /if\s*\(payments\.length\s*>\s*0\)/);
 });
 
 // Sprint 1A Fase 4 — Quote source-level invariants

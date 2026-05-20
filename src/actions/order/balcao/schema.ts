@@ -212,6 +212,25 @@ export const createBalcaoSaleSchema = z
       (v) => (typeof v === "string" && v.trim() === "" ? null : v),
       z.string().trim().max(500, "Máximo 500 caracteres").nullable(),
     ),
+    /**
+     * Sprint 4C — saldo a virar fiado dentro de mode='sale'. Permite
+     * pagamento MISTO (cliente paga R$ 100 PIX agora + R$ 200 vira
+     * receivable). NULL ou 0 = venda totalmente quitada (sem fiado).
+     *
+     * Quando > 0 em mode='sale':
+     *   - customerId OBRIGATÓRIO (fiado precisa de cliente identificado)
+     *   - SUM(payments) + creditAmountInCents === totalInCents
+     *   - Action cria 1 receivable com este valor + dueDaysFromNow
+     *
+     * Mode='fiado' antigo (tudo vira fiado) continua válido como
+     * atalho — equivalente a creditAmountInCents = total e payments = [].
+     */
+    creditAmountInCents: z
+      .number()
+      .int()
+      .min(0, "Valor de fiado não pode ser negativo")
+      .nullable()
+      .default(null),
   })
   .superRefine((data, ctx) => {
     // Sprint 1A Fase 4 — invariantes do modo 'quote':
@@ -286,14 +305,29 @@ export const createBalcaoSaleSchema = z
     }
 
     // Modo 'sale': pelo menos uma das duas formas: payments[] (nova) OU
-    // paymentMethod (legacy).
-    if (!data.payments && !data.paymentMethod) {
+    // paymentMethod (legacy) — OU creditAmountInCents > 0 (fiado parcial
+    // sem nenhum payment, equivalente a mode='fiado' mas via campo
+    // novo). Validação completa de SUM acontece server-side (action).
+    const hasCredit =
+      data.creditAmountInCents !== null &&
+      data.creditAmountInCents !== undefined &&
+      data.creditAmountInCents > 0;
+
+    if (!data.payments && !data.paymentMethod && !hasCredit) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["payments"],
         message: "Defina ao menos uma forma de pagamento",
       });
       return;
+    }
+    // Sprint 4C — fiado parcial dentro de mode='sale' exige cliente.
+    if (hasCredit && !data.customerId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["customerId"],
+        message: "Cliente obrigatório quando há saldo a fiado",
+      });
     }
     // Legacy: cash_received só com cash. Mesma regra do schema antigo.
     if (
