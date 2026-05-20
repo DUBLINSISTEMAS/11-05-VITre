@@ -99,9 +99,9 @@ function DialogShellLoading() {
   return (
     <>
       <DialogHeader className="border-b border-line px-5 py-4 sm:px-6">
-        <DialogTitle className="sr-only">Carregando pedido…</DialogTitle>
+        <DialogTitle className="sr-only">Carregando venda…</DialogTitle>
         <DialogDescription className="sr-only">
-          Aguardando dados do pedido.
+          Aguardando dados da venda.
         </DialogDescription>
       </DialogHeader>
       <div className="flex items-center justify-center gap-2 py-16 text-sm text-ink-4">
@@ -115,7 +115,7 @@ function DialogShellError({ message }: { message: string }) {
   return (
     <>
       <DialogHeader className="border-b border-line px-5 py-4 sm:px-6">
-        <DialogTitle>Não foi possível abrir o pedido</DialogTitle>
+        <DialogTitle>Não foi possível abrir a venda</DialogTitle>
         <DialogDescription>{message}</DialogDescription>
       </DialogHeader>
     </>
@@ -282,7 +282,7 @@ function OrderDetailContent({
               target="_blank"
               rel="noopener noreferrer"
             >
-              <PrinterIcon /> Imprimir pedido
+              <PrinterIcon /> Imprimir venda
             </a>
           </Button>
         </section>

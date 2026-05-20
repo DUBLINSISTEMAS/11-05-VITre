@@ -51,7 +51,7 @@ export function OrdersStatusTabs({ counts }: OrdersStatusTabsProps) {
   };
 
   return (
-    <div className="b3-tabs" role="tablist" aria-label="Filtrar pedidos por status">
+    <div className="b3-tabs" role="tablist" aria-label="Filtrar vendas por status">
       {TABS.map((tab) => {
         const isActive =
           (tab.value === null && active === null) || tab.value === active;

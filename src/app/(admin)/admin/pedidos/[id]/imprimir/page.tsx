@@ -91,7 +91,7 @@ export default async function ImprimirPedidoPage({
         <header className="border-b border-black/20 pb-4">
           <div className="flex items-baseline justify-between gap-4">
             <h1 className="text-xl font-bold tracking-tight">
-              Pedido #{order.shortCode}
+              Venda #{order.shortCode}
             </h1>
             <span className="font-mono text-[12px] uppercase tracking-wider">
               {statusLabel}

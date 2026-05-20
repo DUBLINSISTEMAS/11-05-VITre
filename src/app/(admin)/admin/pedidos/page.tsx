@@ -156,10 +156,10 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
       {/* H1 + CTA Dublin v3 (substitui AdminPageHeader) */}
       <div className="flex items-end justify-between gap-4">
         <h1 className="text-[24px] font-bold tracking-[-0.025em] text-ink-1">
-          Pedidos
+          Vendas
         </h1>
         <Link href="/admin/pdv" className="b3-btn b3-btn--cta" prefetch>
-          <PlusIcon size={14} aria-hidden /> Pedido manual
+          <PlusIcon size={14} aria-hidden /> Nova venda
         </Link>
       </div>
 
@@ -210,11 +210,11 @@ function EmptyState() {
         <ReceiptIcon className="size-6" />
       </div>
       <h2 className="text-lg font-semibold text-ink-1">
-        Sem pedidos por enquanto
+        Sem vendas por enquanto
       </h2>
       <p className="text-ink-4 max-w-sm text-sm">
         Quando algum cliente fechar uma compra pelo WhatsApp na sua vitrine,
-        o pedido aparece aqui com o código curto.
+        a venda aparece aqui com o código curto.
       </p>
     </div>
   );
@@ -227,7 +227,7 @@ function NoResults() {
         <SearchXIcon className="size-6" />
       </div>
       <h2 className="text-lg font-semibold text-ink-1">
-        Nenhum pedido encontrado
+        Nenhuma venda encontrada
       </h2>
       <p className="text-ink-4 max-w-sm text-sm">
         Confira o código ou o status, ou limpe os filtros.

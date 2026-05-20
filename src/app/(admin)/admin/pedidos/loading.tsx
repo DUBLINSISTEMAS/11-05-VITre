@@ -9,7 +9,7 @@ export default function Loading() {
     <div
       role="status"
       aria-live="polite"
-      aria-label="Carregando pedidos"
+      aria-label="Carregando vendas"
       className="space-y-4 sm:space-y-6"
     >
       <header className="space-y-2">

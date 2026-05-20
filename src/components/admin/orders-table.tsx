@@ -81,7 +81,7 @@ export function OrdersTable({ orders }: OrdersTableProps) {
               }}
               tabIndex={0}
               role="button"
-              aria-label={`Abrir pedido ${o.shortCode}`}
+              aria-label={`Abrir venda ${o.shortCode}`}
               className="cursor-pointer outline-none focus-visible:bg-bg-app"
             >
               <td

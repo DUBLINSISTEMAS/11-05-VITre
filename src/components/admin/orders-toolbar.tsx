@@ -80,7 +80,7 @@ export function OrdersToolbar({
           placeholder="Procurar por código ou cliente…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          aria-label="Buscar pedidos"
+          aria-label="Buscar vendas"
         />
       </div>
       <button
@@ -115,7 +115,7 @@ export function OrdersToolbar({
         aria-live="polite"
       >
         {total === 0
-          ? "0 pedidos"
+          ? "0 vendas"
           : `${rangeStart} – ${rangeEnd} de ${total}`}
       </span>
     </div>

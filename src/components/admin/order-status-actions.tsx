@@ -59,7 +59,7 @@ export function OrderStatusActions({
   if (allowed.length === 0) {
     return (
       <p className="text-ink-4 text-xs">
-        Pedido finalizado. Sem ações disponíveis.
+        Venda finalizada. Sem ações disponíveis.
       </p>
     );
   }
@@ -69,7 +69,7 @@ export function OrderStatusActions({
       {allowed.includes("confirmed") ? (
         <Button
           type="button"
-          onClick={() => transition("confirmed", "Pedido confirmado.")}
+          onClick={() => transition("confirmed", "Venda confirmada.")}
           disabled={isPending}
         >
           {isPending ? (
@@ -77,7 +77,7 @@ export function OrderStatusActions({
           ) : (
             <CheckIcon />
           )}
-          Confirmar pedido
+          Confirmar venda
         </Button>
       ) : null}
 
@@ -85,7 +85,7 @@ export function OrderStatusActions({
         <Button
           type="button"
           variant="outline"
-          onClick={() => transition("fulfilled", "Pedido marcado como cumprido.")}
+          onClick={() => transition("fulfilled", "Venda marcada como cumprida.")}
           disabled={isPending}
         >
           <PackageCheckIcon /> Marcar como cumprido
@@ -106,7 +106,7 @@ export function OrderStatusActions({
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Cancelar este pedido?</AlertDialogTitle>
+              <AlertDialogTitle>Cancelar esta venda?</AlertDialogTitle>
               <AlertDialogDescription>
                 A cliente não recebe nenhum aviso automaticamente — combine o
                 cancelamento por WhatsApp antes.
@@ -115,10 +115,10 @@ export function OrderStatusActions({
             <AlertDialogFooter>
               <AlertDialogCancel>Voltar</AlertDialogCancel>
               <AlertDialogAction
-                onClick={() => transition("canceled", "Pedido cancelado.")}
+                onClick={() => transition("canceled", "Venda cancelada.")}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                Cancelar pedido
+                Cancelar venda
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

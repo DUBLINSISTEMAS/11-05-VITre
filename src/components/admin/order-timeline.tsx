@@ -114,7 +114,7 @@ function buildSteps(order: OrderTimelineProps["order"]): Step[] {
   const steps: Step[] = [
     {
       key: "created",
-      label: "Pedido criado",
+      label: "Venda criada",
       state: "done",
       date: order.createdAt,
     },
