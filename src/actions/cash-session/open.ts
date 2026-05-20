@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
 import { cashSessionTable } from "@/db/schema";
+import { extractClientContext, recordAuditEvent } from "@/lib/audit";
 import { auth } from "@/lib/auth";
 import { isUniqueViolation } from "@/lib/db-errors";
 import { logger } from "@/lib/logger";
@@ -40,7 +41,8 @@ export type OpenCashSessionResult =
 export async function openCashSession(
   input: OpenCashSessionInput,
 ): Promise<OpenCashSessionResult> {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const requestHeaders = await headers();
+  const session = await auth.api.getSession({ headers: requestHeaders });
   if (!session?.user) {
     return {
       ok: false,
@@ -106,6 +108,20 @@ export async function openCashSession(
         .returning({ id: cashSessionTable.id });
 
       if (!row) throw new Error("INSERT cash_session não retornou id");
+
+      // Sprint 6A — auditoria de operação financeira crítica.
+      const clientCtx = extractClientContext(requestHeaders);
+      await recordAuditEvent(tx, {
+        storeId: store.id,
+        actorUserId: userId,
+        action: "cash_session.opened",
+        entityType: "cash_session",
+        entityId: row.id,
+        payload: { openingAmountInCents: data.openingAmountInCents },
+        ip: clientCtx.ip,
+        userAgent: clientCtx.userAgent,
+      });
+
       return row.id;
     });
 

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
 import { cashAdjustmentTable, cashSessionTable, orderTable } from "@/db/schema";
+import { extractClientContext, recordAuditEvent } from "@/lib/audit";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import {
@@ -48,7 +49,8 @@ export type CloseCashSessionResult =
 export async function closeCashSession(
   input: CloseCashSessionInput,
 ): Promise<CloseCashSessionResult> {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const requestHeaders = await headers();
+  const session = await auth.api.getSession({ headers: requestHeaders });
   if (!session?.user) {
     return {
       ok: false,
@@ -221,6 +223,26 @@ export async function closeCashSession(
       if (updated.length === 0) {
         return { ok: false as const, errorCode: "ALREADY_CLOSED" as const };
       }
+
+      // Sprint 6A — auditoria de fechamento (delta vs esperado é
+      // forense crítica: divergência alta = fraude ou erro grave).
+      const clientCtx = extractClientContext(requestHeaders);
+      await recordAuditEvent(tx, {
+        storeId: store.id,
+        actorUserId: userId,
+        action: "cash_session.closed",
+        entityType: "cash_session",
+        entityId: target.id,
+        payload: {
+          closingExpectedInCents,
+          closingActualInCents: data.closingActualInCents,
+          deltaInCents:
+            data.closingActualInCents - closingExpectedInCents,
+          closingNotes: data.closingNotes,
+        },
+        ip: clientCtx.ip,
+        userAgent: clientCtx.userAgent,
+      });
 
       return { ok: true as const };
     });

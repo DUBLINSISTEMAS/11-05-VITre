@@ -35,6 +35,7 @@ import {
   receivablePaymentTable,
   receivableTable,
 } from "@/db/schema";
+import { extractClientContext, recordAuditEvent } from "@/lib/audit";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import {
@@ -68,12 +69,15 @@ export type ReverseReceivablePaymentResult =
 export async function reverseReceivablePayment(
   input: ReverseReceivablePaymentInput,
 ): Promise<ReverseReceivablePaymentResult> {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const requestHeaders = await headers();
+  const session = await auth.api.getSession({ headers: requestHeaders });
   if (!session?.user) return { ok: false, error: "Sessão expirada." };
   const userId = session.user.id;
 
   const store = await getCurrentStore(userId);
   if (!store) return { ok: false, error: "Loja não encontrada." };
+
+  const clientCtx = extractClientContext(requestHeaders);
 
   try {
     await checkRateLimit(rateLimits.mutation, userId);
@@ -248,6 +252,25 @@ export async function reverseReceivablePayment(
           amountInCents: original.amountInCents,
           reopenedReceivable,
           cashAdjustmentId,
+        });
+
+        // Sprint 6A — auditoria forense (forense pós-incidente).
+        await recordAuditEvent(tx, {
+          storeId: store.id,
+          actorUserId: userId,
+          action: "receivable.payment_reversed",
+          entityType: "receivable_payment",
+          entityId: original.id,
+          payload: {
+            reversalId: reversalRow.id,
+            receivableId: original.receivableId,
+            amountInCents: original.amountInCents,
+            method: original.method,
+            reopenedReceivable,
+            reason: data.reason,
+          },
+          ip: clientCtx.ip,
+          userAgent: clientCtx.userAgent,
         });
 
         return {

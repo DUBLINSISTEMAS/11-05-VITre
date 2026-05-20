@@ -36,6 +36,7 @@ import {
   receivableTable,
   storeTable,
 } from "@/db/schema";
+import { extractClientContext, recordAuditEvent } from "@/lib/audit";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { restockOrderItems } from "@/lib/order/restock";
@@ -75,12 +76,15 @@ const RETURNABLE_STATUSES = ["confirmed", "fulfilled"] as const;
 export async function recordOrderReturn(
   input: RecordOrderReturnInput,
 ): Promise<RecordOrderReturnResult> {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const requestHeaders = await headers();
+  const session = await auth.api.getSession({ headers: requestHeaders });
   if (!session?.user) return { ok: false, error: "Sessão expirada." };
   const userId = session.user.id;
 
   const store = await getCurrentStore(userId);
   if (!store) return { ok: false, error: "Loja não encontrada." };
+
+  const clientCtx = extractClientContext(requestHeaders);
 
   try {
     await checkRateLimit(rateLimits.mutation, userId);
@@ -283,6 +287,24 @@ export async function recordOrderReturn(
           refundedInCents: order.totalInCents,
           itemsReturned: items.length,
           cashAdjustmentId,
+        });
+
+        // Sprint 6A — auditoria forense.
+        await recordAuditEvent(tx as unknown as Tx, {
+          storeId: store.id,
+          actorUserId: userId,
+          action: "order.return_recorded",
+          entityType: "order",
+          entityId: order.id,
+          payload: {
+            returnId: returnRow.id,
+            refundedInCents: order.totalInCents,
+            itemsReturned: items.length,
+            reason: data.reason,
+            cashAdjustmentId,
+          },
+          ip: clientCtx.ip,
+          userAgent: clientCtx.userAgent,
         });
 
         return {
