@@ -143,6 +143,161 @@ test("createBalcaoSaleSchema aceita até 99 items, rejeita 100", () => {
 });
 
 // ---------------------------------------------------------------------
+// Sprint 1A — multipayment via payments[]
+// ---------------------------------------------------------------------
+
+function validBaseWithPayments(overrides?: Partial<{ payments: unknown }>) {
+  const base = {
+    items: [
+      {
+        productId: "550e8400-e29b-41d4-a716-446655440000",
+        variantId: null,
+        quantity: 1,
+      },
+    ],
+    customerId: null,
+    discountInCents: null,
+    surchargeInCents: null,
+    notes: null,
+  };
+  return { ...base, ...overrides };
+}
+
+test("Sprint 1A: createBalcaoSaleSchema aceita payments[] com 2 formas (pix + cash)", () => {
+  const r = createBalcaoSaleSchema.safeParse(
+    validBaseWithPayments({
+      payments: [
+        { method: "pix", amountInCents: 5000 },
+        { method: "cash", amountInCents: 5000, cashReceivedInCents: 6000 },
+      ],
+    }),
+  );
+  assert.equal(r.success, true, JSON.stringify(r));
+});
+
+test("Sprint 1A: createBalcaoSaleSchema aceita payments[] com 3 formas", () => {
+  const r = createBalcaoSaleSchema.safeParse(
+    validBaseWithPayments({
+      payments: [
+        { method: "credit", amountInCents: 4000 },
+        { method: "pix", amountInCents: 3000 },
+        { method: "cash", amountInCents: 3000, cashReceivedInCents: 3000 },
+      ],
+    }),
+  );
+  assert.equal(r.success, true);
+});
+
+test("Sprint 1A: createBalcaoSaleSchema aceita payments[] com 5 formas (limite)", () => {
+  const r = createBalcaoSaleSchema.safeParse(
+    validBaseWithPayments({
+      payments: [
+        { method: "cash", amountInCents: 1000, cashReceivedInCents: 1000 },
+        { method: "pix", amountInCents: 1000 },
+        { method: "credit", amountInCents: 1000 },
+        { method: "debit", amountInCents: 1000 },
+        { method: "other", amountInCents: 1000, notes: "vale" },
+      ],
+    }),
+  );
+  assert.equal(r.success, true);
+});
+
+test("Sprint 1A: createBalcaoSaleSchema rejeita payments[] com 6 formas", () => {
+  const sixPayments = Array.from({ length: 6 }, () => ({
+    method: "cash" as const,
+    amountInCents: 1000,
+  }));
+  const r = createBalcaoSaleSchema.safeParse(
+    validBaseWithPayments({ payments: sixPayments }),
+  );
+  assert.equal(r.success, false);
+});
+
+test("Sprint 1A: createBalcaoSaleSchema rejeita payments[] vazio", () => {
+  const r = createBalcaoSaleSchema.safeParse(
+    validBaseWithPayments({ payments: [] }),
+  );
+  assert.equal(r.success, false);
+});
+
+test("Sprint 1A: createBalcaoSaleSchema rejeita payments[] sem nenhum pagamento e sem paymentMethod legado", () => {
+  const r = createBalcaoSaleSchema.safeParse(validBaseWithPayments({}));
+  assert.equal(r.success, false);
+  if (!r.success) {
+    const issue = r.error.issues.find((i) => i.path.includes("payments"));
+    assert.ok(issue, "Esperava issue no path payments");
+  }
+});
+
+test("Sprint 1A: paymentLine rejeita cashReceived em method != cash", () => {
+  const r = createBalcaoSaleSchema.safeParse(
+    validBaseWithPayments({
+      payments: [
+        { method: "pix", amountInCents: 5000, cashReceivedInCents: 5000 },
+      ],
+    }),
+  );
+  assert.equal(r.success, false);
+});
+
+test("Sprint 1A: paymentLine rejeita cashReceived menor que amount (cash)", () => {
+  const r = createBalcaoSaleSchema.safeParse(
+    validBaseWithPayments({
+      payments: [
+        { method: "cash", amountInCents: 10000, cashReceivedInCents: 5000 },
+      ],
+    }),
+  );
+  assert.equal(r.success, false);
+});
+
+test("Sprint 1A: paymentLine rejeita amount zero ou negativo", () => {
+  const rZero = createBalcaoSaleSchema.safeParse(
+    validBaseWithPayments({
+      payments: [{ method: "cash", amountInCents: 0 }],
+    }),
+  );
+  assert.equal(rZero.success, false);
+  const rNeg = createBalcaoSaleSchema.safeParse(
+    validBaseWithPayments({
+      payments: [{ method: "cash", amountInCents: -100 }],
+    }),
+  );
+  assert.equal(rNeg.success, false);
+});
+
+test("Sprint 1A: paymentLine rejeita notes > 60 chars", () => {
+  const r = createBalcaoSaleSchema.safeParse(
+    validBaseWithPayments({
+      payments: [
+        { method: "other", amountInCents: 5000, notes: "x".repeat(61) },
+      ],
+    }),
+  );
+  assert.equal(r.success, false);
+});
+
+test("Sprint 1A: createBalcaoSaleSchema aceita backward-compat (paymentMethod único, sem payments)", () => {
+  const r = createBalcaoSaleSchema.safeParse({
+    items: [
+      {
+        productId: "550e8400-e29b-41d4-a716-446655440000",
+        variantId: null,
+        quantity: 1,
+      },
+    ],
+    customerId: null,
+    paymentMethod: "cash" as const,
+    cashReceivedInCents: null,
+    discountInCents: null,
+    surchargeInCents: null,
+    notes: null,
+  });
+  assert.equal(r.success, true);
+});
+
+// ---------------------------------------------------------------------
 // Action source — invariantes estruturais
 // ---------------------------------------------------------------------
 
@@ -227,6 +382,32 @@ test("createBalcaoSale aceita variant ou produto sem trackStock como no-op de mo
 test("createBalcaoSale idempotency key gerada server-side (randomUUID)", () => {
   const s = loadActionSource();
   assert.match(s, /randomUUID\(\)/);
+});
+
+// Sprint 1A — multipayment source-level invariants
+
+test("Sprint 1A: createBalcaoSale importa e usa orderPaymentTable", () => {
+  const s = loadActionSource();
+  assert.match(s, /orderPaymentTable/);
+  assert.match(s, /innerTx\.insert\(orderPaymentTable\)/);
+});
+
+test("Sprint 1A: createBalcaoSale tem error code PAYMENTS_SUM_MISMATCH", () => {
+  const s = loadActionSource();
+  assert.match(s, /PAYMENTS_SUM_MISMATCH/);
+});
+
+test("Sprint 1A: createBalcaoSale normaliza legacy paymentMethod -> payments[]", () => {
+  const s = loadActionSource();
+  // Branch que constrói payments quando recebe paymentMethod legado
+  assert.match(s, /data\.paymentMethod/);
+  assert.match(s, /balcao\.legacy_payment_payload/);
+});
+
+test("Sprint 1A: createBalcaoSale valida sum(payments) === totalInCents", () => {
+  const s = loadActionSource();
+  assert.match(s, /paymentsSum/);
+  assert.match(s, /paymentsSum\s*!==\s*totalInCents/);
 });
 
 // ---------------------------------------------------------------------

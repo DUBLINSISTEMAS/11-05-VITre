@@ -31,6 +31,7 @@ import {
   cashSessionTable,
   customerTable,
   orderItemTable,
+  orderPaymentTable,
   orderTable,
   productTable,
   productVariantTable,
@@ -53,6 +54,7 @@ import { type Tx, withTenant } from "@/lib/tenant";
 import {
   type CreateBalcaoSaleInput,
   createBalcaoSaleSchema,
+  PAYMENT_METHOD_VALUES,
 } from "./schema";
 
 export type CreateBalcaoSaleErrorCode =
@@ -65,6 +67,7 @@ export type CreateBalcaoSaleErrorCode =
   | "CUSTOMER_NOT_FOUND"
   | "CASH_RECEIVED_TOO_LOW"
   | "DISCOUNT_OVER_TOTAL"
+  | "PAYMENTS_SUM_MISMATCH"
   | "COUPON_INVALID"
   | "SHORTCODE_RETRY_EXHAUSTED"
   | "UNKNOWN";
@@ -397,18 +400,92 @@ export async function createBalcaoSale(
         }
         const totalInCents = subtotalInCents - discount + surcharge;
 
-        // 10. Validar troco (se cash + cashReceived informado)
-        if (
-          data.paymentMethod === "cash" &&
-          data.cashReceivedInCents !== null &&
-          data.cashReceivedInCents < totalInCents
-        ) {
+        // 10. Normalizar pagamento → payments[] canônico.
+        //
+        // Sprint 1A: action aceita 2 formatos:
+        //   - NOVO: data.payments = [{method, amount, cashReceived, notes}, ...]
+        //   - LEGADO: data.paymentMethod + data.cashReceivedInCents (Sprint 1B remove)
+        //
+        // Quando recebe LEGADO, converte para 1 linha em payments[] com
+        // amount = totalInCents. Loga warning pra rastrear callers do
+        // formato antigo (UI nova deve enviar payments[] direto).
+        type NormalizedPayment = {
+          method: typeof PAYMENT_METHOD_VALUES[number];
+          amountInCents: number;
+          cashReceivedInCents: number | null;
+          notes: string | null;
+        };
+        let payments: NormalizedPayment[];
+        if (data.payments && data.payments.length > 0) {
+          payments = data.payments.map((p) => ({
+            method: p.method,
+            amountInCents: p.amountInCents,
+            cashReceivedInCents: p.cashReceivedInCents,
+            notes: p.notes,
+          }));
+        } else if (data.paymentMethod) {
+          logger.warn("balcao.legacy_payment_payload", {
+            storeId: store.id,
+            paymentMethod: data.paymentMethod,
+          });
+          payments = [
+            {
+              method: data.paymentMethod,
+              amountInCents: totalInCents,
+              cashReceivedInCents:
+                data.paymentMethod === "cash"
+                  ? data.cashReceivedInCents ?? null
+                  : null,
+              notes: null,
+            },
+          ];
+        } else {
+          // Zod superRefine já barra isso, mas fallback defensivo.
           return {
             ok: false,
-            errorCode: "CASH_RECEIVED_TOO_LOW" as const,
-            errorMessage: "Valor recebido menor que o total.",
+            errorCode: "VALIDATION" as const,
+            errorMessage: "Defina ao menos uma forma de pagamento.",
           };
         }
+
+        // Validar soma === total.
+        const paymentsSum = payments.reduce(
+          (acc, p) => acc + p.amountInCents,
+          0,
+        );
+        if (paymentsSum !== totalInCents) {
+          return {
+            ok: false,
+            errorCode: "PAYMENTS_SUM_MISMATCH" as const,
+            errorMessage: `Soma dos pagamentos (R$ ${(paymentsSum / 100).toFixed(2)}) difere do total da venda (R$ ${(totalInCents / 100).toFixed(2)}).`,
+          };
+        }
+
+        // Validar troco per-linha (cash com received < amount).
+        // Zod já valida quando cashReceived é preenchido; aqui é defesa
+        // em profundidade pra payload legado.
+        for (const p of payments) {
+          if (
+            p.method === "cash" &&
+            p.cashReceivedInCents !== null &&
+            p.cashReceivedInCents < p.amountInCents
+          ) {
+            return {
+              ok: false,
+              errorCode: "CASH_RECEIVED_TOO_LOW" as const,
+              errorMessage: "Valor recebido em dinheiro menor que o valor da linha.",
+            };
+          }
+        }
+
+        // Campos legados gravados no orderTable (compat com UI/queries que
+        // ainda leem `order.paymentMethod`/`order.cashReceivedInCents`).
+        // Primeira linha vence; soma dos cashReceived das linhas cash.
+        const legacyPaymentMethod = payments[0]!.method;
+        const legacyCashReceived = payments
+          .filter((p) => p.method === "cash" && p.cashReceivedInCents !== null)
+          .reduce((acc, p) => acc + (p.cashReceivedInCents ?? 0), 0);
+        const legacyCashReceivedFinal = legacyCashReceived > 0 ? legacyCashReceived : null;
 
         // 10b. ADR-0022 D1 — auto-attach sessão de caixa ATIVA se houver.
         //      Sem sessão aberta: cashSessionId = null (vendas sem caixa
@@ -524,14 +601,15 @@ export async function createBalcaoSale(
                   totalInCents,
                   status: "fulfilled",
                   channel: "balcao",
-                  paymentMethod: data.paymentMethod,
+                  // Campo legado: Sprint 1B vai remover. Usa primeira linha
+                  // de payments[] pra UI/queries antigas continuarem lendo.
+                  paymentMethod: legacyPaymentMethod,
                   discountInCents: discount > 0 ? discount : null,
                   surchargeInCents:
                     data.surchargeInCents ?? null,
-                  cashReceivedInCents:
-                    data.paymentMethod === "cash"
-                      ? data.cashReceivedInCents
-                      : null,
+                  // Campo legado: soma de cash_received das linhas method='cash'
+                  // (zero/null se não houve linha cash). Sprint 1B remove.
+                  cashReceivedInCents: legacyCashReceivedFinal,
                   // expiresAt nullable na Fase 5 — irrelevante pra balcão.
                   expiresAt: null,
                   confirmedAt: new Date(),
@@ -559,6 +637,21 @@ export async function createBalcaoSale(
                   })),
                 );
               }
+
+              // Sprint 1A — gravar N linhas em order_payment (multipayment).
+              // Backfill SQL 47 garantiu que pedidos antigos já têm 1 linha
+              // baseada em order.payment_method. Daqui pra frente, esta
+              // tabela é a fonte da verdade (order.payment_method é compat).
+              await innerTx.insert(orderPaymentTable).values(
+                payments.map((p) => ({
+                  storeId: store.id,
+                  orderId: orderRow.id,
+                  method: p.method,
+                  amountInCents: p.amountInCents,
+                  cashReceivedInCents: p.cashReceivedInCents,
+                  notes: p.notes,
+                })),
+              );
 
               await recordSaleMovements(innerTx as unknown as Tx, {
                 storeId: store.id,
