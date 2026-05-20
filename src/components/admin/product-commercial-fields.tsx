@@ -14,9 +14,10 @@
  *   <IdentityExtraCard /> — marca, unidade, GTIN, código interno
  *   <NcmField />          — NCM (compacto, usado em "Detalhes/Tributação")
  *
- * `<CommercialFieldsCard />` continua exportado como compat (usado em
- * test/storybook se houver) mas o ProductForm refator usa os 4 sub-cards
- * direto.
+ * Onda C (Sprint 0): CommercialFieldsCard removido — tabs do ProductForm
+ * usam IdentityExtraCard/CommercialCard/CostMarginCard direto OU
+ * SubCard próprio (em /admin/produtos/[id] o form de produto novo
+ * desenha sub-cards inline na tab Preço & Custo).
  */
 
 import type {
@@ -420,22 +421,3 @@ export function NcmField({
   );
 }
 
-// =====================================================================
-// CommercialFieldsCard — COMPAT. Versão monolítica usada na Onda B.1.
-// Onda B.2 não usa mais; mantido caso testes ou import esquecido referenciem.
-// =====================================================================
-export function CommercialFieldsCard(props: SubCardProps) {
-  return (
-    <div className="flex flex-col gap-3">
-      <IdentityExtraCard {...props} />
-      <div className="grid gap-3 lg:grid-cols-3">
-        <CommercialCard {...props} />
-        <CostMarginCard {...props} />
-        <InventoryExtraCard {...props} />
-      </div>
-      <DenseCard title="Tributação">
-        <NcmField {...props} />
-      </DenseCard>
-    </div>
-  );
-}

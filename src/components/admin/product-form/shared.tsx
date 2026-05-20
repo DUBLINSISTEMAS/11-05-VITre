@@ -24,38 +24,16 @@ import {
 } from "../category-dialog";
 
 // ============================================================================
-// FormCard — card visual com título + descrição opcional + children
+// SubCard — sub-bloco DENTRO de uma aba, com título + descrição opcional
 // ============================================================================
 
-interface FormCardProps {
+interface SubCardProps {
   title: string;
   description?: string;
   children: React.ReactNode;
 }
 
-export function FormCard({ title, description, children }: FormCardProps) {
-  return (
-    <section className="b3-card flex flex-col gap-4 rounded-2xl p-4 sm:p-5 xl:p-6">
-      <header className="space-y-0.5">
-        <h2 className="text-[13.5px] font-semibold tracking-tight text-ink-1">
-          {title}
-        </h2>
-        {description ? (
-          <p className="text-ink-4 text-[11.5px] leading-relaxed">
-            {description}
-          </p>
-        ) : null}
-      </header>
-      <div className="flex flex-col gap-3">{children}</div>
-    </section>
-  );
-}
-
-// ============================================================================
-// SubCard — sub-bloco DENTRO de uma aba, mais discreto que FormCard
-// ============================================================================
-
-export function SubCard({ title, description, children }: FormCardProps) {
+export function SubCard({ title, description, children }: SubCardProps) {
   return (
     <section className="flex flex-col gap-3 rounded-xl border border-line bg-bg-app/30 p-3 sm:p-4">
       <header className="space-y-0.5">
