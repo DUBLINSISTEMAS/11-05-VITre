@@ -1,12 +1,29 @@
 "use client";
 
-import { CheckIcon, ClockIcon, ExternalLinkIcon } from "lucide-react";
+/**
+ * Sprint 2B + Sprint 4B.
+ *
+ * Lista de fiados pendentes. Cada linha mostra:
+ *   - Vencimento + status (Vencido / Aberto / Parcial)
+ *   - Cliente + telefone
+ *   - Valor total + barra de progresso quando parcial
+ *   - Botão "Receber pagamento" abre dialog (Sprint 4B)
+ *
+ * Cards de topo (Pendente / Vencido / Vincendos) já consideram
+ * pagamentos parciais — vêm do server (loadPendingReceivables).
+ */
+
+import {
+  ClockIcon,
+  ExternalLinkIcon,
+  HandCoinsIcon,
+} from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { toast } from "sonner";
 
 import type { PendingReceivableRow } from "@/actions/receivable/load-pending";
-import { markReceivablePaid } from "@/actions/receivable/mark-paid";
+import { ReceivablePaymentDialog } from "@/components/admin/receivable-payment-dialog";
 import { formatBRL } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
@@ -21,39 +38,24 @@ interface ReceivablesListProps {
 }
 
 export function ReceivablesList({ rows: initial, totals }: ReceivablesListProps) {
-  const [rows, setRows] = useState(initial);
-  const [marking, setMarking] = useState<Set<string>>(new Set());
+  const router = useRouter();
+  const [openId, setOpenId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
-  const localPendingSum = rows.reduce((acc, r) => acc + r.amountInCents, 0);
-  const localOverdueSum = rows.reduce((acc, r) => {
-    if (r.isOverdue) return acc + r.amountInCents;
+  // Recálculo local (após pagamentos rápidos) — refresh do server cobre
+  // o caso confirmado. Aqui derivamos os mesmos cards a partir dos rows
+  // recebidos do server (que já consideram parciais).
+  const localPendingSum = initial.reduce(
+    (acc, r) => acc + r.remainingInCents,
+    0,
+  );
+  const localOverdueSum = initial.reduce((acc, r) => {
+    if (r.isOverdue) return acc + r.remainingInCents;
     return acc;
   }, 0);
-  const localOverdueCount = rows.filter((r) => r.isOverdue).length;
+  const localOverdueCount = initial.filter((r) => r.isOverdue).length;
 
-  function handleMarkPaid(id: string) {
-    if (marking.has(id)) return;
-    setMarking((prev) => new Set(prev).add(id));
-    startTransition(async () => {
-      const result = await markReceivablePaid({ id });
-      setMarking((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-      toast.success(
-        result.cashAdjustmentId
-          ? "Pago. Entrada registrada no caixa aberto."
-          : "Pago. (Sem caixa aberto — só o fiado foi quitado.)",
-      );
-      setRows((prev) => prev.filter((r) => r.id !== id));
-    });
-  }
+  const openRow = initial.find((r) => r.id === openId) ?? null;
 
   if (initial.length === 0) {
     return (
@@ -79,7 +81,7 @@ export function ReceivablesList({ rows: initial, totals }: ReceivablesListProps)
             {formatBRL(localPendingSum)}
           </div>
           <div className="text-ink-4 mt-1 text-[12px]">
-            {rows.length} {rows.length === 1 ? "lançamento" : "lançamentos"}
+            {initial.length} {initial.length === 1 ? "lançamento" : "lançamentos"}
           </div>
         </div>
         <div
@@ -117,8 +119,8 @@ export function ReceivablesList({ rows: initial, totals }: ReceivablesListProps)
             {formatBRL(localPendingSum - localOverdueSum)}
           </div>
           <div className="text-ink-4 mt-1 text-[12px]">
-            {rows.length - localOverdueCount}{" "}
-            {rows.length - localOverdueCount === 1
+            {initial.length - localOverdueCount}{" "}
+            {initial.length - localOverdueCount === 1
               ? "lançamento"
               : "lançamentos"}
           </div>
@@ -131,15 +133,19 @@ export function ReceivablesList({ rows: initial, totals }: ReceivablesListProps)
             <tr>
               <th>Vencimento</th>
               <th>Cliente</th>
-              <th className="text-right">Valor</th>
+              <th className="text-right">Saldo</th>
               <th>Status</th>
               <th>Pedido</th>
-              <th style={{ width: 120 }} />
+              <th style={{ width: 160 }} />
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => {
-              const isMarking = marking.has(r.id);
+            {initial.map((r) => {
+              const isPartial = r.paidInCents > 0;
+              const paidPct =
+                r.amountInCents === 0
+                  ? 0
+                  : Math.min(100, (r.paidInCents / r.amountInCents) * 100);
               return (
                 <tr key={r.id}>
                   <td className="mono text-[12.5px]">
@@ -165,14 +171,35 @@ export function ReceivablesList({ rows: initial, totals }: ReceivablesListProps)
                       </div>
                     ) : null}
                   </td>
-                  <td className="mono text-right font-medium tabular-nums">
-                    {formatBRL(r.amountInCents)}
+                  <td className="text-right">
+                    <div className="mono font-medium tabular-nums">
+                      {formatBRL(r.remainingInCents)}
+                    </div>
+                    {isPartial ? (
+                      <>
+                        <div className="text-ink-4 mt-0.5 text-[11px]">
+                          de {formatBRL(r.amountInCents)}
+                        </div>
+                        <div className="bg-line/40 mt-1 h-1 w-full overflow-hidden rounded">
+                          <div
+                            className="bg-state-success h-full rounded"
+                            style={{ width: `${paidPct}%` }}
+                            aria-hidden
+                          />
+                        </div>
+                      </>
+                    ) : null}
                   </td>
                   <td>
                     {r.isOverdue ? (
                       <span className="b3-pill b3-pill--danger inline-flex items-center gap-1">
                         <ClockIcon size={10} />
                         Vencido
+                      </span>
+                    ) : isPartial ? (
+                      <span className="b3-pill b3-pill--brand inline-flex items-center gap-1">
+                        <ClockIcon size={10} />
+                        Parcial
                       </span>
                     ) : (
                       <span className="b3-pill b3-pill--warn inline-flex items-center gap-1">
@@ -199,19 +226,12 @@ export function ReceivablesList({ rows: initial, totals }: ReceivablesListProps)
                     <div className="flex justify-end">
                       <button
                         type="button"
-                        onClick={() => handleMarkPaid(r.id)}
-                        disabled={isMarking}
+                        onClick={() => setOpenId(r.id)}
                         className="b3-btn b3-btn--sm b3-btn--brand"
-                        title="Marcar como pago"
+                        title="Receber pagamento parcial ou total"
                       >
-                        {isMarking ? (
-                          "…"
-                        ) : (
-                          <>
-                            <CheckIcon size={12} />
-                            Marcar pago
-                          </>
-                        )}
+                        <HandCoinsIcon size={12} />
+                        Receber
                       </button>
                     </div>
                   </td>
@@ -221,6 +241,22 @@ export function ReceivablesList({ rows: initial, totals }: ReceivablesListProps)
           </tbody>
         </table>
       </div>
+
+      {openRow ? (
+        <ReceivablePaymentDialog
+          receivableId={openRow.id}
+          initialRemainingInCents={openRow.remainingInCents}
+          customerName={openRow.customerName}
+          onClose={(didChange) => {
+            setOpenId(null);
+            if (didChange) {
+              startTransition(() => {
+                router.refresh();
+              });
+            }
+          }}
+        />
+      ) : null}
     </>
   );
 }
