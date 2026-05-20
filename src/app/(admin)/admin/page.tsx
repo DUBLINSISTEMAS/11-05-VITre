@@ -248,8 +248,7 @@ export default async function AdminHomePage({
           }
           cta={{
             label: "Ver fiados",
-            disabled: true,
-            tooltip: "Disponível na Sprint 4",
+            href: "/admin/financeiro/receber",
           }}
         />
 

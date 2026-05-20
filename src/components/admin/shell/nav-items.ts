@@ -63,7 +63,7 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
       { k: "caixa",    label: "Caixa do dia",            icon: WalletIcon,          href: "/admin/pdv/caixa"             },
       { k: "vendas",   label: "Vendas",                  icon: ReceiptIcon,         href: "/admin/pedidos"               },
       { k: "estoque",  label: "Movimentação de estoque", icon: ArrowLeftRightIcon,  href: "/admin/estoque",   exact: true },
-      { k: "receber",  label: "A receber",               icon: ClockIcon,           soon: true                           },
+      { k: "receber",  label: "A receber",               icon: ClockIcon,           href: "/admin/financeiro/receber"    },
       { k: "contatos", label: "Recados do site",         icon: InboxIcon,           href: "/admin/contatos"              },
     ],
   },

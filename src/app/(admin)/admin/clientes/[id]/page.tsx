@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { loadCustomerDetail } from "@/actions/customer/load";
+import { CustomerFiadoCard } from "@/components/admin/customer-fiado-card";
 import { requireSession } from "@/lib/auth-server";
 
 import { EditCustomerForm } from "./edit-customer-form";
@@ -26,7 +27,7 @@ export default async function EditClientePage({ params }: EditClientePageProps) 
     notFound();
   }
 
-  const { customer, orderCount, recentOrders } = detail;
+  const { customer, orderCount, recentOrders, fiadoSummary, pendingReceivables } = detail;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -59,6 +60,11 @@ export default async function EditClientePage({ params }: EditClientePageProps) 
           </p>
         </div>
       </div>
+
+      <CustomerFiadoCard
+        summary={fiadoSummary}
+        pendingReceivables={pendingReceivables}
+      />
 
       <EditCustomerForm
         initialData={{

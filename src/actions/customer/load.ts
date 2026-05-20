@@ -1,9 +1,9 @@
 "use server";
 
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, isNull, lt, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 
-import { customerTable, orderTable } from "@/db/schema";
+import { customerTable, orderTable, receivableTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
@@ -72,6 +72,58 @@ export async function loadCustomerDetail(
       .orderBy(desc(orderTable.createdAt))
       .limit(10);
 
-    return { customer, orderCount, recentOrders };
+    // Sprint 2B — agregados de fiado (receivable) deste cliente.
+    const receivableAgg = await tx
+      .select({
+        pendingSum: sql<number>`coalesce(sum(${receivableTable.amountInCents}) filter (where ${receivableTable.paidAt} is null), 0)::int`,
+        overdueSum: sql<number>`coalesce(sum(${receivableTable.amountInCents}) filter (where ${receivableTable.paidAt} is null and ${receivableTable.dueDate} < now()), 0)::int`,
+        overdueCount: sql<number>`count(*) filter (where ${receivableTable.paidAt} is null and ${receivableTable.dueDate} < now())::int`,
+        pendingCount: sql<number>`count(*) filter (where ${receivableTable.paidAt} is null)::int`,
+      })
+      .from(receivableTable)
+      .where(
+        and(
+          eq(receivableTable.storeId, store.id),
+          eq(receivableTable.customerId, customerId),
+        ),
+      );
+    const r = receivableAgg[0];
+    const fiadoSummary = {
+      pendingSum: r?.pendingSum ?? 0,
+      overdueSum: r?.overdueSum ?? 0,
+      overdueCount: r?.overdueCount ?? 0,
+      pendingCount: r?.pendingCount ?? 0,
+    };
+
+    // Linhas de receivable pendentes (mais recentes 20). Pagas ficam fora
+    // pra reduzir scroll — UI tem botão "Ver pagos" pra detalhe maior.
+    const pendingReceivables = await tx
+      .select({
+        id: receivableTable.id,
+        amountInCents: receivableTable.amountInCents,
+        dueDate: receivableTable.dueDate,
+        paidAt: receivableTable.paidAt,
+        orderId: receivableTable.orderId,
+        notes: receivableTable.notes,
+        createdAt: receivableTable.createdAt,
+      })
+      .from(receivableTable)
+      .where(
+        and(
+          eq(receivableTable.storeId, store.id),
+          eq(receivableTable.customerId, customerId),
+          isNull(receivableTable.paidAt),
+        ),
+      )
+      .orderBy(desc(receivableTable.dueDate))
+      .limit(20);
+
+    return {
+      customer,
+      orderCount,
+      recentOrders,
+      fiadoSummary,
+      pendingReceivables,
+    };
   });
 }
