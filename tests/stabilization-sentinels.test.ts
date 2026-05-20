@@ -83,6 +83,8 @@ test("pdv: venda concluída permanece no PDV e oferece impressão explícita", (
 
   assert.doesNotMatch(pdv, /router\.push\(`\/admin\/pdv\/recibo\/\$\{result\.publicToken\}`\)/);
   assert.match(pdv, /lastSale/);
-  assert.match(pdv, /Imprimir recibo/);
+  // Redesign 2026-05-21 encurtou o label do botão pra "Imprimir" pra
+  // caber na coluna 380px. A intenção (oferecer impressão) é preservada.
+  assert.match(pdv, /Imprimir/);
   assert.match(pdv, /Nova venda/);
 });

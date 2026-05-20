@@ -49,6 +49,7 @@ const READS_AND_HELPERS_ALLOWLIST: ReadonlyArray<string> = [
   "load-dre.ts",
   "search.ts",
   "search-for-pdv.ts",
+  "load-for-pdv.ts", // category/load-for-pdv.ts — read pro picker do PDV
   "global.ts", // search/global.ts — busca admin cmd+K
   // Tipos exportados (não são actions)
   "types.ts",

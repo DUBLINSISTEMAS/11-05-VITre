@@ -12,7 +12,7 @@ import { auth } from "@/lib/auth";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
-const MAX_RESULTS = 12;
+const MAX_RESULTS = 24;
 
 export interface PdvProductVariantHit {
   id: string;
@@ -39,16 +39,22 @@ export interface PdvProductHit {
   variants: PdvProductVariantHit[];
 }
 
+export interface SearchProductsForPdvOptions {
+  /** Filtra por categoria. Null/undefined = todas. */
+  categoryId?: string | null;
+}
+
 /**
  * Busca rápida de produtos pra ProductSearchPicker do /admin/pdv
  * (Fase 5 — ADR-0016). Read-only, sem rate limit (admin authenticated +
  * RLS). Match em name ilike. Inclui variantes ATIVAS + thumbnail.
  *
- * Limite hardcoded em 12 resultados — grid mobile cabe ~6, desktop ~12.
- * Lojista refina busca pra mais.
+ * Limite 24 (dialog do redesign mostra grid scrollável). Lojista
+ * refina por busca ou categoria pra ver mais.
  */
 export async function searchProductsForPdv(
   q: string,
+  options?: SearchProductsForPdvOptions,
 ): Promise<PdvProductHit[]> {
   const requestHeaders = await headers();
   const session = await auth.api.getSession({ headers: requestHeaders });
@@ -59,13 +65,21 @@ export async function searchProductsForPdv(
 
   const trimmed = q.trim();
   const safeQ = trimmed.replace(/[\\%_]/g, "\\$&");
+  const categoryFilter = options?.categoryId ?? null;
 
   return withTenant(store.id, session.user.id, async (tx) => {
+    const baseConditions = [
+      eq(productTable.storeId, store.id),
+      eq(productTable.isActive, true),
+    ];
+    if (categoryFilter) {
+      baseConditions.push(eq(productTable.categoryId, categoryFilter));
+    }
+
     const where =
       trimmed.length > 0
         ? and(
-            eq(productTable.storeId, store.id),
-            eq(productTable.isActive, true),
+            ...baseConditions,
             or(
               ilike(productTable.name, `%${safeQ}%`),
               ilike(productTable.slug, `%${safeQ}%`),
@@ -73,10 +87,7 @@ export async function searchProductsForPdv(
               eq(productTable.gtin, trimmed),
             ),
           )
-        : and(
-            eq(productTable.storeId, store.id),
-            eq(productTable.isActive, true),
-          );
+        : and(...baseConditions);
 
     const products = await tx
       .select({

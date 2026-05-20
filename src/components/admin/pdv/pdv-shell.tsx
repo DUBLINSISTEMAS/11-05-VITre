@@ -61,6 +61,10 @@ import {
   searchProductsForPdv,
 } from "@/actions/product/search-for-pdv";
 import {
+  type PickerSelection,
+  ProductPickerDialog,
+} from "@/components/admin/pdv/product-picker-dialog";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -179,6 +183,10 @@ export function PdvShell() {
   // Sprint 4C — saldo a virar fiado dentro de mode='sale'. String BRL pro
   // input ("100,00"); conversão pra cents no submit. Vazio = sem fiado.
   const [creditAmountInput, setCreditAmountInput] = useState("");
+  // Redesign PDV — dialog modal pra escolher produtos. Substitui o picker
+  // inline da coluna esquerda. Lojista clica "+ Adicionar produto" no
+  // carrinho, escolhe N itens com checkbox, confirma → vão pro cart.
+  const [pickerOpen, setPickerOpen] = useState(false);
   // ADR-0020 — desconto e acréscimo duais (R$ ou %). R$ é canônico no DB; %
   // é UX. `lastEdit` evita stomp quando o subtotal muda: se usuário digitou
   // em %, manter % e recomputar R$; se digitou em R$, manter R$ e recomputar %.
@@ -369,6 +377,18 @@ export function PdvShell() {
       });
     },
     [],
+  );
+
+  // Redesign — adapter do ProductPickerDialog. Cada item selecionado
+  // entra como qty=1; ajuste fino no carrinho. Reusa addToCart pra
+  // herdar lógica de stock check + merge de duplicatas.
+  const addItemsFromPicker = useCallback(
+    (items: PickerSelection[]) => {
+      for (const it of items) {
+        addToCart(it.product, it.variant, it.effectivePrice);
+      }
+    },
+    [addToCart],
   );
 
   const updateQty = (idx: number, delta: number) => {
@@ -707,53 +727,62 @@ export function PdvShell() {
   }, [reset]);
 
   return (
-    <div className="flex flex-col gap-4">
-    <div className="grid gap-4 lg:grid-cols-[1fr_400px] lg:gap-6">
-      {/* Coluna esquerda: busca + grid de produtos */}
-      <section className="space-y-4">
-        <ProductSearchPicker onAdd={addToCart} />
-      </section>
+    <div className="flex h-[calc(100vh-4rem)] flex-col gap-2 lg:h-[calc(100vh-2.5rem)]">
+      {/* Topo: cliente — única linha fina, sempre visível */}
+      <div className="b3-card shrink-0">
+        <CustomerComboboxLight
+          customerId={customerId}
+          customerLabel={customerLabel}
+          walkInName={walkInName}
+          walkInPhone={walkInPhone}
+          setWalkInName={setWalkInName}
+          setWalkInPhone={setWalkInPhone}
+          onPick={(c) => {
+            setCustomerId(c?.id ?? null);
+            setCustomerLabel(c ? `${c.name} · ${c.phone}` : "");
+            if (c) {
+              setWalkInName("");
+              setWalkInPhone("");
+            }
+          }}
+        />
+      </div>
 
-      {/* Coluna direita: cliente + carrinho + pagamento + finalizar.
-          FIX 2026-05-19 ("campos sumindo"): a aside era flex-col com
-          overflow-hidden + max-h. Cliente + Cart + PaymentSection + Footer
-          (Total+Submit) somavam >viewport quando user preenchia desconto +
-          acréscimo + observação. Como TODOS os filhos tinham flex-shrink:1
-          default, o footer (último) era encolhido a 0 — botão Finalizar
-          sumia. Fix: middle scrollable (Cart + PaymentSection num wrapper
-          flex-1 overflow-y-auto min-h-0); Customer e Footer marcados
-          shrink-0; CartPanel perde overflow próprio (parent agora cuida). */}
-      <aside className="b3-card flex flex-col overflow-hidden lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]">
-        <div className="shrink-0">
-          <CustomerComboboxLight
-            customerId={customerId}
-            customerLabel={customerLabel}
-            walkInName={walkInName}
-            walkInPhone={walkInPhone}
-            setWalkInName={setWalkInName}
-            setWalkInPhone={setWalkInPhone}
-            onPick={(c) => {
-              setCustomerId(c?.id ?? null);
-              setCustomerLabel(c ? `${c.name} · ${c.phone}` : "");
-              if (c) {
-                setWalkInName("");
-                setWalkInPhone("");
-              }
+      {/* Body: 2 colunas — carrinho (esquerda flex) + pagamento (direita 380px) */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 lg:grid-cols-[1fr_380px]">
+        {/* Carrinho — coluna esquerda */}
+        <section className="b3-card flex flex-col overflow-hidden">
+          {/* Toolbar: scanner GTIN + botão "+ Adicionar produto" */}
+          <CartToolbar
+            onScanResult={(hit) => {
+              const effectivePrice = getEffectivePrice({
+                basePriceInCents: hit.basePriceInCents,
+                promoPriceInCents: hit.promoPriceInCents,
+                promoStartsAt: hit.promoStartsAt,
+                promoEndsAt: hit.promoEndsAt,
+              });
+              addToCart(hit, null, effectivePrice);
             }}
-          />
-        </div>
-
-        {/* Scrollable middle — Cart + PaymentSection rolam juntos quando
-            extrapolam altura. Footer (Total + Submit) FICA SEMPRE VISÍVEL. */}
-        <div className="flex flex-1 min-h-0 flex-col overflow-y-auto">
-          <CartPanel
-            items={cart}
-            updateQty={updateQty}
-            removeItem={removeItem}
+            onOpenPicker={() => setPickerOpen(true)}
+            cartCount={cart.length}
           />
 
-          {cart.length > 0 ? (
-            <div className="border-t border-line bg-bg-app">
+          {/* Lista de items — scroll interno */}
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <CartPanel
+              items={cart}
+              updateQty={updateQty}
+              removeItem={removeItem}
+              onOpenPicker={() => setPickerOpen(true)}
+            />
+          </div>
+        </section>
+
+        {/* Pagamento + Total — coluna direita 380px */}
+        <aside className="b3-card flex min-h-0 flex-col overflow-hidden">
+          {/* Pagamento scroll interno */}
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {cart.length > 0 ? (
               <PaymentSection
                 paymentLines={paymentLines}
                 setPaymentLines={setPaymentLines}
@@ -776,152 +805,161 @@ export function PdvShell() {
                 notes={notes}
                 setNotes={setNotes}
               />
-            </div>
-          ) : null}
-        </div>
+            ) : (
+              <div className="text-ink-4 flex h-full flex-col items-center justify-center gap-2 p-6 text-center text-xs">
+                <span>Adicione produtos pra ver as formas de pagamento.</span>
+              </div>
+            )}
+          </div>
 
-        <div className="shrink-0 border-t border-line bg-bg-app p-[18px]">
-          {lastSale ? (
-            <div className="mb-3 rounded-[10px] border border-brand-line bg-brand-wash p-3">
-              <div className="text-[12px] font-bold uppercase tracking-[0.06em] text-brand">
-                Venda registrada
-              </div>
-              <div className="mt-1 text-sm text-ink-2">
-                Total {formatBRL(lastSale.totalInCents)}. Pronto para nova venda.
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  className="b3-btn b3-btn--sm"
-                  onClick={() => setLastSale(null)}
-                >
-                  Nova venda
-                </button>
-                {lastSale.publicToken ? (
+          {/* Footer — total + botões SEMPRE visíveis */}
+          <div className="border-line bg-bg-app shrink-0 border-t p-3">
+            {lastSale ? (
+              <div className="border-brand-line bg-brand-wash mb-2 rounded-md border p-2">
+                <div className="text-brand text-[11px] font-bold uppercase tracking-[0.06em]">
+                  Venda registrada
+                </div>
+                <div className="text-ink-2 mt-0.5 text-[12px]">
+                  Total {formatBRL(lastSale.totalInCents)}
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-1.5">
                   <button
                     type="button"
-                    className="b3-btn b3-btn--sm b3-btn--brand"
-                    onClick={() => {
-                      window.open(
-                        `/admin/pdv/recibo/${lastSale.publicToken}`,
-                        "_blank",
-                        "noopener,noreferrer",
-                      );
-                    }}
+                    className="b3-btn b3-btn--sm"
+                    onClick={() => setLastSale(null)}
                   >
-                    Imprimir recibo
+                    Nova venda
                   </button>
+                  {lastSale.publicToken ? (
+                    <button
+                      type="button"
+                      className="b3-btn b3-btn--sm b3-btn--brand"
+                      onClick={() => {
+                        window.open(
+                          `/admin/pdv/recibo/${lastSale.publicToken}`,
+                          "_blank",
+                          "noopener,noreferrer",
+                        );
+                      }}
+                    >
+                      Imprimir
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-ink-1 text-[13px] font-bold">Total</span>
+              <span
+                className={cn(
+                  "mono text-[22px] font-bold tracking-[-0.02em]",
+                  cart.length === 0 ? "text-ink-4" : "text-ink-1",
+                )}
+              >
+                {formatBRL(totalInCents)}
+              </span>
+            </div>
+            {discountInCents > 0 || surchargeInCents > 0 ? (
+              <div className="text-ink-4 mb-2 space-y-0.5 text-[11px]">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span className="mono">{formatBRL(subtotalInCents)}</span>
+                </div>
+                {discountInCents > 0 ? (
+                  <div className="flex justify-between">
+                    <span>Desconto</span>
+                    <span className="mono text-danger">
+                      −{formatBRL(discountInCents)}
+                    </span>
+                  </div>
+                ) : null}
+                {surchargeInCents > 0 ? (
+                  <div className="flex justify-between">
+                    <span>Acréscimo</span>
+                    <span className="mono text-warn">
+                      +{formatBRL(surchargeInCents)}
+                    </span>
+                  </div>
                 ) : null}
               </div>
-            </div>
-          ) : null}
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-[14px] font-bold text-ink-1">Total</span>
-            <span
+            ) : null}
+            <button
+              id="pdv-submit"
+              type="button"
+              disabled={!canSubmit}
+              onClick={handleSubmit}
               className={cn(
-                "mono text-[22px] font-bold tracking-[-0.02em]",
-                cart.length === 0 ? "text-ink-4" : "text-ink-1",
+                "b3-btn b3-btn--cta h-11 w-full",
+                !canSubmit && "cursor-not-allowed opacity-50",
               )}
             >
-              {formatBRL(totalInCents)}
-            </span>
-          </div>
-          {discountInCents > 0 || surchargeInCents > 0 ? (
-            <div className="mb-2 space-y-1 text-xs text-ink-4">
-              <div className="flex items-center justify-between">
-                <span>Subtotal</span>
-                <span className="mono">{formatBRL(subtotalInCents)}</span>
-              </div>
-              {discountInCents > 0 ? (
-                <div className="flex items-center justify-between">
-                  <span>Desconto</span>
-                  <span className="mono text-danger">
-                    −{formatBRL(discountInCents)}
-                  </span>
-                </div>
-              ) : null}
-              {surchargeInCents > 0 ? (
-                <div className="flex items-center justify-between">
-                  <span>Acréscimo</span>
-                  <span className="mono text-warn">
-                    +{formatBRL(surchargeInCents)}
-                  </span>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-          <button
-            id="pdv-submit"
-            type="button"
-            disabled={!canSubmit}
-            onClick={handleSubmit}
-            className={cn(
-              "b3-btn b3-btn--cta w-full",
-              !canSubmit && "cursor-not-allowed opacity-50",
-            )}
-            style={{ height: 44 }}
-          >
-            {isSubmitting
-              ? "Registrando…"
-              : cart.length === 0
-                ? "Adicione produtos pra finalizar"
-                : "Finalizar venda (F4)"}
-          </button>
-
-          {/* Sprint 1A Fase 4 — Salvar como orçamento. Habilitado quando
-              há pelo menos 1 item no carrinho (não exige pagamento). */}
-          <button
-            type="button"
-            disabled={cart.length === 0 || isSubmitting}
-            onClick={handleSubmitQuote}
-            className={cn(
-              "b3-btn mt-2 w-full",
-              (cart.length === 0 || isSubmitting) &&
-                "cursor-not-allowed opacity-50",
-            )}
-            style={{ height: 40 }}
-          >
-            Salvar como orçamento
-          </button>
-
-          {/* Sprint 1A Fase 5 — Lançar como fiado. Desabilitado quando
-              sem customerId (tooltip explicativo). */}
-          <button
-            type="button"
-            disabled={
-              cart.length === 0 || isSubmitting || !customerId
-            }
-            onClick={handleSubmitFiado}
-            title={
-              !customerId
-                ? "Selecione um cliente cadastrado pra lançar fiado"
-                : undefined
-            }
-            className={cn(
-              "b3-btn mt-2 w-full",
-              (cart.length === 0 || isSubmitting || !customerId) &&
-                "cursor-not-allowed opacity-50",
-            )}
-            style={{ height: 40 }}
-          >
-            Lançar como fiado
-          </button>
-
-          {cart.length > 0 ? (
-            <button
-              type="button"
-              onClick={reset}
-              className="mt-2 w-full text-[12px] text-ink-4 hover:text-ink-1"
-            >
-              Limpar venda
+              {isSubmitting
+                ? "Registrando…"
+                : cart.length === 0
+                  ? "Adicione produtos pra finalizar"
+                  : "Finalizar venda (F4)"}
             </button>
-          ) : null}
-        </div>
-      </aside>
-    </div>
 
-      {/* Sprint 1A — barra de F-keys (legenda discreta no rodapé). */}
-      <FKeysLegend />
+            {/* Salvar como orçamento + Lançar como fiado — lado a lado */}
+            <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+              <button
+                type="button"
+                disabled={cart.length === 0 || isSubmitting}
+                onClick={handleSubmitQuote}
+                className={cn(
+                  "b3-btn h-9 text-[12px]",
+                  (cart.length === 0 || isSubmitting) &&
+                    "cursor-not-allowed opacity-50",
+                )}
+              >
+                Orçamento
+              </button>
+              <button
+                type="button"
+                disabled={
+                  cart.length === 0 || isSubmitting || !customerId
+                }
+                onClick={handleSubmitFiado}
+                title={
+                  !customerId
+                    ? "Selecione um cliente cadastrado pra lançar fiado"
+                    : undefined
+                }
+                className={cn(
+                  "b3-btn h-9 text-[12px]",
+                  (cart.length === 0 || isSubmitting || !customerId) &&
+                    "cursor-not-allowed opacity-50",
+                )}
+              >
+                Fiado
+              </button>
+            </div>
+
+            {cart.length > 0 ? (
+              <button
+                type="button"
+                onClick={reset}
+                className="text-ink-4 hover:text-ink-1 mt-1.5 w-full text-[11px]"
+              >
+                Limpar venda
+              </button>
+            ) : null}
+          </div>
+        </aside>
+      </div>
+
+      {/* Picker dialog — substitui a coluna esquerda inteira */}
+      <ProductPickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onAdd={addItemsFromPicker}
+      />
+
+      {/* FKeys discreta no rodapé */}
+      <div className="shrink-0">
+        <FKeysLegend />
+      </div>
     </div>
   );
 }
@@ -953,236 +991,96 @@ function FKeysLegend() {
 // Subcomponentes
 // ---------------------------------------------------------------------
 
-function ProductSearchPicker({
-  onAdd,
+
+/**
+ * Toolbar fina no topo do CartPanel — Redesign PDV:
+ * - Input GTIN scanner (compacto, focável via F2)
+ * - Botão "+ Adicionar produto" que abre o ProductPickerDialog
+ * - Contador "X itens" à direita
+ *
+ * Scanner busca direto via searchProductsForPdv. Match exato em
+ * GTIN + 1 hit + sem variantes → adiciona automático e limpa input.
+ * Outros casos → toast pra usar o picker.
+ */
+function CartToolbar({
+  onScanResult,
+  onOpenPicker,
+  cartCount,
 }: {
-  onAdd: (
-    product: PdvProductHit,
-    variant: PdvProductVariantHit | null,
-    effectivePrice: number,
-  ) => void;
+  onScanResult: (hit: PdvProductHit) => void;
+  onOpenPicker: () => void;
+  cartCount: number;
 }) {
-  const [q, setQ] = useState("");
-  const [hits, setHits] = useState<PdvProductHit[]>([]);
-  const [isSearching, startSearch] = useTransition();
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [expandedVariants, setExpandedVariants] = useState<Set<string>>(
-    new Set(),
-  );
+  const [scanValue, setScanValue] = useState("");
+  const [scanning, setScanning] = useState(false);
 
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      startSearch(async () => {
-        const results = await searchProductsForPdv(q);
-        setHits(results);
-      });
-    }, 200);
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [q]);
-
-  // Sprint 1A — scanner GTIN: Enter no input checa match exato em
-  // product.gtin. Se encontrar 1 produto e ele NÃO tem variantes,
-  // adiciona direto + limpa input. Útil pra fluxo de bipagem (scanner
-  // físico envia caracteres + Enter no fim).
-  //
-  // Critérios pra add direto:
-  //   - 1 hit retornado pela busca
-  //   - hit.gtin === input.trim() (match exato — defesa contra busca por
-  //     nome retornar 1 resultado e disparar add automático)
-  //   - hit sem variantes (com variantes precisa o lojista escolher)
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== "Enter") return;
-    const trimmed = q.trim();
-    if (!trimmed) return;
-    const exactGtinMatch = hits.find(
-      (h) => h.gtin && h.gtin === trimmed && h.variants.length === 0,
-    );
-    if (!exactGtinMatch) return;
     e.preventDefault();
-    const effectivePrice = getEffectivePrice({
-      basePriceInCents: exactGtinMatch.basePriceInCents,
-      promoPriceInCents: exactGtinMatch.promoPriceInCents,
-      promoStartsAt: exactGtinMatch.promoStartsAt,
-      promoEndsAt: exactGtinMatch.promoEndsAt,
+    const trimmed = scanValue.trim();
+    if (!trimmed) return;
+    setScanning(true);
+    void searchProductsForPdv(trimmed).then((hits) => {
+      setScanning(false);
+      // Match exato GTIN + sem variantes → adiciona direto.
+      const exact = hits.find(
+        (h) => h.gtin === trimmed && h.variants.length === 0,
+      );
+      if (exact) {
+        onScanResult(exact);
+        setScanValue("");
+        return;
+      }
+      // Senão: abre picker com hint pra escolher manualmente.
+      toast.info(
+        hits.length === 0
+          ? "Nada encontrado. Use 'Adicionar produto' pra buscar."
+          : "Múltiplos resultados — abrindo busca completa.",
+      );
+      onOpenPicker();
     });
-    onAdd(exactGtinMatch, null, effectivePrice);
-    setQ("");
-    setHits([]);
   };
 
-  const toggleVariants = (productId: string) =>
-    setExpandedVariants((prev) => {
-      const next = new Set(prev);
-      if (next.has(productId)) next.delete(productId);
-      else next.add(productId);
-      return next;
-    });
-
   return (
-    <div className="space-y-4">
-      {/* Search bar 56px com badge F2 mono + scanner GTIN (Sprint 1A) */}
-      <div className="relative">
+    <div className="border-line bg-surface flex shrink-0 items-center gap-2 border-b px-3 py-2">
+      <div className="relative flex-1">
         <ScanBarcodeIcon
           aria-hidden
-          size={18}
-          className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-4"
+          size={14}
+          className="text-ink-4 pointer-events-none absolute top-1/2 left-3 -translate-y-1/2"
         />
         <input
           id="pdv-product-search"
           autoFocus
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
+          value={scanValue}
+          onChange={(e) => setScanValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Bipe ou digite código / nome"
-          className="border-line bg-surface focus:border-brand focus:ring-brand/20 h-14 w-full rounded-[12px] border pl-12 pr-16 text-[15px] outline-none transition focus:ring-2"
+          placeholder="Bipe código (Enter)"
+          disabled={scanning}
+          className="border-line focus:border-brand h-9 w-full rounded-md border bg-bg-card pr-12 pl-9 text-[13px] outline-none transition"
         />
-        {q ? (
-          <button
-            type="button"
-            onClick={() => setQ("")}
-            className="text-ink-4 hover:text-ink-1 absolute right-12 top-1/2 -translate-y-1/2"
-            aria-label="Limpar busca"
-          >
-            <XIcon size={14} />
-          </button>
-        ) : null}
-        <span className="mono bg-bg-app text-ink-4 absolute right-4 top-1/2 -translate-y-1/2 rounded px-2 py-[2px] text-[11px]">
+        <span className="mono bg-bg-app text-ink-4 absolute top-1/2 right-2 -translate-y-1/2 rounded px-1.5 py-[1px] text-[10px]">
           F2
         </span>
       </div>
-
-      {isSearching && hits.length === 0 ? (
-        <div className="grid grid-cols-2 gap-[10px] sm:grid-cols-3 lg:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div
-              key={i}
-              className="bg-bg-app aspect-[0.8] animate-pulse rounded-[12px]"
-            />
-          ))}
-        </div>
-      ) : hits.length === 0 ? (
-        <EmptyHits hasQuery={q.trim() !== ""} />
-      ) : (
-        <div className="grid grid-cols-2 gap-[10px] sm:grid-cols-3 lg:grid-cols-4">
-          {hits.map((p) => {
-            const effectivePrice = getEffectivePrice({
-              basePriceInCents: p.basePriceInCents,
-              promoPriceInCents: p.promoPriceInCents,
-              promoStartsAt: p.promoStartsAt,
-              promoEndsAt: p.promoEndsAt,
-            });
-            const expanded = expandedVariants.has(p.id);
-            const hasVariants = p.variants.length > 0;
-            const isOutOfStock =
-              p.trackStock &&
-              p.stockQuantity !== null &&
-              p.stockQuantity <= 0 &&
-              !hasVariants;
-            const stockTone =
-              !p.trackStock || p.stockQuantity === null
-                ? "b3-pill"
-                : p.stockQuantity <= 0
-                  ? "b3-pill b3-pill--danger"
-                  : p.stockQuantity <= 3
-                    ? "b3-pill b3-pill--warn"
-                    : "b3-pill b3-pill--ok";
-            return (
-              <div
-                key={p.id}
-                className={cn(
-                  "border-line bg-surface flex flex-col gap-2 overflow-hidden rounded-[12px] border p-3 transition",
-                  isOutOfStock && "opacity-50",
-                )}
-              >
-                <button
-                  type="button"
-                  disabled={isOutOfStock}
-                  onClick={() => {
-                    if (hasVariants) toggleVariants(p.id);
-                    else onAdd(p, null, effectivePrice);
-                  }}
-                  className="hover:bg-bg-app flex w-full flex-col gap-2 rounded text-left disabled:cursor-not-allowed"
-                >
-                  <div className="bg-brand-wash text-brand flex h-20 w-full items-center justify-center overflow-hidden rounded-[8px]">
-                    {p.thumbUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={p.thumbUrl}
-                        alt={p.name}
-                        className="size-full object-cover"
-                      />
-                    ) : (
-                      <PackageIcon size={22} />
-                    )}
-                  </div>
-                  <span className="line-clamp-2 text-[12.5px] font-medium leading-tight">
-                    {p.name}
-                  </span>
-                  <div className="flex items-center justify-between">
-                    <span className="mono text-[13px] font-bold">
-                      {formatBRL(effectivePrice)}
-                    </span>
-                    {p.trackStock && p.stockQuantity !== null ? (
-                      <span
-                        className={stockTone}
-                        style={{ fontFamily: "var(--mono)" }}
-                      >
-                        {p.stockQuantity}
-                      </span>
-                    ) : null}
-                  </div>
-                  {hasVariants ? (
-                    <span className="text-brand text-[11px]">
-                      {expanded ? "▲ ocultar" : "▼"} {p.variants.length}{" "}
-                      variantes
-                    </span>
-                  ) : null}
-                </button>
-
-                {hasVariants && expanded ? (
-                  <div className="bg-bg-app -mx-3 -mb-3 mt-1 space-y-1 border-t border-line p-2">
-                    {p.variants.map((v) => {
-                      const vPrice = v.priceInCents ?? effectivePrice;
-                      const vOut =
-                        v.trackStock &&
-                        v.stockQuantity !== null &&
-                        v.stockQuantity <= 0;
-                      return (
-                        <button
-                          key={v.id}
-                          type="button"
-                          disabled={vOut}
-                          onClick={() => onAdd(p, v, vPrice)}
-                          className="hover:bg-surface flex w-full items-center justify-between rounded px-2 py-1 text-xs disabled:opacity-50"
-                        >
-                          <span className="truncate">{v.name}</span>
-                          <span className="mono">{formatBRL(vPrice)}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function EmptyHits({ hasQuery }: { hasQuery: boolean }) {
-  return (
-    <div className="border-line text-ink-4 flex flex-col items-center gap-2 rounded-[12px] border-2 border-dashed p-8 text-center">
-      <PackageIcon size={32} />
-      <p className="text-sm">
-        {hasQuery
-          ? "Nenhum produto encontrado."
-          : "Cadastre produtos pra começar a vender no balcão."}
-      </p>
+      <button
+        type="button"
+        onClick={onOpenPicker}
+        className="b3-btn b3-btn--brand h-9 shrink-0 text-[12.5px]"
+      >
+        <PlusIcon size={13} />
+        Adicionar produto
+      </button>
+      <div className="text-ink-4 hidden shrink-0 text-[11px] sm:block">
+        {cartCount === 0 ? (
+          "Carrinho vazio"
+        ) : (
+          <>
+            <strong className="text-ink-1">{cartCount}</strong>{" "}
+            {cartCount === 1 ? "item" : "itens"}
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -1191,17 +1089,16 @@ function CartPanel({
   items,
   updateQty,
   removeItem,
+  onOpenPicker,
 }: {
   items: CartItem[];
   updateQty: (idx: number, delta: number) => void;
   removeItem: (idx: number) => void;
+  onOpenPicker: () => void;
 }) {
-  // FIX 2026-05-19: removido `flex-1 overflow-y-auto` (era scroll próprio).
-  // Wrapper na aside agora cuida do scroll do middle (Cart + PaymentSection).
-  // Sem isso, duplicava scroll e empurrava footer pra fora do viewport.
   if (items.length === 0) {
     return (
-      <div className="text-ink-4 flex min-h-[180px] flex-col items-center justify-center gap-3 p-10 text-center">
+      <div className="text-ink-4 flex h-full flex-col items-center justify-center gap-3 p-10 text-center">
         <span className="bg-bg-app inline-flex size-[60px] items-center justify-center rounded-full">
           <ShoppingBagIcon size={26} />
         </span>
@@ -1209,84 +1106,100 @@ function CartPanel({
           <div className="text-ink-2 text-sm font-semibold">
             Carrinho vazio
           </div>
-          <div className="mt-1 text-xs">Busque um produto pra começar</div>
+          <div className="text-ink-4 mt-1 text-xs">
+            Bipe um código ou
+          </div>
         </div>
+        <button
+          type="button"
+          onClick={onOpenPicker}
+          className="b3-btn b3-btn--brand mt-1"
+        >
+          <PlusIcon size={13} />
+          Adicionar produto
+        </button>
       </div>
     );
   }
+  // Carrinho denso — 1 linha por item: thumb 32px · nome · qty +/− · subtotal · ×
   return (
-    <div>
-      <header className="border-line bg-surface sticky top-0 z-10 flex items-center justify-between border-b px-[18px] py-3">
-        <h3 className="text-ink-1 text-[13.5px] font-semibold tracking-tight">
-          Carrinho · {items.length} {items.length === 1 ? "item" : "itens"}
-        </h3>
-      </header>
-      <ul className="divide-line divide-y">
-        {items.map((it, idx) => (
-          <li key={`${it.productId}-${it.variantId ?? "p"}`} className="p-3">
-            <div className="flex gap-2">
-              <div className="bg-bg-app size-12 shrink-0 overflow-hidden rounded">
-                {it.thumbUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={it.thumbUrl}
-                    alt={it.productName}
-                    className="size-full object-cover"
-                  />
-                ) : (
-                  <div className="flex size-full items-center justify-center">
-                    <PackageIcon className="text-ink-4 size-4" />
-                  </div>
-                )}
+    <ul className="divide-line divide-y">
+      {items.map((it, idx) => (
+        <li
+          key={`${it.productId}-${it.variantId ?? "p"}`}
+          className="hover:bg-bg-app/50 flex items-center gap-2 px-3 py-2 transition"
+        >
+          {/* Thumb */}
+          <div className="bg-bg-app size-9 shrink-0 overflow-hidden rounded">
+            {it.thumbUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={it.thumbUrl}
+                alt={it.productName}
+                className="size-full object-cover"
+              />
+            ) : (
+              <div className="flex size-full items-center justify-center">
+                <PackageIcon className="text-ink-4 size-3.5" />
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="line-clamp-1 text-sm font-medium">
-                  {it.productName}
-                </p>
-                {it.variantName ? (
-                  <p className="text-ink-4 text-xs">{it.variantName}</p>
-                ) : null}
-                <p className="mono text-xs">{formatBRL(it.priceInCents)}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => removeItem(idx)}
-                className="text-ink-4 hover:text-danger"
-                aria-label="Remover"
-              >
-                <Trash2Icon className="size-4" />
-              </button>
-            </div>
-            <div className="mt-2 flex items-center justify-between">
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => updateQty(idx, -1)}
-                  className="b3-btn b3-btn--sm size-8 justify-center p-0"
-                  aria-label="Diminuir"
-                >
-                  <MinusIcon className="size-3" />
-                </button>
-                <span className="w-8 text-center text-sm font-medium">
-                  {it.quantity}
+            )}
+          </div>
+
+          {/* Nome + preço unitário */}
+          <div className="min-w-0 flex-1">
+            <p className="text-ink-1 truncate text-[13px] font-medium">
+              {it.productName}
+              {it.variantName ? (
+                <span className="text-ink-4 ml-1.5 font-normal">
+                  · {it.variantName}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => updateQty(idx, 1)}
-                  className="b3-btn b3-btn--sm size-8 justify-center p-0"
-                  aria-label="Aumentar"
-                >
-                  <PlusIcon className="size-3" />
-                </button>
-              </div>
-              <span className="mono text-sm font-semibold">
-                {formatBRL(it.priceInCents * it.quantity)}
-              </span>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
+              ) : null}
+            </p>
+            <p className="text-ink-4 mono text-[11px]">
+              {formatBRL(it.priceInCents)} cada
+            </p>
+          </div>
+
+          {/* Qty +/− */}
+          <div className="flex shrink-0 items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => updateQty(idx, -1)}
+              className="text-ink-2 hover:bg-bg-app size-6 rounded transition"
+              aria-label="Diminuir"
+            >
+              <MinusIcon className="mx-auto size-3" />
+            </button>
+            <span className="w-7 text-center text-[13px] font-medium tabular-nums">
+              {it.quantity}
+            </span>
+            <button
+              type="button"
+              onClick={() => updateQty(idx, 1)}
+              className="text-ink-2 hover:bg-bg-app size-6 rounded transition"
+              aria-label="Aumentar"
+            >
+              <PlusIcon className="mx-auto size-3" />
+            </button>
+          </div>
+
+          {/* Subtotal */}
+          <span className="text-ink-1 mono w-20 shrink-0 text-right text-[13px] font-semibold tabular-nums">
+            {formatBRL(it.priceInCents * it.quantity)}
+          </span>
+
+          {/* Remover */}
+          <button
+            type="button"
+            onClick={() => removeItem(idx)}
+            className="text-ink-4 hover:text-danger shrink-0"
+            aria-label="Remover"
+          >
+            <Trash2Icon className="size-3.5" />
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
 

@@ -196,26 +196,35 @@ test("action: revalidatePath cobre /admin/pdv (lista de vendas balcão)", () => 
 });
 
 // ---------------------------------------------------------------------
-// pdv-shell.tsx — fix layout "campos sumindo" (Onda 3.1, 2026-05-19)
+// pdv-shell.tsx — invariantes de layout (redesign 2026-05-21)
+//
+// Substituiu as sentinelas anteriores ("campos sumindo" / sticky lg:top-4)
+// — o redesign 2026-05-21 abandonou o layout aside-sticky em favor de
+// flex column h-screen (sem scroll global). As regras essenciais
+// preservadas:
+//   - Container PDV ocupa altura da viewport (sem scroll de página inteira)
+//   - Coluna de pagamento à direita tem footer SHRINK-0 (botão Finalizar
+//     nunca é encolhido pra fora do viewport)
+//   - Lista do carrinho rola INTERNAMENTE (min-h-0 + overflow-y-auto)
 // ---------------------------------------------------------------------
 
-test("pdv-shell: aside tem flex-col + overflow-hidden + sticky lg:top-4", () => {
+test("pdv-shell: container ocupa altura da viewport sem scroll global", () => {
   const src = readFileSync(
     "src/components/admin/pdv/pdv-shell.tsx",
     "utf8",
   );
-  // Padrão do right panel
-  assert.match(src, /flex flex-col overflow-hidden/);
-  assert.match(src, /lg:sticky lg:top-4/);
+  // h-[calc(100vh-...)] no container raiz
+  assert.match(src, /h-\[calc\(100vh-/);
 });
 
-test("pdv-shell: middle wrapper tem flex-1 + overflow-y-auto + min-h-0 (fix campos sumindo)", () => {
+test("pdv-shell: lista do carrinho rola interno (min-h-0 + overflow-y-auto)", () => {
   const src = readFileSync(
     "src/components/admin/pdv/pdv-shell.tsx",
     "utf8",
   );
-  // Fix 2026-05-19: wrapper scrollable entre Customer (top) e Footer (bottom)
-  assert.match(src, /flex flex-1 min-h-0 flex-col overflow-y-auto/);
+  // Pattern do wrapper que envelopa CartPanel — preserva fix "campos sumindo"
+  // em outro shape arquitetural (cart agora é coluna principal, não middle).
+  assert.match(src, /min-h-0 flex-1 overflow-y-auto/);
 });
 
 test("pdv-shell: footer (Total+Submit) tem shrink-0 pra nunca encolher", () => {
@@ -224,5 +233,5 @@ test("pdv-shell: footer (Total+Submit) tem shrink-0 pra nunca encolher", () => {
     "utf8",
   );
   // Botão Finalizar não pode ser empurrado pra fora do viewport
-  assert.match(src, /shrink-0 border-t border-line bg-bg-app p-\[18px\]/);
+  assert.match(src, /border-line bg-bg-app shrink-0 border-t p-3/);
 });
