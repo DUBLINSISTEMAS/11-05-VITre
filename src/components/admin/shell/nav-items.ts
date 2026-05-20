@@ -75,7 +75,7 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
       { k: "marcas",         label: "Marcas",            icon: TagIcon,        href: "/admin/marcas"                      },
       { k: "clientes",       label: "Clientes",          icon: UsersIcon,      href: "/admin/clientes",       exact: true },
       { k: "grupos-cliente", label: "Grupos de cliente", icon: UsersRoundIcon, href: "/admin/clientes/grupos"             },
-      { k: "fornecedores",   label: "Fornecedores",      icon: TruckIcon,      soon: true                                 },
+      { k: "fornecedores",   label: "Fornecedores",      icon: TruckIcon,      href: "/admin/fornecedores"                },
     ],
   },
   {
