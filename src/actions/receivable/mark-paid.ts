@@ -20,6 +20,11 @@ import { z } from "zod";
 import { receivablePaymentTable, receivableTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import {
+  checkRateLimit,
+  RateLimitError,
+  rateLimits,
+} from "@/lib/rate-limit";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
@@ -48,6 +53,16 @@ export async function markReceivablePaid(
   if (!session?.user) return { ok: false, error: "Sessão expirada." };
   const store = await getCurrentStore(session.user.id);
   if (!store) return { ok: false, error: "Loja não encontrada." };
+
+  // Sprint 6E — rate limit defensivo. A delegação pra
+  // recordReceivablePayment também tem; aqui é defesa em profundidade
+  // pra evitar gastar query de lookup antes do limite disparar.
+  try {
+    await checkRateLimit(rateLimits.mutation, session.user.id);
+  } catch (err) {
+    if (err instanceof RateLimitError) return { ok: false, error: err.message };
+    throw err;
+  }
 
   const parsed = inputSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Dados inválidos." };
