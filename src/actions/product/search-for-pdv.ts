@@ -33,6 +33,9 @@ export interface PdvProductHit {
   stockQuantity: number | null;
   isActive: boolean;
   thumbUrl: string | null;
+  /** GTIN/EAN-13 do produto. Sprint 1A: usado pra scanner — match exato
+   *  no input do PDV adiciona direto sem mostrar lista. */
+  gtin: string | null;
   variants: PdvProductVariantHit[];
 }
 
@@ -66,6 +69,8 @@ export async function searchProductsForPdv(
             or(
               ilike(productTable.name, `%${safeQ}%`),
               ilike(productTable.slug, `%${safeQ}%`),
+              // Sprint 1A — match exato em GTIN pra scanner.
+              eq(productTable.gtin, trimmed),
             ),
           )
         : and(
@@ -84,6 +89,7 @@ export async function searchProductsForPdv(
         trackStock: productTable.trackStock,
         stockQuantity: productTable.stockQuantity,
         isActive: productTable.isActive,
+        gtin: productTable.gtin,
       })
       .from(productTable)
       .where(where)

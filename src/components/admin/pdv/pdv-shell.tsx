@@ -24,6 +24,7 @@ import {
   PackageIcon,
   PlusIcon,
   ReceiptIcon,
+  ScanBarcodeIcon,
   SearchIcon,
   ShoppingBagIcon,
   Trash2Icon,
@@ -514,6 +515,28 @@ export function PdvShell() {
           if (canSubmitRef.current) handleSubmitRef.current();
           return;
         }
+        case "F8": {
+          // Sprint 1A — busca avançada: por enquanto é alias de F2
+          // (mesmo input). Quando dialog de filtros avançados existir,
+          // F8 vai abri-lo.
+          e.preventDefault();
+          const el = document.getElementById(
+            "pdv-product-search",
+          ) as HTMLInputElement | null;
+          el?.focus();
+          el?.select();
+          return;
+        }
+        case "F9": {
+          // Sprint 1A — abrir input de desconto manual (R$).
+          e.preventDefault();
+          const el = document.getElementById(
+            "pdv-discount-amount",
+          ) as HTMLInputElement | null;
+          el?.focus();
+          el?.select();
+          return;
+        }
         case "Escape": {
           // Skip se há dialog/modal aberto — deixa o componente consumir
           // o ESC (QuickSale/FullCreate, shadcn Dialog em DialogContent etc).
@@ -538,6 +561,7 @@ export function PdvShell() {
   }, [reset]);
 
   return (
+    <div className="flex flex-col gap-4">
     <div className="grid gap-4 lg:grid-cols-[1fr_400px] lg:gap-6">
       {/* Coluna esquerda: busca + grid de produtos */}
       <section className="space-y-4">
@@ -705,6 +729,33 @@ export function PdvShell() {
         </div>
       </aside>
     </div>
+
+      {/* Sprint 1A — barra de F-keys (legenda discreta no rodapé). */}
+      <FKeysLegend />
+    </div>
+  );
+}
+
+function FKeysLegend() {
+  const keys: Array<{ key: string; label: string }> = [
+    { key: "F2", label: "Buscar produto" },
+    { key: "F3", label: "Buscar cliente" },
+    { key: "F4", label: "Finalizar venda" },
+    { key: "F8", label: "Busca avançada" },
+    { key: "F9", label: "Desconto manual" },
+    { key: "ESC", label: "Limpar venda" },
+  ];
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-line pt-3 text-[11px] text-ink-4 lg:px-1">
+      {keys.map((k) => (
+        <span key={k.key} className="inline-flex items-center gap-1.5">
+          <kbd className="mono inline-block rounded border border-line bg-bg-app px-1.5 py-[1px] text-[10.5px] font-semibold text-ink-2">
+            {k.key}
+          </kbd>
+          <span>{k.label}</span>
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -742,6 +793,36 @@ function ProductSearchPicker({
     };
   }, [q]);
 
+  // Sprint 1A — scanner GTIN: Enter no input checa match exato em
+  // product.gtin. Se encontrar 1 produto e ele NÃO tem variantes,
+  // adiciona direto + limpa input. Útil pra fluxo de bipagem (scanner
+  // físico envia caracteres + Enter no fim).
+  //
+  // Critérios pra add direto:
+  //   - 1 hit retornado pela busca
+  //   - hit.gtin === input.trim() (match exato — defesa contra busca por
+  //     nome retornar 1 resultado e disparar add automático)
+  //   - hit sem variantes (com variantes precisa o lojista escolher)
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== "Enter") return;
+    const trimmed = q.trim();
+    if (!trimmed) return;
+    const exactGtinMatch = hits.find(
+      (h) => h.gtin && h.gtin === trimmed && h.variants.length === 0,
+    );
+    if (!exactGtinMatch) return;
+    e.preventDefault();
+    const effectivePrice = getEffectivePrice({
+      basePriceInCents: exactGtinMatch.basePriceInCents,
+      promoPriceInCents: exactGtinMatch.promoPriceInCents,
+      promoStartsAt: exactGtinMatch.promoStartsAt,
+      promoEndsAt: exactGtinMatch.promoEndsAt,
+    });
+    onAdd(exactGtinMatch, null, effectivePrice);
+    setQ("");
+    setHits([]);
+  };
+
   const toggleVariants = (productId: string) =>
     setExpandedVariants((prev) => {
       const next = new Set(prev);
@@ -752,9 +833,9 @@ function ProductSearchPicker({
 
   return (
     <div className="space-y-4">
-      {/* Search bar 56px com badge F2 mono */}
+      {/* Search bar 56px com badge F2 mono + scanner GTIN (Sprint 1A) */}
       <div className="relative">
-        <SearchIcon
+        <ScanBarcodeIcon
           aria-hidden
           size={18}
           className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-4"
@@ -764,7 +845,8 @@ function ProductSearchPicker({
           autoFocus
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar produto · nome…"
+          onKeyDown={handleKeyDown}
+          placeholder="Bipe ou digite código / nome"
           className="border-line bg-surface focus:border-brand focus:ring-brand/20 h-14 w-full rounded-[12px] border pl-12 pr-16 text-[15px] outline-none transition focus:ring-2"
         />
         {q ? (
@@ -1265,7 +1347,7 @@ function PaymentSection({
               Desconto R$
             </label>
             <input
-              id="discount-amount"
+              id="pdv-discount-amount"
               inputMode="decimal"
               placeholder="0,00"
               value={discountAmountInput}
