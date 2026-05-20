@@ -22,6 +22,10 @@ export const ORDER_STATUS_VALUES = [
   "fulfilled",
   "canceled",
   "expired",
+  // Pre-Sprint-6 C — devolução total. Não chega aqui via update-status
+  // (lojista usa recordOrderReturn action), mas precisa estar no union
+  // pra tipos de query/UI baterem com o DB enum.
+  "returned",
 ] as const;
 
 export const updateOrderStatusSchema = z.object({
@@ -31,8 +35,9 @@ export const updateOrderStatusSchema = z.object({
 export type UpdateOrderStatusInput = z.infer<typeof updateOrderStatusSchema>;
 
 /**
- * Mapa de transições válidas. Server action usa pra rejeitar mudanças
- * inconsistentes (ex: voltar de fulfilled pra confirmed).
+ * Mapa de transições válidas via UI manual (não inclui 'returned' —
+ * devolução é fluxo separado: recordOrderReturn faz a transição
+ * fulfilled/confirmed → returned dentro da própria action).
  */
 export const VALID_TRANSITIONS: Record<
   (typeof ORDER_STATUS_VALUES)[number],
@@ -44,6 +49,7 @@ export const VALID_TRANSITIONS: Record<
   fulfilled: [],
   canceled: [],
   expired: [],
+  returned: [],
 };
 
 // =====================================================================

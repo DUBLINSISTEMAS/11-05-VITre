@@ -30,6 +30,11 @@ export const orderStatusEnum = pgEnum("order_status", [
   "fulfilled",
   "canceled",
   "expired",
+  // Pre-Sprint-6 C — devolução de venda balcão. Difere de 'canceled':
+  // canceled = venda nunca aconteceu de fato (cliente desistiu antes
+  // da entrega). returned = venda aconteceu, cliente trouxe de volta.
+  // Espelha SQL 55.
+  "returned",
 ]);
 
 /**
@@ -339,3 +344,110 @@ export const orderItemRelations = relations(orderItemTable, ({ one }) => ({
 
 export type OrderItem = typeof orderItemTable.$inferSelect;
 export type NewOrderItem = typeof orderItemTable.$inferInsert;
+
+// =====================================================================
+// OrderReturn — Pre-Sprint-6 C.
+//
+// Devolução de venda balcão (cliente trouxe a peça de volta). V1 só
+// aceita devolução TOTAL (`return_type='full'`); v2 expõe parcial via
+// `order_return_item` qty variável.
+//
+// Modelo append-only: 1 order tem no máximo 1 devolução do tipo 'full'
+// (UNIQUE parcial no DB, SQL 55). Múltiplas parciais permitidas em v2.
+//
+// Efeitos colaterais gerenciados pelo app (não trigger DB):
+//   - stock_movement type='return' por item (via helper restockOrderItems)
+//   - order.status = 'returned'
+//   - cash_adjustment 'other_out' no caixa aberto (espelho da entrada)
+// =====================================================================
+export const orderReturnTypeEnum = pgEnum("order_return_type", [
+  "full",
+  "partial",
+]);
+
+export const orderReturnTable = pgTable(
+  "order_return",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => storeTable.id, { onDelete: "cascade" }),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orderTable.id, { onDelete: "restrict" }),
+    returnType: orderReturnTypeEnum("return_type").notNull().default("full"),
+    /** Total devolvido em centavos. CHECK > 0 no SQL 55. */
+    refundedInCents: integer("refunded_in_cents").notNull(),
+    /** Motivo livre (min 3, max 500). Obrigatório. CHECK no SQL 55. */
+    reason: text("reason").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    createdByUserId: text("created_by_user_id")
+      .notNull()
+      .references(() => userTable.id),
+    /** Cash adjustment gerado quando havia caixa aberto. NULL caso contrário. */
+    cashAdjustmentId: uuid("cash_adjustment_id"),
+  },
+  (t) => ({
+    orderIdx: index("order_return_order_idx").on(t.orderId, t.createdAt),
+    storeCreatedIdx: index("order_return_store_created_idx").on(
+      t.storeId,
+      t.createdAt,
+    ),
+  }),
+);
+
+export const orderReturnRelations = relations(orderReturnTable, ({ one, many }) => ({
+  store: one(storeTable, {
+    fields: [orderReturnTable.storeId],
+    references: [storeTable.id],
+  }),
+  order: one(orderTable, {
+    fields: [orderReturnTable.orderId],
+    references: [orderTable.id],
+  }),
+  items: many(orderReturnItemTable),
+  createdBy: one(userTable, {
+    fields: [orderReturnTable.createdByUserId],
+    references: [userTable.id],
+  }),
+}));
+
+export type OrderReturn = typeof orderReturnTable.$inferSelect;
+export type NewOrderReturn = typeof orderReturnTable.$inferInsert;
+
+export const orderReturnItemTable = pgTable(
+  "order_return_item",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderReturnId: uuid("order_return_id")
+      .notNull()
+      .references(() => orderReturnTable.id, { onDelete: "cascade" }),
+    orderItemId: uuid("order_item_id")
+      .notNull()
+      .references(() => orderItemTable.id, { onDelete: "restrict" }),
+    quantityReturned: integer("quantity_returned").notNull(),
+    refundedInCents: integer("refunded_in_cents").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    returnIdx: index("order_return_item_return_idx").on(t.orderReturnId),
+    orderItemIdx: index("order_return_item_order_item_idx").on(t.orderItemId),
+  }),
+);
+
+export const orderReturnItemRelations = relations(
+  orderReturnItemTable,
+  ({ one }) => ({
+    return: one(orderReturnTable, {
+      fields: [orderReturnItemTable.orderReturnId],
+      references: [orderReturnTable.id],
+    }),
+    orderItem: one(orderItemTable, {
+      fields: [orderReturnItemTable.orderItemId],
+      references: [orderItemTable.id],
+    }),
+  }),
+);
+
+export type OrderReturnItem = typeof orderReturnItemTable.$inferSelect;
+export type NewOrderReturnItem = typeof orderReturnItemTable.$inferInsert;

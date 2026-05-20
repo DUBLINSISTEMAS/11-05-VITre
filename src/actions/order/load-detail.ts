@@ -1,9 +1,14 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 
-import { customerTable, orderItemTable, orderTable } from "@/db/schema";
+import {
+  customerTable,
+  orderItemTable,
+  orderReturnTable,
+  orderTable,
+} from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
@@ -30,6 +35,15 @@ export type OrderDetailLinkedCustomer = {
   phone: string;
 };
 
+/** Pre-Sprint-6 C — devolução registrada deste order. */
+export type OrderDetailReturn = {
+  id: string;
+  returnType: "full" | "partial";
+  refundedInCents: number;
+  reason: string;
+  createdAt: Date;
+};
+
 export type OrderDetail = {
   id: string;
   shortCode: string;
@@ -47,6 +61,8 @@ export type OrderDetail = {
   quoteValidUntil: Date | null;
   createdAt: Date;
   items: OrderDetailItem[];
+  /** Pre-Sprint-6 C — lista de devoluções (vazia quando venda não foi devolvida). */
+  returns: OrderDetailReturn[];
 };
 
 export type LoadOrderDetailResult =
@@ -118,7 +134,25 @@ export async function loadOrderDetail(
       if (c) linkedCustomer = c;
     }
 
-    return { order, items, linkedCustomer };
+    // Pre-Sprint-6 C — carrega devoluções (geralmente 0 ou 1).
+    const returns = await tx
+      .select({
+        id: orderReturnTable.id,
+        returnType: orderReturnTable.returnType,
+        refundedInCents: orderReturnTable.refundedInCents,
+        reason: orderReturnTable.reason,
+        createdAt: orderReturnTable.createdAt,
+      })
+      .from(orderReturnTable)
+      .where(
+        and(
+          eq(orderReturnTable.orderId, orderId),
+          eq(orderReturnTable.storeId, store.id),
+        ),
+      )
+      .orderBy(desc(orderReturnTable.createdAt));
+
+    return { order, items, linkedCustomer, returns };
   });
 
   if (!result) return { ok: false, error: "Pedido não encontrado." };
@@ -130,6 +164,7 @@ export async function loadOrderDetail(
       status: result.order.status as (typeof ORDER_STATUS_VALUES)[number],
       items: result.items,
       linkedCustomer: result.linkedCustomer,
+      returns: result.returns,
     },
   };
 }

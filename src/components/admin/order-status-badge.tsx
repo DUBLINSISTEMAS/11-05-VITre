@@ -7,11 +7,14 @@ const STATUS_LABELS: Record<string, string> = {
   fulfilled: "Cumprido",
   canceled: "Cancelado",
   expired: "Expirado",
+  returned: "Devolvido",
 };
 
 // Port Dublin v3 (Onda 5d): migra pra `b3-pill b3-pill--{warn,ok,danger}`.
 // Sprint 1A Fase 4: quote válido (não expirado) é neutro/cinza; quote
 // expirado recebe variante --warn (caller passa expired flag).
+// Pre-Sprint-6 C: 'returned' usa --danger pra sinalizar que a venda
+// foi desfeita (estoque restaurado, dinheiro devolvido).
 const STATUS_CLASSES: Record<string, string> = {
   quote: "b3-pill",
   awaiting_whatsapp: "b3-pill b3-pill--warn",
@@ -19,6 +22,7 @@ const STATUS_CLASSES: Record<string, string> = {
   fulfilled: "b3-pill b3-pill--ok",
   canceled: "b3-pill b3-pill--danger",
   expired: "b3-pill",
+  returned: "b3-pill b3-pill--danger",
 };
 
 interface OrderStatusBadgeProps {

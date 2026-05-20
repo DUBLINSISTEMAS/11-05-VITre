@@ -303,6 +303,41 @@ function OrderDetailContent({
             </a>
           </Button>
         </section>
+
+        {/* Pre-Sprint-6 C — histórico de devoluções */}
+        {order.returns.length > 0 ? (
+          <section className="b3-card space-y-2 p-4">
+            <h3 className="text-[13.5px] font-semibold tracking-tight text-ink-1">
+              Devoluções
+            </h3>
+            <ul className="divide-line divide-y text-[12.5px]">
+              {order.returns.map((r) => (
+                <li key={r.id} className="py-2">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-state-error text-[10.5px] font-bold uppercase tracking-wide">
+                      {r.returnType === "full" ? "Devolução total" : "Devolução parcial"}
+                    </span>
+                    <span className="text-ink-1 mono font-medium tabular-nums">
+                      {formatBRL(r.refundedInCents)}
+                    </span>
+                  </div>
+                  <p className="text-ink-3 mt-1 text-[12px]">{r.reason}</p>
+                  <p className="text-ink-4 mt-0.5 text-[10.5px]">
+                    {r.createdAt.toLocaleDateString("pt-BR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                    })}{" "}
+                    {r.createdAt.toLocaleTimeString("pt-BR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
       </div>
     </>
   );
