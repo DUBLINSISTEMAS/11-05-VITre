@@ -21,6 +21,8 @@
     "db:check-sql": "tsx scripts/check-sql-applied.mjs",
     "db:audit": "tsx scripts/full-audit.mjs",
     "db:apply": "tsx scripts/apply-sql.ts",
+    "db:smoke-idor": "node --env-file=.env.local scripts/smoke-idor.mjs",
+    "db:audit-definer": "node --env-file=.env.local scripts/audit-security-definer.mjs",
     "pwa:icons": "node scripts/generate-pwa-icons.mjs"
   },
   "dependencies": {
@@ -73,5 +75,10 @@
     "tsx": "^4.20.3",
     "tw-animate-css": "^1.3.5",
     "typescript": "^5"
+  },
+  "pnpm": {
+    "overrides": {
+      "import-in-the-middle": "3.0.1"
+    }
   }
 }
