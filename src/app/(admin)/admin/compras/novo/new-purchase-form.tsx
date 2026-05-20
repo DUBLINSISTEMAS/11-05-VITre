@@ -1,23 +1,17 @@
 "use client";
 
-import {
-  Loader2Icon,
-  PlusIcon,
-  ScanBarcodeIcon,
-  SaveIcon,
-  XIcon,
-} from "lucide-react";
+import { Loader2Icon, SaveIcon, ScanBarcodeIcon, XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import type { PaymentMethod } from "@/actions/order/balcao/schema";
 import {
   type PdvProductHit,
   type PdvProductVariantHit,
   searchProductsForPdv,
 } from "@/actions/product/search-for-pdv";
 import { createPurchase } from "@/actions/purchase";
-import type { PaymentMethod } from "@/actions/order/balcao/schema";
 import { formatBRL } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
@@ -58,10 +52,6 @@ function parseBRLToCents(input: string): number | null {
   const num = Number(sanitized);
   if (!Number.isFinite(num) || num < 0) return null;
   return Math.round(num * 100);
-}
-
-function centsToBRLInput(cents: number): string {
-  return (cents / 100).toFixed(2).replace(".", ",");
 }
 
 interface NewPurchaseFormProps {

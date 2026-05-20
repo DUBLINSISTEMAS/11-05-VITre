@@ -12,6 +12,7 @@ import {
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import type { BrandOption } from "@/actions/brand/types";
 import {
   productFormSchema,
   type ProductFormValues,
@@ -20,8 +21,6 @@ import { updateProduct } from "@/actions/product/update";
 import { uploadProductImage } from "@/actions/product/upload-image";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-import type { BrandOption } from "@/actions/brand/types";
 
 import {
   type CategoryOption,

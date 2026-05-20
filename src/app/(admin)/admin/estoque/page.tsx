@@ -1,4 +1,10 @@
-import { BoxesIcon, InfoIcon, PackageIcon, SearchXIcon } from "lucide-react";
+import {
+  BoxesIcon,
+  ClipboardListIcon,
+  InfoIcon,
+  PackageIcon,
+  SearchXIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { z } from "zod";
@@ -102,6 +108,16 @@ export default async function EstoquePage({ searchParams }: EstoquePageProps) {
           Estoque
         </h1>
         <div className="flex items-center gap-2">
+          <Link
+            href="/admin/estoque/contagem"
+            className="b3-btn"
+            prefetch
+            title="Ajuste em massa por contagem física (planilha-de-papel)"
+          >
+            <ClipboardListIcon size={14} aria-hidden />
+            <span className="hidden sm:inline">Contagem física</span>
+            <span className="sm:hidden">Contagem</span>
+          </Link>
           <Link
             href="/admin/estoque/relatorio"
             className="b3-btn"

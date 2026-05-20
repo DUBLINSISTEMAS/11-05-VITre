@@ -15,6 +15,7 @@ import {
 } from "drizzle-orm";
 
 import {
+  categoryTable,
   productTable,
   productVariantTable,
   stockMovementTable,
@@ -24,6 +25,7 @@ import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
 import type {
+  CountableInventoryRow,
   ListMovementsParams,
   ListMovementsResult,
   StockKpis,
@@ -231,6 +233,124 @@ export async function loadStockKpis(): Promise<StockKpis> {
     const monthAdjustments = adjRow[0]?.value ?? 0;
 
     return { currentTotal, monthIn, monthOut, monthAdjustments };
+  });
+}
+
+/**
+ * Sprint 3C — produtos contábeis pra UI de contagem física.
+ *
+ * Retorna 1 linha por entidade rastreada:
+ *   - produto SEM variantes trackStock: 1 linha do próprio produto
+ *   - produto COM variantes trackStock: 1 linha por variante
+ *
+ * Limite hard: 1500 linhas (corte defensivo; UI sugere busca/filtragem
+ * acima disso). Ordenação: nome do produto, depois nome da variante.
+ *
+ * Inclui só produtos `is_active = true` — descontinuados não aparecem na
+ * contagem (relatório separado pra cuidar de saldo residual).
+ */
+export async function loadCountableInventory(): Promise<CountableInventoryRow[]> {
+  const session = await requireSession();
+  const store = await getCurrentStore(session.user.id);
+  if (!store) return [];
+
+  return withTenant(store.id, session.user.id, async (tx) => {
+    // 1) produtos trackStock=true sem variantes trackStock (saldo no produto).
+    const standaloneRows = await tx
+      .select({
+        productId: productTable.id,
+        productName: productTable.name,
+        categoryName: categoryTable.name,
+        unit: productTable.unit,
+        stockQuantity: productTable.stockQuantity,
+        minStockQuantity: productTable.minStockQuantity,
+        internalCode: productTable.internalCode,
+        gtin: productTable.gtin,
+      })
+      .from(productTable)
+      .leftJoin(categoryTable, eq(productTable.categoryId, categoryTable.id))
+      .where(
+        and(
+          eq(productTable.storeId, store.id),
+          eq(productTable.trackStock, true),
+          eq(productTable.isActive, true),
+          sql`NOT EXISTS (
+            SELECT 1
+              FROM product_variant pv
+             WHERE pv.product_id = ${productTable.id}
+               AND pv.store_id = ${store.id}
+               AND pv.track_stock = true
+          )`,
+        ),
+      )
+      .orderBy(productTable.name)
+      .limit(1500);
+
+    // 2) variantes trackStock=true (saldo na variante). GTIN/internalCode/
+    //    minStock vivem no produto pai — replicados pra cada linha.
+    const variantRows = await tx
+      .select({
+        productId: productVariantTable.productId,
+        variantId: productVariantTable.id,
+        productName: productTable.name,
+        variantName: productVariantTable.name,
+        categoryName: categoryTable.name,
+        unit: productTable.unit,
+        stockQuantity: productVariantTable.stockQuantity,
+        minStockQuantity: productTable.minStockQuantity,
+        internalCode: productVariantTable.sku,
+        gtin: productTable.gtin,
+      })
+      .from(productVariantTable)
+      .innerJoin(
+        productTable,
+        eq(productVariantTable.productId, productTable.id),
+      )
+      .leftJoin(categoryTable, eq(productTable.categoryId, categoryTable.id))
+      .where(
+        and(
+          eq(productVariantTable.storeId, store.id),
+          eq(productVariantTable.trackStock, true),
+          eq(productTable.isActive, true),
+        ),
+      )
+      .orderBy(productTable.name, productVariantTable.name)
+      .limit(1500);
+
+    const rows: CountableInventoryRow[] = [
+      ...standaloneRows.map((r) => ({
+        productId: r.productId,
+        variantId: null,
+        productName: r.productName,
+        variantName: null,
+        categoryName: r.categoryName,
+        unit: r.unit,
+        stockQuantity: r.stockQuantity ?? 0,
+        minStockQuantity: r.minStockQuantity ?? null,
+        internalCode: r.internalCode,
+        gtin: r.gtin,
+      })),
+      ...variantRows.map((r) => ({
+        productId: r.productId,
+        variantId: r.variantId,
+        productName: r.productName,
+        variantName: r.variantName,
+        categoryName: r.categoryName,
+        unit: r.unit,
+        stockQuantity: r.stockQuantity ?? 0,
+        minStockQuantity: r.minStockQuantity ?? null,
+        internalCode: r.internalCode,
+        gtin: r.gtin,
+      })),
+    ];
+
+    rows.sort((a, b) => {
+      const byProd = a.productName.localeCompare(b.productName, "pt-BR");
+      if (byProd !== 0) return byProd;
+      return (a.variantName ?? "").localeCompare(b.variantName ?? "", "pt-BR");
+    });
+
+    return rows.slice(0, 1500);
   });
 }
 

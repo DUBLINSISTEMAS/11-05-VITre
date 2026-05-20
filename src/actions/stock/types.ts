@@ -40,3 +40,17 @@ export interface StockKpis {
 }
 
 export type { StockMovement };
+
+/** Sprint 3C — linha da grid de contagem física (`/admin/estoque/contagem`). */
+export interface CountableInventoryRow {
+  productId: string;
+  variantId: string | null;
+  productName: string;
+  variantName: string | null;
+  categoryName: string | null;
+  unit: string;
+  stockQuantity: number;
+  minStockQuantity: number | null;
+  internalCode: string | null;
+  gtin: string | null;
+}

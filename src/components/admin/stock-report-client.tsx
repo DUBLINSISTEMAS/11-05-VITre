@@ -10,9 +10,9 @@
 
 import {
   type ReportColumn,
+  ReportLayout,
   type ReportStoreInfo,
   type ReportTotal,
-  ReportLayout,
 } from "./report/report-layout";
 
 interface StockRow {
