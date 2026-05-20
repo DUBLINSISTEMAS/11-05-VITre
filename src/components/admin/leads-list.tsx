@@ -70,10 +70,10 @@ export function LeadsList({
   }
 
   function handleDelete(lead: LeadRow) {
-    if (!confirm("Excluir este lead?")) return;
+    if (!confirm("Excluir este recado do site?")) return;
     startTransition(async () => {
       const res = await deleteLead({ id: lead.id });
-      if (res.ok) toast.success("Lead excluído.");
+      if (res.ok) toast.success("Recado do site excluído.");
       else toast.error(res.error);
     });
   }
@@ -128,7 +128,7 @@ export function LeadsList({
       {/* Lista */}
       {rows.length === 0 ? (
         <div className="b3-card b3-card-pad text-center">
-          <p className="text-ink-3 text-[13px]">Nenhum lead encontrado.</p>
+          <p className="text-ink-3 text-[13px]">Nenhum recado do site encontrado.</p>
         </div>
       ) : (
         <div className="b3-card overflow-x-auto">

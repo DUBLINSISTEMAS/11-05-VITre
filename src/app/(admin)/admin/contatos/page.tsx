@@ -17,7 +17,7 @@ export default async function ContatosPage({
     return (
       <div className="space-y-4">
         <h1 className="text-ink-1 text-[22px] font-bold tracking-[-0.025em]">
-          Contatos
+          Recados do site
         </h1>
         <p className="text-ink-3 text-[13px]">Loja não encontrada.</p>
       </div>
@@ -28,10 +28,10 @@ export default async function ContatosPage({
     <div className="space-y-4 sm:space-y-6">
       <div>
         <h1 className="text-ink-1 text-[22px] font-bold tracking-[-0.025em]">
-          Contatos
+          Recados do site
         </h1>
         <p className="text-ink-4 mt-1 text-[13px]">
-          Inbox de leads — toda intenção de compra via WhatsApp aparece aqui.
+          Inbox de recados do site — toda intenção de compra via WhatsApp aparece aqui.
         </p>
       </div>
 
