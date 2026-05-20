@@ -5,55 +5,40 @@ import { Loader2Icon, PlusCircleIcon, SaveIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   useCallback,
-  useMemo,
   useRef,
   useState,
   useTransition,
 } from "react";
-import { Controller, useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import {
   productFormSchema,
   type ProductFormValues,
-  type VariantInput,
 } from "@/actions/product/schema";
 import { updateProduct } from "@/actions/product/update";
 import { uploadProductImage } from "@/actions/product/upload-image";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 import {
-  CategoryDialog,
   type CategoryOption,
 } from "./category-dialog";
 import {
-  ImageUploader,
   type ProductImageData,
   type StagedImageFile,
 } from "./image-uploader";
-import { PriceInput } from "./price-input";
 import {
-  CommercialCard,
-  CostMarginCard,
-  IdentityExtraCard,
-  InventoryExtraCard,
-  NcmField,
-} from "./product-commercial-fields";
-import { StockInput } from "./stock-input";
-import { type VariantData,VariantEditor } from "./variant-editor";
+  bumpSessionCounter,
+  getTabErrorCount,
+  type TabKey,
+} from "./product-form/shared";
+import { TabEstoque } from "./product-form/tab-estoque";
+import { TabIdentidade } from "./product-form/tab-identidade";
+import { TabLojaOnline } from "./product-form/tab-loja-online";
+import { TabPrecoCusto } from "./product-form/tab-preco-custo";
+import { TabVariantes } from "./product-form/tab-variantes";
+import { type VariantData } from "./variant-editor";
 
 export interface ProductFormInitialData {
   productId: string;
@@ -126,35 +111,43 @@ interface ProductFormProps {
   isDraft: boolean;
   /**
    * Callback chamado após save bem-sucedido. O pai decide pra onde ir.
-   * - `continueCreating` true → usuário clicou "Salvar e adicionar outro".
-   *   Pai deve remontar o form vazio (ex: bump key).
-   * - Sem flag → save comum. Pai navega ou refresh conforme contexto
-   *   (página /novo → push pra lista; página /[id] → refresh).
    */
   onAfterSave?: (opts: { continueCreating?: boolean }) => void;
   /**
-   * Cria produto sob demanda no fluxo de novo produto. A função recebe valores
-   * válidos do form e deve persistir produto + variantes em uma única ação.
+   * Cria produto sob demanda no fluxo de novo produto.
    */
   onCreateProduct?: (
     values: ProductFormValues,
   ) => Promise<{ ok: true; productId: string } | { ok: false; error: string; fieldErrors?: Record<string, string> }>;
 }
 
+const TAB_NAV: { key: TabKey; label: string }[] = [
+  { key: "identidade", label: "Identidade" },
+  { key: "preco-custo", label: "Preço & Custo" },
+  { key: "estoque", label: "Estoque" },
+  { key: "variantes", label: "Variantes" },
+  { key: "loja-online", label: "Loja online" },
+];
+
 /**
- * Form de edição/criação de produto (canvas-v1 admin Lote 3).
+ * Form de edição/criação de produto — Sprint 0/Prompt 6.
  *
- * Layout:
- * - Mobile: cards empilhados verticalmente em `space-y-4`.
- * - Desktop (lg+): grid 3 colunas. Esquerda (col-span-2): Mídia ·
- *   Identidade · Detalhes · Preço · Variantes. Direita (col-span-1,
- *   sticky top): Status · Categoria · Salvar.
+ * Refator de 5 abas (princípios 8 e 9 do CLAUDE.md):
+ *   1. Identidade    — Básico, Classificação (marca + categoria), Mídia
+ *   2. Preço & Custo — Venda (3 col), Custo (3 col), Tributação (NCM)
+ *   3. Estoque       — Controle, Quantidades (condicional), Identificação
+ *   4. Variantes     — VariantEditor
+ *   5. Loja online   — Publicação, Catálogo (parcelas/desconto), Conteúdo
  *
- * `isActive` continua FORA do form — toggle no header da página via action
- * separada (publish/pause). `images` fora do RHF — gerenciadas em state
- * local + actions de upload/delete em tempo real. Lógica de submit (RHF +
- * Proteção contra duplo submit por ref síncrona, além de useTransition.
- * preservada do estado anterior.
+ * Comportamento atual 100% preservado: Zod schema, server actions, staged
+ * uploads, cadastro contínuo via sessionStorage, sticky save mobile/desktop,
+ * isActive controlado pelo header em modo edit.
+ *
+ * Débitos documentados nos arquivos de cada aba:
+ *   - "+ Nova marca" inline (Sprint 2, depende da tabela `brand`)
+ *   - "atributos pra filtros" multi-select (Sprint futura, schema)
+ *   - "estoque atual readonly + Ver movimentações" (Sprint futura, UX
+ *     de lançamento inicial)
  */
 export function ProductForm({
   initialData,
@@ -170,9 +163,6 @@ export function ProductForm({
   const [images, setImages] = useState<ProductImageData[]>(initialData.images);
   const [localCategories, setLocalCategories] =
     useState<CategoryOption[]>(categories);
-  // Fluxo staged (padrão Shopify/Nuvem Shop): em criação, fotos ficam em
-  // memória do client. Após createProductFromValues retornar productId,
-  // ProductForm faz upload em paralelo via flushStagedFiles.
   const [stagedFiles, setStagedFiles] = useState<StagedImageFile[]>([]);
   const isCreating = !!onCreateProduct;
 
@@ -201,8 +191,6 @@ export function ProductForm({
       modeling: initialData.modeling ?? "",
       lining: initialData.lining ?? "",
       washing: initialData.washing ?? "",
-      // ADR-0034 Camada 2 — gestão. `null` direto pra numbers; "" pra strings
-      // (Zod transform "" → null no submit).
       wholesalePriceInCents: initialData.wholesalePriceInCents,
       costPriceInCents: initialData.costPriceInCents,
       minStockQuantity: initialData.minStockQuantity,
@@ -228,6 +216,7 @@ export function ProductForm({
   const [submitMode, setSubmitMode] = useState<"save" | "saveAndContinue">(
     "save",
   );
+  const [activeTab, setActiveTab] = useState<TabKey>("identidade");
 
   const onSubmit = (values: ProductFormValues) => {
     if (submittingRef.current) return;
@@ -246,8 +235,6 @@ export function ProductForm({
 
         // ============================================================
         // STAGED FLUSH — só em criação, após produto persistido.
-        // Sobe fotos em PARALELO usando productId real. Falhas parciais
-        // não bloqueiam o sucesso do produto; toast comunica o que rolou.
         // ============================================================
         const filesToFlush = stagedFiles;
         let uploadOk = 0;
@@ -329,532 +316,150 @@ export function ProductForm({
     setImages(next);
   }, []);
 
+  const handleCategoryCreated = useCallback(
+    (c: { id: string; name: string; slug: string; parentId: string | null }) => {
+      const next: CategoryOption = {
+        id: c.id,
+        name: c.name,
+        parentId: c.parentId,
+      };
+      setLocalCategories((prev) => [...prev, next]);
+    },
+    [],
+  );
+
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      // Padding-bottom em mobile pra conteúdo não ficar atrás do sticky
-      // save (1 botão ~3.5rem + py-3 + bottom nav 3.5rem + safe-area
-      // ~1.25rem ≈ 9rem).
-      className="mx-auto max-w-[1360px] pb-36 lg:pb-4"
+      // Padding-bottom em mobile pra conteúdo não ficar atrás do sticky save.
+      className="mx-auto max-w-[760px] pb-36 lg:pb-4"
     >
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start xl:grid-cols-[minmax(0,1fr)_400px]">
-        {/* === Coluna esquerda (lg col-span-2) === */}
-        <div className="space-y-4">
-          <FormCard
-            title="Mídia"
-            description="A primeira foto vira a capa. Tire pelo celular ou escolha da galeria."
-          >
-            <ImageUploader
-              productId={initialData.productId}
-              images={images}
-              onChange={handleImagesChange}
-              mode={isCreating ? "staged" : "server"}
-              stagedFiles={stagedFiles}
-              onStagedChange={setStagedFiles}
-              disabled={isPending}
-            />
-          </FormCard>
-
-          <FormCard title="Identidade">
-            <div className="space-y-1.5">
-              <Label htmlFor="product-name">Nome</Label>
-              <Input
-                id="product-name"
-                placeholder="Ex: Vestido midi preto"
-                disabled={isPending}
-                aria-invalid={!!errors.name}
-                {...register("name")}
-              />
-              {errors.name?.message ? (
-                <p className="text-destructive text-xs">{errors.name.message}</p>
+      {/* === Navegação de abas === */}
+      <div
+        className="b3-tabs mb-4"
+        role="tablist"
+        aria-label="Seções do produto"
+      >
+        {TAB_NAV.map((tab) => {
+          const errCount = getTabErrorCount(tab.key, errors);
+          const isActive = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              data-active={isActive ? "true" : undefined}
+              className="b3-tab"
+              onClick={() => setActiveTab(tab.key)}
+            >
+              {tab.label}
+              {errCount > 0 ? (
+                <span
+                  aria-label={`${errCount} ${errCount === 1 ? "erro" : "erros"}`}
+                  className="ml-1.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-white"
+                >
+                  {errCount}
+                </span>
               ) : null}
-            </div>
+            </button>
+          );
+        })}
+      </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="product-description">Descrição</Label>
-              <Textarea
-                id="product-description"
-                placeholder="Detalhes, medidas, material…"
-                rows={4}
-                disabled={isPending}
-                aria-invalid={!!errors.description}
-                {...register("description")}
-              />
-              {errors.description?.message ? (
-                <p className="text-destructive text-xs">
-                  {errors.description.message}
-                </p>
-              ) : null}
-            </div>
-          </FormCard>
+      {/* === Conteúdo das abas (hidden style preserva form state) === */}
+      <div hidden={activeTab !== "identidade"}>
+        <TabIdentidade
+          control={control}
+          register={register}
+          errors={errors}
+          isPending={isPending}
+          productId={initialData.productId}
+          images={images}
+          onImagesChange={handleImagesChange}
+          isCreating={isCreating}
+          stagedFiles={stagedFiles}
+          onStagedChange={setStagedFiles}
+          localCategories={localCategories}
+          onCategoryCreated={handleCategoryCreated}
+        />
+      </div>
 
-          <FormCard
-            title="Detalhes & Tributação"
-            description="Aparecem na ficha do produto. Tudo opcional."
+      <div hidden={activeTab !== "preco-custo"}>
+        <TabPrecoCusto
+          control={control}
+          register={register}
+          errors={errors}
+          isPending={isPending}
+        />
+      </div>
+
+      <div hidden={activeTab !== "estoque"}>
+        <TabEstoque
+          control={control}
+          register={register}
+          errors={errors}
+          isPending={isPending}
+        />
+      </div>
+
+      <div hidden={activeTab !== "variantes"}>
+        <TabVariantes control={control} isPending={isPending} images={images} />
+      </div>
+
+      <div hidden={activeTab !== "loja-online"}>
+        <TabLojaOnline
+          control={control}
+          register={register}
+          errors={errors}
+          isPending={isPending}
+          isDraft={isDraft}
+        />
+      </div>
+
+      {/* === Save desktop (inline ao final do form, ≥lg) === */}
+      <div className="mt-6 hidden flex-col items-end gap-2 lg:flex">
+        <div className={cn("flex w-full max-w-[400px] flex-col gap-2")}>
+          <Button
+            type="submit"
+            disabled={isPending}
+            onClick={() => setSubmitMode("save")}
+            className="w-full"
+            size="lg"
           >
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <MetaField
-                id="product-composition"
-                label="Composição"
-                placeholder="Ex: 100% linho"
-                error={errors.composition?.message}
-                disabled={isPending}
-                {...register("composition")}
-              />
-              <MetaField
-                id="product-modeling"
-                label="Modelagem"
-                placeholder="Ex: Evasê midi"
-                error={errors.modeling?.message}
-                disabled={isPending}
-                {...register("modeling")}
-              />
-              <MetaField
-                id="product-lining"
-                label="Forro"
-                placeholder="Ex: Não possui"
-                error={errors.lining?.message}
-                disabled={isPending}
-                {...register("lining")}
-              />
-              <MetaField
-                id="product-washing"
-                label="Lavagem"
-                placeholder="Ex: À mão"
-                error={errors.washing?.message}
-                disabled={isPending}
-                {...register("washing")}
-              />
-            </div>
-            <div className="border-t border-line pt-3">
-              <NcmField register={register} errors={errors} isPending={isPending} />
-            </div>
-          </FormCard>
-
-          <FormCard title="Preço">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="product-base-price">Preço normal</Label>
-                <Controller
-                  name="basePriceInCents"
-                  control={control}
-                  render={({ field }) => (
-                    <PriceInput
-                      id="product-base-price"
-                      value={field.value}
-                      onChange={(v) => field.onChange(v ?? 0)}
-                      disabled={isPending}
-                      aria-invalid={!!errors.basePriceInCents}
-                    />
-                  )}
-                />
-                {errors.basePriceInCents?.message ? (
-                  <p className="text-destructive text-xs">
-                    {errors.basePriceInCents.message}
-                  </p>
-                ) : null}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="product-promo-price">Preço promocional</Label>
-                <Controller
-                  name="promoPriceInCents"
-                  control={control}
-                  render={({ field }) => (
-                    <PriceInput
-                      id="product-promo-price"
-                      value={field.value}
-                      onChange={field.onChange}
-                      placeholder="Sem promoção"
-                      disabled={isPending}
-                      aria-invalid={!!errors.promoPriceInCents}
-                    />
-                  )}
-                />
-                {errors.promoPriceInCents?.message ? (
-                  <p className="text-destructive text-xs">
-                    {errors.promoPriceInCents.message}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-            <p className="text-ink-4 text-xs">
-              A promoção fica ativa enquanto preenchida. Para parar, limpe o campo.
-            </p>
-
-            {/* Override de parcelas por produto — Fase 2 / ADR-0013 */}
-            <div className="space-y-1.5 border-t border-line pt-3">
-              <Label htmlFor="product-installments-override">
-                Parcelar até (sobrescreve a loja)
-              </Label>
-              <Controller
-                name="installmentsOverride"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value === null ? "default" : String(field.value)}
-                    onValueChange={(v) =>
-                      field.onChange(v === "default" ? null : Number(v))
-                    }
-                    disabled={isPending}
-                  >
-                    <SelectTrigger
-                      id="product-installments-override"
-                      className="w-full sm:max-w-[220px]"
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="default">
-                        Usar o padrão da loja
-                      </SelectItem>
-                      {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
-                        <SelectItem key={n} value={String(n)}>
-                          {n}×
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              <p className="text-ink-4 text-xs">
-                Deixe &ldquo;padrão da loja&rdquo; pra usar o limite
-                definido em Pagamento (menu lateral). Útil pra peças
-                mais caras que merecem mais parcelas.
-              </p>
-              {errors.installmentsOverride?.message ? (
-                <p className="text-destructive text-xs">
-                  {errors.installmentsOverride.message}
-                </p>
-              ) : null}
-            </div>
-
-            {/* Override de desconto à vista por produto — Fase 2 / ADR-0013 */}
-            <div className="space-y-1.5 border-t border-line pt-3">
-              <Label htmlFor="product-cash-discount-override">
-                Desconto à vista (sobrescreve a loja)
-              </Label>
-              <Controller
-                name="cashDiscountOverrideBps"
-                control={control}
-                render={({ field }) => {
-                  // null  → "default" (usa cashDiscountBps da loja)
-                  // 0     → "off"     (este produto NÃO tem desconto, mesmo que loja tenha)
-                  // 1..9999 → input numérico em %
-                  const v = field.value;
-                  const mode =
-                    v === null
-                      ? "default"
-                      : v === 0
-                        ? "off"
-                        : "custom";
-                  const bpsValue = typeof v === "number" && v > 0 ? v : 0;
-                  return (
-                    <div className="space-y-2">
-                      <Select
-                        value={mode}
-                        onValueChange={(next) => {
-                          if (next === "default") field.onChange(null);
-                          else if (next === "off") field.onChange(0);
-                          else field.onChange(bpsValue > 0 ? bpsValue : 500); // default 5% ao abrir
-                        }}
-                        disabled={isPending}
-                      >
-                        <SelectTrigger
-                          id="product-cash-discount-override"
-                          className="w-full sm:max-w-[260px]"
-                        >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="default">
-                            Usar o padrão da loja
-                          </SelectItem>
-                          <SelectItem value="off">
-                            Sem desconto neste produto
-                          </SelectItem>
-                          <SelectItem value="custom">
-                            Definir um valor específico
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                      {mode === "custom" ? (
-                        <div className="flex items-center gap-2">
-                          <Input
-                            id="product-cash-discount-input"
-                            type="number"
-                            inputMode="decimal"
-                            step="0.5"
-                            min={0.01}
-                            max={99.99}
-                            value={
-                              bpsValue === 0
-                                ? ""
-                                : String(Math.round(bpsValue) / 100).replace(
-                                    ".",
-                                    ",",
-                                  )
-                            }
-                            onChange={(e) => {
-                              const raw = e.target.value
-                                .replace(",", ".")
-                                .trim();
-                              if (raw === "") {
-                                field.onChange(0);
-                                return;
-                              }
-                              const pct = Number.parseFloat(raw);
-                              if (!Number.isFinite(pct) || pct < 0) {
-                                field.onChange(0);
-                                return;
-                              }
-                              field.onChange(
-                                Math.min(9999, Math.round(pct * 100)),
-                              );
-                            }}
-                            placeholder="0"
-                            className="w-32"
-                            disabled={isPending}
-                            aria-invalid={!!errors.cashDiscountOverrideBps}
-                          />
-                          <span className="text-ink-4 text-sm">
-                            % off
-                          </span>
-                        </div>
-                      ) : null}
-                    </div>
-                  );
-                }}
-              />
-              <p className="text-ink-4 text-xs">
-                Útil pra peça encalhada (queima estoque) ou pra desligar o
-                desconto em produto que já está com margem apertada.
-              </p>
-              {errors.cashDiscountOverrideBps?.message ? (
-                <p className="text-destructive text-xs">
-                  {errors.cashDiscountOverrideBps.message}
-                </p>
-              ) : null}
-            </div>
-          </FormCard>
-
-          <FormCard
-            title="Variantes"
-            description="Use quando o mesmo produto tem opções (P/M/G, cores)."
-          >
-            <Controller
-              name="variants"
-              control={control}
-              render={({ field }) => (
-                <VariantEditor
-                  value={field.value as VariantData[]}
-                  onChange={(next: VariantInput[]) => field.onChange(next)}
-                  disabled={isPending}
-                  productImages={images.map((img) => ({
-                    id: img.id,
-                    url: img.url,
-                  }))}
-                />
-              )}
-            />
-          </FormCard>
-
-          {/*
-            === ADR-0034 Camada 2 Onda B.2 — Layout denso horizontal ===
-            Identidade extra (marca/unidade/GTIN/código) em banda única
-            de 4 colunas, depois grid 3 colunas (Atacado · Custo & Margem ·
-            Estoque mín/máx) — informações densas, sem scroll quando
-            possível em desktop. NCM compacto dentro de "Detalhes".
-          */}
-          <IdentityExtraCard
-            control={control}
-            register={register}
-            errors={errors}
-            isPending={isPending}
-          />
-
-          <div className="grid gap-3 lg:grid-cols-3">
-            <CommercialCard
-              control={control}
-              register={register}
-              errors={errors}
-              isPending={isPending}
-            />
-            <CostMarginCard
-              control={control}
-              register={register}
-              errors={errors}
-              isPending={isPending}
-            />
-            <InventoryExtraCard
-              control={control}
-              register={register}
-              errors={errors}
-              isPending={isPending}
-            />
-          </div>
-        </div>
-
-        {/* === Coluna direita (lg col-span-1, sticky) === */}
-        <div className="space-y-4 lg:sticky lg:top-5">
-          <FormCard title="Status">
-            {/*
-              Em criação (`isDraft`), o switch isActive entra no form via Controller —
-              produto salva já visível na vitrine por default (padrão Shopify).
-              Em edição o instant-toggle vive no header (<ProductPublishToggle/>)
-              pra publicar/pausar sem reabrir o form inteiro, então ocultamos
-              aqui pra não duplicar controle nem confundir lojista.
-            */}
-            {isDraft ? (
-              <Controller
-                name="isActive"
-                control={control}
-                render={({ field }) => (
-                  <ToggleRow
-                    id="product-active"
-                    label="Visível na loja"
-                    description="Se desligado, o produto fica como rascunho — só você vê."
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    disabled={isPending}
-                  />
-                )}
-              />
-            ) : null}
-
-            <Controller
-              name="isPublishedToStorefront"
-              control={control}
-              render={({ field }) => (
-                <ToggleRow
-                  id="product-published-storefront"
-                  label="Publicado na loja online"
-                  description="Se desligado, o produto fica no estoque e pode ser vendido no PDV, mas não aparece na vitrine pública."
-                  checked={field.value ?? true}
-                  onCheckedChange={field.onChange}
-                  disabled={isPending}
-                />
-              )}
-            />
-            <Controller
-              name="isFeatured"
-              control={control}
-              render={({ field }) => (
-                <ToggleRow
-                  id="product-featured"
-                  label="Em destaque"
-                  description="Aparece em primeiro na vitrine (se publicado)."
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                  disabled={isPending}
-                />
-              )}
-            />
-            <Controller
-              name="trackStock"
-              control={control}
-              render={({ field: trackField }) => (
-                <Controller
-                  name="stockQuantity"
-                  control={control}
-                  render={({ field: qtyField }) => (
-                    <StockInput
-                      value={{
-                        trackStock: trackField.value,
-                        stockQuantity: qtyField.value,
-                      }}
-                      onChange={(next) => {
-                        trackField.onChange(next.trackStock);
-                        qtyField.onChange(next.stockQuantity);
-                      }}
-                      disabled={isPending}
-                    />
-                  )}
-                />
-              )}
-            />
-            {errors.stockQuantity?.message ? (
-              <p className="text-destructive text-xs">
-                {errors.stockQuantity.message}
-              </p>
-            ) : null}
-          </FormCard>
-
-          <FormCard
-            title="Organização"
-            description="Categoria que agrupa esse produto na vitrine."
-          >
-            <Controller
-              name="categoryId"
-              control={control}
-              render={({ field }) => (
-                <CategoryField
-                  value={field.value}
-                  onChange={field.onChange}
-                  categories={localCategories}
-                  disabled={isPending}
-                  onCategoryCreated={(c) => {
-                    const next: CategoryOption = {
-                      id: c.id,
-                      name: c.name,
-                      parentId: c.parentId,
-                    };
-                    setLocalCategories((prev) => [...prev, next]);
-                    field.onChange(c.id);
-                  }}
-                />
-              )}
-            />
-          </FormCard>
-
-          {/* Save desktop: dentro da coluna direita pra ficar sticky junto. */}
-          <div className="hidden flex-col gap-2 lg:flex">
+            {isPending && submitMode === "save" ? (
+              <>
+                <Loader2Icon className="animate-spin" /> Salvando…
+              </>
+            ) : (
+              <>
+                <SaveIcon /> Salvar
+              </>
+            )}
+          </Button>
+          {isDraft ? (
             <Button
               type="submit"
+              variant="outline"
               disabled={isPending}
-              onClick={() => setSubmitMode("save")}
+              onClick={() => setSubmitMode("saveAndContinue")}
               className="w-full"
-              size="lg"
             >
-              {isPending && submitMode === "save" ? (
+              {isPending && submitMode === "saveAndContinue" ? (
                 <>
                   <Loader2Icon className="animate-spin" /> Salvando…
                 </>
               ) : (
                 <>
-                  <SaveIcon /> Salvar
+                  <PlusCircleIcon /> Salvar e adicionar outro
                 </>
               )}
             </Button>
-            {isDraft ? (
-              <Button
-                type="submit"
-                variant="outline"
-                disabled={isPending}
-                onClick={() => setSubmitMode("saveAndContinue")}
-                className="w-full"
-              >
-                {isPending && submitMode === "saveAndContinue" ? (
-                  <>
-                    <Loader2Icon className="animate-spin" /> Salvando…
-                  </>
-                ) : (
-                  <>
-                    <PlusCircleIcon /> Salvar e adicionar outro
-                  </>
-                )}
-              </Button>
-            ) : null}
-          </div>
+          ) : null}
         </div>
       </div>
 
-      {/*
-        Save mobile sticky — fixed na viewport, acima do admin bottom nav.
-        Em criação (isDraft), empilha "Salvar e adicionar outro" acima do
-        "Salvar" pra fluxo Shopify sem duplicar botão (auditoria K3).
-      */}
+      {/* === Save mobile sticky (acima do bottom nav) === */}
       <div
         className="surface-elevated fixed inset-x-0 z-50 flex flex-col gap-2 px-4 py-3 lg:hidden"
         style={{
@@ -901,211 +506,4 @@ export function ProductForm({
       </div>
     </form>
   );
-}
-
-// ===========================================================================
-// FormCard (canvas-v1 admin Lote 3) — substitui FormSection grid 14rem.
-// Card individual com border + padding + título no topo.
-// ===========================================================================
-
-interface FormCardProps {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}
-
-function FormCard({ title, description, children }: FormCardProps) {
-  return (
-    <section className="b3-card flex flex-col gap-4 rounded-2xl p-4 sm:p-5 xl:p-6">
-      <header className="space-y-0.5">
-        <h2 className="text-[13.5px] font-semibold tracking-tight text-ink-1">
-          {title}
-        </h2>
-        {description ? (
-          <p className="text-ink-4 text-[11.5px] leading-relaxed">
-            {description}
-          </p>
-        ) : null}
-      </header>
-      <div className="flex flex-col gap-3">{children}</div>
-    </section>
-  );
-}
-
-// ===========================================================================
-// MetaField — input compacto pros 4 campos meta canvas. Reduz repetição.
-// ===========================================================================
-
-interface MetaFieldProps extends React.ComponentProps<typeof Input> {
-  id: string;
-  label: string;
-  error?: string;
-}
-
-const MetaField = ({
-  id,
-  label,
-  error,
-  className,
-  ...inputProps
-}: MetaFieldProps) => (
-  <div className="space-y-1.5">
-    <Label htmlFor={id}>{label}</Label>
-    <Input
-      id={id}
-      maxLength={120}
-      autoComplete="off"
-      aria-invalid={!!error}
-      className={className}
-      {...inputProps}
-    />
-    {error ? <p className="text-destructive text-xs">{error}</p> : null}
-  </div>
-);
-
-// ===========================================================================
-// ToggleRow — linha de switch com label + descrição (card Status canvas).
-// ===========================================================================
-
-interface ToggleRowProps {
-  id: string;
-  label: string;
-  description?: string;
-  checked: boolean;
-  onCheckedChange: (next: boolean) => void;
-  disabled?: boolean;
-}
-
-function ToggleRow({
-  id,
-  label,
-  description,
-  checked,
-  onCheckedChange,
-  disabled,
-}: ToggleRowProps) {
-  return (
-    <div className="flex items-start justify-between gap-3 border-b border-line pb-3 last:border-0 last:pb-0">
-      <div className="min-w-0 flex-1 space-y-0.5">
-        <Label htmlFor={id} className="text-[12.5px] font-medium">
-          {label}
-        </Label>
-        {description ? (
-          <p className="text-ink-4 text-[11px] leading-snug">
-            {description}
-          </p>
-        ) : null}
-      </div>
-      <Switch
-        id={id}
-        checked={checked}
-        onCheckedChange={onCheckedChange}
-        disabled={disabled}
-      />
-    </div>
-  );
-}
-
-// ===========================================================================
-// CategoryField — Select + botão "+ Nova categoria" inline.
-// ===========================================================================
-
-interface CategoryFieldProps {
-  value: string | null;
-  onChange: (next: string | null) => void;
-  categories: CategoryOption[];
-  disabled?: boolean;
-  onCategoryCreated: (c: {
-    id: string;
-    name: string;
-    slug: string;
-    parentId: string | null;
-  }) => void;
-}
-
-const NO_CATEGORY = "__none__";
-
-function CategoryField({
-  value,
-  onChange,
-  categories,
-  disabled,
-  onCategoryCreated,
-}: CategoryFieldProps) {
-  const { roots, childrenByParent } = useMemo(() => {
-    const rootList = categories.filter((c) => c.parentId === null);
-    const map = new Map<string, CategoryOption[]>();
-    for (const c of categories) {
-      if (c.parentId) {
-        const arr = map.get(c.parentId) ?? [];
-        arr.push(c);
-        map.set(c.parentId, arr);
-      }
-    }
-    return { roots: rootList, childrenByParent: map };
-  }, [categories]);
-
-  return (
-    <div className="space-y-2">
-      <div className="flex gap-2">
-        <Select
-          value={value ?? NO_CATEGORY}
-          onValueChange={(v) => onChange(v === NO_CATEGORY ? null : v)}
-          disabled={disabled}
-        >
-          <SelectTrigger className="flex-1">
-            <SelectValue placeholder="Sem categoria" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={NO_CATEGORY}>Sem categoria</SelectItem>
-            {roots.map((root) => {
-              const children = childrenByParent.get(root.id) ?? [];
-              if (children.length === 0) {
-                return (
-                  <SelectItem key={root.id} value={root.id}>
-                    {root.name}
-                  </SelectItem>
-                );
-              }
-              return (
-                <SelectGroup key={root.id}>
-                  <SelectLabel>{root.name}</SelectLabel>
-                  <SelectItem value={root.id}>{root.name} (geral)</SelectItem>
-                  {children.map((child) => (
-                    <SelectItem key={child.id} value={child.id}>
-                      {root.name} › {child.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              );
-            })}
-          </SelectContent>
-        </Select>
-
-        <CategoryDialog
-          rootCategories={roots}
-          onCreated={onCategoryCreated}
-          disabled={disabled}
-        />
-      </div>
-    </div>
-  );
-}
-
-// ===========================================================================
-// Sessão de cadastro contínuo (sessionStorage).
-// ===========================================================================
-
-const SESSION_COUNTER_KEY = "vitre:product-create-session-count";
-function bumpSessionCounter(): number {
-  if (typeof window === "undefined") return 1;
-  try {
-    const raw = sessionStorage.getItem(SESSION_COUNTER_KEY);
-    const current = raw ? parseInt(raw, 10) : 0;
-    const next = (Number.isNaN(current) ? 0 : current) + 1;
-    sessionStorage.setItem(SESSION_COUNTER_KEY, String(next));
-    return next;
-  } catch {
-    return 1;
-  }
 }
