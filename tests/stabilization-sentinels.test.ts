@@ -61,26 +61,21 @@ test("pdv: busca não retorna variante inativa", () => {
 });
 
 test("admin: remove controles fake e links quebrados visíveis", () => {
+  // Sentinela original (Sprint 0): protegia contra checkboxes fake, links
+  // de detalhe quebrados, e itens de sidebar com features vazias.
+  //
+  // Atualização Sprint 5: a lista de itens "imaturos" da sidebar virou
+  // obsoleta — Sprints 1A/2/3/4/5 implementaram tudo (Relatórios, Cupons,
+  // Grupos de cliente, Equipe, Assinatura etc.) e vocabulário canônico
+  // passou nos labels. Só restam as 3 asserts de fake-controls que ainda
+  // têm valor preventivo contra regressão.
   const recent = src("src/components/admin/dashboard/recent-orders-table.tsx");
   const customers = src("src/components/admin/customers-table.tsx");
   const orders = src("src/components/admin/orders-table.tsx");
-  const nav = src("src/components/admin/shell/nav-items.ts");
 
   assert.doesNotMatch(recent, /href=\{`\/admin\/pedidos\/\$\{o\.id\}`\}/);
   assert.doesNotMatch(customers, /type="checkbox"[\s\S]{0,220}disabled/);
   assert.doesNotMatch(orders, /type="checkbox"[\s\S]{0,220}disabled/);
-  for (const immature of [
-    "Grupos de clientes",
-    "Contatos",
-    "Cupons",
-    "Relatórios",
-    "Coleções",
-    "Equipe",
-    "Assinatura",
-    "Suporte",
-  ]) {
-    assert.doesNotMatch(nav, new RegExp(`label: ["']${immature}["']`));
-  }
 });
 
 test("pdv: venda concluída permanece no PDV e oferece impressão explícita", () => {

@@ -37,7 +37,8 @@ const optionalTrimmedString = (max: number, fieldLabel: string) =>
         .max(max, `${fieldLabel} muito longo (máx ${max}).`),
       z.null(),
     ])
-    .transform((v) => (v === null || v === "" ? null : v));
+    .optional()
+    .transform((v) => (v == null || v === "" ? null : v));
 
 export const variantAxisSchema = z.enum(["size", "color"]);
 export type VariantAxis = z.infer<typeof variantAxisSchema>;
@@ -86,7 +87,13 @@ const optionalNonnegativeQuantity = (fieldLabel: string) =>
     .nullish()
     .transform((v) => v ?? null);
 
-/** GTIN — só dígitos, 8/12/13/14. Vazio "" → null. */
+/**
+ * GTIN — só dígitos, 8/12/13/14. Vazio "" / undefined / null → null.
+ * `.optional()` é o jeito canônico do Zod aceitar undefined; sem isso,
+ * qualquer caller que passa objeto sem `gtin` quebra antes mesmo dos
+ * refines de validação semântica. Alinha com os outros campos opcionais
+ * (wholesalePriceInCents, brandId, defaultCommissionBps, etc.).
+ */
 const optionalGtin = z
   .union([
     z
@@ -99,9 +106,10 @@ const optionalGtin = z
     z.literal(""),
     z.null(),
   ])
-  .transform((v) => (v === null || v === "" ? null : v));
+  .optional()
+  .transform((v) => (v == null || v === "" ? null : v));
 
-/** NCM — só dígitos, 8 caracteres exatos. Vazio → null. */
+/** NCM — só dígitos, 8 caracteres exatos. Vazio / undefined / null → null. */
 const optionalNcm = z
   .union([
     z
@@ -111,7 +119,8 @@ const optionalNcm = z
     z.literal(""),
     z.null(),
   ])
-  .transform((v) => (v === null || v === "" ? null : v));
+  .optional()
+  .transform((v) => (v == null || v === "" ? null : v));
 
 export const variantInputSchema = z
   .object({
