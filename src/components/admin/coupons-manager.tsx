@@ -95,7 +95,7 @@ export function CouponsManager({
         isActive: edit.isActive,
       });
       if (res.ok) {
-        toast.success(edit.id ? "Cupom atualizado." : "Cupom criado.");
+        toast.success(edit.id ? "Código de desconto atualizado." : "Código de desconto criado.");
         setOpen(false);
       } else {
         toast.error(res.error);
@@ -104,10 +104,10 @@ export function CouponsManager({
   }
 
   function handleDelete(c: Coupon) {
-    if (!confirm(`Excluir cupom "${c.code}"?`)) return;
+    if (!confirm(`Excluir código de desconto "${c.code}"?`)) return;
     startTransition(async () => {
       const res = await deleteCoupon({ id: c.id });
-      if (res.ok) toast.success("Cupom excluído.");
+      if (res.ok) toast.success("Código de desconto excluído.");
       else toast.error(res.error);
     });
   }
@@ -122,14 +122,14 @@ export function CouponsManager({
           style={{ height: 36 }}
         >
           <PlusIcon size={13} />
-          Novo cupom
+          Novo código de desconto
         </button>
       </div>
 
       {initialCoupons.length === 0 ? (
         <div className="b3-card b3-card-pad text-center">
           <p className="text-ink-3 text-[13px]">
-            Nenhum cupom ainda. Crie códigos pra rodar campanhas pontuais.
+            Nenhum código de desconto ainda. Crie códigos pra rodar campanhas pontuais.
           </p>
         </div>
       ) : (
@@ -196,7 +196,7 @@ export function CouponsManager({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{edit.id ? "Editar cupom" : "Novo cupom"}</DialogTitle>
+            <DialogTitle>{edit.id ? "Editar código de desconto" : "Novo código de desconto"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2">
