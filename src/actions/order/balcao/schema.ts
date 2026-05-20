@@ -97,8 +97,29 @@ export const paymentLineSchema = z
 export type PaymentLineInput = z.input<typeof paymentLineSchema>;
 export type PaymentLineParsed = z.output<typeof paymentLineSchema>;
 
+/**
+ * Sprint 1A Fase 4 — modo da venda balcão.
+ *   - 'sale'  (default): venda normal com payments[] e desconto de estoque
+ *   - 'quote' (Fase 4): orçamento — sem payments, sem stock, short_code Q-,
+ *     status='quote', quote_valid_until = now + quoteValidityDays
+ */
+export const BALCAO_MODE_VALUES = ["sale", "quote"] as const;
+export type BalcaoMode = (typeof BALCAO_MODE_VALUES)[number];
+
 export const createBalcaoSaleSchema = z
   .object({
+    /** Modo da operação. Default 'sale' pra backward compat. */
+    mode: z.enum(BALCAO_MODE_VALUES).default("sale"),
+    /**
+     * Sprint 1A Fase 4 — validade do orçamento em dias (só usado em
+     * mode='quote'). Default 7. Aceita 1..365.
+     */
+    quoteValidityDays: z
+      .number()
+      .int()
+      .min(1)
+      .max(365)
+      .default(7),
     items: z
       .array(balcaoItemSchema)
       .min(1, "Adicione pelo menos um item")
@@ -180,7 +201,40 @@ export const createBalcaoSaleSchema = z
     ),
   })
   .superRefine((data, ctx) => {
-    // Pelo menos uma das duas formas: payments[] (nova) ou paymentMethod (legacy)
+    // Sprint 1A Fase 4 — invariantes do modo 'quote':
+    //   payments[] DEVE ser undefined ou [] (orçamento não recebe pagamento)
+    //   paymentMethod legacy DEVE ser undefined ou null
+    //   cashReceivedInCents legacy DEVE ser undefined ou null
+    if (data.mode === "quote") {
+      if (data.payments && data.payments.length > 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["payments"],
+          message: "Orçamento (mode='quote') não aceita formas de pagamento",
+        });
+      }
+      if (data.paymentMethod) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["paymentMethod"],
+          message: "Orçamento (mode='quote') não aceita paymentMethod",
+        });
+      }
+      if (
+        data.cashReceivedInCents !== null &&
+        data.cashReceivedInCents !== undefined
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["cashReceivedInCents"],
+          message: "Orçamento não tem dinheiro recebido",
+        });
+      }
+      return;
+    }
+
+    // Modo 'sale': pelo menos uma das duas formas: payments[] (nova) OU
+    // paymentMethod (legacy).
     if (!data.payments && !data.paymentMethod) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

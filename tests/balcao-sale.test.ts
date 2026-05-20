@@ -278,6 +278,139 @@ test("Sprint 1A: paymentLine rejeita notes > 60 chars", () => {
   assert.equal(r.success, false);
 });
 
+// Sprint 1A Fase 4 — Quote mode -----------------------------------------
+
+test("Sprint 1A Fase 4: createBalcaoSaleSchema aceita mode='quote' sem payments", () => {
+  const r = createBalcaoSaleSchema.safeParse({
+    mode: "quote",
+    items: [
+      {
+        productId: "550e8400-e29b-41d4-a716-446655440000",
+        variantId: null,
+        quantity: 1,
+      },
+    ],
+    customerId: null,
+    discountInCents: null,
+    surchargeInCents: null,
+    notes: null,
+  });
+  assert.equal(r.success, true, JSON.stringify(r));
+});
+
+test("Sprint 1A Fase 4: createBalcaoSaleSchema aceita mode='quote' com customerId null", () => {
+  const r = createBalcaoSaleSchema.safeParse({
+    mode: "quote",
+    items: [
+      {
+        productId: "550e8400-e29b-41d4-a716-446655440000",
+        variantId: null,
+        quantity: 2,
+      },
+    ],
+    customerId: null,
+    quoteValidityDays: 14,
+    discountInCents: null,
+    surchargeInCents: null,
+    notes: null,
+  });
+  assert.equal(r.success, true);
+});
+
+test("Sprint 1A Fase 4: createBalcaoSaleSchema rejeita mode='quote' com payments[]", () => {
+  const r = createBalcaoSaleSchema.safeParse({
+    mode: "quote",
+    items: [
+      {
+        productId: "550e8400-e29b-41d4-a716-446655440000",
+        variantId: null,
+        quantity: 1,
+      },
+    ],
+    customerId: null,
+    payments: [{ method: "cash", amountInCents: 5000 }],
+    discountInCents: null,
+    surchargeInCents: null,
+    notes: null,
+  });
+  assert.equal(r.success, false);
+});
+
+test("Sprint 1A Fase 4: createBalcaoSaleSchema rejeita mode='quote' com paymentMethod legado", () => {
+  const r = createBalcaoSaleSchema.safeParse({
+    mode: "quote",
+    items: [
+      {
+        productId: "550e8400-e29b-41d4-a716-446655440000",
+        variantId: null,
+        quantity: 1,
+      },
+    ],
+    customerId: null,
+    paymentMethod: "cash",
+    discountInCents: null,
+    surchargeInCents: null,
+    notes: null,
+  });
+  assert.equal(r.success, false);
+});
+
+test("Sprint 1A Fase 4: quoteValidityDays default 7, rejeita 0 ou 366", () => {
+  // Default 7 — não passa quoteValidityDays
+  const rDefault = createBalcaoSaleSchema.safeParse({
+    mode: "quote",
+    items: [
+      {
+        productId: "550e8400-e29b-41d4-a716-446655440000",
+        variantId: null,
+        quantity: 1,
+      },
+    ],
+    customerId: null,
+    discountInCents: null,
+    surchargeInCents: null,
+    notes: null,
+  });
+  assert.equal(rDefault.success, true);
+  if (rDefault.success) {
+    assert.equal(rDefault.data.quoteValidityDays, 7);
+  }
+
+  const rZero = createBalcaoSaleSchema.safeParse({
+    mode: "quote",
+    items: [
+      {
+        productId: "550e8400-e29b-41d4-a716-446655440000",
+        variantId: null,
+        quantity: 1,
+      },
+    ],
+    customerId: null,
+    quoteValidityDays: 0,
+    discountInCents: null,
+    surchargeInCents: null,
+    notes: null,
+  });
+  assert.equal(rZero.success, false);
+
+  const rTooMany = createBalcaoSaleSchema.safeParse({
+    mode: "quote",
+    items: [
+      {
+        productId: "550e8400-e29b-41d4-a716-446655440000",
+        variantId: null,
+        quantity: 1,
+      },
+    ],
+    customerId: null,
+    quoteValidityDays: 366,
+    discountInCents: null,
+    surchargeInCents: null,
+    notes: null,
+  });
+  assert.equal(rTooMany.success, false);
+});
+
 test("Sprint 1A: createBalcaoSaleSchema aceita backward-compat (paymentMethod único, sem payments)", () => {
   const r = createBalcaoSaleSchema.safeParse({
     items: [
@@ -408,6 +541,45 @@ test("Sprint 1A: createBalcaoSale valida sum(payments) === totalInCents", () => 
   const s = loadActionSource();
   assert.match(s, /paymentsSum/);
   assert.match(s, /paymentsSum\s*!==\s*totalInCents/);
+});
+
+// Sprint 1A Fase 4 — Quote source-level invariants
+
+test("Sprint 1A Fase 4: createBalcaoSale tem branch para mode='quote'", () => {
+  const s = loadActionSource();
+  assert.match(s, /data\.mode\s*===\s*["']quote["']/);
+});
+
+test("Sprint 1A Fase 4: branch quote prefixa shortCode com 'Q-'", () => {
+  const s = loadActionSource();
+  assert.match(s, /["']Q-["']\s*\+\s*generateShortCode\(\)/);
+});
+
+test("Sprint 1A Fase 4: branch quote insere quoteValidUntil", () => {
+  const s = loadActionSource();
+  assert.match(s, /quoteValidUntil/);
+  // E o cálculo de validade existe (data.quoteValidityDays vezes ms/dia)
+  assert.match(s, /quoteValidityDays\s*\*\s*24/);
+});
+
+test("Sprint 1A Fase 4: branch quote NÃO chama recordSaleMovements", () => {
+  const s = loadActionSource();
+  // No corpo do branch quote (entre o if mode === quote e seu fechamento)
+  // não deve haver chamada a recordSaleMovements.
+  const quoteBranchStart = s.indexOf('data.mode === "quote"');
+  assert.ok(quoteBranchStart > 0, "Esperava branch quote no source");
+  // Procurar o próximo bloco que NÃO seja parte do branch quote
+  const saleBranchStart = s.indexOf("// 10. Normalizar pagamento");
+  assert.ok(saleBranchStart > quoteBranchStart, "Esperava branch sale após quote");
+  const quoteSlice = s.slice(quoteBranchStart, saleBranchStart);
+  assert.ok(
+    !quoteSlice.includes("recordSaleMovements("),
+    "Branch quote não deve chamar recordSaleMovements (orçamento não desconta estoque)",
+  );
+  assert.ok(
+    !quoteSlice.includes("innerTx.insert(orderPaymentTable)"),
+    "Branch quote não deve inserir orderPayment",
+  );
 });
 
 // ---------------------------------------------------------------------

@@ -400,6 +400,142 @@ export async function createBalcaoSale(
         }
         const totalInCents = subtotalInCents - discount + surcharge;
 
+        // idempotency key compartilhada entre branches sale/quote
+        // (declarada antes pra que ambos retry loops possam usar).
+        const idempotencyKey = randomUUID();
+
+        // ============================================================
+        // Sprint 1A Fase 4 — BRANCH ORÇAMENTO (mode='quote')
+        //
+        // Orçamento difere de venda em 3 pontos:
+        //   1. Sem payments[] → pula validação de soma e INSERT em
+        //      orderPaymentTable
+        //   2. Sem stock_movement (cliente não levou nada — só cotou)
+        //   3. status='quote', short_code prefixado com 'Q-',
+        //      quote_valid_until = now + quoteValidityDays
+        //
+        // Mantém: items registrados em orderItemTable (lojista vai usar
+        // pra reabrir o orçamento depois), customer/walk-in snapshots,
+        // cupom validado, idempotency key, retry loop de short_code.
+        // ============================================================
+        if (data.mode === "quote") {
+          const quoteValidUntil = new Date(
+            Date.now() + data.quoteValidityDays * 24 * 60 * 60 * 1000,
+          );
+
+          let quoteOrderId: string | null = null;
+          let quoteShortCode: string | null = null;
+          let quotePublicToken: string | null = null;
+          let quoteLastError: unknown = null;
+
+          for (let attempt = 0; attempt < MAX_SHORTCODE_RETRIES; attempt++) {
+            const candidate = "Q-" + generateShortCode();
+            const publicToken = generatePublicOrderToken();
+            try {
+              await tx.transaction(async (innerTx) => {
+                const inserted = await innerTx
+                  .insert(orderTable)
+                  .values({
+                    storeId: store.id,
+                    shortCode: candidate,
+                    publicToken,
+                    idempotencyKey,
+                    customerName: customerSnapshotName,
+                    customerPhone: customerSnapshotPhone,
+                    customerId: data.customerId,
+                    customerNotes: data.notes,
+                    totalInCents,
+                    status: "quote",
+                    channel: "balcao",
+                    paymentMethod: null,
+                    discountInCents: discount > 0 ? discount : null,
+                    surchargeInCents:
+                      data.surchargeInCents ?? null,
+                    cashReceivedInCents: null,
+                    expiresAt: null,
+                    confirmedAt: null,
+                    cashSessionId: null,
+                    couponId: validatedCoupon?.couponId ?? null,
+                    quoteValidUntil,
+                  })
+                  .returning({ id: orderTable.id });
+                const orderRow = inserted[0];
+                if (!orderRow) throw new Error("INSERT order não retornou id");
+
+                if (computedItems.length > 0) {
+                  await innerTx.insert(orderItemTable).values(
+                    computedItems.map((ci) => ({
+                      orderId: orderRow.id,
+                      productId: ci.productId,
+                      variantId: ci.variantId,
+                      productNameSnapshot: ci.productName,
+                      variantNameSnapshot: ci.variantName,
+                      imageUrlSnapshot: null,
+                      priceInCentsSnapshot: ci.priceInCents,
+                      quantity: ci.quantity,
+                    })),
+                  );
+                }
+
+                // NÃO incrementa coupon (orçamento ainda não consumiu);
+                // NÃO insere orderPayment; NÃO desconta stock.
+
+                quoteOrderId = orderRow.id;
+                quoteShortCode = candidate;
+                quotePublicToken = publicToken;
+              });
+              break;
+            } catch (err: unknown) {
+              quoteLastError = err;
+              const msg = err instanceof Error ? err.message : String(err);
+              if (
+                msg.includes("order_short_code_unique") ||
+                msg.includes("short_code")
+              ) {
+                continue;
+              }
+              throw err;
+            }
+          }
+
+          if (!quoteOrderId || !quoteShortCode || !quotePublicToken) {
+            logger.error("balcao.quote_shortcode_retry_exhausted", {
+              err: quoteLastError,
+              storeId: store.id,
+            });
+            return {
+              ok: false,
+              errorCode: "SHORTCODE_RETRY_EXHAUSTED" as const,
+              errorMessage:
+                "Falha ao gerar código único do orçamento. Tente novamente.",
+            };
+          }
+
+          console.info("[QUOTE] orçamento criado", {
+            storeId: store.id,
+            orderId: quoteOrderId,
+            shortCode: quoteShortCode,
+            quoteValidUntil,
+          });
+
+          const storeRow = await tx.query.storeTable.findFirst({
+            where: eq(storeTable.id, store.id),
+            columns: { slug: true },
+          });
+          if (storeRow?.slug) {
+            revalidateTag(`store-${storeRow.slug}`);
+          }
+          revalidatePath("/admin/pdv");
+          revalidatePath("/admin/pedidos");
+
+          return {
+            ok: true,
+            orderId: quoteOrderId,
+            shortCode: quoteShortCode,
+            publicToken: quotePublicToken,
+          };
+        }
+
         // 10. Normalizar pagamento → payments[] canônico.
         //
         // Sprint 1A: action aceita 2 formatos:
@@ -510,8 +646,6 @@ export async function createBalcaoSale(
         let createdPublicToken: string | null = null;
         let lastError: unknown = null;
         let softFailure: CreateBalcaoSaleResult | null = null;
-
-        const idempotencyKey = randomUUID();
 
         for (let attempt = 0; attempt < MAX_SHORTCODE_RETRIES; attempt++) {
           const candidate = generateShortCode();
