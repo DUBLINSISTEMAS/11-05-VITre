@@ -2,16 +2,21 @@
  * Schemas Zod do domínio `order`.
  *
  * Status flow:
+ *   quote → confirmed (via "transformar em venda" no PDV) | canceled
  *   awaiting_whatsapp → confirmed → fulfilled | canceled | expired
  *   confirmed pode virar fulfilled OU canceled
  *   awaiting_whatsapp pode virar confirmed OU canceled OU expired
  *   fulfilled/canceled/expired = terminais
+ *
+ * Sprint 1A Fase 4 — 'quote' (orçamento) adicionado. Sem pagamento,
+ * sem stock_movement; converte em confirmed via PDV.
  */
 import { z } from "zod";
 
 import { isValidWhatsAppBR } from "@/lib/whatsapp-format";
 
 export const ORDER_STATUS_VALUES = [
+  "quote",
   "awaiting_whatsapp",
   "confirmed",
   "fulfilled",
@@ -33,6 +38,7 @@ export const VALID_TRANSITIONS: Record<
   (typeof ORDER_STATUS_VALUES)[number],
   ReadonlyArray<(typeof ORDER_STATUS_VALUES)[number]>
 > = {
+  quote: ["confirmed", "canceled"],
   awaiting_whatsapp: ["confirmed", "canceled", "expired"],
   confirmed: ["fulfilled", "canceled"],
   fulfilled: [],

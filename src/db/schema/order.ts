@@ -21,6 +21,10 @@ import { customerTable } from "./customer";
 import { storeTable } from "./store";
 
 export const orderStatusEnum = pgEnum("order_status", [
+  // Sprint 1A Fase 4 — orçamento sem pagamento, sem desconto de estoque.
+  // Posicionado antes de awaiting_whatsapp pra refletir cronologia natural
+  // (orçamento vira venda quando lojista fecha). Espelha SQL 50.
+  "quote",
   "awaiting_whatsapp",
   "confirmed",
   "fulfilled",
@@ -237,6 +241,14 @@ export const orderTable = pgTable(
      * adicional). Pedido whatsapp continua exigindo Zod no caller.
      */
     expiresAt: timestamp("expires_at"),
+
+    /**
+     * Sprint 1A Fase 4 — validade do orçamento (status='quote'). Default
+     * created_at + 7 days, configurável via `quoteValidityDays` no input
+     * da action. NULL quando status != 'quote'. App-layer garante a
+     * coerência (sem CHECK pra não travar updates de transição de status).
+     */
+    quoteValidUntil: timestamp("quote_valid_until"),
 
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
