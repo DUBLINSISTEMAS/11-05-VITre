@@ -30,6 +30,7 @@ interface ImprimirPageProps {
 }
 
 const STATUS_LABELS: Record<string, string> = {
+  quote: "Orçamento",
   awaiting_whatsapp: "Aguardando contato",
   confirmed: "Confirmado",
   fulfilled: "Concluído",
@@ -87,11 +88,11 @@ export default async function ImprimirPedidoPage({
       <PrintTrigger />
 
       <article className="mx-auto max-w-[700px] bg-white px-6 py-8 text-black print:px-0 print:py-0">
-        {/* Cabeçalho */}
+        {/* Cabeçalho — Sprint 1A Fase 4: header diferenciado pra orçamento */}
         <header className="border-b border-black/20 pb-4">
           <div className="flex items-baseline justify-between gap-4">
             <h1 className="text-xl font-bold tracking-tight">
-              Venda #{order.shortCode}
+              {order.status === "quote" ? "ORÇAMENTO" : "Venda"} #{order.shortCode}
             </h1>
             <span className="font-mono text-[12px] uppercase tracking-wider">
               {statusLabel}
@@ -104,6 +105,16 @@ export default async function ImprimirPedidoPage({
               timeStyle: "short",
             })}
           </p>
+          {order.status === "quote" && order.quoteValidUntil ? (
+            <p className="mt-1 text-[12.5px] font-medium text-black/70">
+              Validade:{" "}
+              {order.quoteValidUntil.toLocaleDateString("pt-BR", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })}
+            </p>
+          ) : null}
         </header>
 
         {/* Cliente */}
@@ -182,6 +193,11 @@ export default async function ImprimirPedidoPage({
 
         {/* Rodapé */}
         <footer className="mt-8 border-t border-black/20 pt-3 text-[11px] text-black/50">
+          {order.status === "quote" ? (
+            <p className="mb-1 font-medium text-black/70">
+              Este documento é apenas orçamento. Não tem valor fiscal.
+            </p>
+          ) : null}
           Vitrê · {store.name} · vitre.site/{store.slug}
         </footer>
       </article>

@@ -110,6 +110,7 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
       const statusCountsRow = await tx
         .select({
           total: sql<number>`count(*)::int`,
+          quote: sql<number>`count(*) filter (where ${orderTable.status} = 'quote')::int`,
           awaiting_whatsapp: sql<number>`count(*) filter (where ${orderTable.status} = 'awaiting_whatsapp')::int`,
           confirmed: sql<number>`count(*) filter (where ${orderTable.status} = 'confirmed')::int`,
           fulfilled: sql<number>`count(*) filter (where ${orderTable.status} = 'fulfilled')::int`,
@@ -123,6 +124,7 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
         total: totalRows[0]?.value ?? 0,
         statusCounts: statusCountsRow[0] ?? {
           total: 0,
+          quote: 0,
           awaiting_whatsapp: 0,
           confirmed: 0,
           fulfilled: 0,

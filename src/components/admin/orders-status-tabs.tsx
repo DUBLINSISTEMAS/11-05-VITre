@@ -14,6 +14,8 @@ export interface OrdersStatusCounts {
   confirmed: number;
   fulfilled: number;
   canceled: number;
+  /** Sprint 1A Fase 4 — orçamentos (qualquer validade). */
+  quote: number;
 }
 
 interface OrdersStatusTabsProps {
@@ -26,6 +28,7 @@ const TABS: ReadonlyArray<{
   countKey: keyof OrdersStatusCounts;
 }> = [
   { value: null, label: "Todos", countKey: "total" },
+  { value: "quote", label: "Orçamentos", countKey: "quote" },
   { value: "awaiting_whatsapp", label: "Aguardando", countKey: "awaiting_whatsapp" },
   { value: "confirmed", label: "Confirmados", countKey: "confirmed" },
   { value: "fulfilled", label: "Cumpridos", countKey: "fulfilled" },

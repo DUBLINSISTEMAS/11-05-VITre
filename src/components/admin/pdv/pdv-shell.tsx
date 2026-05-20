@@ -476,6 +476,58 @@ export function PdvShell() {
     });
   };
 
+  // Sprint 1A Fase 4 — Salvar como orçamento.
+  // Não exige payments[] válido. Confirma antes via window.confirm
+  // (substituível por Dialog dedicado quando UX pedir).
+  const handleSubmitQuote = () => {
+    if (cart.length === 0) {
+      toast.error("Adicione pelo menos um item.");
+      return;
+    }
+    if (
+      !window.confirm(
+        "Salvar como orçamento? Validade 7 dias. Não desconta estoque.",
+      )
+    ) {
+      return;
+    }
+
+    const payload: CreateBalcaoSaleInput = {
+      mode: "quote",
+      quoteValidityDays: 7,
+      items: cart.map((it) => ({
+        productId: it.productId,
+        variantId: it.variantId,
+        quantity: it.quantity,
+      })),
+      customerId,
+      walkInName: customerId ? null : walkInName.trim() || null,
+      walkInPhone: customerId ? null : walkInPhone.trim() || null,
+      // Orçamento: NÃO inclui payments (schema .min(1) rejeita []);
+      // superRefine de mode='quote' rejeita se payments vier preenchido.
+      discountInCents: discountInCents > 0 ? discountInCents : null,
+      surchargeInCents: surchargeInCents > 0 ? surchargeInCents : null,
+      notes: notes.trim() || null,
+    };
+
+    startSubmit(async () => {
+      const result = await createBalcaoSale(payload);
+      if (!result.ok) {
+        toast.error(result.errorMessage ?? "Falha ao salvar orçamento.");
+        return;
+      }
+      toast.success(
+        `Orçamento ${result.shortCode ?? ""} salvo. Validade 7 dias.`,
+      );
+      setLastSale({
+        publicToken: result.publicToken ?? null,
+        totalInCents,
+      });
+      reset();
+      router.refresh();
+    });
+  };
+
   // Atalhos de teclado (follow-up Fase 5 — ADR-0016)
   //   F2 = busca produto, F3 = busca cliente, F4 = finalizar, ESC = limpar
   // Refs evitam rebind do listener a cada keystroke.
@@ -717,6 +769,23 @@ export function PdvShell() {
                 ? "Adicione produtos pra finalizar"
                 : "Finalizar venda (F4)"}
           </button>
+
+          {/* Sprint 1A Fase 4 — Salvar como orçamento. Habilitado quando
+              há pelo menos 1 item no carrinho (não exige pagamento). */}
+          <button
+            type="button"
+            disabled={cart.length === 0 || isSubmitting}
+            onClick={handleSubmitQuote}
+            className={cn(
+              "b3-btn mt-2 w-full",
+              (cart.length === 0 || isSubmitting) &&
+                "cursor-not-allowed opacity-50",
+            )}
+            style={{ height: 40 }}
+          >
+            Salvar como orçamento
+          </button>
+
           {cart.length > 0 ? (
             <button
               type="button"

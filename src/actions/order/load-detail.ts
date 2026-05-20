@@ -43,6 +43,8 @@ export type OrderDetail = {
   whatsappOpenedAt: Date | null;
   confirmedAt: Date | null;
   expiresAt: Date | null;
+  /** Sprint 1A Fase 4 — validade do orçamento (NULL quando status != quote). */
+  quoteValidUntil: Date | null;
   createdAt: Date;
   items: OrderDetailItem[];
 };
@@ -86,6 +88,7 @@ export async function loadOrderDetail(
         whatsappOpenedAt: true,
         confirmedAt: true,
         expiresAt: true,
+        quoteValidUntil: true,
         createdAt: true,
       },
     });

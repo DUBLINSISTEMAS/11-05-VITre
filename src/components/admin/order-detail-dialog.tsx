@@ -271,6 +271,22 @@ function OrderDetailContent({
         <section className="b3-card space-y-3 p-4">
           <h3 className="text-[13.5px] font-semibold tracking-tight text-ink-1">Ações</h3>
           <OrderStatusActions orderId={order.id} status={order.status} />
+
+          {/* Sprint 1A Fase 4 — Transformar orçamento em venda.
+              Visível só quando status='quote' E ainda dentro da validade.
+              Por enquanto leva ao PDV via ?fromQuote=ID — a lógica de
+              pré-carregar items/customer + UPDATE do order original fica
+              como TODO num follow-up (Sprint 1B). */}
+          {order.status === "quote" &&
+          order.quoteValidUntil &&
+          order.quoteValidUntil > new Date() ? (
+            <Button asChild size="sm" className="w-full">
+              <a href={`/admin/pdv?fromQuote=${order.id}`}>
+                Transformar em venda
+              </a>
+            </Button>
+          ) : null}
+
           <Button
             asChild
             variant="outline"
@@ -282,7 +298,8 @@ function OrderDetailContent({
               target="_blank"
               rel="noopener noreferrer"
             >
-              <PrinterIcon /> Imprimir venda
+              <PrinterIcon />{" "}
+              {order.status === "quote" ? "Imprimir orçamento" : "Imprimir venda"}
             </a>
           </Button>
         </section>

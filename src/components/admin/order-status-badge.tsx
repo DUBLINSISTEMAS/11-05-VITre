@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 
 const STATUS_LABELS: Record<string, string> = {
+  quote: "Orçamento",
   awaiting_whatsapp: "Aguardando WhatsApp",
   confirmed: "Confirmado",
   fulfilled: "Cumprido",
@@ -9,9 +10,10 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 // Port Dublin v3 (Onda 5d): migra pra `b3-pill b3-pill--{warn,ok,danger}`.
-// Dublin é flat, sem ring. Decisão preservada: founder pediu verde fixo
-// pra "Confirmado" (Onda 4 / 2026-05-12) — ok-wash atende.
+// Sprint 1A Fase 4: quote válido (não expirado) é neutro/cinza; quote
+// expirado recebe variante --warn (caller passa expired flag).
 const STATUS_CLASSES: Record<string, string> = {
+  quote: "b3-pill",
   awaiting_whatsapp: "b3-pill b3-pill--warn",
   confirmed: "b3-pill b3-pill--ok",
   fulfilled: "b3-pill b3-pill--ok",
@@ -22,6 +24,11 @@ const STATUS_CLASSES: Record<string, string> = {
 interface OrderStatusBadgeProps {
   status: string;
   size?: "sm" | "md";
+  /**
+   * Sprint 1A Fase 4 — pra status='quote': quoteValidUntil < now
+   * troca o label/cor pra "Orçamento vencido" em âmbar (--warn).
+   */
+  quoteValidUntil?: Date | null;
 }
 
 /**
@@ -31,9 +38,16 @@ interface OrderStatusBadgeProps {
 export function OrderStatusBadge({
   status,
   size = "sm",
+  quoteValidUntil,
 }: OrderStatusBadgeProps) {
-  const label = STATUS_LABELS[status] ?? status;
-  const classes = STATUS_CLASSES[status] ?? STATUS_CLASSES.awaiting_whatsapp!;
+  let label = STATUS_LABELS[status] ?? status;
+  let classes = STATUS_CLASSES[status] ?? STATUS_CLASSES.awaiting_whatsapp!;
+
+  if (status === "quote" && quoteValidUntil && quoteValidUntil < new Date()) {
+    label = "Orçamento vencido";
+    classes = "b3-pill b3-pill--warn";
+  }
+
   return (
     <span
       className={cn(
