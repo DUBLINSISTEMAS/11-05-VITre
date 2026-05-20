@@ -4,7 +4,9 @@
 // Extraídos do antigo product-form.tsx monolítico (1111 linhas)
 // para serem reutilizados pelas 5 abas.
 import { useMemo } from "react";
+import type { FieldErrors } from "react-hook-form";
 
+import type { ProductFormValues } from "@/actions/product/schema";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -229,9 +231,6 @@ export function bumpSessionCounter(): number {
 // ============================================================================
 // Mapping aba → campos do form (pra count de erros por aba).
 // ============================================================================
-
-import type { FieldErrors } from "react-hook-form";
-import type { ProductFormValues } from "@/actions/product/schema";
 
 export type TabKey =
   | "identidade"
