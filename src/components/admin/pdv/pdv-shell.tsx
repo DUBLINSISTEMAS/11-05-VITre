@@ -1463,7 +1463,7 @@ function PaymentSection({
         <div className="mt-1 text-[12px]">
           {paymentsRemainingInCents === 0 && paymentsSumInCents > 0 ? (
             <span className="text-ok font-semibold">
-              ✓ Pagamento completo ({formatBRL(paymentsSumInCents)})
+              Pagamento completo ({formatBRL(paymentsSumInCents)})
             </span>
           ) : paymentsRemainingInCents > 0 ? (
             <span className="text-warn font-semibold">

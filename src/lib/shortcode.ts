@@ -29,8 +29,6 @@ import { customAlphabet } from "nanoid";
 const ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"; // 32 chars
 const generate = customAlphabet(ALPHABET, 6);
 
-export const SHORTCODE_LENGTH = 6;
-
 /** Gera 1 código curto. Sem garantia de unicidade — caller faz retry no UNIQUE constraint. */
 export function generateShortCode(): string {
   return generate();

@@ -33,7 +33,7 @@ export const balcaoItemSchema = z.object({
   variantId: z.string().uuid().nullable(),
   quantity: z.number().int().min(1).max(99),
 });
-export type BalcaoItemInput = z.infer<typeof balcaoItemSchema>;
+type BalcaoItemInput = z.infer<typeof balcaoItemSchema>;
 
 /** E.164 simplificado (mesmo da Fase 3 customer schema). */
 const E164 = /^\+[1-9][0-9]{6,14}$/;
@@ -94,8 +94,8 @@ export const paymentLineSchema = z
     }
   });
 
-export type PaymentLineInput = z.input<typeof paymentLineSchema>;
-export type PaymentLineParsed = z.output<typeof paymentLineSchema>;
+type PaymentLineInput = z.input<typeof paymentLineSchema>;
+type PaymentLineParsed = z.output<typeof paymentLineSchema>;
 
 /**
  * Sprint 1A — modo da venda balcão.
@@ -107,7 +107,7 @@ export type PaymentLineParsed = z.output<typeof paymentLineSchema>;
  *     com due_date = now + dueDaysFromNow.
  */
 export const BALCAO_MODE_VALUES = ["sale", "quote", "fiado"] as const;
-export type BalcaoMode = (typeof BALCAO_MODE_VALUES)[number];
+type BalcaoMode = (typeof BALCAO_MODE_VALUES)[number];
 
 export const createBalcaoSaleSchema = z
   .object({
@@ -311,4 +311,4 @@ export const createBalcaoSaleSchema = z
   });
 
 export type CreateBalcaoSaleInput = z.input<typeof createBalcaoSaleSchema>;
-export type CreateBalcaoSaleParsed = z.output<typeof createBalcaoSaleSchema>;
+type CreateBalcaoSaleParsed = z.output<typeof createBalcaoSaleSchema>;

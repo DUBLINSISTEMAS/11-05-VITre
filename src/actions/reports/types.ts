@@ -1,7 +1,7 @@
 // Tipos exportados do módulo reports — separados de load.ts para obedecer
 // a regra do Next 15: arquivo "use server" só pode exportar funções async.
 
-export type ReportPeriod = "7" | "30" | "90" | "custom";
+type ReportPeriod = "7" | "30" | "90" | "custom";
 
 export type ReportRange = {
   start: Date;

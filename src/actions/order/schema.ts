@@ -75,7 +75,7 @@ export const cartItemInputSchema = z.object({
   variantId: z.string().uuid().nullable(),
   quantity: z.number().int().min(1).max(99),
 });
-export type CartItemInput = z.infer<typeof cartItemInputSchema>;
+type CartItemInput = z.infer<typeof cartItemInputSchema>;
 
 export const createOrderInputSchema = customerInputSchema.extend({
   storeSlug: z

@@ -142,7 +142,7 @@ function labelFor(s: Status): string {
     case "checking":
       return "Verificando disponibilidade...";
     case "ok":
-      return "Disponível ✓";
+      return "Disponível";
     case "format":
       return "Use 3-40 caracteres: a-z, 0-9 e hífen.";
     case "reserved":

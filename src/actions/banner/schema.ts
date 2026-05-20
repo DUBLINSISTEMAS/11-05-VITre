@@ -25,7 +25,7 @@ export const createBannerSchema = z.object({
       "Use um link começando com http(s)://, ou um caminho começando com /.",
     ),
 });
-export type CreateBannerInput = z.infer<typeof createBannerSchema>;
+type CreateBannerInput = z.infer<typeof createBannerSchema>;
 
 export const updateBannerSchema = z.object({
   bannerId: z.string().uuid(),

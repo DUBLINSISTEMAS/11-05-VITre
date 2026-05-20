@@ -161,7 +161,7 @@ export const updatePaymentSchema = z.object({
     .nullable(),
 });
 export type UpdatePaymentInput = z.input<typeof updatePaymentSchema>;
-export type UpdatePaymentData = z.output<typeof updatePaymentSchema>;
+type UpdatePaymentData = z.output<typeof updatePaymentSchema>;
 
 /**
  * Schema do form de Aparência (cor primária + rotação banner).
@@ -189,12 +189,12 @@ export type UpdateAppearanceInput = z.infer<typeof updateAppearanceSchema>;
 export const uploadStoreImageSchema = z.object({
   kind: z.enum(["logo", "icon"]),
 });
-export type UploadStoreImageInput = z.infer<typeof uploadStoreImageSchema>;
+type UploadStoreImageInput = z.infer<typeof uploadStoreImageSchema>;
 
 export const removeStoreImageSchema = z.object({
   kind: z.enum(["logo", "icon"]),
 });
-export type RemoveStoreImageInput = z.infer<typeof removeStoreImageSchema>;
+type RemoveStoreImageInput = z.infer<typeof removeStoreImageSchema>;
 
 /**
  * Schema da action `applyTheme` — Onda C.

@@ -152,7 +152,7 @@ export const createCustomerSchema = customerInputBase.superRefine(
   documentRefinement,
 );
 export type CreateCustomerInput = z.input<typeof createCustomerSchema>;
-export type CreateCustomerData = z.output<typeof createCustomerSchema>;
+type CreateCustomerData = z.output<typeof createCustomerSchema>;
 
 export const updateCustomerSchema = customerInputBase
   .extend({
@@ -160,7 +160,7 @@ export const updateCustomerSchema = customerInputBase
   })
   .superRefine(documentRefinement);
 export type UpdateCustomerInput = z.input<typeof updateCustomerSchema>;
-export type UpdateCustomerData = z.output<typeof updateCustomerSchema>;
+type UpdateCustomerData = z.output<typeof updateCustomerSchema>;
 
 export const deleteCustomerSchema = z.object({
   customerId: z.string().uuid("Identificador inválido."),

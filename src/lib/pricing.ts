@@ -116,21 +116,6 @@ export function resolveVariantPrice(
   );
 }
 
-/**
- * Label de preço pra listagem: mostra promoção ativa quando aplicável.
- *  - "R$ 19,90" (sem promo)
- *  - "R$ 14,90 (de R$ 19,90)" (promo ativa)
- */
-export function formatPriceLabel(
-  p: PromoFields,
-  now: Date = new Date(),
-): string {
-  if (hasActivePromo(p, now)) {
-    return `${formatBRL(p.promoPriceInCents!)} (de ${formatBRL(p.basePriceInCents)})`;
-  }
-  return formatBRL(p.basePriceInCents);
-}
-
 // ============================================================
 // Pagamento configurável (Fase 2 — ADR-0013)
 // ============================================================

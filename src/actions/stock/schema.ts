@@ -63,4 +63,4 @@ export const recordMovementSchema = z
   );
 
 export type RecordMovementInput = z.input<typeof recordMovementSchema>;
-export type RecordMovementData = z.output<typeof recordMovementSchema>;
+type RecordMovementData = z.output<typeof recordMovementSchema>;

@@ -513,7 +513,7 @@ export async function createBalcaoSale(
             };
           }
 
-          console.info("[QUOTE] orçamento criado", {
+          logger.info("balcao.quote_created", {
             storeId: store.id,
             orderId: quoteOrderId,
             shortCode: quoteShortCode,
@@ -761,7 +761,7 @@ export async function createBalcaoSale(
             };
           }
 
-          console.info("[FIADO] venda fiada registrada", {
+          logger.info("balcao.fiado_created", {
             storeId: store.id,
             orderId: fiadoOrderId,
             shortCode: fiadoShortCode,

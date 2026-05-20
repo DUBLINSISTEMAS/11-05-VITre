@@ -23,16 +23,6 @@ export const WEEKDAY_KEYS = [
 
 export type WeekdayKey = (typeof WEEKDAY_KEYS)[number];
 
-export const WEEKDAY_LABEL_SHORT: Record<WeekdayKey, string> = {
-  sunday: "Dom",
-  monday: "Seg",
-  tuesday: "Ter",
-  wednesday: "Qua",
-  thursday: "Qui",
-  friday: "Sex",
-  saturday: "Sáb",
-};
-
 export const WEEKDAY_LABEL_LONG: Record<WeekdayKey, string> = {
   sunday: "Domingo",
   monday: "Segunda-feira",
@@ -94,36 +84,3 @@ function formatTimeLabel(hhmm: string): string {
   return m === "00" ? `${h}h` : `${h}h${m}`;
 }
 
-/**
- * Resumo textual de 1 dia. Usado em status badge + footer storefront.
- *
- *   "Fechado"                               quando closed=true
- *   "Consulte"                              quando shifts=[]
- *   "09h às 18h"                            1 shift
- *   "09h às 12h · 14h às 18h"               2 shifts (turno partido)
- */
-export function formatDaySummary(day: BusinessHoursDay): string {
-  if (day.closed) return "Fechado";
-  if (day.shifts.length === 0) return "Consulte";
-  return day.shifts.map(formatShiftLabel).join(" · ");
-}
-
-/**
- * "Está aberto agora?" — dada uma config + um Date local, retorna se a loja
- * está dentro de algum shift do dia atual. NÃO faz timezone math; assume
- * que `now` já está no fuso correto (server-side: usar Date no horário de
- * Brasília; client-side: Date local do browser).
- */
-export function isOpenNow(hours: BusinessHoursJson | null, now: Date): boolean {
-  if (!hours) return false;
-  const key = WEEKDAY_KEYS[now.getDay()]!;
-  const day = hours[key];
-  if (day.closed || day.shifts.length === 0) return false;
-  const minutesNow = now.getHours() * 60 + now.getMinutes();
-  return day.shifts.some((shift) => {
-    const o = parseTimeMinutes(shift.opensAt);
-    const c = parseTimeMinutes(shift.closesAt);
-    if (Number.isNaN(o) || Number.isNaN(c)) return false;
-    return minutesNow >= o && minutesNow < c;
-  });
-}
