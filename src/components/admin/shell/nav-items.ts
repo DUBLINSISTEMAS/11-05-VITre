@@ -83,7 +83,7 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
     items: [
       { k: "relatorios",    label: "Relatórios",    icon: BarChart2Icon,     href: "/admin/relatorios"        },
       { k: "estoque-baixo", label: "Estoque baixo", icon: AlertTriangleIcon, href: "/admin/estoque/relatorio" },
-      { k: "compras",       label: "Compras",       icon: ShoppingCartIcon,  soon: true                       },
+      { k: "compras",       label: "Compras",       icon: ShoppingCartIcon,  href: "/admin/compras"           },
       { k: "custos",        label: "Custo & margem",icon: CalculatorIcon,    href: "/admin/produtos/custos"   },
     ],
   },
