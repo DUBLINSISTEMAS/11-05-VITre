@@ -84,3 +84,31 @@ test("branch sale com payments=[] (creditAmount=total) usa legacyPaymentMethod n
   // (era payments[0]!.method antes — não-nullable, quebrava com fiado 100%).
   assert.match(s, /legacyPaymentMethod\s*=\s*payments\[0\]\?\.method\s*\?\?\s*null/);
 });
+
+// ---------------------------------------------------------------------
+// Bug 2026-05-21: cashSessionIdForOrder declarado DEPOIS do branch fiado
+// causava ReferenceError (TDZ). Fix moveu lookup pra ANTES dos 3 branches.
+// ---------------------------------------------------------------------
+
+test("cashSessionIdForOrder é declarado ANTES do primeiro branch (TDZ fix)", () => {
+  const s = loadActionSource();
+  const declIdx = s.indexOf("const cashSessionIdForOrder");
+  const firstUseIdx = s.indexOf("cashSessionId: cashSessionIdForOrder");
+  assert.ok(declIdx > -1, "declaração não encontrada");
+  assert.ok(firstUseIdx > -1, "uso não encontrado");
+  assert.ok(
+    declIdx < firstUseIdx,
+    "cashSessionIdForOrder DEVE ser declarado antes do primeiro uso " +
+      "(senão TDZ quebra branch fiado/quote/sale)",
+  );
+});
+
+test("cashSessionIdForOrder declarado UMA vez (sem duplicação)", () => {
+  const s = loadActionSource();
+  const matches = s.match(/const cashSessionIdForOrder/g) ?? [];
+  assert.equal(
+    matches.length,
+    1,
+    `cashSessionIdForOrder declarado ${matches.length}× — manter UMA decl`,
+  );
+});

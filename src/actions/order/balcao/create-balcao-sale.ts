@@ -406,6 +406,25 @@ export async function createBalcaoSale(
         // (declarada antes pra que ambos retry loops possam usar).
         const idempotencyKey = randomUUID();
 
+        // ADR-0022 D1 — auto-attach sessão de caixa ATIVA se houver.
+        // Sem sessão aberta: cashSessionId = null (vendas sem caixa
+        // formal continuam funcionando, opt-in adoption). RLS-scoped via
+        // withTenant(storeId). Lookup uma vez antes dos branches porque
+        // os 3 modos (quote/fiado/sale) podem precisar do id —
+        // hoisting do const NÃO funciona, declarando aqui em cima
+        // antes do primeiro consumo (branch fiado em particular).
+        const [activeCashSession] = await tx
+          .select({ id: cashSessionTable.id })
+          .from(cashSessionTable)
+          .where(
+            and(
+              eq(cashSessionTable.storeId, store.id),
+              sql`${cashSessionTable.closedAt} IS NULL`,
+            ),
+          )
+          .limit(1);
+        const cashSessionIdForOrder = activeCashSession?.id ?? null;
+
         // ============================================================
         // Sprint 1A Fase 4 — BRANCH ORÇAMENTO (mode='quote')
         //
@@ -899,22 +918,8 @@ export async function createBalcaoSale(
           .reduce((acc, p) => acc + (p.cashReceivedInCents ?? 0), 0);
         const legacyCashReceivedFinal = legacyCashReceived > 0 ? legacyCashReceived : null;
 
-        // 10b. ADR-0022 D1 — auto-attach sessão de caixa ATIVA se houver.
-        //      Sem sessão aberta: cashSessionId = null (vendas sem caixa
-        //      formal continuam funcionando, opt-in adoption). Lookup
-        //      uma vez antes do retry loop — sessão não muda entre
-        //      tentativas. RLS-scoped via withTenant(storeId).
-        const [activeCashSession] = await tx
-          .select({ id: cashSessionTable.id })
-          .from(cashSessionTable)
-          .where(
-            and(
-              eq(cashSessionTable.storeId, store.id),
-              sql`${cashSessionTable.closedAt} IS NULL`,
-            ),
-          )
-          .limit(1);
-        const cashSessionIdForOrder = activeCashSession?.id ?? null;
+        // ADR-0022 D1 — cashSessionIdForOrder já foi resolvido lá em
+        // cima (antes dos branches quote/fiado/sale). Reuso aqui.
 
         // 11. Tx aninhada: locks + estoque + INSERT order/items/movements
         let createdOrderId: string | null = null;
