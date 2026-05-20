@@ -31,6 +31,13 @@ const recordSchema = z.object({
 export type RecordLeadInput = z.input<typeof recordSchema>;
 
 /**
+ * @deprecated-until-wired Sprint 1A
+ *
+ * NÃO CHAMADO HOJE (memory team `b34-leads-backend-only-no-storefront-wiring`).
+ * Auditoria 2026-05-21 confirmou: zero callsites. Mantido intencionalmente
+ * por ser endpoint pronto pra wiring no storefront — ver candidatos listados
+ * abaixo. Pra remover este tag, basta wirar em pelo menos 1 callsite.
+ *
  * Storefront público chama isso ANTES de window.open(WA). Falha silenciosa
  * — não bloqueia o redirect pro WhatsApp.
  *

@@ -33,6 +33,12 @@ async function loadBannersFromDb(storeId: string): Promise<Banner[]> {
 }
 
 /**
+ * @deprecated-until-wired Sprint 1A
+ *
+ * Loader cached preparado pra home pública. Sem callsite hoje
+ * (auditoria 2026-05-21). Mantido intencionalmente — substitui o
+ * carregamento inline atual quando home pública for refatorada.
+ *
  * Lista de banners ativos de uma loja, ordenados.
  */
 export const getActiveBanners = cache(

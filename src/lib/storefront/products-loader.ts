@@ -351,6 +351,14 @@ export const getFeaturedProducts = cache(
   },
 );
 
+/**
+ * @deprecated-until-wired Sprint 1A
+ *
+ * Loader cached preparado pra home pública. Sem callsite hoje
+ * (auditoria 2026-05-21). Mantido intencionalmente — substitui o
+ * carregamento inline atual quando home pública usar produtos
+ * "Adicionados recentemente" em destaque.
+ */
 export const getRecentProducts = cache(
   async (
     storeId: string,

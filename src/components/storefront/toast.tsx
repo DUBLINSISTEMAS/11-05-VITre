@@ -155,35 +155,3 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Helper hooks para tipos específicos
-export function useCartToast() {
-  const { addToast } = useToast();
-  
-  return useCallback(
-    (productName: string, image?: string) => {
-      addToast({
-        type: "cart",
-        title: "Adicionado à sacola",
-        description: productName,
-        image,
-      });
-    },
-    [addToast]
-  );
-}
-
-export function useFavoriteToast() {
-  const { addToast } = useToast();
-  
-  return useCallback(
-    (added: boolean, productName?: string) => {
-      addToast({
-        type: "favorite",
-        title: added ? "Adicionado aos favoritos" : "Removido dos favoritos",
-        description: productName,
-        duration: 2000,
-      });
-    },
-    [addToast]
-  );
-}

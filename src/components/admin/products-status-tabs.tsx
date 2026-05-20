@@ -19,7 +19,7 @@ const TABS = [
   { kind: "status", value: "no-stock", label: "Sem estoque", countKey: "no-stock" },
 ] as const;
 
-export type ProductStatusFilter =
+type ProductStatusFilter =
   | "active"
   | "inactive"
   | "draft"
