@@ -443,9 +443,23 @@ export const receivablePaymentTable = pgTable(
     receivableId: uuid("receivable_id")
       .notNull()
       .references(() => receivableTable.id, { onDelete: "cascade" }),
+    /**
+     * Pre-Sprint-6 B: CHECK passou de `> 0` pra `<> 0` (SQL 54).
+     * Pagamento normal = positivo. Estorno = negativo + reversalOfId NOT NULL.
+     */
     amountInCents: integer("amount_in_cents").notNull(),
     method: orderPaymentMethodEnum("method").notNull(),
     notes: text("notes"),
+    /**
+     * Pre-Sprint-6 B: estorno append-only. NULL = pagamento normal.
+     * NOT NULL = aponta pra linha original que está sendo revertida.
+     * UNIQUE parcial no DB garante que cada original só pode ter um estorno.
+     *
+     * FK self-referencing declarada apenas como `uuid` (sem .references())
+     * — Drizzle não infere tipo da própria tabela em inicializador. A
+     * integridade vem do FK declarado em supabase/sql/54.
+     */
+    reversalOfId: uuid("reversal_of_id"),
     createdByUserId: text("created_by_user_id")
       .notNull()
       .references(() => userTable.id),

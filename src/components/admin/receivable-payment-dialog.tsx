@@ -20,7 +20,9 @@ import {
   ClockIcon,
   Loader2Icon,
   ReceiptIcon,
+  RotateCcwIcon,
   TriangleAlertIcon,
+  Undo2Icon,
   XIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -31,6 +33,7 @@ import {
   type ReceivableDetail,
 } from "@/actions/receivable/load-detail";
 import { recordReceivablePayment } from "@/actions/receivable/record-payment";
+import { reverseReceivablePayment } from "@/actions/receivable/reverse-payment";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatBRL } from "@/lib/pricing";
@@ -93,6 +96,8 @@ export function ReceivablePaymentDialog({
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [didChange, setDidChange] = useState(false);
+  /** Pre-Sprint-6 B: id da linha sendo estornada (pra mostrar loading). */
+  const [reversingId, setReversingId] = useState<string | null>(null);
 
   const refresh = async () => {
     setLoading(true);
@@ -164,6 +169,38 @@ export function ReceivablePaymentDialog({
     }
   };
 
+  const handleReverse = async (paymentId: string, paymentAmount: number) => {
+    const reason = window.prompt(
+      `Estornar pagamento de ${formatBRL(paymentAmount)}?\n\n` +
+        `Informe o motivo (mín 3 caracteres):`,
+    );
+    if (reason === null) return; // cancelou prompt
+    if (reason.trim().length < 3) {
+      toast.error("Motivo precisa ter pelo menos 3 caracteres.");
+      return;
+    }
+    setReversingId(paymentId);
+    try {
+      const r = await reverseReceivablePayment({
+        paymentId,
+        reason: reason.trim(),
+      });
+      if (!r.ok) {
+        toast.error(r.error);
+        return;
+      }
+      setDidChange(true);
+      toast.success(
+        r.reopenedReceivable
+          ? "Estorno registrado. Fiado voltou a pendente."
+          : "Estorno registrado.",
+      );
+      await refresh();
+    } finally {
+      setReversingId(null);
+    }
+  };
+
   return (
     <div
       role="dialog"
@@ -171,7 +208,8 @@ export function ReceivablePaymentDialog({
       aria-labelledby="rp-dialog-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
       onClick={(e) => {
-        if (e.target === e.currentTarget && !submitting) onClose(didChange);
+        if (e.target === e.currentTarget && !submitting && !reversingId)
+          onClose(didChange);
       }}
     >
       <div className="bg-bg-card border-line w-full max-w-lg overflow-hidden rounded-xl border shadow-xl">
@@ -387,38 +425,89 @@ export function ReceivablePaymentDialog({
             </div>
           ) : detail && detail.payments.length > 0 ? (
             <ul className="divide-line divide-y text-sm">
-              {detail.payments.map((p) => (
-                <li
-                  key={p.id}
-                  className="flex items-center justify-between gap-3 py-2"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="text-ink-1 text-xs font-medium">
-                      {METHOD_LABEL[p.method] ?? p.method}
-                      {p.notes ? (
-                        <span className="text-ink-4 ml-2 font-normal">
-                          · {p.notes}
-                        </span>
+              {detail.payments.map((p) => {
+                const isReversalLine = p.reversalOfId !== null;
+                const wasReversed = p.isReversed;
+                const canReverse = !isReversalLine && !wasReversed;
+                const isReversingThisOne = reversingId === p.id;
+                return (
+                  <li
+                    key={p.id}
+                    className={`flex items-center justify-between gap-3 py-2 ${
+                      wasReversed ? "opacity-50" : ""
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="text-ink-1 flex items-center gap-1.5 text-xs font-medium">
+                        {isReversalLine ? (
+                          <span className="bg-state-error-wash text-state-error inline-flex items-center gap-0.5 rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase">
+                            <Undo2Icon size={9} />
+                            Estorno
+                          </span>
+                        ) : null}
+                        {wasReversed ? (
+                          <span className="text-ink-4 line-through">
+                            {METHOD_LABEL[p.method] ?? p.method}
+                          </span>
+                        ) : (
+                          <span>{METHOD_LABEL[p.method] ?? p.method}</span>
+                        )}
+                        {p.notes ? (
+                          <span className="text-ink-4 ml-1 font-normal">
+                            · {p.notes}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="text-ink-4 mt-0.5 flex items-center gap-1 text-[11px]">
+                        <ClockIcon size={10} />
+                        {p.createdAt.toLocaleDateString("pt-BR", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                        })}{" "}
+                        {p.createdAt.toLocaleTimeString("pt-BR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`text-sm font-medium tabular-nums ${
+                          p.amountInCents < 0
+                            ? "text-state-error"
+                            : wasReversed
+                            ? "text-ink-4 line-through"
+                            : "text-ink-1"
+                        }`}
+                      >
+                        {p.amountInCents < 0 ? "−" : ""}
+                        {formatBRL(Math.abs(p.amountInCents))}
+                      </div>
+                      {canReverse ? (
+                        <button
+                          type="button"
+                          onClick={() => handleReverse(p.id, p.amountInCents)}
+                          disabled={
+                            isReversingThisOne ||
+                            submitting ||
+                            reversingId !== null
+                          }
+                          className="text-ink-4 hover:text-state-error disabled:opacity-30"
+                          title="Estornar este pagamento"
+                          aria-label="Estornar"
+                        >
+                          {isReversingThisOne ? (
+                            <Loader2Icon size={12} className="animate-spin" />
+                          ) : (
+                            <RotateCcwIcon size={12} />
+                          )}
+                        </button>
                       ) : null}
                     </div>
-                    <div className="text-ink-4 mt-0.5 flex items-center gap-1 text-[11px]">
-                      <ClockIcon size={10} />
-                      {p.createdAt.toLocaleDateString("pt-BR", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                      })}{" "}
-                      {p.createdAt.toLocaleTimeString("pt-BR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </div>
-                  </div>
-                  <div className="text-ink-1 text-sm font-medium tabular-nums">
-                    {formatBRL(p.amountInCents)}
-                  </div>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className="text-ink-4 py-2 text-center text-xs">

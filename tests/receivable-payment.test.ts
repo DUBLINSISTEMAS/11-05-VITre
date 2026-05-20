@@ -19,6 +19,10 @@ function loadLoadPendingSource(): string {
   return readFileSync("src/actions/receivable/load-pending.ts", "utf8");
 }
 
+function loadReverseSource(): string {
+  return readFileSync("src/actions/receivable/reverse-payment.ts", "utf8");
+}
+
 // ---------------------------------------------------------------------
 // recordReceivablePayment — invariantes
 // ---------------------------------------------------------------------
@@ -155,4 +159,70 @@ test("quitação: soma > amount (sobra) ainda conta como quitado, saldo 0", () =
   // App-layer não deve permitir isso (CHECK no remaining) mas math é robusto.
   assert.equal(remaining(s), 0);
   assert.equal(isFullyPaid(s), true);
+});
+
+// ---------------------------------------------------------------------
+// Pre-Sprint-6 B — reverseReceivablePayment
+// ---------------------------------------------------------------------
+
+test("reverseReceivablePayment usa withTenant", () => {
+  const s = loadReverseSource();
+  assert.match(s, /withTenant<ReverseReceivablePaymentResult>\(/);
+});
+
+test("reverseReceivablePayment aplica rate limit mutation", () => {
+  const s = loadReverseSource();
+  assert.match(s, /checkRateLimit\(rateLimits\.mutation/);
+});
+
+test("reverseReceivablePayment adquire advisory lock por receivable", () => {
+  const s = loadReverseSource();
+  assert.match(s, /pg_advisory_xact_lock.*receivable-/);
+});
+
+test("reverseReceivablePayment insere com amount NEGATIVO + reversalOfId", () => {
+  const s = loadReverseSource();
+  assert.match(s, /amountInCents:\s*-original\.amountInCents/);
+  assert.match(s, /reversalOfId:\s*original\.id/);
+});
+
+test("reverseReceivablePayment rejeita estorno de estorno (double-reversal)", () => {
+  const s = loadReverseSource();
+  assert.match(s, /reversalOfId\s*!==\s*null/);
+  assert.match(s, /Este lançamento já é um estorno/);
+});
+
+test("reverseReceivablePayment rejeita estorno duplicado idempotente", () => {
+  const s = loadReverseSource();
+  assert.match(s, /Este pagamento já foi estornado/);
+});
+
+test("reverseReceivablePayment reabre receivable quando soma cai abaixo", () => {
+  const s = loadReverseSource();
+  assert.match(s, /paidAt:\s*null/);
+  assert.match(s, /reopenedReceivable/);
+});
+
+test("reverseReceivablePayment gera cash_adjustment 'other_out' espelho", () => {
+  const s = loadReverseSource();
+  assert.match(s, /type:\s*["']other_out["']/);
+});
+
+test("reverseReceivablePayment NÃO usa update/delete em receivable_payment (append-only)", () => {
+  const s = loadReverseSource();
+  assert.doesNotMatch(s, /\.update\(receivablePaymentTable\)/);
+  assert.doesNotMatch(s, /\.delete\(receivablePaymentTable\)/);
+});
+
+// ---------------------------------------------------------------------
+// loadReceivableDetail — exposição do estado de estorno
+// ---------------------------------------------------------------------
+
+test("loadReceivableDetail marca payments com isReversed", () => {
+  const s = readFileSync(
+    "src/actions/receivable/load-detail.ts",
+    "utf8",
+  );
+  assert.match(s, /reversedIds/);
+  assert.match(s, /isReversed/);
 });

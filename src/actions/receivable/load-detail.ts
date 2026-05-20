@@ -32,6 +32,10 @@ export interface ReceivablePaymentRow {
   method: "cash" | "pix" | "debit" | "credit" | "other";
   notes: string | null;
   createdAt: Date;
+  /** Pre-Sprint-6 B: NOT NULL = essa linha É um estorno (amount < 0). */
+  reversalOfId: string | null;
+  /** Pre-Sprint-6 B: existe outro payment com reversal_of_id = this.id. */
+  isReversed: boolean;
 }
 
 export interface ReceivableDetail {
@@ -96,18 +100,32 @@ export async function loadReceivableDetail(
 
     if (!row) return null;
 
-    const payments = await tx
+    const rawPayments = await tx
       .select({
         id: receivablePaymentTable.id,
         amountInCents: receivablePaymentTable.amountInCents,
         method: receivablePaymentTable.method,
         notes: receivablePaymentTable.notes,
         createdAt: receivablePaymentTable.createdAt,
+        reversalOfId: receivablePaymentTable.reversalOfId,
       })
       .from(receivablePaymentTable)
       .where(eq(receivablePaymentTable.receivableId, receivableId))
       .orderBy(asc(receivablePaymentTable.createdAt));
 
+    // Pre-Sprint-6 B: marca cada payment com `isReversed` true se outro
+    // payment dessa lista aponta pra ele via reversal_of_id.
+    const reversedIds = new Set(
+      rawPayments
+        .filter((p) => p.reversalOfId !== null)
+        .map((p) => p.reversalOfId as string),
+    );
+    const payments: ReceivablePaymentRow[] = rawPayments.map((p) => ({
+      ...p,
+      isReversed: reversedIds.has(p.id),
+    }));
+
+    // Soma efetiva já desconta estornos (estornos têm amount negativo).
     const paidInCents = payments.reduce((acc, p) => acc + p.amountInCents, 0);
     const remainingInCents = Math.max(0, row.amountInCents - paidInCents);
     const now = new Date();
