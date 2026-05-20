@@ -476,6 +476,65 @@ export function PdvShell() {
     });
   };
 
+  // Sprint 1A Fase 5 — Lançar como fiado.
+  // Exige customerId (cliente identificado). Desconta estoque (cliente
+  // levou a peça). Cria receivable com due_date = now + 30 days.
+  const handleSubmitFiado = () => {
+    if (cart.length === 0) {
+      toast.error("Adicione pelo menos um item.");
+      return;
+    }
+    if (!customerId) {
+      toast.error("Selecione um cliente cadastrado para venda fiada.");
+      return;
+    }
+    if (discountInCents > subtotalInCents) {
+      toast.error("Desconto maior que o subtotal.");
+      return;
+    }
+    if (
+      !window.confirm(
+        `Lançar venda fiada para o cliente selecionado? Total ${formatBRL(totalInCents)}. Vencimento em 30 dias. ESTOQUE SERÁ DESCONTADO.`,
+      )
+    ) {
+      return;
+    }
+
+    const payload: CreateBalcaoSaleInput = {
+      mode: "fiado",
+      dueDaysFromNow: 30,
+      items: cart.map((it) => ({
+        productId: it.productId,
+        variantId: it.variantId,
+        quantity: it.quantity,
+      })),
+      customerId,
+      walkInName: null,
+      walkInPhone: null,
+      // Fiado: sem payments, sem paymentMethod legado.
+      discountInCents: discountInCents > 0 ? discountInCents : null,
+      surchargeInCents: surchargeInCents > 0 ? surchargeInCents : null,
+      notes: notes.trim() || null,
+    };
+
+    startSubmit(async () => {
+      const result = await createBalcaoSale(payload);
+      if (!result.ok) {
+        toast.error(result.errorMessage ?? "Falha ao registrar fiado.");
+        return;
+      }
+      toast.success(
+        `Fiado ${result.shortCode ?? ""} registrado. Vencimento em 30 dias.`,
+      );
+      setLastSale({
+        publicToken: result.publicToken ?? null,
+        totalInCents,
+      });
+      reset();
+      router.refresh();
+    });
+  };
+
   // Sprint 1A Fase 4 — Salvar como orçamento.
   // Não exige payments[] válido. Confirma antes via window.confirm
   // (substituível por Dialog dedicado quando UX pedir).
@@ -784,6 +843,29 @@ export function PdvShell() {
             style={{ height: 40 }}
           >
             Salvar como orçamento
+          </button>
+
+          {/* Sprint 1A Fase 5 — Lançar como fiado. Desabilitado quando
+              sem customerId (tooltip explicativo). */}
+          <button
+            type="button"
+            disabled={
+              cart.length === 0 || isSubmitting || !customerId
+            }
+            onClick={handleSubmitFiado}
+            title={
+              !customerId
+                ? "Selecione um cliente cadastrado pra lançar fiado"
+                : undefined
+            }
+            className={cn(
+              "b3-btn mt-2 w-full",
+              (cart.length === 0 || isSubmitting || !customerId) &&
+                "cursor-not-allowed opacity-50",
+            )}
+            style={{ height: 40 }}
+          >
+            Lançar como fiado
           </button>
 
           {cart.length > 0 ? (

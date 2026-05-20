@@ -411,6 +411,105 @@ test("Sprint 1A Fase 4: quoteValidityDays default 7, rejeita 0 ou 366", () => {
   assert.equal(rTooMany.success, false);
 });
 
+// Sprint 1A Fase 5 — Fiado mode ------------------------------------------
+
+test("Sprint 1A Fase 5: createBalcaoSaleSchema aceita mode='fiado' com customerId", () => {
+  const r = createBalcaoSaleSchema.safeParse({
+    mode: "fiado",
+    items: [
+      {
+        productId: "550e8400-e29b-41d4-a716-446655440000",
+        variantId: null,
+        quantity: 1,
+      },
+    ],
+    customerId: "6ba7b810-9dad-41d1-80b4-00c04fd430c8",
+    discountInCents: null,
+    surchargeInCents: null,
+    notes: null,
+  });
+  assert.equal(r.success, true, JSON.stringify(r));
+});
+
+test("Sprint 1A Fase 5: createBalcaoSaleSchema rejeita mode='fiado' sem customerId", () => {
+  const r = createBalcaoSaleSchema.safeParse({
+    mode: "fiado",
+    items: [
+      {
+        productId: "550e8400-e29b-41d4-a716-446655440000",
+        variantId: null,
+        quantity: 1,
+      },
+    ],
+    customerId: null,
+    discountInCents: null,
+    surchargeInCents: null,
+    notes: null,
+  });
+  assert.equal(r.success, false);
+  if (!r.success) {
+    const issue = r.error.issues.find((i) => i.path.includes("customerId"));
+    assert.ok(issue, "Esperava issue no path customerId");
+  }
+});
+
+test("Sprint 1A Fase 5: createBalcaoSaleSchema rejeita mode='fiado' com payments[]", () => {
+  const r = createBalcaoSaleSchema.safeParse({
+    mode: "fiado",
+    items: [
+      {
+        productId: "550e8400-e29b-41d4-a716-446655440000",
+        variantId: null,
+        quantity: 1,
+      },
+    ],
+    customerId: "6ba7b810-9dad-41d1-80b4-00c04fd430c8",
+    payments: [{ method: "cash", amountInCents: 5000 }],
+    discountInCents: null,
+    surchargeInCents: null,
+    notes: null,
+  });
+  assert.equal(r.success, false);
+});
+
+test("Sprint 1A Fase 5: dueDaysFromNow default 30, rejeita 0 ou 366", () => {
+  const rDefault = createBalcaoSaleSchema.safeParse({
+    mode: "fiado",
+    items: [
+      {
+        productId: "550e8400-e29b-41d4-a716-446655440000",
+        variantId: null,
+        quantity: 1,
+      },
+    ],
+    customerId: "6ba7b810-9dad-41d1-80b4-00c04fd430c8",
+    discountInCents: null,
+    surchargeInCents: null,
+    notes: null,
+  });
+  assert.equal(rDefault.success, true);
+  if (rDefault.success) {
+    assert.equal(rDefault.data.dueDaysFromNow, 30);
+  }
+
+  const rZero = createBalcaoSaleSchema.safeParse({
+    mode: "fiado",
+    items: [
+      {
+        productId: "550e8400-e29b-41d4-a716-446655440000",
+        variantId: null,
+        quantity: 1,
+      },
+    ],
+    customerId: "6ba7b810-9dad-41d1-80b4-00c04fd430c8",
+    dueDaysFromNow: 0,
+    discountInCents: null,
+    surchargeInCents: null,
+    notes: null,
+  });
+  assert.equal(rZero.success, false);
+});
+
 test("Sprint 1A: createBalcaoSaleSchema aceita backward-compat (paymentMethod único, sem payments)", () => {
   const r = createBalcaoSaleSchema.safeParse({
     items: [
@@ -562,16 +661,52 @@ test("Sprint 1A Fase 4: branch quote insere quoteValidUntil", () => {
   assert.match(s, /quoteValidityDays\s*\*\s*24/);
 });
 
+test("Sprint 1A Fase 5: createBalcaoSale tem branch para mode='fiado'", () => {
+  const s = loadActionSource();
+  assert.match(s, /data\.mode\s*===\s*["']fiado["']/);
+});
+
+test("Sprint 1A Fase 5: branch fiado INSERT em receivableTable", () => {
+  const s = loadActionSource();
+  assert.match(s, /receivableTable/);
+  assert.match(s, /innerTx\.insert\(receivableTable\)/);
+});
+
+test("Sprint 1A Fase 5: branch fiado tem error code CUSTOMER_REQUIRED_FOR_FIADO", () => {
+  const s = loadActionSource();
+  assert.match(s, /CUSTOMER_REQUIRED_FOR_FIADO/);
+});
+
+test("Sprint 1A Fase 5: branch fiado chama recordSaleMovements (DESCONTA estoque)", () => {
+  const s = loadActionSource();
+  const fiadoBranchStart = s.indexOf('data.mode === "fiado"');
+  assert.ok(fiadoBranchStart > 0, "Esperava branch fiado no source");
+  const saleBranchStart = s.indexOf("// 10. Normalizar pagamento");
+  assert.ok(saleBranchStart > fiadoBranchStart);
+  const fiadoSlice = s.slice(fiadoBranchStart, saleBranchStart);
+  assert.ok(
+    fiadoSlice.includes("recordSaleMovements("),
+    "Branch fiado DEVE chamar recordSaleMovements (cliente levou a peça)",
+  );
+  assert.ok(
+    !fiadoSlice.includes("innerTx.insert(orderPaymentTable)"),
+    "Branch fiado NÃO deve inserir orderPayment (não tem pagamento ainda)",
+  );
+});
+
 test("Sprint 1A Fase 4: branch quote NÃO chama recordSaleMovements", () => {
   const s = loadActionSource();
-  // No corpo do branch quote (entre o if mode === quote e seu fechamento)
-  // não deve haver chamada a recordSaleMovements.
+  // Slice do branch quote: do `data.mode === "quote"` até o início do
+  // próximo branch (fiado) OU normalização payments. Fiado adicionado
+  // depois do quote, então marco fronteira no início do branch fiado.
   const quoteBranchStart = s.indexOf('data.mode === "quote"');
   assert.ok(quoteBranchStart > 0, "Esperava branch quote no source");
-  // Procurar o próximo bloco que NÃO seja parte do branch quote
+  const fiadoBranchStart = s.indexOf('data.mode === "fiado"');
   const saleBranchStart = s.indexOf("// 10. Normalizar pagamento");
-  assert.ok(saleBranchStart > quoteBranchStart, "Esperava branch sale após quote");
-  const quoteSlice = s.slice(quoteBranchStart, saleBranchStart);
+  const quoteSliceEnd =
+    fiadoBranchStart > quoteBranchStart ? fiadoBranchStart : saleBranchStart;
+  assert.ok(quoteSliceEnd > quoteBranchStart);
+  const quoteSlice = s.slice(quoteBranchStart, quoteSliceEnd);
   assert.ok(
     !quoteSlice.includes("recordSaleMovements("),
     "Branch quote não deve chamar recordSaleMovements (orçamento não desconta estoque)",

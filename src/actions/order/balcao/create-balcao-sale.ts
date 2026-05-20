@@ -35,6 +35,7 @@ import {
   orderTable,
   productTable,
   productVariantTable,
+  receivableTable,
   storeTable,
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
@@ -65,6 +66,7 @@ export type CreateBalcaoSaleErrorCode =
   | "PRODUCT_NOT_FOUND"
   | "OUT_OF_STOCK"
   | "CUSTOMER_NOT_FOUND"
+  | "CUSTOMER_REQUIRED_FOR_FIADO"
   | "CASH_RECEIVED_TOO_LOW"
   | "DISCOUNT_OVER_TOTAL"
   | "PAYMENTS_SUM_MISMATCH"
@@ -533,6 +535,257 @@ export async function createBalcaoSale(
             orderId: quoteOrderId,
             shortCode: quoteShortCode,
             publicToken: quotePublicToken,
+          };
+        }
+
+        // ============================================================
+        // Sprint 1A Fase 5 — BRANCH FIADO (mode='fiado')
+        //
+        // Fiado difere de venda em 4 pontos:
+        //   1. customerId obrigatório (Zod já garante; defesa extra aqui).
+        //   2. Sem payments[] → pula INSERT em orderPaymentTable.
+        //   3. Status='confirmed' (venda confirmada, só não tem dinheiro
+        //      AINDA — será pago em data futura).
+        //   4. INSERT em receivableTable: amount = totalInCents,
+        //      due_date = now + dueDaysFromNow, paid_at = null.
+        //
+        // Mantém estoque (cliente LEVOU a peça): mesmo retry loop com
+        // advisory locks + recordSaleMovements do branch sale.
+        // ============================================================
+        if (data.mode === "fiado") {
+          if (!data.customerId) {
+            return {
+              ok: false,
+              errorCode: "CUSTOMER_REQUIRED_FOR_FIADO" as const,
+              errorMessage: "Cliente obrigatório para venda fiada.",
+            };
+          }
+
+          const dueDate = new Date(
+            Date.now() + data.dueDaysFromNow * 24 * 60 * 60 * 1000,
+          );
+
+          let fiadoOrderId: string | null = null;
+          let fiadoShortCode: string | null = null;
+          let fiadoPublicToken: string | null = null;
+          let fiadoLastError: unknown = null;
+          let fiadoSoftFailure: CreateBalcaoSaleResult | null = null;
+
+          for (let attempt = 0; attempt < MAX_SHORTCODE_RETRIES; attempt++) {
+            const candidate = generateShortCode();
+            const publicToken = generatePublicOrderToken();
+            try {
+              await tx.transaction(async (innerTx) => {
+                // Mesma lógica de estoque do branch sale: advisory lock
+                // por entidade + releitura + check + monta salesToRecord.
+                const salesToRecord: Array<{
+                  productId: string;
+                  variantId: string | null;
+                  quantity: number;
+                }> = [];
+
+                for (const ci of computedItems) {
+                  const product = productById.get(ci.productId);
+                  const variant = ci.variantId
+                    ? variantById.get(ci.variantId)
+                    : null;
+
+                  const targetVariant = Boolean(
+                    variant?.trackStock && variant.stockQuantity !== null,
+                  );
+                  const targetProduct = Boolean(
+                    !targetVariant &&
+                      product?.trackStock &&
+                      product.stockQuantity !== null,
+                  );
+
+                  if (!targetVariant && !targetProduct) continue;
+
+                  const lockTarget =
+                    targetVariant && variant ? variant.id : ci.productId;
+                  await innerTx.execute(
+                    sql`SELECT pg_advisory_xact_lock(hashtext(${"stock-" + lockTarget}))`,
+                  );
+
+                  let currentStock: number | null = null;
+                  if (targetVariant && variant) {
+                    const [row] = await innerTx
+                      .select({
+                        stockQuantity: productVariantTable.stockQuantity,
+                      })
+                      .from(productVariantTable)
+                      .where(
+                        and(
+                          eq(productVariantTable.id, variant.id),
+                          eq(productVariantTable.storeId, store.id),
+                        ),
+                      );
+                    currentStock = row?.stockQuantity ?? null;
+                  } else if (targetProduct) {
+                    const [row] = await innerTx
+                      .select({ stockQuantity: productTable.stockQuantity })
+                      .from(productTable)
+                      .where(
+                        and(
+                          eq(productTable.id, ci.productId),
+                          eq(productTable.storeId, store.id),
+                        ),
+                      );
+                    currentStock = row?.stockQuantity ?? null;
+                  }
+
+                  if (currentStock === null || currentStock < ci.quantity) {
+                    throw new OutOfStockError(ci.productId);
+                  }
+
+                  salesToRecord.push({
+                    productId: ci.productId,
+                    variantId: targetVariant && variant ? variant.id : null,
+                    quantity: ci.quantity,
+                  });
+                }
+
+                const inserted = await innerTx
+                  .insert(orderTable)
+                  .values({
+                    storeId: store.id,
+                    shortCode: candidate,
+                    publicToken,
+                    idempotencyKey,
+                    customerName: customerSnapshotName,
+                    customerPhone: customerSnapshotPhone,
+                    customerId: data.customerId,
+                    customerNotes: data.notes,
+                    totalInCents,
+                    status: "confirmed",
+                    channel: "balcao",
+                    paymentMethod: null,
+                    discountInCents: discount > 0 ? discount : null,
+                    surchargeInCents:
+                      data.surchargeInCents ?? null,
+                    cashReceivedInCents: null,
+                    expiresAt: null,
+                    confirmedAt: new Date(),
+                    cashSessionId: cashSessionIdForOrder,
+                    couponId: validatedCoupon?.couponId ?? null,
+                  })
+                  .returning({ id: orderTable.id });
+                const orderRow = inserted[0];
+                if (!orderRow) throw new Error("INSERT order não retornou id");
+
+                if (computedItems.length > 0) {
+                  await innerTx.insert(orderItemTable).values(
+                    computedItems.map((ci) => ({
+                      orderId: orderRow.id,
+                      productId: ci.productId,
+                      variantId: ci.variantId,
+                      productNameSnapshot: ci.productName,
+                      variantNameSnapshot: ci.variantName,
+                      imageUrlSnapshot: null,
+                      priceInCentsSnapshot: ci.priceInCents,
+                      quantity: ci.quantity,
+                    })),
+                  );
+                }
+
+                await recordSaleMovements(innerTx as unknown as Tx, {
+                  storeId: store.id,
+                  orderId: orderRow.id,
+                  sales: salesToRecord,
+                });
+
+                if (validatedCoupon) {
+                  await incrementCouponUsesTx(innerTx as unknown as Tx, {
+                    storeId: store.id,
+                    couponId: validatedCoupon.couponId,
+                  });
+                }
+
+                // Sprint 1A Fase 5 — INSERT em receivable.
+                await innerTx.insert(receivableTable).values({
+                  storeId: store.id,
+                  customerId: data.customerId!,
+                  orderId: orderRow.id,
+                  amountInCents: totalInCents,
+                  dueDate,
+                  paidAt: null,
+                  createdByUserId: userId,
+                });
+
+                fiadoOrderId = orderRow.id;
+                fiadoShortCode = candidate;
+                fiadoPublicToken = publicToken;
+              });
+              break;
+            } catch (err: unknown) {
+              fiadoLastError = err;
+              if (err instanceof OutOfStockError) {
+                fiadoSoftFailure = {
+                  ok: false,
+                  errorCode: "OUT_OF_STOCK",
+                  errorMessage: "Algum item não tem estoque suficiente.",
+                  outOfStockProductIds: [err.productId],
+                };
+                break;
+              }
+              if (err instanceof CouponError) {
+                fiadoSoftFailure = {
+                  ok: false,
+                  errorCode: "COUPON_INVALID",
+                  errorMessage: err.message,
+                };
+                break;
+              }
+              const msg = err instanceof Error ? err.message : String(err);
+              if (
+                msg.includes("order_short_code_unique") ||
+                msg.includes("short_code")
+              ) {
+                continue;
+              }
+              throw err;
+            }
+          }
+
+          if (fiadoSoftFailure) return fiadoSoftFailure;
+          if (!fiadoOrderId || !fiadoShortCode || !fiadoPublicToken) {
+            logger.error("balcao.fiado_shortcode_retry_exhausted", {
+              err: fiadoLastError,
+              storeId: store.id,
+            });
+            return {
+              ok: false,
+              errorCode: "SHORTCODE_RETRY_EXHAUSTED" as const,
+              errorMessage:
+                "Falha ao gerar código único da venda fiada. Tente novamente.",
+            };
+          }
+
+          console.info("[FIADO] venda fiada registrada", {
+            storeId: store.id,
+            orderId: fiadoOrderId,
+            shortCode: fiadoShortCode,
+            customerId: data.customerId,
+            dueDate,
+          });
+
+          const storeRow = await tx.query.storeTable.findFirst({
+            where: eq(storeTable.id, store.id),
+            columns: { slug: true },
+          });
+          if (storeRow?.slug) {
+            revalidateTag(`store-${storeRow.slug}`);
+          }
+          revalidatePath("/admin/pdv");
+          revalidatePath("/admin/pedidos");
+          revalidatePath("/admin/estoque");
+          revalidatePath("/admin/produtos");
+
+          return {
+            ok: true,
+            orderId: fiadoOrderId,
+            shortCode: fiadoShortCode,
+            publicToken: fiadoPublicToken,
           };
         }
 

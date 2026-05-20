@@ -98,12 +98,15 @@ export type PaymentLineInput = z.input<typeof paymentLineSchema>;
 export type PaymentLineParsed = z.output<typeof paymentLineSchema>;
 
 /**
- * Sprint 1A Fase 4 — modo da venda balcão.
+ * Sprint 1A — modo da venda balcão.
  *   - 'sale'  (default): venda normal com payments[] e desconto de estoque
  *   - 'quote' (Fase 4): orçamento — sem payments, sem stock, short_code Q-,
  *     status='quote', quote_valid_until = now + quoteValidityDays
+ *   - 'fiado' (Fase 5): venda fiada — customerId obrigatório, sem payments,
+ *     DESCONTA estoque, status='confirmed', insere linha em receivable
+ *     com due_date = now + dueDaysFromNow.
  */
-export const BALCAO_MODE_VALUES = ["sale", "quote"] as const;
+export const BALCAO_MODE_VALUES = ["sale", "quote", "fiado"] as const;
 export type BalcaoMode = (typeof BALCAO_MODE_VALUES)[number];
 
 export const createBalcaoSaleSchema = z
@@ -120,6 +123,16 @@ export const createBalcaoSaleSchema = z
       .min(1)
       .max(365)
       .default(7),
+    /**
+     * Sprint 1A Fase 5 — vencimento do fiado em dias a partir de agora
+     * (só usado em mode='fiado'). Default 30. Aceita 1..365.
+     */
+    dueDaysFromNow: z
+      .number()
+      .int()
+      .min(1)
+      .max(365)
+      .default(30),
     items: z
       .array(balcaoItemSchema)
       .min(1, "Adicione pelo menos um item")
@@ -228,6 +241,45 @@ export const createBalcaoSaleSchema = z
           code: z.ZodIssueCode.custom,
           path: ["cashReceivedInCents"],
           message: "Orçamento não tem dinheiro recebido",
+        });
+      }
+      return;
+    }
+
+    // Sprint 1A Fase 5 — invariantes do modo 'fiado':
+    //   customerId OBRIGATÓRIO (fiado precisa de cliente identificado)
+    //   payments[] DEVE ser undefined ou []
+    //   paymentMethod legacy DEVE ser undefined ou null
+    if (data.mode === "fiado") {
+      if (!data.customerId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["customerId"],
+          message: "Cliente obrigatório para venda fiada",
+        });
+      }
+      if (data.payments && data.payments.length > 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["payments"],
+          message: "Fiado (mode='fiado') não aceita formas de pagamento",
+        });
+      }
+      if (data.paymentMethod) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["paymentMethod"],
+          message: "Fiado (mode='fiado') não aceita paymentMethod",
+        });
+      }
+      if (
+        data.cashReceivedInCents !== null &&
+        data.cashReceivedInCents !== undefined
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["cashReceivedInCents"],
+          message: "Fiado não tem dinheiro recebido",
         });
       }
       return;
