@@ -395,7 +395,7 @@ export const receivableTable = pgTable(
   }),
 );
 
-export const receivableRelations = relations(receivableTable, ({ one }) => ({
+export const receivableRelations = relations(receivableTable, ({ one, many }) => ({
   store: one(storeTable, {
     fields: [receivableTable.storeId],
     references: [storeTable.id],
@@ -412,10 +412,77 @@ export const receivableRelations = relations(receivableTable, ({ one }) => ({
     fields: [receivableTable.createdByUserId],
     references: [userTable.id],
   }),
+  payments: many(receivablePaymentTable),
 }));
 
 export type Receivable = typeof receivableTable.$inferSelect;
 export type NewReceivable = typeof receivableTable.$inferInsert;
+
+// =====================================================================
+// Receivable Payment — Sprint 4A.
+//
+// Permite pagamento PARCIAL de fiado. 1 receivable -> N payments.
+//
+// `receivable.paid_at` é DERIVADO (app-layer): seta quando
+// SUM(amount_in_cents) dos payments >= amount do receivable. Trigger DB
+// rejeitado pra preservar visibilidade/testabilidade (princípio
+// CLAUDE.md 5 e 7).
+//
+// Append-only: SEM UPDATE, SEM DELETE em app. Correção via lançamento
+// reverso (futuro — Sprint 4 não inclui estorno).
+//
+// CHECK amount > 0 + RLS FORCE em supabase/sql/53_receivable_payment.sql.
+// =====================================================================
+export const receivablePaymentTable = pgTable(
+  "receivable_payment",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => storeTable.id, { onDelete: "cascade" }),
+    receivableId: uuid("receivable_id")
+      .notNull()
+      .references(() => receivableTable.id, { onDelete: "cascade" }),
+    amountInCents: integer("amount_in_cents").notNull(),
+    method: orderPaymentMethodEnum("method").notNull(),
+    notes: text("notes"),
+    createdByUserId: text("created_by_user_id")
+      .notNull()
+      .references(() => userTable.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    receivableIdx: index("receivable_payment_receivable_idx").on(
+      t.receivableId,
+      t.createdAt,
+    ),
+    storeCreatedIdx: index("receivable_payment_store_created_idx").on(
+      t.storeId,
+      t.createdAt,
+    ),
+  }),
+);
+
+export const receivablePaymentRelations = relations(
+  receivablePaymentTable,
+  ({ one }) => ({
+    store: one(storeTable, {
+      fields: [receivablePaymentTable.storeId],
+      references: [storeTable.id],
+    }),
+    receivable: one(receivableTable, {
+      fields: [receivablePaymentTable.receivableId],
+      references: [receivableTable.id],
+    }),
+    createdBy: one(userTable, {
+      fields: [receivablePaymentTable.createdByUserId],
+      references: [userTable.id],
+    }),
+  }),
+);
+
+export type ReceivablePayment = typeof receivablePaymentTable.$inferSelect;
+export type NewReceivablePayment = typeof receivablePaymentTable.$inferInsert;
 
 // Sentinel pra evitar tree-shaking matar imports e quebrar tipo Drizzle
 // quando alguma das tabelas acima for usada apenas via relation
