@@ -7,7 +7,11 @@ import { headers } from "next/headers";
 import { productImageTable, productTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { isUniqueViolation } from "@/lib/db-errors";
-import { compressImage, validateImageInput } from "@/lib/image";
+import {
+  compressImage,
+  validateImageInput,
+  validateImageMagicBytes,
+} from "@/lib/image";
 import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
@@ -111,6 +115,21 @@ export async function uploadProductImage(
   let compressed;
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
+
+    // Sprint 6C — defesa contra MIME spoofing. file.type vem do
+    // browser (cliente declara) — não confiável. Magic bytes leem o
+    // conteúdo real e rejeitam antes de o sharp ser invocado.
+    const magicError = validateImageMagicBytes(buffer, file.type);
+    if (magicError) {
+      logger.warn("upload.product.magic_bytes_mismatch", {
+        declaredMime: file.type,
+        fileName: file.name,
+        fileSize: file.size,
+        userId,
+      });
+      return { ok: false, error: magicError };
+    }
+
     compressed = await compressImage(buffer);
   } catch (e) {
     logger.error("upload.product.compress_failed", {

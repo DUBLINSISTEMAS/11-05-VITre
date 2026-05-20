@@ -6,7 +6,11 @@ import { headers } from "next/headers";
 
 import { productImageTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { compressImage, validateImageInput } from "@/lib/image";
+import {
+  compressImage,
+  validateImageInput,
+  validateImageMagicBytes,
+} from "@/lib/image";
 import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
@@ -106,6 +110,19 @@ export async function replaceProductImage(
   let compressed;
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
+
+    // Sprint 6C — magic bytes (defesa contra MIME spoofing).
+    const magicError = validateImageMagicBytes(buffer, file.type);
+    if (magicError) {
+      logger.warn("product.replace_image.magic_bytes_mismatch", {
+        imageId,
+        declaredMime: file.type,
+        fileName: file.name,
+        fileSize: file.size,
+      });
+      return { ok: false, error: magicError };
+    }
+
     compressed = await compressImage(buffer);
   } catch (e) {
     logger.error("product.replace_image.compress_failed", {

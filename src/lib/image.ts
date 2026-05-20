@@ -105,3 +105,117 @@ export function validateImageInput(file: File): string | null {
   }
   return null;
 }
+
+// =====================================================================
+// Sprint 6C — Magic bytes (validação do conteúdo real do arquivo).
+//
+// Por quê: validateImageInput confia no `file.type` declarado pelo
+// browser. Atacante pode renomear .exe pra .png e enviar — Next aceita
+// (MIME passa), sharp depois falha com mensagem genérica. Pior: certos
+// binários "começam parecido com imagem" e enganam sharp por mais
+// alguns bytes antes de falhar.
+//
+// Validar magic bytes ANTES do sharp:
+//   1. Rejeição imediata com mensagem clara
+//   2. Sharp não é chamado pra binário malicioso (reduz superfície)
+//   3. Defesa em profundidade contra futura vulnerabilidade do libvips
+//
+// Tipos suportados (alinhados com ALLOWED_INPUT_MIMES):
+//   - JPEG:  FF D8 FF
+//   - PNG:   89 50 4E 47 0D 0A 1A 0A
+//   - WebP:  RIFF....WEBP (bytes 0-3 "RIFF", bytes 8-11 "WEBP")
+//   - AVIF:  bytes 4-11 = "ftypavif" / "ftypavis" / "ftypmif1"
+// =====================================================================
+
+export type DetectedImageType =
+  | "image/jpeg"
+  | "image/png"
+  | "image/webp"
+  | "image/avif"
+  | null;
+
+/**
+ * Detecta o formato real do arquivo lendo os primeiros 12 bytes.
+ * Retorna o MIME detectado ou `null` se não bater com nenhum formato
+ * suportado.
+ */
+export function detectImageMagic(buffer: Buffer): DetectedImageType {
+  if (buffer.byteLength < 12) return null;
+
+  // JPEG: FF D8 FF
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return "image/jpeg";
+  }
+
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47 &&
+    buffer[4] === 0x0d &&
+    buffer[5] === 0x0a &&
+    buffer[6] === 0x1a &&
+    buffer[7] === 0x0a
+  ) {
+    return "image/png";
+  }
+
+  // WebP: "RIFF" no início + "WEBP" nos bytes 8-11
+  if (
+    buffer[0] === 0x52 && // R
+    buffer[1] === 0x49 && // I
+    buffer[2] === 0x46 && // F
+    buffer[3] === 0x46 && // F
+    buffer[8] === 0x57 && // W
+    buffer[9] === 0x45 && // E
+    buffer[10] === 0x42 && // B
+    buffer[11] === 0x50 // P
+  ) {
+    return "image/webp";
+  }
+
+  // AVIF (ISO BMFF): bytes 4-7 = "ftyp", bytes 8-11 com brand AVIF.
+  // "avif" (image), "avis" (image sequence), "mif1" (HEIF mas
+  // alguns AVIFs usam). Cobertura ampla pra não rejeitar arquivo
+  // legítimo só porque a brand é variante.
+  if (
+    buffer[4] === 0x66 && // f
+    buffer[5] === 0x74 && // t
+    buffer[6] === 0x79 && // y
+    buffer[7] === 0x70 // p
+  ) {
+    const brand = buffer.subarray(8, 12).toString("ascii");
+    if (brand === "avif" || brand === "avis" || brand === "mif1") {
+      return "image/avif";
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Valida que os magic bytes do buffer correspondem ao MIME declarado
+ * (`declaredMime` vindo de `file.type`). Retorna mensagem de erro
+ * PT-BR ou `null` se OK.
+ *
+ * Chamado ANTES de `compressImage` em todos os upload actions
+ * (product, category, store) — protege sharp de input adversário.
+ */
+export function validateImageMagicBytes(
+  buffer: Buffer,
+  declaredMime: string,
+): string | null {
+  const detected = detectImageMagic(buffer);
+  if (detected === null) {
+    return "Arquivo não é uma imagem válida (assinatura desconhecida).";
+  }
+  // Aceita JPEG declarado como image/jpg (alias comum). Senão,
+  // detected DEVE bater com declarado — diferença = arquivo falsificado.
+  const normalizedDeclared =
+    declaredMime === "image/jpg" ? "image/jpeg" : declaredMime;
+  if (detected !== normalizedDeclared) {
+    return `Tipo de arquivo declarado (${declaredMime}) não bate com o conteúdo (${detected}).`;
+  }
+  return null;
+}

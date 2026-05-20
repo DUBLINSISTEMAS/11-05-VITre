@@ -7,7 +7,11 @@ import { headers } from "next/headers";
 
 import { storeTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { compressImage, validateImageInput } from "@/lib/image";
+import {
+  compressImage,
+  validateImageInput,
+  validateImageMagicBytes,
+} from "@/lib/image";
 import { logger } from "@/lib/logger";
 import {
   checkRateLimit,
@@ -80,6 +84,19 @@ export async function uploadStoreImage(
   let compressed;
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
+
+    // Sprint 6C — magic bytes (defesa contra MIME spoofing).
+    const magicError = validateImageMagicBytes(buffer, file.type);
+    if (magicError) {
+      logger.warn("upload.store.magic_bytes_mismatch", {
+        kind,
+        declaredMime: file.type,
+        fileName: file.name,
+        fileSize: file.size,
+      });
+      return { ok: false, error: magicError };
+    }
+
     compressed = await compressImage(buffer);
   } catch (e) {
     logger.error("upload.store.compress_failed", {
