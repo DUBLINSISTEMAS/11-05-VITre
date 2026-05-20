@@ -14,21 +14,12 @@ import { auth } from "@/lib/auth";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
+import type { CashSessionListRow, CashSessionSummary } from "./types";
+
 /**
  * Reads do domínio cash-session. Prefixo `load*` (CLAUDE.md #3) — sem
  * side-effects. Server actions usadas por dialogs/pages client.
  */
-
-export interface CashSessionSummary {
-  session: CashSession;
-  cashSalesInCents: number;
-  sangriaInCents: number;
-  reinforcementInCents: number;
-  /** opening + cashSales - sangria + reinforcement (calculado live) */
-  expectedInCents: number;
-  /** quantidade de vendas balcão (todos métodos) da sessão */
-  saleCount: number;
-}
 
 /**
  * Carrega sessão ATIVA da loja (se houver) + agregados.
@@ -125,14 +116,6 @@ export async function loadCashSessionDetail(
       sales,
     };
   });
-}
-
-export interface CashSessionListRow {
-  id: string;
-  openedAt: Date;
-  closedAt: Date | null;
-  openingAmountInCents: number;
-  closingActualInCents: number | null;
 }
 
 /**

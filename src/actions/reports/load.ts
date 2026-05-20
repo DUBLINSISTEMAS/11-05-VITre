@@ -15,21 +15,21 @@ import { auth } from "@/lib/auth";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
-export type ReportPeriod = "7" | "30" | "90" | "custom";
-
-export type ReportRange = {
-  start: Date;
-  end: Date;
-  periodLabel: string;
-};
+import type {
+  CustomersReport,
+  FullReport,
+  LeadsReport,
+  ProductsReport,
+  ReportRange,
+  SalesReport,
+  StockReport,
+} from "./types";
 
 const filterSchema = z.object({
   periodo: z.enum(["7", "30", "90", "custom"]).catch("30"),
   start: z.string().nullish(),
   end: z.string().nullish(),
 });
-
-export type ReportFilters = z.input<typeof filterSchema>;
 
 function resolveRange(rawFilters: Record<string, string | undefined>): ReportRange {
   const parsed = filterSchema.parse(rawFilters);
@@ -51,63 +51,6 @@ function resolveRange(rawFilters: Record<string, string | undefined>): ReportRan
   label = `últimos ${days} dias`;
   return { start, end, periodLabel: label };
 }
-
-export type SalesReport = {
-  totalSales: number;
-  totalRevenueInCents: number;
-  averageTicketInCents: number;
-  byChannel: { channel: "whatsapp" | "balcao"; count: number; revenueInCents: number }[];
-  byPaymentMethod: {
-    method: string | null;
-    count: number;
-    revenueInCents: number;
-  }[];
-};
-
-export type ProductsReport = {
-  topByQuantity: {
-    productId: string | null;
-    name: string;
-    quantity: number;
-    revenueInCents: number;
-  }[];
-  topByRevenue: {
-    productId: string | null;
-    name: string;
-    quantity: number;
-    revenueInCents: number;
-  }[];
-};
-
-export type CustomersReport = {
-  topCustomers: {
-    customerId: string;
-    name: string;
-    orderCount: number;
-    totalSpentInCents: number;
-  }[];
-  newCustomers: number;
-};
-
-export type LeadsReport = {
-  totalLeads: number;
-  byStatus: { status: "new" | "contacted" | "converted" | "lost"; count: number }[];
-  conversionRate: number; // 0..1
-};
-
-export type StockReport = {
-  zeroStock: { id: string; name: string }[];
-  lowStock: { id: string; name: string; quantity: number }[];
-};
-
-export type FullReport = {
-  range: ReportRange;
-  sales: SalesReport;
-  products: ProductsReport;
-  customers: CustomersReport;
-  leads: LeadsReport;
-  stock: StockReport;
-};
 
 export async function loadFullReport(
   rawFilters: Record<string, string | undefined>,

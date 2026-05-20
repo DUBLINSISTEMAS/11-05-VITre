@@ -3,10 +3,12 @@
 import { and, count, desc, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 
-import { type Customer, customerTable, orderTable } from "@/db/schema";
+import { customerTable, orderTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
+
+import type { CustomerDetail } from "./types";
 
 /**
  * Reads do domínio `customer` para client components (forms client-side
@@ -14,20 +16,6 @@ import { withTenant } from "@/lib/tenant";
  * convenção CLAUDE.md #3: server actions que são leituras puras, NÃO
  * mutações.
  */
-
-export interface CustomerOrderRow {
-  id: string;
-  shortCode: string;
-  totalInCents: number;
-  status: string;
-  createdAt: Date;
-}
-
-export interface CustomerDetail {
-  customer: Customer;
-  orderCount: number;
-  recentOrders: CustomerOrderRow[];
-}
 
 /**
  * Carrega detalhe do cliente + bloco "Últimos pedidos" (max 10).

@@ -9,25 +9,7 @@ import { auth } from "@/lib/auth";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
-export type LeadRow = {
-  id: string;
-  productId: string | null;
-  productName: string | null;
-  customerName: string | null;
-  customerPhone: string | null;
-  customerId: string | null;
-  customerDisplayName: string | null;
-  source: "pdp_button" | "list_button" | "cart_button" | "other";
-  status: "new" | "contacted" | "converted" | "lost";
-  notes: string | null;
-  createdAt: Date;
-};
-
-export type LeadStats = {
-  total: number;
-  newToday: number;
-  convertedThisMonth: number;
-};
+import type { LeadRow, LeadStats } from "./types";
 
 const filterSchema = z.object({
   q: z.string().nullish(),
@@ -36,8 +18,6 @@ const filterSchema = z.object({
 });
 
 const PAGE_SIZE = 20;
-
-export type LeadFilters = z.infer<typeof filterSchema>;
 
 export async function loadLeads(rawFilters: Record<string, string | undefined>) {
   const requestHeaders = await headers();

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
-import type { LeadRow, LeadStats } from "@/actions/lead/load";
+import type { LeadRow, LeadStats } from "@/actions/lead/types";
 import { deleteLead, updateLead } from "@/actions/lead/update";
 
 const STATUS_LABEL: Record<LeadRow["status"], string> = {

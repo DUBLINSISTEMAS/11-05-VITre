@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { deleteAttribute, deleteAttributeValue } from "@/actions/attribute/delete";
-import type { AttributeWithValues } from "@/actions/attribute/load";
+import type { AttributeWithValues } from "@/actions/attribute/types";
 import { upsertAttribute } from "@/actions/attribute/upsert";
 import { upsertAttributeValue } from "@/actions/attribute/upsert-value";
 import {

@@ -8,19 +8,7 @@ import { auth } from "@/lib/auth";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
-export type AttributeWithValues = {
-  id: string;
-  name: string;
-  type: "color" | "size" | "text";
-  position: number;
-  isActive: boolean;
-  values: {
-    id: string;
-    label: string;
-    colorHex: string | null;
-    position: number;
-  }[];
-};
+import type { AttributeWithValues } from "./types";
 
 export async function loadAttributes(): Promise<AttributeWithValues[]> {
   const requestHeaders = await headers();

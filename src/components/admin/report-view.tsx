@@ -4,7 +4,7 @@ import { DownloadIcon, PrinterIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import type { FullReport } from "@/actions/reports/load";
+import type { FullReport } from "@/actions/reports/types";
 import { formatBRL } from "@/lib/pricing";
 
 const PAYMENT_LABEL: Record<string, string> = {
