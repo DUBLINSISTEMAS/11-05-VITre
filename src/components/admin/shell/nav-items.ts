@@ -1,41 +1,51 @@
-// Estrutura de navegação do admin — Port Dublin v3 (ADR-0019 reabertura, Onda A.3).
-//
-// Estabilização P0/P1 (2026-05-19): a sidebar só expõe módulos operacionais.
-// Módulos rasos/placeholder ficam ocultos até terem fluxo maduro, evitando
-// comunicar “sistema em obra” para o lojista.
+// Estrutura de navegação do admin — 4 grupos canônicos (Sprint 0, CLAUDE.md).
+// Todos os itens são flat (sem sub-itens recolhíveis).
+// soon:true → renderizado como disabled com badge "em breve" pelo sidebar-content.
 import {
-  BoxesIcon,
+  AlertTriangleIcon,
+  ArrowLeftRightIcon,
+  BarChart2Icon,
+  Building2Icon,
+  CalculatorIcon,
+  ClockIcon,
   CreditCardIcon,
-  HomeIcon,
+  FolderIcon,
+  ImageIcon,
+  InboxIcon,
+  LayoutDashboardIcon,
+  LayoutGridIcon,
+  LifeBuoyIcon,
+  ListFilterIcon,
   type LucideIcon,
   PackageIcon,
   PaletteIcon,
+  ReceiptIcon,
+  ReceiptTextIcon,
+  ScanBarcodeIcon,
   ShoppingCartIcon,
   TagIcon,
+  TicketPercentIcon,
+  TruckIcon,
+  UserCogIcon,
   UsersIcon,
+  UsersRoundIcon,
+  WalletIcon,
 } from "lucide-react";
 
 export interface AdminNavSubItem {
   label: string;
   href: string;
-  /** Módulo ainda não exposto na estabilização P0/P1. Mantido para compatibilidade do renderer. */
   soon?: boolean;
 }
 
 export interface AdminNavItem {
-  /** Slug interno usado pra controlar estado "open" do sub. */
   k: string;
   label: string;
   icon: LucideIcon;
-  /** Link direto (item sem sub). */
   href?: string;
-  /** Match exato pra rotas raiz (ex: "/admin"). */
   exact?: boolean;
-  /** Sub-itens recolhíveis. Quando presente, ignora `href` no header. */
   subs?: AdminNavSubItem[];
-  /** Bolinha indicadora opcional. Mantida no tipo porque o renderer suporta. */
   dot?: boolean;
-  /** Módulo ainda não exposto na estabilização P0/P1. Mantido para compatibilidade do renderer. */
   soon?: boolean;
 }
 
@@ -46,56 +56,63 @@ export interface AdminNavSection {
 
 export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
   {
-    label: "CONTROLE INTERNO",
+    label: "OPERAÇÃO",
     items: [
-      { k: "painel", label: "Painel", icon: HomeIcon, href: "/admin", exact: true },
-      {
-        k: "produtos",
-        label: "Produtos",
-        icon: PackageIcon,
-        subs: [
-          { label: "Meus produtos", href: "/admin/produtos" },
-          { label: "Custo & Margem", href: "/admin/produtos/custos" },
-          { label: "Categorias", href: "/admin/categorias" },
-          { label: "Banners", href: "/admin/banners" },
-        ],
-      },
-      { k: "estoque", label: "Estoque", icon: BoxesIcon, href: "/admin/estoque" },
-      {
-        k: "clientes",
-        label: "Clientes",
-        icon: UsersIcon,
-        subs: [{ label: "Meus clientes", href: "/admin/clientes" }],
-      },
-      {
-        k: "vendas",
-        label: "Vendas",
-        icon: ShoppingCartIcon,
-        subs: [
-          { label: "Pedidos", href: "/admin/pedidos" },
-          { label: "PDV", href: "/admin/pdv" },
-          { label: "Caixa", href: "/admin/pdv/caixa" },
-        ],
-      },
+      { k: "inicio",   label: "Início",                  icon: LayoutDashboardIcon, href: "/admin",           exact: true },
+      { k: "pdv",      label: "Venda balcão",            icon: ScanBarcodeIcon,     href: "/admin/pdv",       exact: true },
+      { k: "caixa",    label: "Caixa do dia",            icon: WalletIcon,          href: "/admin/pdv/caixa"             },
+      { k: "vendas",   label: "Vendas",                  icon: ReceiptIcon,         href: "/admin/pedidos"               },
+      { k: "estoque",  label: "Movimentação de estoque", icon: ArrowLeftRightIcon,  href: "/admin/estoque",   exact: true },
+      { k: "receber",  label: "A receber",               icon: ClockIcon,           soon: true                           },
+      { k: "contatos", label: "Recados do site",         icon: InboxIcon,           href: "/admin/contatos"              },
     ],
   },
   {
-    label: "MINHA LOJA",
+    label: "CADASTROS",
     items: [
-      { k: "lojavirtual", label: "Aparência", icon: PaletteIcon, href: "/admin/aparencia" },
-      { k: "pagamentos", label: "Pagamentos", icon: CreditCardIcon, href: "/admin/pagamento" },
-      {
-        k: "config",
-        label: "Configurações",
-        icon: TagIcon,
-        subs: [
-          { label: "Geral", href: "/admin/configuracoes" },
-          { label: "Horários", href: "/admin/configuracoes#horarios" },
-        ],
-      },
+      { k: "produtos",       label: "Produtos",          icon: PackageIcon,    href: "/admin/produtos",       exact: true },
+      { k: "categorias",     label: "Categorias",        icon: FolderIcon,     href: "/admin/categorias"                  },
+      { k: "marcas",         label: "Marcas",            icon: TagIcon,        soon: true                                 },
+      { k: "clientes",       label: "Clientes",          icon: UsersIcon,      href: "/admin/clientes",       exact: true },
+      { k: "grupos-cliente", label: "Grupos de cliente", icon: UsersRoundIcon, href: "/admin/clientes/grupos"             },
+      { k: "fornecedores",   label: "Fornecedores",      icon: TruckIcon,      soon: true                                 },
+    ],
+  },
+  {
+    label: "GESTÃO",
+    items: [
+      { k: "relatorios",    label: "Relatórios",    icon: BarChart2Icon,     href: "/admin/relatorios"        },
+      { k: "estoque-baixo", label: "Estoque baixo", icon: AlertTriangleIcon, href: "/admin/estoque/relatorio" },
+      { k: "compras",       label: "Compras",       icon: ShoppingCartIcon,  soon: true                       },
+      { k: "custos",        label: "Custo & margem",icon: CalculatorIcon,    href: "/admin/produtos/custos"   },
+    ],
+  },
+  {
+    label: "LOJA ONLINE + CONFIGURAÇÕES",
+    items: [
+      { k: "aparencia",  label: "Aparência",          icon: PaletteIcon,       href: "/admin/aparencia"        },
+      { k: "banners",    label: "Banners",             icon: ImageIcon,         href: "/admin/banners"          },
+      { k: "vitrines",   label: "Vitrines",            icon: LayoutGridIcon,    href: "/admin/colecoes"         },
+      { k: "filtros",    label: "Filtros da loja",     icon: ListFilterIcon,    href: "/admin/atributos"        },
+      { k: "cupons",     label: "Códigos de desconto", icon: TicketPercentIcon, href: "/admin/promocoes/cupons" },
+      { k: "pagamento",  label: "Formas de pagamento", icon: CreditCardIcon,    href: "/admin/pagamento"        },
+      { k: "equipe",     label: "Equipe",              icon: UserCogIcon,       href: "/admin/equipe"           },
+      { k: "dados-loja", label: "Dados da loja",       icon: Building2Icon,     href: "/admin/configuracoes"    },
+      { k: "assinatura", label: "Plano e assinatura",  icon: ReceiptTextIcon,   href: "/admin/assinatura"       },
     ],
   },
 ] as const;
+
+/**
+ * Item de suporte — exportado separadamente para render como link discreto
+ * no footer da sidebar, abaixo dos 4 grupos e acima do user card.
+ */
+export const ADMIN_NAV_SUPPORT: AdminNavItem = {
+  k: "suporte",
+  label: "Suporte",
+  icon: LifeBuoyIcon,
+  href: "/admin/suporte",
+};
 
 /** Acha se um sub-item está ativo dado o pathname atual. */
 export function isSubItemActive(sub: AdminNavSubItem, pathname: string): boolean {

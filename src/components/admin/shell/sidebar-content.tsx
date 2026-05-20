@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 
 import {
   ADMIN_NAV_SECTIONS,
+  ADMIN_NAV_SUPPORT,
   type AdminNavItem,
   type AdminNavSubItem,
   isItemActive,
@@ -92,6 +93,8 @@ export function SidebarContent({
           </div>
         ))}
       </nav>
+
+      <SupportFooterLink pathname={pathname} onNavigate={onNavigate} />
 
       {/* b3-side-foot: user card no rodapé */}
       <UserCardFooter
@@ -232,6 +235,34 @@ function SubItemRow({ sub, pathname, onNavigate }: SubItemRowProps) {
     >
       <span className="flex-1 truncate">{sub.label}</span>
     </Link>
+  );
+}
+
+// ----- SUPORTE — link discreto entre nav e rodapé -----
+
+function SupportFooterLink({
+  pathname,
+  onNavigate,
+}: {
+  pathname: string;
+  onNavigate?: () => void;
+}) {
+  const Icon = ADMIN_NAV_SUPPORT.icon;
+  const isActive = isItemActive(ADMIN_NAV_SUPPORT, pathname);
+  return (
+    <div className="border-t border-border px-2 py-1">
+      <Link
+        href={ADMIN_NAV_SUPPORT.href!}
+        prefetch
+        onClick={onNavigate}
+        className="b3-side-item opacity-55 transition-opacity hover:opacity-100"
+        data-active={isActive ? "true" : undefined}
+        aria-current={isActive ? "page" : undefined}
+      >
+        <Icon size={17} aria-hidden />
+        <span className="flex-1 truncate">{ADMIN_NAV_SUPPORT.label}</span>
+      </Link>
+    </div>
   );
 }
 
