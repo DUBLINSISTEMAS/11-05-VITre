@@ -3,6 +3,7 @@
  */
 export * from "./attribute";
 export * from "./auth";
+export * from "./brand";
 export * from "./cash";
 export * from "./catalog";
 export * from "./commercial";
