@@ -78,7 +78,7 @@ export function AttributesManager({
         isActive: true,
       });
       if (res.ok) {
-        toast.success(data.id ? "Atributo atualizado." : "Atributo criado.");
+        toast.success(data.id ? "Filtro da loja atualizado." : "Filtro da loja criado.");
         setMode({ kind: "closed" });
       } else {
         toast.error(res.error);
@@ -107,10 +107,10 @@ export function AttributesManager({
   }
 
   function handleDeleteAttribute(id: string, name: string) {
-    if (!confirm(`Excluir atributo "${name}" e todos seus valores?`)) return;
+    if (!confirm(`Excluir filtro da loja "${name}" e todos seus valores?`)) return;
     startTransition(async () => {
       const res = await deleteAttribute({ id });
-      if (res.ok) toast.success("Atributo excluído.");
+      if (res.ok) toast.success("Filtro da loja excluído.");
       else toast.error(res.error);
     });
   }
@@ -129,7 +129,7 @@ export function AttributesManager({
       <>
         <div className="b3-card b3-card-pad text-center">
           <p className="text-ink-3 text-[13px]">
-            Você ainda não tem atributos. Crie o primeiro (ex: Cor,
+            Você ainda não tem filtros da loja. Crie o primeiro (ex: Cor,
             Tamanho, Material) para usar em vários produtos.
           </p>
           <button
@@ -139,7 +139,7 @@ export function AttributesManager({
             style={{ height: 40 }}
           >
             <PlusIcon size={14} />
-            Criar primeiro atributo
+            Criar primeiro filtro da loja
           </button>
         </div>
         <EditDialogs
@@ -163,7 +163,7 @@ export function AttributesManager({
           style={{ height: 36 }}
         >
           <PlusIcon size={13} />
-          Novo atributo
+          Novo filtro da loja
         </button>
       </div>
 
@@ -189,7 +189,7 @@ export function AttributesManager({
                   type="button"
                   onClick={() => openEditAttribute(attr)}
                   className="b3-btn b3-btn--sm"
-                  title="Editar atributo"
+                  title="Editar filtro da loja"
                 >
                   <PencilIcon size={12} />
                 </button>
@@ -198,7 +198,7 @@ export function AttributesManager({
                   onClick={() => handleDeleteAttribute(attr.id, attr.name)}
                   className="b3-btn b3-btn--sm"
                   style={{ color: "var(--danger)" }}
-                  title="Excluir atributo"
+                  title="Excluir filtro da loja"
                   disabled={isPending}
                 >
                   <TrashIcon size={12} />
@@ -283,8 +283,8 @@ function EditDialogs({
           <DialogHeader>
             <DialogTitle>
               {mode.kind === "attribute" && mode.data.id
-                ? "Editar atributo"
-                : "Novo atributo"}
+                ? "Editar filtro da loja"
+                : "Novo filtro da loja"}
             </DialogTitle>
           </DialogHeader>
           {mode.kind === "attribute" && (
