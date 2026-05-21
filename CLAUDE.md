@@ -1,4 +1,4 @@
-# Vitrê — Norte Operacional
+# Mangos Pay — Norte Operacional
 
 > Documento vivo. Carregado automaticamente em toda sessão do Claude Code.
 > Atualizar a seção "Sprint atual" a cada Sprint fechada.
@@ -6,11 +6,11 @@
 
 ---
 
-## O que o Vitrê é (decisão fechada, não revisitar)
+## O que o Mangos Pay é (decisão fechada, não revisitar)
 
 Sistema de gestão para lojas de pequeno/médio porte (joia, semijoia, roupa, perfumaria, calçados, acessórios) em cidades do interior do Brasil. Catálogo público + checkout WhatsApp + admin de gestão + PDV balcão num só produto.
 
-**ICP**: lojista que **não emite NF interna** (NF fica em sistema do contador ou via Bling/Tiny). Vitrê NÃO emite NF-e/NFC-e/SPED. NCM = texto livre para futura integração externa. Ver ADR-0033.
+**ICP**: lojista que **não emite NF interna** (NF fica em sistema do contador ou via Bling/Tiny). Mangos Pay NÃO emite NF-e/NFC-e/SPED. NCM = texto livre para futura integração externa. Ver ADR-0033.
 
 **Diferencial defensável**: loja online integrada nativa. Concorrentes (GFIL/Bling/Tiny/Dimas) NÃO têm storefront público de fábrica. Todo trabalho no storefront fortalece moat; todo trabalho clonando GFIL diminui.
 
@@ -160,38 +160,63 @@ Princípio do sistema, não feature isolada. Toda tela do Grupo 3 (Gestão) tem 
 
 ---
 
-## Sprint atual: Fase 1.7 — Deploy Vercel + smoke real
+## Sprint atual: Fase 2 — Multi-tenant pleno
 
 **Início**: 2026-05-21
-**Objetivo**: tirar o sistema do "pronto em dev" pra "Sandra usando de verdade". Nenhuma feature nova. Subir, validar e seedar.
+**Objetivo**: fundação segura pra qualquer lojista entrar via signup self-service, sem seed manual. Quando o primeiro lojista real (Sandra ou outro) for criado, vai ser via fluxo público, não script.
 
-Fases 0-1.6 ✅ e Sprints 0 → 6 ✅ (fechadas em `docs/sessoes/2026-05-21-fechamento-sprints-0-a-6.md`). Estado: 58/58 SQLs em prod, 491/491 testes verdes, `tsc` limpo, anon bloqueado em 10/10 tabelas.
+**Contexto da decisão**: Fase 1.7 (deploy técnico) encerrada em 2026-05-21 com deploy Vercel feito mas smoke real descartado — Anderson decidiu terminar o sistema antes de expor a lojista real, evitando que o primeiro cliente entre via seed que viraria dívida de produto. Detalhes em `docs/sessoes/2026-05-21-encerramento-fase-1.7.md`.
 
-### Critério de "pronto" (régua sem exceção)
+Estado de partida: 58/58 SQLs em prod, 491/491 testes verdes, `tsc` limpo, anon bloqueado em 10/10 tabelas, deploy Vercel em produção (sem tráfego real ainda).
 
-- [ ] `npm run build` produção limpo local (Anderson roda)
-- [ ] `.env.example` sincronizado com `.env.local` (mesmas chaves, valores em placeholders)
-- [ ] Pooler validado em transaction mode pra produção (DATABASE_URL aponta pro pooler 6543, DIRECT_URL pro 5432)
-- [ ] `vercel link` + import do GitHub
-- [ ] 13 envs configuradas no painel Vercel em scope `production`
-- [ ] Region `gru1` (São Paulo) configurada em `vercel.json`
-- [ ] Cron `/api/cron/keep-alive` aparece em Vercel Crons UI
-- [ ] Deploy preview da branch funciona com env de staging (se houver) ou rejeita gracioso se Supabase de prod ainda não estiver pronto
-- [ ] Smoke test em produção:
-  - [ ] `https://<dominio>/sandra-brito` (ou loja seed) renderiza catálogo
-  - [ ] Adicionar ao carrinho → finalizar WhatsApp → código curto correto
-  - [ ] Login admin → criar produto via câmera mobile → upload OK
-  - [ ] Pedido aparece em `/admin/pedidos`
-  - [ ] PDV: abrir caixa, vender, fechar caixa Z
-- [ ] Lighthouse mobile na home da loja ≥ 90
-- [ ] Sandra Brito recebe link funcional + seed de dados reais
-- [ ] Esta seção é atualizada com checkboxes marcados antes de seguir pra Fase 2
+### Critério de "pronto" (5 blocos — ordem importa, não pular pra frente)
 
-### Régua de execução (pré-deploy)
+**Bloco 1 — Isolamento real** ✅ **DONE (descoberto em auditoria 2026-05-21)**
+- [x] Role `vitre_app` criada com `NOBYPASSRLS, NOSUPERUSER, NOCREATEDB, NOCREATEROLE` (`supabase/sql/09_app_role_setup.sql`)
+- [x] `DATABASE_URL` aponta pra `vitre_app` (`.env.local` + Vercel env); `DIRECT_URL` mantém `postgres` pra migrations
+- [x] `FORCE ROW LEVEL SECURITY` em todas as 32 tabelas de domínio (sqls 10, 29, 31-36, 39, 46, 49, 53, 55, 56)
+- [x] `withTenant` é único caminho autenticado (`src/lib/tenant.ts`); `withServiceRole(reason, fn)` loga toda exceção legítima cross-tenant
+- [x] Verificação cross-tenant: `npm run db:smoke-idor` (manual, saída humana) + `RUN_INTEGRATION=1 npm test` (automatizado, ver Bloco 2)
 
-- Build local antes de deploy: `npm run build` rodando do zero, sem warning estranho que não seja `<img>` em ReportLayout e exports Zod inferidos sem consumer (esses 27 warnings de lint são conhecidos e não bloqueiam — ficam pra janela de limpeza pós-deploy).
-- Anderson é quem faz `vercel link`, configura envs no painel e roda o smoke em prod. Claude prepara checklist e verifica tudo que é local.
-- Pooler 6543 (transaction mode) em `DATABASE_URL` de prod; 5432 (direct) em `DIRECT_URL`. Nunca trocar.
+**Bloco 2 — Validação automatizada** ✅ **DONE em 2026-05-21**
+- [x] Suite `tests/integration/rls-cross-tenant.test.ts` cobre cross-tenant SELECT em 18 tabelas privadas (order, order_item, order_payment, order_return, order_return_item, customer, customer_group, receivable, receivable_payment, cash_session, cash_adjustment, stock_movement, supplier, purchase, purchase_item, audit_event, lead, coupon)
+- [x] Sanity-check: teste falha se `DATABASE_URL` apontar pra `postgres` (BYPASSRLS invalida o teste)
+- [x] Smoke manual (`scripts/smoke-idor.mjs`) mantido com saída humana pra pré-deploy
+- [x] Cenários **INSERT cross-tenant** (WITH CHECK ou FK rejeita) em 5 tabelas (product, customer, supplier, cash_session, lead) — descobriu e fechou buraco em `lead_anon_insert` (SQL 58)
+- [x] Cenários **UPDATE cross-tenant** (USING bloqueia, rowCount=0) nas mesmas 5 tabelas
+- [x] Gate pré-merge documentado (ver "Convenção #10" abaixo). Job CI dedicado com DB ephemeral defer pra Fase 5 (custo: ~meio dia + manutenção do schema do test DB)
+- [x] Auditoria curta: `npm test` 491/491 + `tsc --noEmit` zero warning + `RUN_INTEGRATION=1 npm run test:integration` 39/39
+
+**Bloco 3 — Signup self-service (substitui seed manual)**
+- [ ] Tela `/cadastro` cria usuário Better Auth + loja em transação atômica
+- [ ] Wizard pós-signup: nome da loja, slug (com colisão handling), tipo de negócio, primeira categoria, primeiro produto
+- [ ] Slugs reservados (`src/lib/slug.ts`) respeitados no cadastro
+- [ ] Loja recém-criada já entra com config padrão (formas de pagamento default, aparência default)
+- [ ] Sem dependência de script — qualquer pessoa com email cria loja em ≤3 min
+
+**Bloco 4 — Hardening de auth**
+- [ ] Email verification ON no Better Auth (sem verificar = sem login)
+- [ ] Template de email transacional com identidade Mangos Pay (Resend)
+- [ ] Domínio próprio verificado no Resend (sair de `onboarding@resend.dev`)
+- [ ] Rate limit em `/api/auth/sign-up` e `/api/auth/sign-in` (≤5/min por IP)
+- [ ] Senha mínima + revogação de sessão antiga em troca de senha
+
+**Bloco 5 — Roteamento multi-tenant**
+- [ ] Subdomínio (`{slug}.mangospay.app` → loja `{slug}`) via middleware Next.js
+- [ ] OU domínio próprio do lojista via CNAME (decisão de design fica pro início do bloco)
+- [ ] Resolução DNS → storeSlug → rendering correto
+- [ ] Documentação curta em `/admin/configuracoes` ensinando o lojista a configurar DNS
+
+### Régua de execução
+
+- Cada bloco fecha com mini-auditoria (testes verdes + tsc limpo + RLS audit) antes do próximo
+- Bloco 1 e 2 são bloqueantes — sem eles, não tem multi-tenant. Não começar Bloco 3 antes
+- Sem ADR novo dentro da Fase (regra meta-1). Decisão pontual = commit com mensagem clara
+- Pendências carregadas da Fase 1.7 (rever antes do primeiro lojista real entrar):
+  - `vercel.json` não tem `regions: ["gru1"]` declarado — confirmar se foi setado no painel Vercel
+  - HMAC sigs dos crons em `vercel.json` ainda são placeholders — rodar `scripts/sign-cron-urls.ts` e substituir
+  - Smoke test prod (storefront / WhatsApp / câmera / PDV) deferido pro setup do primeiro lojista real
+  - Lighthouse mobile ≥ 90 deferido pelo mesmo motivo
 
 ---
 
@@ -199,9 +224,9 @@ Fases 0-1.6 ✅ e Sprints 0 → 6 ✅ (fechadas em `docs/sessoes/2026-05-21-fech
 
 Não comece código de Sprint futura antes da atual estar com TODOS os checkboxes marcados.
 
-- **Fase 2 — Multi-tenant pleno**: signup self-service sem seed manual, email verification ON, domínio próprio, FORCE RLS + role `vitre_app`, testes automatizados de isolamento. Só começa quando Fase 1.7 fechar com Sandra rodando o sistema.
-- **Fase 3 — Monetização**: Vercel Pro, plano Free com limite (X produtos / Y pedidos), plano Pago via Stripe (mensalidade Vitrê, NÃO checkout do lojista).
-- **Fase 4+ — Diferenciação**: cupom de desconto avançado, frete grátis acima de X, programa de pontos, integração Correios, subdomínio próprio (`sandra.vitre.com.br`).
+- **Fase 3 — Monetização**: Vercel Pro, plano Free com limite (X produtos / Y pedidos), plano Pago via Stripe (mensalidade Mangos Pay, NÃO checkout do lojista). Só começa quando Fase 2 fechar.
+- **Fase 4+ — Diferenciação**: cupom de desconto avançado, frete grátis acima de X, programa de pontos, integração Correios.
+- **Fase 5 — Onboarding do primeiro lojista real**: criar conta da Sandra (ou outro piloto) via signup self-service da Fase 2, importar produtos via planilha, smoke test real em prod, Lighthouse mobile ≥ 90 com dado real. NÃO antes da Fase 2 fechar.
 - **Sprint 6 follow-ups** (defensivos opcionais): 2FA pro lojista, refator `pdv-shell.tsx` (2154 linhas) e `create-balcao-sale.ts` (1141 linhas) — fazer junto da próxima feature que tocar nesses arquivos.
 
 Sprints 0 → 6 ✅ concluídas (resumo em `docs/sessoes/2026-05-21-fechamento-sprints-0-a-6.md`).
@@ -219,6 +244,7 @@ Sprints 0 → 6 ✅ concluídas (resumo em `docs/sessoes/2026-05-21-fechamento-s
 7. **Slugs reservados** — ver lista em `src/lib/slug.ts`.
 8. **Naming PT-vs-EN** — URLs e UI strings em PT-BR (vocabulário do lojista: `/admin/aparencia`, `"Filtros da loja"`). Pastas, identifiers TypeScript e nomes de função em EN (convenção dev: `attributeTable`, `loadOrderDetail`). Nunca misturar dentro da mesma camada.
 9. **Sem `sql.raw`** — todo input no SQL deve ser parametrizado (Drizzle template tag `sql\`\`` faz isso automaticamente). Se precisar interpolar valor dinâmico, calcule server-side antes (ex: `new Date(Date.now() - days * 86400000)` em vez de `sql.raw(\`interval '${days} days'\`)`).
+10. **Integration tests RLS pré-merge** — qualquer mudança em: schema de tabela com `store_id`, policy RLS, role/grant, `withTenant` / `withServiceRole`, ou nas suites `tests/integration/*` exige rodar localmente `RUN_INTEGRATION=1 npm run test:integration` e confirmar 39/39 verde **antes** de commit/merge. CI hoje só faz unit (`npm test`) — gate de integration roda contra DB real e ainda não tem DB ephemeral na pipeline (defer Fase 5). Esse é o cinto que pegou o vazamento de `lead_anon_insert` (SQL 58); pular ele = vazamento volta sem aviso.
 
 ## Stack (não revisitar sem problema concreto)
 
@@ -228,7 +254,7 @@ Next 15 + React 19 + TypeScript · Drizzle ORM + Supabase Postgres · Better Aut
 
 ## O que NÃO fazer
 
-- ❌ Adicionar Stripe ao checkout (lojista cobra fora do Vitrê)
+- ❌ Adicionar Stripe ao checkout (lojista cobra fora do Mangos Pay)
 - ❌ Cadastro/login de cliente final no storefront. Carrinho em localStorage. Favoritos em localStorage. Reafirmado [ADR-0008](docs/decisoes/0008-ux-catalogo-publico-storefront.md)
 - ❌ NF-e, SEFAZ, integração fiscal. [ADR-0033](docs/decisoes/0033-veto-fiscal-explicito.md)
 - ❌ Acesso remoto/captura de tela dentro do produto. Suporte = AnyDesk fora do produto. [ADR-0018](docs/decisoes/0018-suporte-remoto-fora-do-produto.md)
@@ -242,7 +268,7 @@ Next 15 + React 19 + TypeScript · Drizzle ORM + Supabase Postgres · Better Aut
 
 ## Ambiente
 
-Windows 11 + PowerShell + VS Code + **Claude Code** (CLI). PT-BR. Repo em `C:\Users\ANDERSON FELIPE\Documents\VITRE\`.
+Windows 11 + PowerShell + VS Code + **Claude Code** (CLI). PT-BR. Repo em `C:\Users\ANDERSON FELIPE\Documents\Mangos Pay\`.
 
 ## Founder
 
@@ -278,11 +304,12 @@ Marcos:
 - MVP catálogo (Fases 0-1.6) ✅
 - Redesign canvas-v1 ✅
 - Auditoria pré-deploy 2026-05-10 (7 ondas) ✅
-- Pivô para Vitrê Gestão 2026-05-15 ([ADR-0012](docs/decisoes/0012-pivot-vitre-gestao.md))
+- Pivô para Mangos Pay Gestão 2026-05-15 ([ADR-0012](docs/decisoes/0012-pivot-vitre-gestao.md))
 - Fases 2-5 + PWA do pivô ✅ (2026-05-16)
 - Veto fiscal explícito 2026-05-19 ([ADR-0033](docs/decisoes/0033-veto-fiscal-explicito.md))
-- Camada Comercial Vitrê 2026-05-19 ([ADR-0034](docs/decisoes/0034-camada-comercial-vitre.md))
+- Camada Comercial Mangos Pay 2026-05-19 ([ADR-0034](docs/decisoes/0034-camada-comercial-vitre.md))
 - Sprints 0 → 6 ✅ todas fechadas até 2026-05-21 (`docs/sessoes/2026-05-21-fechamento-sprints-0-a-6.md`)
-- Fase 1.7 (deploy) virou Sprint atual em 2026-05-21 — bloqueador real pra Sandra usar
+- Fase 1.7 (deploy técnico) encerrada 2026-05-21 com deploy Vercel feito; smoke real descartado junto com Sandra — primeiro lojista real entra via signup self-service depois da Fase 2 (`docs/sessoes/2026-05-21-encerramento-fase-1.7.md`)
+- Fase 2 (Multi-tenant pleno) virou Sprint atual em 2026-05-21 — bloqueador real pra qualquer lojista entrar com segurança
 
 **Norte vivo sobrescreve qualquer ADR conflitante.** Se ADR-0034 disser "5-7 semanas" e este arquivo disser "12-18 semanas", vale este arquivo. ADR é registro de decisão no momento; norte vivo é régua de execução atual.
