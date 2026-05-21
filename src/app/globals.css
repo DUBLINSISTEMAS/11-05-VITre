@@ -9,16 +9,40 @@
 @custom-variant hocus (&:where(:hover, :focus-visible));
 
 /*
- * Vitrê — Design System
+ * Mangos Pay — Design System
  *
  * Storefront: Design minimalista premium
- * - Primary: Azul Vitrê (override por loja via BrandProvider)
+ * - Primary: azul do Mangos Pay (override por loja via BrandProvider)
  * - Background: Branco puro
  * - Neutros: paleta com tinte violeta sutil (referência bewear)
  */
 
 :root {
-  /* — Brand Vitrê (Dublin v3 navy BAGY-inspired, ADR-0019) — */
+  /* — Mangos Pay paleta (admin chrome — Fase 2 redesign 2026-05-21) —
+     Override consciente do princípio 3 do norte: brilho visual no admin
+     via Mangos design system. Tokens neutros (--brand, --bg-app, etc)
+     mantidos pra storefront/auth; sobrescritos APENAS dentro de `.b3-shell`
+     (regra abaixo neste arquivo). Decisão registrada em CLAUDE.md.   */
+  --mangos-cream: #FFF8E8;
+  --mangos-cream-soft: #FFFDF7;
+  --mangos-surface-muted: #FAF6EC;
+  --mangos-side-bg: #F3F4F6;                     /* Sidebar — gray-100 estilo fintech (Abacate Pay ref) */
+  --mangos-border: #EADFC8;
+  --mangos-border-strong: #DCCBAA;
+  --mangos-yellow: #F6B73C;
+  --mangos-yellow-hover: #EAA327;
+  --mangos-yellow-soft: #FFF2C7;
+  --mangos-orange: #E9822B;
+  --mangos-green-950: #0D2F2B;
+  --mangos-green-900: #123D38;
+  --mangos-green-800: #174D44;
+  --mangos-green-700: #1F6357;
+  --mangos-green-100: #E7F3EE;
+  --mangos-text-primary: #173F3A;
+  --mangos-text-secondary: #5F756F;
+  --mangos-text-muted: #8A9994;
+
+  /* — Brand do Mangos Pay (Dublin v3 navy BAGY-inspired, ADR-0019) — */
   --brand: #1A3A8F;                              /* Navy sóbrio — substitui o carvão canvas-v1 */
   --brand-2: #14306F;                            /* Hover/active state */
   --brand-wash: #EEF1FB;                         /* Surface tinted (helpbar, side-item ativo) */
@@ -81,13 +105,13 @@
   --popover: oklch(1 0 0);
   --popover-foreground: var(--gray-950);
 
-  /* primary = brand (azul Vitrê fixo, design system).
+  /* primary = brand (azul fixo do Mangos Pay, design system).
    * NÃO é sobrescrito por loja — ver --brand-store abaixo. */
   --primary: var(--brand);
   --primary-foreground: var(--brand-foreground);
 
   /* brand-store = cor da marca da lojista (override por loja via StoreShell).
-   * Fallback = primary (Vitrê) quando não injetado.
+   * Fallback = primary (Mangos Pay) quando não injetado.
    * Uso: APENAS bottom-nav (pill ativa) + badge da sacola no header.
    * Decisão em ADR-0011. NÃO usar pra CTAs/promo/focus rings. */
   --brand-store: var(--primary);
@@ -170,12 +194,32 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  /* — Brand utilities (Vitrê Dublin v3) — */
+  /* — Brand utilities do Mangos Pay (Dublin v3) — */
   --color-brand: var(--brand);
   --color-brand-2: var(--brand-2);
   --color-brand-wash: var(--brand-wash);
   --color-brand-line: var(--brand-line);
   --color-brand-foreground: var(--brand-foreground);
+
+  /* — Mangos admin paleta utilities (Fase 2 redesign 2026-05-21).
+       Expostas como Tailwind v4 colors: `bg-mangos-cream`, `text-mangos-green-950`, etc. */
+  --color-mangos-cream: var(--mangos-cream);
+  --color-mangos-cream-soft: var(--mangos-cream-soft);
+  --color-mangos-surface-muted: var(--mangos-surface-muted);
+  --color-mangos-border: var(--mangos-border);
+  --color-mangos-border-strong: var(--mangos-border-strong);
+  --color-mangos-yellow: var(--mangos-yellow);
+  --color-mangos-yellow-hover: var(--mangos-yellow-hover);
+  --color-mangos-yellow-soft: var(--mangos-yellow-soft);
+  --color-mangos-orange: var(--mangos-orange);
+  --color-mangos-green-950: var(--mangos-green-950);
+  --color-mangos-green-900: var(--mangos-green-900);
+  --color-mangos-green-800: var(--mangos-green-800);
+  --color-mangos-green-700: var(--mangos-green-700);
+  --color-mangos-green-100: var(--mangos-green-100);
+  --color-mangos-text-primary: var(--mangos-text-primary);
+  --color-mangos-text-secondary: var(--mangos-text-secondary);
+  --color-mangos-text-muted: var(--mangos-text-muted);
 
   /* — Dublin surfaces & lines — */
   --color-bg-app: var(--bg-app);
@@ -671,6 +715,29 @@
        formatting context separado, preservando sticky. Bug reportado pelo
        founder 2026-05-18. */
     overflow-x: clip;
+    background: var(--bg-app);
+    /* Sidebar flush à esquerda + topo + base; gap só pro respiro entre
+       sidebar e b3-main (que tem padding próprio pro topbar flutuar). */
+    gap: 12px;
+
+    /* Mangos admin paleta — override scoped (Fase 2 redesign 2026-05-21).
+       Substitui o navy Dublin v3 pelo verde escuro + amarelo Mangos APENAS
+       dentro do shell admin. Páginas sem `.b3-shell` (storefront, auth,
+       criar-loja, recibo público) mantêm os tokens default do :root.
+
+       Decisão de 2026-05-21: `--bg-app` (fundo do main + páginas internas)
+       MANTIDO como cinza neutro `#F5F6F8`. Brand visual fica no chrome
+       (sidebar + topbar); área de trabalho do lojista continua densidade
+       utilitária sobre cinza — princípio 3 do norte preservado em 90% das
+       telas, override consciente só pro chrome. Cream fica como
+       acento (hover, search, sub-items, user card). */
+    --brand: var(--mangos-green-800);
+    --brand-2: var(--mangos-green-900);
+    --brand-wash: var(--mangos-yellow-soft);
+    --brand-line: var(--mangos-border-strong);
+    /* --bg-app NÃO sobrescrito de propósito — mantém var(--bg-app) = #F5F6F8 */
+    --ink-1: var(--mangos-text-primary);
+    --ink-2: var(--mangos-green-900);
   }
   .b3-main {
     flex: 1;
@@ -678,14 +745,19 @@
     flex-direction: column;
     min-width: 0;
     overflow-x: clip;
-    /* Fundo cinza no main (cards continuam `--surface` branco) — "ar de
-       sistema" pedido pelo founder 2026-05-18. */
-    background: var(--bg-app);
+    /* Fundo branco no main (Fase 2 redesign 2026-05-21, ref Abacate Pay).
+       Substitui o cinza --bg-app que vigorou de 2026-05-18 até aqui — cards
+       agora dependem de border + sombra leve em vez de contraste de fundo. */
+    background: var(--surface);
+    /* Padding superior + direito permite o topbar flutuar (rounded card)
+       sem encostar nas bordas. Sidebar continua flush à esquerda/topo/base. */
+    padding: 12px 12px 0 0;
   }
   .b3-side {
-    width: 248px;
-    background: var(--surface);
+    width: 280px;
+    background: var(--mangos-side-bg);
     border-right: 1px solid var(--line);
+    border-radius: 0 18px 18px 0;
     position: sticky;
     top: 0;
     height: 100vh;
@@ -698,12 +770,13 @@
   }
   .b3-side::-webkit-scrollbar { width: 0; }
   .b3-side-top {
-    padding: 20px 16px 12px;
+    padding: 16px 16px 16px;
     display: flex;
     align-items: center;
     gap: 10px;
     border-bottom: 1px solid var(--line);
     cursor: pointer;
+    min-height: 64px;
   }
   .b3-logo-mark {
     width: 36px;
@@ -726,33 +799,141 @@
     color: var(--ink-1);
   }
   .b3-side-group {
-    padding: 14px 16px 4px;
-    font-size: 10.5px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
+    padding: 18px 24px 6px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--ink-4);
+  }
+  /* ----- Accordion section header (Fase 2 redesign 2026-05-21) ----- */
+  .b3-side-section-wrap {
+    margin-top: 2px;
+  }
+  .b3-side-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: calc(100% - 24px);
+    margin: 1px 12px;
+    padding: 9px 12px;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ink-1);
+    text-align: left;
+    cursor: pointer;
+    border: 0;
+    background: transparent;
+    border-radius: 10px;
+    outline: none;
+    transition: background-color 150ms, color 150ms;
+  }
+  .b3-side-section:hover {
+    background: var(--mangos-cream-soft);
+    color: var(--mangos-green-900);
+  }
+  .b3-side-section:focus-visible {
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--mangos-yellow) 40%, transparent);
+  }
+  .b3-side-section svg {
+    color: var(--ink-3);
+    flex-shrink: 0;
+    transition: color 150ms;
+  }
+  .b3-side-section:hover svg { color: var(--mangos-green-800); }
+  /* Quando alguma rota da seção está ativa, o header fica destacado em cinza
+     claro pra dar contexto — mas o highlight forte de seleção continua no
+     item (amarelo soft). */
+  .b3-side-section[data-active="true"] {
+    color: var(--mangos-green-900);
+  }
+  .b3-side-section[data-active="true"] svg {
+    color: var(--mangos-orange);
+  }
+  .b3-side-section .chev {
+    color: var(--ink-4);
+    transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .b3-side-section[data-open="true"] .chev {
+    transform: rotate(180deg);
+    color: var(--mangos-green-800);
+  }
+  /* Collapsible panel — animação suave via grid-template-rows (sem JS de
+     altura). Curva cubic-bezier(0.4, 0, 0.2, 1) = "standard easing" das
+     fintechs / Material 3 / Apple. 220ms = sweet spot pra não atrasar. */
+  .b3-side-collapsible {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .b3-side-collapsible[data-open="true"] {
+    grid-template-rows: 1fr;
+  }
+  .b3-side-collapsible-inner {
+    overflow: hidden;
+    min-height: 0;
+  }
+  .b3-side-collapsible[data-open="true"] .b3-side-collapsible-inner {
+    /* Pequeno respiro entre o último item da seção e a próxima seção. */
+    padding-bottom: 4px;
+  }
+  /* Stagger sutil dos itens quando o accordion abre — efeito fintech sênior:
+     cada item aparece levemente atrasado em relação ao anterior. */
+  .b3-side-collapsible[data-open="true"] .b3-side-item--nested {
+    animation: b3-side-item-in 280ms cubic-bezier(0.4, 0, 0.2, 1) backwards;
+  }
+  .b3-side-collapsible[data-open="true"] .b3-side-item--nested:nth-child(1) { animation-delay: 30ms; }
+  .b3-side-collapsible[data-open="true"] .b3-side-item--nested:nth-child(2) { animation-delay: 50ms; }
+  .b3-side-collapsible[data-open="true"] .b3-side-item--nested:nth-child(3) { animation-delay: 70ms; }
+  .b3-side-collapsible[data-open="true"] .b3-side-item--nested:nth-child(4) { animation-delay: 90ms; }
+  .b3-side-collapsible[data-open="true"] .b3-side-item--nested:nth-child(5) { animation-delay: 110ms; }
+  .b3-side-collapsible[data-open="true"] .b3-side-item--nested:nth-child(6) { animation-delay: 130ms; }
+  .b3-side-collapsible[data-open="true"] .b3-side-item--nested:nth-child(7) { animation-delay: 150ms; }
+  .b3-side-collapsible[data-open="true"] .b3-side-item--nested:nth-child(8) { animation-delay: 170ms; }
+  .b3-side-collapsible[data-open="true"] .b3-side-item--nested:nth-child(9) { animation-delay: 190ms; }
+  @keyframes b3-side-item-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .b3-side-collapsible { transition: none; }
+    .b3-side-section .chev { transition: none; }
+    .b3-side-collapsible[data-open="true"] .b3-side-item--nested {
+      animation: none;
+    }
+  }
+  /* Item nested (dentro de uma seção do accordion) — indent leve pra dar
+     hierarquia visual sem virar sub-item de outro nível. */
+  .b3-side-item--nested {
+    padding-left: 18px;
+    font-size: 13px;
+  }
+  .b3-side-item--nested svg {
+    width: 16px;
+    height: 16px;
   }
   .b3-side-item {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 9px 16px;
+    gap: 12px;
+    margin: 1px 12px;
+    padding: 9px 12px;
     font-size: 13.5px;
-    font-weight: 500;
-    color: var(--ink-2);
+    font-weight: 600;
+    color: var(--ink-1);
     cursor: pointer;
     position: relative;
-    border-left: 3px solid transparent;
+    border-radius: 10px;
+    transition: background-color 150ms, color 150ms;
   }
-  .b3-side-item:hover { background: var(--bg-app); }
-  .b3-side-item svg { color: var(--ink-3); flex-shrink: 0; }
+  .b3-side-item:hover { background: var(--mangos-cream-soft); color: var(--mangos-green-900); }
+  .b3-side-item svg { color: var(--ink-3); flex-shrink: 0; transition: color 150ms; }
+  .b3-side-item:hover svg { color: var(--mangos-green-800); }
   .b3-side-item[data-active="true"] {
-    background: var(--brand-wash);
-    border-left-color: var(--brand);
-    color: var(--brand);
+    background: var(--mangos-yellow-soft);
+    color: var(--mangos-green-900);
   }
-  .b3-side-item[data-active="true"] svg { color: var(--brand); }
+  .b3-side-item[data-active="true"] svg { color: var(--mangos-orange); }
   .b3-side-item .chev {
     margin-left: auto;
     color: var(--ink-4);
@@ -767,55 +948,69 @@
     margin-left: auto;
   }
   .b3-side-sub {
-    background: var(--bg-app);
-    padding: 2px 0;
+    margin: 2px 12px 4px;
+    background: var(--mangos-cream-soft);
+    border-radius: 10px;
+    padding: 4px 0;
   }
   .b3-side-sub-item {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 16px 8px 48px;
+    padding: 7px 16px 7px 44px;
     font-size: 13px;
     color: var(--ink-3);
     cursor: pointer;
     position: relative;
+    border-radius: 6px;
+    margin: 0 6px;
   }
-  .b3-side-sub-item:hover { color: var(--ink-1); }
+  .b3-side-sub-item:hover { color: var(--mangos-green-900); }
   .b3-side-sub-item[data-active="true"] {
-    color: var(--brand);
-    font-weight: 600;
+    color: var(--mangos-green-900);
+    font-weight: 700;
   }
   .b3-side-sub-item[data-active="true"]::before {
-    content: "↳";
+    content: "";
     position: absolute;
-    left: 30px;
-    color: var(--brand);
+    left: 28px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--mangos-orange);
   }
   .b3-side-foot {
     margin-top: auto;
-    padding: 14px 16px;
+    padding: 14px 16px 18px;
     border-top: 1px solid var(--line);
   }
   .b3-side-foot-user {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 8px;
-    border-radius: 8px;
+    padding: 10px;
+    border-radius: 12px;
     cursor: pointer;
+    background: var(--mangos-cream-soft);
+    border: 1px solid var(--line);
+    transition: background-color 150ms, border-color 150ms;
   }
-  .b3-side-foot-user:hover { background: var(--bg-app); }
+  .b3-side-foot-user:hover {
+    background: var(--surface);
+    border-color: var(--mangos-border-strong);
+  }
   .b3-side-foot-avatar {
-    width: 32px;
-    height: 32px;
-    background: linear-gradient(135deg, #B6731F, #92580C);
-    color: white;
+    width: 36px;
+    height: 36px;
+    background: var(--mangos-yellow);
+    color: var(--mangos-green-950);
     border-radius: 50%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
   }
   .b3-side-foot-user-meta { flex: 1; min-width: 0; }
   .b3-side-foot-user-meta b {
@@ -841,36 +1036,42 @@
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 14px 28px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--line);
+    padding: 12px 24px;
+    background: color-mix(in oklab, var(--surface) 90%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--line);
+    border-radius: 18px;
     position: sticky;
-    top: 0;
+    top: 12px;
     z-index: 30;
+    min-height: 64px;
   }
   .b3-search {
     flex: 1;
-    max-width: 420px;
+    max-width: 560px;
     position: relative;
     display: flex;
     align-items: center;
     gap: 10px;
-    height: 38px;
+    height: 40px;
     padding: 0 10px 0 14px;
     border: 1px solid var(--line);
-    background: var(--bg-app);
-    border-radius: 8px;
+    background: var(--mangos-cream-soft);
+    border-radius: 10px;
     font-size: 13.5px;
     color: var(--ink-1);
+    transition: background-color 150ms, border-color 150ms, box-shadow 150ms;
   }
   .b3-search:hover {
     background: var(--surface);
+    border-color: var(--mangos-border-strong);
   }
   .b3-search:focus-visible {
     outline: none;
     background: var(--surface);
-    border-color: var(--brand);
-    box-shadow: 0 0 0 3px var(--brand-wash);
+    border-color: var(--mangos-yellow);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--mangos-yellow) 30%, transparent);
   }
   .b3-search input {
     flex: 1;
@@ -886,28 +1087,33 @@
     flex-shrink: 0;
   }
   .b3-top-icbtn {
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
     background: transparent;
     border: none;
-    border-radius: 50%;
+    border-radius: 10px;
     cursor: pointer;
-    color: var(--ink-2);
+    color: var(--ink-3);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     position: relative;
+    transition: background-color 150ms, color 150ms;
   }
-  .b3-top-icbtn:hover { background: var(--bg-app); }
+  .b3-top-icbtn:hover { background: var(--mangos-cream-soft); color: var(--mangos-green-900); }
+  .b3-top-icbtn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--mangos-yellow) 35%, transparent);
+  }
   .b3-top-icbtn .ndot {
     position: absolute;
-    top: 8px;
-    right: 9px;
-    width: 7px;
-    height: 7px;
-    background: var(--danger);
+    top: 9px;
+    right: 10px;
+    width: 8px;
+    height: 8px;
+    background: var(--mangos-yellow);
     border-radius: 50%;
-    border: 2px solid white;
+    border: 2px solid var(--surface);
   }
 
   /* Page wrapper */
@@ -993,9 +1199,12 @@
     overflow-x: auto;
   }
   .b3-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     padding: 14px 16px;
     font-size: 13.5px;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--ink-3);
     cursor: pointer;
     border-bottom: 2px solid transparent;
@@ -1005,12 +1214,15 @@
     border-right: 0;
     border-top: 0;
     white-space: nowrap;
+    transition: color 150ms;
   }
+  .b3-tab:hover { color: var(--ink-1); }
   .b3-tab[data-active="true"] {
     color: var(--brand);
-    font-weight: 600;
+    font-weight: 700;
     border-bottom-color: var(--brand);
   }
+  .b3-tab svg { flex-shrink: 0; }
 
   /* ========================================================
    * TOOLBAR — barra de busca + ações acima de tabelas

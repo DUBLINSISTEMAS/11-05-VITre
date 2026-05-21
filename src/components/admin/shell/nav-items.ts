@@ -1,10 +1,10 @@
-// Estrutura de navegação do admin — 4 grupos canônicos (Sprint 0, CLAUDE.md).
-// Todos os itens são flat (sem sub-itens recolhíveis).
+// Estrutura de navegação do admin — Início + 4 grupos colapsáveis (accordion).
 // soon:true → renderizado como disabled com badge "em breve" pelo sidebar-content.
 import {
   AlertTriangleIcon,
   ArrowLeftRightIcon,
   BarChart2Icon,
+  BookOpenIcon,
   Building2Icon,
   CalculatorIcon,
   ClockIcon,
@@ -23,13 +23,16 @@ import {
   ReceiptTextIcon,
   ScanBarcodeIcon,
   ShoppingCartIcon,
+  StoreIcon,
   TagIcon,
   TicketPercentIcon,
+  TrendingUpIcon,
   TruckIcon,
   UserCogIcon,
   UsersIcon,
   UsersRoundIcon,
   WalletIcon,
+  ZapIcon,
 } from "lucide-react";
 
 export interface AdminNavSubItem {
@@ -50,25 +53,43 @@ export interface AdminNavItem {
 }
 
 export interface AdminNavSection {
+  k: string;
   label: string;
+  icon: LucideIcon;
   items: AdminNavItem[];
 }
 
+/**
+ * Item "Início" — sempre visível no topo, fora do accordion.
+ * Decisão founder 2026-05-21: o dashboard é o ponto de aterrissagem padrão
+ * do lojista, então não fica enterrado num grupo recolhível.
+ */
+export const ADMIN_NAV_HOME: AdminNavItem = {
+  k: "inicio",
+  label: "Início",
+  icon: LayoutDashboardIcon,
+  href: "/admin",
+  exact: true,
+};
+
 export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
   {
-    label: "OPERAÇÃO",
+    k: "operacao",
+    label: "Operação",
+    icon: ZapIcon,
     items: [
-      { k: "inicio",   label: "Início",                  icon: LayoutDashboardIcon, href: "/admin",           exact: true },
-      { k: "pdv",      label: "Venda balcão",            icon: ScanBarcodeIcon,     href: "/admin/pdv",       exact: true },
-      { k: "caixa",    label: "Caixa do dia",            icon: WalletIcon,          href: "/admin/pdv/caixa"             },
-      { k: "vendas",   label: "Vendas",                  icon: ReceiptIcon,         href: "/admin/pedidos"               },
-      { k: "estoque",  label: "Movimentação de estoque", icon: ArrowLeftRightIcon,  href: "/admin/estoque",   exact: true },
-      { k: "receber",  label: "A receber",               icon: ClockIcon,           href: "/admin/financeiro/receber"    },
-      { k: "contatos", label: "Recados do site",         icon: InboxIcon,           href: "/admin/contatos"              },
+      { k: "pdv",      label: "Venda balcão",            icon: ScanBarcodeIcon,    href: "/admin/pdv",       exact: true },
+      { k: "caixa",    label: "Caixa do dia",            icon: WalletIcon,         href: "/admin/pdv/caixa"             },
+      { k: "vendas",   label: "Vendas",                  icon: ReceiptIcon,        href: "/admin/pedidos"               },
+      { k: "estoque",  label: "Movimentação de estoque", icon: ArrowLeftRightIcon, href: "/admin/estoque",   exact: true },
+      { k: "receber",  label: "A receber",               icon: ClockIcon,          href: "/admin/financeiro/receber"    },
+      { k: "contatos", label: "Recados do site",         icon: InboxIcon,          href: "/admin/contatos"              },
     ],
   },
   {
-    label: "CADASTROS",
+    k: "cadastros",
+    label: "Cadastros",
+    icon: BookOpenIcon,
     items: [
       { k: "produtos",       label: "Produtos",          icon: PackageIcon,    href: "/admin/produtos",       exact: true },
       { k: "categorias",     label: "Categorias",        icon: FolderIcon,     href: "/admin/categorias"                  },
@@ -79,18 +100,22 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
     ],
   },
   {
-    label: "GESTÃO",
+    k: "gestao",
+    label: "Gestão",
+    icon: TrendingUpIcon,
     items: [
-      { k: "relatorios",    label: "Relatórios",    icon: BarChart2Icon,     href: "/admin/relatorios"        },
-      { k: "estoque-baixo", label: "Estoque baixo", icon: AlertTriangleIcon, href: "/admin/estoque/relatorio" },
-      { k: "compras",       label: "Compras",       icon: ShoppingCartIcon,  href: "/admin/compras"           },
-      { k: "custos",        label: "Custo & margem",icon: CalculatorIcon,    href: "/admin/produtos/custos"   },
+      { k: "relatorios",    label: "Relatórios",     icon: BarChart2Icon,     href: "/admin/relatorios"        },
+      { k: "estoque-baixo", label: "Estoque baixo",  icon: AlertTriangleIcon, href: "/admin/estoque/relatorio" },
+      { k: "compras",       label: "Compras",        icon: ShoppingCartIcon,  href: "/admin/compras"           },
+      { k: "custos",        label: "Custo & margem", icon: CalculatorIcon,    href: "/admin/produtos/custos"   },
     ],
   },
   {
-    label: "LOJA ONLINE + CONFIGURAÇÕES",
+    k: "loja-config",
+    label: "Loja online + Configurações",
+    icon: StoreIcon,
     items: [
-      { k: "aparencia",  label: "Aparência",          icon: PaletteIcon,       href: "/admin/aparencia"        },
+      { k: "aparencia",  label: "Aparência",           icon: PaletteIcon,       href: "/admin/aparencia"        },
       { k: "banners",    label: "Banners",             icon: ImageIcon,         href: "/admin/banners"          },
       { k: "vitrines",   label: "Vitrines",            icon: LayoutGridIcon,    href: "/admin/colecoes"         },
       { k: "filtros",    label: "Filtros da loja",     icon: ListFilterIcon,    href: "/admin/atributos"        },
@@ -105,7 +130,7 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
 
 /**
  * Item de suporte — exportado separadamente para render como link discreto
- * no footer da sidebar, abaixo dos 4 grupos e acima do user card.
+ * no footer da sidebar, abaixo dos grupos e acima do user card.
  */
 export const ADMIN_NAV_SUPPORT: AdminNavItem = {
   k: "suporte",
@@ -128,4 +153,18 @@ export function isItemActive(item: AdminNavItem, pathname: string): boolean {
     return item.subs.some((s) => isSubItemActive(s, pathname));
   }
   return false;
+}
+
+/**
+ * Acha qual seção (operacao/cadastros/gestao/loja-config) contém o pathname.
+ * Usado pra abrir o accordion correto ao entrar na rota.
+ * Retorna null se nenhuma seção bater (ex: rota /admin é o Início standalone).
+ */
+export function findActiveSectionKey(pathname: string): string | null {
+  for (const section of ADMIN_NAV_SECTIONS) {
+    if (section.items.some((item) => isItemActive(item, pathname))) {
+      return section.k;
+    }
+  }
+  return null;
 }

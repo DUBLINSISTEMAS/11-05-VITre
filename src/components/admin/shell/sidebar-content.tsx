@@ -1,16 +1,18 @@
 "use client";
 
-// Conteúdo da sidebar admin — port Dublin v3 (ADR-0019, Onda A.3).
+// Conteúdo da sidebar admin — accordion estilo fintech (Fase 2 redesign 2026-05-21).
 // Renderiza estritamente os primitivos `b3-side-*` definidos em globals.css.
 // Usado em desktop (dentro de `<aside class="b3-side">`) e em mobile
 // (dentro de um Sheet drawer com `flex flex-col`).
 //
 // Estrutura:
-// - b3-side-top: store switcher (logo da loja + nome + handle)
-// - 3 seções (CONTROLE INTERNO / MINHA LOJA / CONTA) com headers b3-side-group
-// - Cada item pode ter `subs` (recolhível com chevron) ou ser link direto
-// - Items `soon: true` são renderizados disabled com badge "em breve"
-// - b3-side-foot: user card com dropdown (Sair / Configurações / Ver vitrine)
+// - b3-side-top: brand Mangos Pay (logo + wordmark) — link pra /admin
+// - Início standalone (sempre visível, fora do accordion)
+// - 4 seções colapsáveis (Operação / Cadastros / Gestão / Loja online + Config)
+//   com comportamento accordion: abrir uma fecha a anterior
+// - Default aberto: a seção que contém a rota atual
+// - SupportFooterLink discreto acima do rodapé
+// - b3-side-foot: store identity + dropdown
 import {
   ChevronDownIcon,
   LogOutIcon,
@@ -18,11 +20,13 @@ import {
   SettingsIcon,
   StoreIcon,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { MangoLogo } from "@/components/brand/mango-logo";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,14 +39,16 @@ import { signOut } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 import {
+  ADMIN_NAV_HOME,
   ADMIN_NAV_SECTIONS,
   ADMIN_NAV_SUPPORT,
   type AdminNavItem,
+  type AdminNavSection,
   type AdminNavSubItem,
+  findActiveSectionKey,
   isItemActive,
   isSubItemActive,
 } from "./nav-items";
-import { StoreSwitcher } from "./store-switcher";
 
 export interface SidebarContentProps {
   ownerName: string;
@@ -66,60 +72,154 @@ export function SidebarContent({
 }: SidebarContentProps) {
   const pathname = usePathname();
 
+  // Accordion state — uma única seção aberta por vez.
+  // Inicializa abrindo a seção da rota atual; null = todas fechadas.
+  const [openKey, setOpenKey] = useState<string | null>(() =>
+    findActiveSectionKey(pathname),
+  );
+
+  // Ao navegar entre seções (ex: via command palette), sincroniza o accordion
+  // pra abrir a seção da nova rota. Se a rota não bate em nenhuma seção
+  // (caso de /admin), preserva o estado atual do usuário.
+  useEffect(() => {
+    const active = findActiveSectionKey(pathname);
+    if (active && active !== openKey) {
+      setOpenKey(active);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  const handleToggleSection = (sectionKey: string) => {
+    setOpenKey((prev) => (prev === sectionKey ? null : sectionKey));
+  };
+
   return (
     <>
-      {/* b3-side-top: store switcher no topo (substitui logo "D"/"dublin" do handoff) */}
-      <div className="b3-side-top">
-        <StoreSwitcher
-          storeName={storeName}
-          storeSlug={storeSlug}
-          primaryColor={primaryColor}
-          logoUrl={logoUrl}
-        />
-      </div>
+      {/* b3-side-top: brand Mangos Pay (logo + wordmark) — link pra /admin */}
+      <Link
+        href="/admin"
+        prefetch
+        className="b3-side-top outline-none focus-visible:ring-2 focus-visible:ring-mangos-yellow/40"
+        aria-label="Mangos Pay — ir para o início"
+        onClick={onNavigate}
+      >
+        <MangoLogo />
+      </Link>
 
-      <nav className="flex-1 overflow-y-auto" aria-label="Navegação principal">
+      <nav className="flex-1 overflow-y-auto py-2" aria-label="Navegação principal">
+        {/* Início standalone — sempre visível, fora do accordion */}
+        <div className="px-0 pb-1">
+          <NavItemRow
+            item={ADMIN_NAV_HOME}
+            pathname={pathname}
+            onNavigate={onNavigate}
+          />
+        </div>
+
+        {/* 4 seções colapsáveis (accordion: uma aberta por vez) */}
         {ADMIN_NAV_SECTIONS.map((section) => (
-          <div key={section.label}>
-            <div className="b3-side-group">{section.label}</div>
-            {section.items.map((item) => (
-              <NavItemRow
-                key={item.k}
-                item={item}
-                pathname={pathname}
-                onNavigate={onNavigate}
-              />
-            ))}
-          </div>
+          <NavSection
+            key={section.k}
+            section={section}
+            pathname={pathname}
+            isOpen={openKey === section.k}
+            onToggle={() => handleToggleSection(section.k)}
+            onNavigate={onNavigate}
+          />
         ))}
       </nav>
 
       <SupportFooterLink pathname={pathname} onNavigate={onNavigate} />
 
-      {/* b3-side-foot: user card no rodapé */}
-      <UserCardFooter
+      {/* b3-side-foot: identidade da loja do lojista + dropdown da conta */}
+      <StoreFooter
         ownerName={ownerName}
         ownerEmail={ownerEmail}
+        storeName={storeName}
         storeSlug={storeSlug}
+        primaryColor={primaryColor}
+        logoUrl={logoUrl}
       />
     </>
   );
 }
 
-// ----- NAV ITEM (header — link direto OU expansível com subs) -----
+// ----- NAV SECTION (header colapsável + items) -----
+
+interface NavSectionProps {
+  section: AdminNavSection;
+  pathname: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  onNavigate?: () => void;
+}
+
+function NavSection({
+  section,
+  pathname,
+  isOpen,
+  onToggle,
+  onNavigate,
+}: NavSectionProps) {
+  const Icon = section.icon;
+  const hasActive = section.items.some((item) => isItemActive(item, pathname));
+
+  return (
+    <div className="b3-side-section-wrap">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        aria-controls={`b3-side-panel-${section.k}`}
+        className="b3-side-section"
+        data-active={hasActive ? "true" : undefined}
+        data-open={isOpen ? "true" : undefined}
+      >
+        <Icon size={17} aria-hidden />
+        <span className="flex-1 truncate">{section.label}</span>
+        <ChevronDownIcon size={14} className="chev" aria-hidden />
+      </button>
+
+      <div
+        id={`b3-side-panel-${section.k}`}
+        className="b3-side-collapsible"
+        data-open={isOpen ? "true" : undefined}
+        aria-hidden={!isOpen}
+      >
+        <div className="b3-side-collapsible-inner">
+          {section.items.map((item) => (
+            <NavItemRow
+              key={item.k}
+              item={item}
+              pathname={pathname}
+              onNavigate={onNavigate}
+              nested
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ----- NAV ITEM (link direto OU expansível com subs) -----
 
 interface NavItemRowProps {
   item: AdminNavItem;
   pathname: string;
   onNavigate?: () => void;
+  /** True quando o item está dentro de uma seção do accordion (indent). */
+  nested?: boolean;
 }
 
-function NavItemRow({ item, pathname, onNavigate }: NavItemRowProps) {
+function NavItemRow({ item, pathname, onNavigate, nested }: NavItemRowProps) {
   const Icon = item.icon;
   const hasSubs = Boolean(item.subs && item.subs.length > 0);
   const isActive = isItemActive(item, pathname);
   // Default: aberto se algum sub estiver ativo
   const [isOpen, setIsOpen] = useState(isActive && hasSubs);
+
+  const itemClass = cn("b3-side-item", nested && "b3-side-item--nested");
 
   // ----- Item COM subs: clica no header pra toggle, não navega -----
   if (hasSubs) {
@@ -129,7 +229,7 @@ function NavItemRow({ item, pathname, onNavigate }: NavItemRowProps) {
           type="button"
           onClick={() => setIsOpen((v) => !v)}
           aria-expanded={isOpen}
-          className="b3-side-item w-full text-left"
+          className={cn(itemClass, "w-full text-left")}
           data-active={isActive ? "true" : undefined}
           data-open={isOpen ? "true" : undefined}
         >
@@ -159,7 +259,7 @@ function NavItemRow({ item, pathname, onNavigate }: NavItemRowProps) {
   if (item.soon) {
     return (
       <div
-        className="b3-side-item cursor-not-allowed opacity-50"
+        className={cn(itemClass, "cursor-not-allowed opacity-50")}
         aria-disabled="true"
         title="Em breve"
       >
@@ -177,7 +277,7 @@ function NavItemRow({ item, pathname, onNavigate }: NavItemRowProps) {
       <a
         href={item.href}
         onClick={onNavigate}
-        className="b3-side-item"
+        className={itemClass}
         data-active={isActive ? "true" : undefined}
       >
         <Icon size={17} aria-hidden />
@@ -191,7 +291,7 @@ function NavItemRow({ item, pathname, onNavigate }: NavItemRowProps) {
       href={item.href!}
       prefetch
       onClick={onNavigate}
-      className="b3-side-item"
+      className={itemClass}
       data-active={isActive ? "true" : undefined}
       aria-current={isActive ? "page" : undefined}
     >
@@ -279,12 +379,15 @@ function SoonBadge() {
   );
 }
 
-// ----- USER CARD FOOTER -----
+// ----- STORE FOOTER (identidade do lojista + dropdown da conta) -----
 
-interface UserCardFooterProps {
+interface StoreFooterProps {
   ownerName: string;
   ownerEmail: string;
+  storeName: string;
   storeSlug: string;
+  primaryColor: string;
+  logoUrl: string | null;
 }
 
 function getInitials(name: string): string {
@@ -294,11 +397,14 @@ function getInitials(name: string): string {
   return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
 }
 
-function UserCardFooter({
+function StoreFooter({
   ownerName,
   ownerEmail,
+  storeName,
   storeSlug,
-}: UserCardFooterProps) {
+  primaryColor,
+  logoUrl,
+}: StoreFooterProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -319,11 +425,34 @@ function UserCardFooter({
   return (
     <div className="b3-side-foot">
       <div className="b3-side-foot-user">
-        <span className="b3-side-foot-avatar" aria-hidden>
-          {getInitials(ownerName)}
-        </span>
+        {logoUrl ? (
+          <span
+            aria-hidden
+            className="relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-line bg-white"
+          >
+            <Image
+              src={logoUrl}
+              alt=""
+              fill
+              sizes="36px"
+              className="object-contain p-0.5"
+            />
+          </span>
+        ) : (
+          <span
+            aria-hidden
+            className="b3-side-foot-avatar"
+            style={
+              primaryColor && primaryColor !== "#F6B73C"
+                ? { background: primaryColor, color: "white" }
+                : undefined
+            }
+          >
+            {getInitials(storeName)}
+          </span>
+        )}
         <div className="b3-side-foot-user-meta">
-          <b>{ownerName.split(/\s+/)[0] ?? "Você"}</b>
+          <b className="uppercase tracking-tight">{storeName}</b>
           <span>{ownerEmail}</span>
         </div>
         <DropdownMenu>
