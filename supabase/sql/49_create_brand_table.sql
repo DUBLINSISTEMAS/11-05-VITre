@@ -1,6 +1,6 @@
 -- Tabela `brand` — Sprint 2 ativará CRUD em /admin/marcas (substitui texto
 -- livre do form de produto). Preparada agora (Sprint 0, Prompt 6) para
--- desbloquear o schema Drizzle. NÃO aplicar até a Sprint 2.
+-- desbloquear o schema Drizzle.
 --
 -- Decisões:
 -- - RLS-first, store_id obrigatório (princípio CLAUDE.md #1)

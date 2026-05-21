@@ -5,7 +5,7 @@
  * Lê DIRECT_URL de .env.local. Nunca escreve no banco.
  * Uso: pnpm exec tsx scripts/check-sql-applied.mjs
  *
- * Cobertura: SQLs 11–43 (estruturais). SQLs 01–10 são bootstrap inicial
+ * Cobertura: SQLs 11–56 (estruturais). SQLs 01–10 são bootstrap inicial
  * e SQL 17_cleanup / 99_cleanup são one-shot DELETE — sem auditoria.
  */
 import { config } from "dotenv";
@@ -32,7 +32,10 @@ const checks = [
   { id: "24",  desc: "stock_movement trigger sync cache", q: "SELECT 1 FROM pg_trigger WHERE tgname ILIKE '%stock%movement%' OR tgname ILIKE '%sync_stock%'" },
   // SQL 25 (backfill) é condicional: roda só se houver produto com track_stock+saldo>0.
   // Em prod limpo, INSERT 0 linhas é resultado correto — não auditado.
-  { id: "26",  desc: "PDV CHECK constraints (Fase 5 — ADR-0016)", q: "SELECT 1 FROM pg_constraint WHERE conname IN ('order_balcao_requires_payment_method','order_discount_nonneg','order_cash_received_consistency','order_whatsapp_no_pos_fields') HAVING count(*) = 4" },
+  // SQL 26 criou 4 CHECKs. SQL 57 dropou `order_balcao_requires_payment_method`
+  // (obsoleto desde Sprint 1A multipayment — fiado/orçamento legitimamente
+  // gravam payment_method=null). Sentinela aqui valida os 3 que sobreviveram.
+  { id: "26",  desc: "PDV CHECK constraints sobreviventes (Fase 5 — ADR-0016 + SQL 57)", q: "SELECT 1 FROM pg_constraint WHERE conname IN ('order_discount_nonneg','order_cash_received_consistency','order_whatsapp_no_pos_fields') HAVING count(*) = 3" },
   { id: "27",  desc: "PDV surcharge dual (ADR-0020)", q: "SELECT 1 FROM pg_constraint WHERE conname ILIKE '%surcharge%'" },
   { id: "28",  desc: "customer document CHECK (PF/PJ — ADR-0021)", q: "SELECT 1 FROM pg_constraint WHERE conrelid='customer'::regclass AND (conname ILIKE '%document%' OR conname ILIKE '%customer_type%')" },
   { id: "29",  desc: "cash_session CHECK constraints", q: "SELECT 1 FROM pg_constraint WHERE conrelid=to_regclass('cash_session') AND contype='c'" },
@@ -50,6 +53,37 @@ const checks = [
   { id: "41",  desc: "lead_anon_insert hardened com store ativa (S4 — 2026-05-19)", q: "SELECT 1 FROM pg_policies WHERE tablename='lead' AND policyname='lead_anon_insert' AND with_check ILIKE '%is_active%'" },
   { id: "42",  desc: "DROP order_anonymous_insert policy redundante (A3 — 2026-05-19)", q: "SELECT 1 FROM pg_policies WHERE tablename='order' AND policyname='order_anonymous_insert'", expectEmpty: true },
   { id: "43",  desc: "sync_stock trigger respeita track_stock (Onda C #8 — 2026-05-19)", q: "SELECT 1 FROM pg_proc WHERE proname='sync_stock_cache_on_movement' AND prosrc ILIKE '%track_stock%'" },
+  // ADR-0034 Camada Comercial — SQLs 44-48 (Camadas 1-2)
+  { id: "44a", desc: "product cost/stock/gtin/ncm/commission CHECKs (ADR-0034 Camada 1)", q: "SELECT 1 FROM pg_constraint WHERE conname IN ('product_cost_price_nonneg','product_min_stock_nonneg','product_max_stock_nonneg','product_max_gte_min','product_gtin_format','product_ncm_format','product_commission_bps_range') HAVING count(*) = 7" },
+  { id: "44b", desc: "product (store,gtin) e (store,internal_code) UNIQUE parciais", q: "SELECT 1 FROM pg_indexes WHERE indexname IN ('product_store_gtin_unique','product_store_internal_code_unique') HAVING count(*) = 2" },
+  { id: "44c", desc: "order_item unit_cost_snapshot CHECK nonneg", q: "SELECT 1 FROM pg_constraint WHERE conname = 'order_item_unit_cost_snapshot_nonneg'" },
+  { id: "44d", desc: "order_payment amount_positive + cash_received_consistent", q: "SELECT 1 FROM pg_constraint WHERE conname IN ('order_payment_amount_positive','order_payment_cash_received_consistent') HAVING count(*) = 2" },
+  { id: "44e", desc: "supplier document/state/zip CHECKs", q: "SELECT 1 FROM pg_constraint WHERE conname IN ('supplier_document_format','supplier_state_format','supplier_zip_format') HAVING count(*) = 3" },
+  { id: "44f", desc: "purchase total_nonneg + payment_method_when_paid", q: "SELECT 1 FROM pg_constraint WHERE conname IN ('purchase_total_nonneg','purchase_payment_method_when_paid') HAVING count(*) = 2" },
+  { id: "44g", desc: "purchase_item quantity_positive + unit_cost_nonneg", q: "SELECT 1 FROM pg_constraint WHERE conname IN ('purchase_item_quantity_positive','purchase_item_unit_cost_nonneg') HAVING count(*) = 2" },
+  { id: "44h", desc: "receivable amount_positive + paid_method_when_paid", q: "SELECT 1 FROM pg_constraint WHERE conname IN ('receivable_amount_positive','receivable_paid_method_when_paid') HAVING count(*) = 2" },
+  { id: "45",  desc: "purchase_item.total_cost_in_cents é GENERATED STORED", q: "SELECT 1 FROM information_schema.columns WHERE table_name='purchase_item' AND column_name='total_cost_in_cents' AND is_generated='ALWAYS'" },
+  { id: "46",  desc: "RLS em order_payment/supplier/purchase/purchase_item/receivable (Camada 1)", q: "SELECT 1 FROM pg_policies WHERE tablename IN ('order_payment','supplier','purchase','purchase_item','receivable') HAVING count(*) >= 5" },
+  { id: "47",  desc: "order_payment backfill: linhas == orders com payment_method NOT NULL", q: "SELECT 1 WHERE (SELECT COUNT(*) FROM \"order\" WHERE payment_method IS NOT NULL) = (SELECT COUNT(DISTINCT order_id) FROM \"order_payment\")" },
+  { id: "48",  desc: "product wholesale_price CHECKs (nonneg + lte_base, ADR-0034 Camada 2)", q: "SELECT 1 FROM pg_constraint WHERE conname IN ('product_wholesale_price_nonneg','product_wholesale_lte_base') HAVING count(*) = 2" },
+  // Sprint 1A + Sprint 2A — SQLs 49-52
+  { id: "49",  desc: "brand table existe com RLS forced (Sprint 2)", q: "SELECT 1 FROM pg_class WHERE relname='brand' AND relrowsecurity=true AND relforcerowsecurity=true" },
+  { id: "50a", desc: "enum order_status inclui 'quote' (Sprint 1A Fase 4)", q: "SELECT 1 FROM pg_enum WHERE enumtypid=(SELECT oid FROM pg_type WHERE typname='order_status') AND enumlabel='quote'" },
+  { id: "50b", desc: "order.quote_valid_until column existe", q: "SELECT 1 FROM information_schema.columns WHERE table_name='order' AND column_name='quote_valid_until'" },
+  { id: "51a", desc: "product.brand_id FK column existe (Sprint 2A)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='product' AND column_name='brand_id'" },
+  { id: "51b", desc: "product_brand_idx index existe", q: "SELECT 1 FROM pg_indexes WHERE indexname='product_brand_idx'" },
+  { id: "52",  desc: "stock_movement aceita reference_type='purchase' (Sprint 3)", q: "SELECT 1 FROM pg_constraint WHERE conname='stock_movement_reference_consistency' AND pg_get_constraintdef(oid) ILIKE '%purchase%'" },
+  // Sprint 4A + Pre-Sprint-6 B/C — SQLs 53-55
+  { id: "53",  desc: "receivable_payment table existe com RLS forced (Sprint 4A)", q: "SELECT 1 FROM pg_class WHERE relname='receivable_payment' AND relrowsecurity=true AND relforcerowsecurity=true" },
+  { id: "54a", desc: "receivable_payment amount_nonzero CHECK (permite reversal negativo)", q: "SELECT 1 FROM pg_constraint WHERE conname='receivable_payment_amount_nonzero'" },
+  { id: "54b", desc: "receivable_payment.reversal_of_id column + FK", q: "SELECT 1 FROM information_schema.columns WHERE table_name='receivable_payment' AND column_name='reversal_of_id'" },
+  { id: "54c", desc: "receivable_payment_reversal_unique (defesa double-reversal)", q: "SELECT 1 FROM pg_indexes WHERE indexname='receivable_payment_reversal_unique'" },
+  { id: "55a", desc: "enum order_status inclui 'returned' (Pre-Sprint-6 C)", q: "SELECT 1 FROM pg_enum WHERE enumtypid=(SELECT oid FROM pg_type WHERE typname='order_status') AND enumlabel='returned'" },
+  { id: "55b", desc: "order_return + order_return_item com RLS forced", q: "SELECT 1 FROM pg_class WHERE relname IN ('order_return','order_return_item') AND relrowsecurity=true AND relforcerowsecurity=true HAVING count(*) = 2" },
+  // Sprint 6A — SQL 56
+  { id: "56",  desc: "audit_event table com RLS forced (Sprint 6A)", q: "SELECT 1 FROM pg_class WHERE relname='audit_event' AND relrowsecurity=true AND relforcerowsecurity=true" },
+  // PDV fix 2026-05-20 — SQL 57 (sentinela de não-regressão)
+  { id: "57",  desc: "SQL 57 dropou order_balcao_requires_payment_method (orçamento/fiado)", q: "SELECT 1 FROM pg_constraint WHERE conname='order_balcao_requires_payment_method'", expectEmpty: true },
 ];
 
 const url = process.env.DIRECT_URL;

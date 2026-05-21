@@ -8,7 +8,7 @@
 --   - short_code prefixado com 'Q-' (uniqueness preservado pelo retry)
 --   - quote_valid_until: typically created_at + 7 days
 --
--- Idempotente. NÃO APLICAR EM PROD ainda — review do Anderson primeiro.
+-- Idempotente.
 
 -- 1. Adicionar 'quote' ao enum. Posição: antes de 'awaiting_whatsapp' pra
 --    refletir cronologia natural (orçamento vira venda quando lojista fecha).

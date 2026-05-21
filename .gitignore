@@ -65,6 +65,7 @@ next-env.d.ts
 # referencias visuais (screenshots locais do founder pra refator de UI)
 /referencia de painel admin/
 /admin do concorrente/
+/PAINEL REF/
 .claude/
 
 # design source Dublin v3 (Claude lê como SoT visual local, NÃO entra no repo)
