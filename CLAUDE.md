@@ -160,265 +160,51 @@ Princípio do sistema, não feature isolada. Toda tela do Grupo 3 (Gestão) tem 
 
 ---
 
-## Sprint atual: Sprint 0 — Shell admin reorganizado
+## Sprint atual: Fase 1.7 — Deploy Vercel + smoke real
 
-**Início**: 2026-05-19
-**Fim previsto**: 2026-06-02 (10-14 dias)
-**Objetivo**: matar a sensação de "feito por IA". Nenhuma feature nova. Arrumar a casa.
+**Início**: 2026-05-21
+**Objetivo**: tirar o sistema do "pronto em dev" pra "Sandra usando de verdade". Nenhuma feature nova. Subir, validar e seedar.
+
+Fases 0-1.6 ✅ e Sprints 0 → 6 ✅ (fechadas em `docs/sessoes/2026-05-21-fechamento-sprints-0-a-6.md`). Estado: 58/58 SQLs em prod, 491/491 testes verdes, `tsc` limpo, anon bloqueado em 10/10 tabelas.
 
 ### Critério de "pronto" (régua sem exceção)
 
-- [ ] Sidebar reorganizada em 4 grupos com cabeçalhos
-- [ ] Todas as rotas existentes funcionando após reorganização
-- [ ] Vocabulário canônico aplicado em sidebar + headers de página + breadcrumbs
-- [ ] `ProductDialog` consolidado em UM ponto de montagem
-- [ ] Dashboard `/admin` refeito: 4 cards de operação do dia (sem checklist de setup, sem QuickActions)
-- [ ] Form de produto reorganizado em abas (Identidade · Preço & Custo · Estoque · Variantes · Loja online), aplicando princípios 8 e 9 sem exceção
-- [ ] Dead code sweep: componentes/funções não referenciados removidos
-- [ ] `npm run lint` zero warning, `tsc --noEmit` zero error
-- [ ] `npm run db:check` + `npm run db:check-anon` passando
-- [ ] Eu (Anderson) abro o admin como se fosse um lojista novo e completo "criar produto + lançar venda balcão" sem abrir 3 abas
-- [ ] Esta seção é atualizada com checkboxes marcados antes de iniciar Sprint 1
+- [ ] `npm run build` produção limpo local (Anderson roda)
+- [ ] `.env.example` sincronizado com `.env.local` (mesmas chaves, valores em placeholders)
+- [ ] Pooler validado em transaction mode pra produção (DATABASE_URL aponta pro pooler 6543, DIRECT_URL pro 5432)
+- [ ] `vercel link` + import do GitHub
+- [ ] 13 envs configuradas no painel Vercel em scope `production`
+- [ ] Region `gru1` (São Paulo) configurada em `vercel.json`
+- [ ] Cron `/api/cron/keep-alive` aparece em Vercel Crons UI
+- [ ] Deploy preview da branch funciona com env de staging (se houver) ou rejeita gracioso se Supabase de prod ainda não estiver pronto
+- [ ] Smoke test em produção:
+  - [ ] `https://<dominio>/sandra-brito` (ou loja seed) renderiza catálogo
+  - [ ] Adicionar ao carrinho → finalizar WhatsApp → código curto correto
+  - [ ] Login admin → criar produto via câmera mobile → upload OK
+  - [ ] Pedido aparece em `/admin/pedidos`
+  - [ ] PDV: abrir caixa, vender, fechar caixa Z
+- [ ] Lighthouse mobile na home da loja ≥ 90
+- [ ] Sandra Brito recebe link funcional + seed de dados reais
+- [ ] Esta seção é atualizada com checkboxes marcados antes de seguir pra Fase 2
 
-### Prompts iniciais para o Claude Code (executar em ordem, esperar aprovação entre cada)
+### Régua de execução (pré-deploy)
 
-#### Prompt 1 — Mapeamento da sidebar atual
-
-```
-Leia o arquivo que renderiza a sidebar do admin (provavelmente em
-src/components/admin/admin-sidebar.tsx, admin-layout.tsx, ou similar).
-Não modifique nada.
-
-Output esperado:
-- Caminho exato do arquivo
-- Lista de TODOS os itens de navegação com: label atual, href, ícone usado
-- Estrutura atual (flat? agrupada?)
-- Outros arquivos que importam ou montam navegação
-
-Espere minha confirmação antes de seguir.
-```
-
-#### Prompt 2 — Reorganização da sidebar
-
-```
-Reorganize a sidebar em 4 grupos com cabeçalho conforme tabela em CLAUDE.md
-seção "Arquitetura da navegação".
-
-REGRAS:
-- Mantenha TODAS as rotas atuais funcionando — apenas reorganiza visualmente
-- Aplique vocabulário novo (CLAUDE.md tabela "Vocabulário canônico") aos labels
-- Itens marcados *(Sprint 2/3/4/5)* ainda não existem como rota: renderizar
-  como item disabled com tooltip "em breve", NÃO como link 404
-- Use o componente de cabeçalho de grupo que combinar com o design atual
-  (consulte tokens em src/app/globals.css)
-- NÃO altere ícones existentes; se precisar de novo, use lucide-react
-- Item "Suporte" sai da sidebar principal: vira link discreto no footer da
-  sidebar ou no menu do avatar do usuário
-
-Output esperado: diff completo do arquivo da sidebar. Não commite ainda.
-Mostre o resultado e espere minha aprovação.
-```
-
-#### Prompt 3 — Vocabulário em onda (uma tela por vez)
-
-```
-Aplique o vocabulário canônico (CLAUDE.md) na seguinte ordem,
-UMA TELA POR VEZ, parando após cada uma para minha aprovação:
-
-1. src/app/(admin)/admin/pedidos/page.tsx + componentes filhos imediatos
-2. src/app/(admin)/admin/promocoes/cupons/ + componentes
-3. src/app/(admin)/admin/atributos/page.tsx
-4. src/app/(admin)/admin/colecoes/page.tsx
-5. src/app/(admin)/admin/contatos/page.tsx
-6. src/app/(admin)/admin/pagamento/page.tsx
-
-REGRAS:
-- Substituir APENAS strings em JSX/JSX-like (labels, headings, toasts,
-  breadcrumbs, empty states, mensagens de erro visíveis ao usuário)
-- NÃO renomear identifiers TypeScript, nomes de função, nomes de arquivo,
-  rotas, paths de URL, nomes de coluna em queries
-- NÃO alterar testes (testes mantêm vocabulário técnico)
-- Preserve copy de tom (placeholders, hints) — adapta gramaticalmente
-
-Após cada tela: mostre diff, espere aprovação, só depois passa pra próxima.
-```
-
-#### Prompt 4 — Consolidação do ProductDialog
-
-```
-Analise (sem modificar) os 3 sites onde ProductDialog é montado na página
-/admin/produtos:
-- src/components/admin/product-create-gate.tsx
-- src/components/admin/product-create-button.tsx
-- src/components/admin/products-table.tsx
-
-Documentado em docs/sessoes/2026-05-12-auditoria-senior-pendencias.md
-(primeiro item crítico).
-
-Output esperado (sem código ainda):
-- Para cada site: qual gatilho dispara o dialog, qual estado mantém,
-  qual handler de close
-- Proposta de consolidação: qual fica como ponto canônico, qual vira
-  consumer do estado, qual deleta
-- Plano de migração em passos numerados
-- Estimativa de risco (testes que precisam atualizar, rotas afetadas)
-
-Espere aprovação. NÃO comece o refactor agora.
-```
-
-#### Prompt 5 — Dashboard `/admin` refeito
-
-```
-Reescreva src/app/(admin)/admin/page.tsx removendo:
-- QuickActions
-- SetupChecklist
-- A saudação "Olá, {firstName}!" (substituir por título "Hoje")
-
-Substituir por uma grid de 4 cards de operação do dia, nesta ordem:
-
-1. CARD "Caixa"
-   - Se cash_session ativa: mostra opening + saldo esperado (do calculate)
-     + duração + CTA "Ver caixa" → /admin/pdv/caixa
-   - Se nenhuma: mostra "Caixa fechado" + CTA "Abrir caixa" → /admin/pdv/caixa
-   - Use loadActiveCashSession() já existente
-
-2. CARD "A receber"
-   - Total pendente em R$ (SUM receivable.amount_in_cents WHERE paid_at IS NULL)
-   - Total vencido em R$ (WHERE paid_at IS NULL AND due_date < now())
-   - CTA "Ver fiados" → /admin/financeiro/receber (rota não existe ainda,
-     renderizar como botão disabled com tooltip "disponível na Sprint 4")
-
-3. CARD "Estoque baixo"
-   - Count de produtos onde stock_quantity <= min_stock_quantity
-     E min_stock_quantity IS NOT NULL E track_stock = true
-   - CTA "Ver lista" → /admin/estoque/relatorio (já existe)
-
-4. CARD "Venda ontem"
-   - Total em R$ + count de ordens onde DATE(created_at) = CURRENT_DATE - 1
-     E status IN ('confirmed','fulfilled')
-   - Sem CTA (link inline no count → /admin/pedidos?de=ontem&ate=ontem)
-
-ABAIXO da grid de 4 cards: manter SalesSummaryCard (gráfico de receita) e
-RecentOrdersTable (últimas 5 vendas) — esses dois já existem e funcionam.
-
-Use mesma query pattern do código atual (withTenant + drizzle). Mantenha
-1 round-trip de DB (1 query agregada por card é OK; evitar 1 query por
-linha de result).
-
-Output esperado: diff de page.tsx + arquivos novos de componentes de card.
-Espere aprovação antes de commit.
-```
-
-#### Prompt 6 — Form de produto em 5 abas com inteligência espacial
-
-```
-Refatore src/components/admin/product-form.tsx (1111 linhas atual)
-em 5 abas navegáveis, aplicando rigorosamente os princípios 8 e 9
-do CLAUDE.md.
-
-REGRAS DE LAYOUT (princípio 9):
-- Campos numéricos curtos (preço, custo, %, quantidades, GTIN, código
-  interno): SEMPRE em grid de 2 ou 3 colunas. Nunca um campo numérico
-  curto sozinho ocupando 100% da largura.
-- Campos texto longo (descrição, composição, observação): ocupam 100%.
-- Campos relacionados ficam visualmente agrupados em sub-cards com
-  título, espaço 16-20px entre grupos.
-- Largura máxima do conteúdo da aba: 760px (centralizado em telas
-  maiores). Evitar campos com 1200px de largura em monitor wide.
-
-DIVISÃO DAS ABAS:
-
-1. "Identidade"
-   - Sub-card "Básico": nome (100%), descrição curta (100%), descrição
-     longa rich-text (100%)
-   - Sub-card "Classificação": marca (select com botão "+ Nova marca"
-     inline) | categoria (select com "+ Nova categoria") — grid 2 colunas
-   - Sub-card "Mídia": ImageUploader (mantém atual)
-
-2. "Preço & Custo"
-   - Sub-card "Venda": preço de venda | preço promocional | preço de
-     atacado — grid 3 colunas
-   - Sub-card "Custo": custo do produto | margem calculada (readonly,
-     com cálculo ao vivo: %, R$ por unidade) | comissão padrão — grid
-     3 colunas
-   - Sub-card "Tributação": NCM (campo texto, helper "Texto livre para
-     integração futura com Bling/Tiny") — largura 200px, não 100%
-
-3. "Estoque"
-   - Sub-card "Como controlar": switch "Controlar estoque" (largo, com
-     helper longo conforme glossário do CLAUDE.md)
-   - Sub-card "Quantidades" (só visível se controlar=ON): estoque atual
-     readonly com link "Ver movimentações" | estoque mínimo | estoque
-     máximo — grid 3 colunas
-   - Sub-card "Identificação": GTIN | código interno | unidade — grid
-     3 colunas. Helpers do glossário aplicados em CADA campo.
-
-4. "Variantes"
-   - VariantEditor (mantém atual)
-
-5. "Loja online"
-   - Sub-card "Publicação": switch publicar no catálogo | switch destacar
-     na home — grid 2 colunas
-   - Sub-card "Catálogo": atributos pra filtros (multi-select),
-     parcelas override, desconto à vista override
-   - Sub-card "Conteúdo do storefront": composição, modelagem, forro,
-     lavagem (esses 4 só fazem sentido pro catálogo público — saem
-     da aba Identidade)
-
-REGRAS GERAIS:
-- Aba "Identidade" abre por default
-- Indicador visual de "campos pendentes" em aba: badge com count de
-  erros do react-hook-form daquela aba
-- Cada aba em arquivo separado em src/components/admin/product-form/
-  (tab-identidade.tsx, tab-preco-custo.tsx, etc.)
-- product-form.tsx vira shell que orquestra tabs + submit
-- 100% do comportamento atual preservado, todos os testes passando
-- "+ Nova marca" inline: dialog que cria marca e popula select sem sair
-  do form (cria registro mesmo se o form pai não foi salvo — marca é
-  entidade independente)
-
-Output esperado: árvore de arquivos novos + diff de product-form.tsx +
-proposta de migration para tabela `brand` (separadamente, espera meu OK
-antes de criar). Espere aprovação entre cada parte.
-```
-
-#### Prompt 7 — Dead code sweep + auditoria de fechamento
-
-```
-Auditoria final da Sprint 0. Execute em ordem:
-
-1. `npx ts-prune` (instalar se não tiver) ou equivalente —
-   listar exports não usados em src/
-2. Identificar componentes em src/components/admin/ não referenciados
-   por nenhuma página
-3. Identificar actions em src/actions/ não chamadas
-4. Listar arquivos em docs/decisoes/ que contradizem o estado atual
-   (ex: ADR-0019 marcado como "parked" — confirmar que está)
-
-Para cada item dead/conflitante: propor delete OU mover para
-_legacy/ (criar pasta se não existir) — não delete sem minha aprovação.
-
-Após meu OK: aplicar deletes em commit separado titulado
-"chore(sprint-0): dead code sweep".
-
-Final: rodar `npm run lint`, `npx tsc --noEmit`, `npm run test`,
-`npm run db:check`, `npm run db:check-anon`. Reportar qualquer falha.
-```
+- Build local antes de deploy: `npm run build` rodando do zero, sem warning estranho que não seja `<img>` em ReportLayout e exports Zod inferidos sem consumer (esses 27 warnings de lint são conhecidos e não bloqueiam — ficam pra janela de limpeza pós-deploy).
+- Anderson é quem faz `vercel link`, configura envs no painel e roda o smoke em prod. Claude prepara checklist e verifica tudo que é local.
+- Pooler 6543 (transaction mode) em `DATABASE_URL` de prod; 5432 (direct) em `DIRECT_URL`. Nunca trocar.
 
 ---
 
 ## Próximas Sprints (planejadas, NÃO em execução)
 
-Atualizar conforme cada Sprint anterior fechar. Não comece código de Sprint futura antes da atual estar com TODOS os checkboxes marcados.
+Não comece código de Sprint futura antes da atual estar com TODOS os checkboxes marcados.
 
-- **Sprint 1 — Operação do dia (3-4 semanas)**: PDV multi-pagamento, scanner GTIN, atalhos F2-F9, impressão térmica 80mm, status "orçamento", caixa com pagar conta/sangria/suprimento, fechamento Z em A4+80mm
-- **Sprint 2 — Cadastros refeitos (2-3 semanas)**: tabela `brand` com CRUD em `/admin/marcas` (substitui texto livre); cliente com saldo fiado + histórico; fornecedor (CRUD); modo "criação rápida" vs "edição completa" do produto; etiqueta com código de barras
-- **Sprint 3 — Compras + custo médio (2-3 semanas)**: `/admin/compras`, `/admin/fornecedores`, trigger custo médio móvel ponderado, contagem física com ajuste em batch
-- **Sprint 4 — Fiado + financeiro (1-2 semanas)**: `/admin/financeiro/receber`, lançar fiado no PDV, dashboard com card vivo
-- **Sprint 5 — Relatórios A4 (2 semanas)**: componente `<ReportLayout />`, aplicado em Vendas/Margem/Top/Estoque baixo/Fiado/DRE/Vendas por vendedor. Componente também alimenta cabeçalho de orçamento e fechamento de caixa
-- **Sprint 6 — Segurança hardening (1-2 semanas, pós-MVP)**: audit log (tabela `audit_event`), CSP headers no Next, rate limit em mais endpoints, 2FA opcional pro lojista, verificação de magic bytes em uploads, revisão de queries com `SECURITY DEFINER`, smoke test manual de IDOR
+- **Fase 2 — Multi-tenant pleno**: signup self-service sem seed manual, email verification ON, domínio próprio, FORCE RLS + role `vitre_app`, testes automatizados de isolamento. Só começa quando Fase 1.7 fechar com Sandra rodando o sistema.
+- **Fase 3 — Monetização**: Vercel Pro, plano Free com limite (X produtos / Y pedidos), plano Pago via Stripe (mensalidade Vitrê, NÃO checkout do lojista).
+- **Fase 4+ — Diferenciação**: cupom de desconto avançado, frete grátis acima de X, programa de pontos, integração Correios, subdomínio próprio (`sandra.vitre.com.br`).
+- **Sprint 6 follow-ups** (defensivos opcionais): 2FA pro lojista, refator `pdv-shell.tsx` (2154 linhas) e `create-balcao-sale.ts` (1141 linhas) — fazer junto da próxima feature que tocar nesses arquivos.
 
-Total honesto: 12-18 semanas dev solo. ADR-0034 estimando 5-7 semanas é otimista por 2-3x.
+Sprints 0 → 6 ✅ concluídas (resumo em `docs/sessoes/2026-05-21-fechamento-sprints-0-a-6.md`).
 
 ---
 
@@ -456,7 +242,7 @@ Next 15 + React 19 + TypeScript · Drizzle ORM + Supabase Postgres · Better Aut
 
 ## Ambiente
 
-Windows 11 + PowerShell + VS Code + **Claude Code** (CLI). PT-BR. Repo em `C:\Users\ANDERSON FELIPE\Documents\catálogo\`.
+Windows 11 + PowerShell + VS Code + **Claude Code** (CLI). PT-BR. Repo em `C:\Users\ANDERSON FELIPE\Documents\VITRE\`.
 
 ## Founder
 
@@ -481,10 +267,11 @@ Senão: commit com mensagem clara + comentário em código. Lista de "decisões 
 
 ## Histórico (congelado — não editar)
 
-Estado de fases até 2026-05-19 vive em:
+Estado de fases até 2026-05-21 vive em:
 - `docs/decisoes/` (ADRs 0001-0034, ordem cronológica)
 - `docs/sessoes/` (logs de sessões importantes)
-- `docs/produto/roadmap.md` (checklist por fase do MVP catálogo)
+- `docs/auditoria-2026-05-21/` (5 docs read-only do estado do código pré-Sprint 2)
+- `docs/produto/roadmap.md` (checklist por fase do MVP catálogo — pendente: Fase 1.7)
 - `docs/CONTEXT.md` (briefing 1-minuto pré-pivô)
 
 Marcos:
@@ -494,7 +281,8 @@ Marcos:
 - Pivô para Vitrê Gestão 2026-05-15 ([ADR-0012](docs/decisoes/0012-pivot-vitre-gestao.md))
 - Fases 2-5 + PWA do pivô ✅ (2026-05-16)
 - Veto fiscal explícito 2026-05-19 ([ADR-0033](docs/decisoes/0033-veto-fiscal-explicito.md))
-- Camada Comercial Vitrê 2026-05-19 ([ADR-0034](docs/decisoes/0034-camada-comercial-vitre.md)) — Camada 1 schema aplicada, Camadas 2-7 em curso via Sprints
-- Fase 1.7 (deploy) NÃO necessária no momento — sistema continua sem cliente real até Sprint 1 fechar
+- Camada Comercial Vitrê 2026-05-19 ([ADR-0034](docs/decisoes/0034-camada-comercial-vitre.md))
+- Sprints 0 → 6 ✅ todas fechadas até 2026-05-21 (`docs/sessoes/2026-05-21-fechamento-sprints-0-a-6.md`)
+- Fase 1.7 (deploy) virou Sprint atual em 2026-05-21 — bloqueador real pra Sandra usar
 
 **Norte vivo sobrescreve qualquer ADR conflitante.** Se ADR-0034 disser "5-7 semanas" e este arquivo disser "12-18 semanas", vale este arquivo. ADR é registro de decisão no momento; norte vivo é régua de execução atual.

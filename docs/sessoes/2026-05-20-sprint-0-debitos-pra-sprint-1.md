@@ -5,6 +5,15 @@ e foram empurradas para a Sprint 1.
 
 ## 1. Seis testes falhando pré-existentes
 
+> **Resolvido 2026-05-21**: `npm test` agora reporta 491 pass / 0 fail.
+> As 6 falhas foram corrigidas ao longo das Sprints 1.5 → 6 nos refators
+> de schema (pricing, variantes) e nas sentinelas de sidebar/dead-code.
+> Não precisa ação adicional.
+
+---
+
+### Contexto original (mantido por histórico)
+
 `npm run test` reporta 222 pass / 6 fail. As 6 falhas existiam ANTES
 do batch da Sprint 0 (verificado fazendo stash do trabalho e re-rodando
 testes no commit `55c2f56`).
@@ -27,6 +36,18 @@ produto será feita junto com o refator do `createBalcaoSale`. Aproveitar
 para atualizar os fixtures e a ordem esperada de validação.
 
 ## 2. StockInput readonly em modo edit
+
+> **Decisão 2026-05-21 — REJEITADO como débito**: mantém editável.
+> Princípio 2 do CLAUDE.md ("qual fluxo essa feature completa?")
+> diz pra não construir feature sem fluxo de uso claro. Migrar pra
+> readonly exigiria criar UX de "lançamento inicial via /admin/estoque"
+> ou dialog "Lançar movimento inicial" — sem demanda real de lojista
+> ainda. Volta como item quando alguém pedir.
+
+---
+
+### Contexto original (mantido por histórico)
+
 
 CLAUDE.md Prompt 6 especificou que a aba "Estoque" deveria mostrar
 "estoque atual readonly com link 'Ver movimentações'". A implementação
