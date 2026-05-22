@@ -239,6 +239,11 @@ export async function createBalcaoSale(
             promoEndsAt: true,
             trackStock: true,
             stockQuantity: true,
+            // Sprint 1.2 (2026-05-22): bypassa OutOfStockError quando true.
+            // Caso de uso: pré-venda / encomenda / sob medida — lojista
+            // cobra agora, providencia depois. Estoque vai negativo como
+            // sinal de "pendência de entrega".
+            allowOversell: true,
           },
         });
 
@@ -686,7 +691,13 @@ export async function createBalcaoSale(
                   }
 
                   if (currentStock === null || currentStock < ci.quantity) {
-                    throw new OutOfStockError(ci.productId);
+                    // Sprint 1.2: produto marcado como `allow_oversell`
+                    // bypassa o bloqueio. Movimento ainda é registrado;
+                    // saldo final vira negativo (sinal de "pendência de
+                    // entrega"). Não-flag continua bloqueando.
+                    if (!product?.allowOversell) {
+                      throw new OutOfStockError(ci.productId);
+                    }
                   }
 
                   salesToRecord.push({
@@ -1025,7 +1036,12 @@ export async function createBalcaoSale(
                 }
 
                 if (currentStock === null || currentStock < ci.quantity) {
-                  throw new OutOfStockError(ci.productId);
+                  // Sprint 1.2 — espelha o branch sale: produto com
+                  // allow_oversell bypassa o bloqueio. Movimento ainda
+                  // entra com saldo negativo.
+                  if (!product?.allowOversell) {
+                    throw new OutOfStockError(ci.productId);
+                  }
                 }
 
                 salesToRecord.push({

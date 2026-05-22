@@ -872,3 +872,47 @@ test("SQL 59 é idempotente (DROP IF EXISTS + IF NOT EXISTS)", () => {
   assert.ok(dropCount >= 2, "esperado 2 DROP IF EXISTS");
   assert.ok(guardCount >= 2, "esperado 2 IF NOT EXISTS guards");
 });
+
+// ---------------------------------------------------------------------
+// Sprint 1.2 — allow_oversell honrado no PDV
+// ---------------------------------------------------------------------
+
+test("Sprint 1.2: query do product traz allowOversell no columns", () => {
+  const s = loadActionSource();
+  // Coluna precisa entrar no columns: do findMany pra cair em productById.
+  // Sem isso, product.allowOversell vira undefined e o branch oversell
+  // nunca dispara (volta a bloquear silenciosamente).
+  assert.match(
+    s,
+    /columns:\s*\{[^}]*allowOversell:\s*true/,
+    "Esperava `allowOversell: true` no columns do findMany de product",
+  );
+});
+
+test("Sprint 1.2: ambos os branches de estoque consultam product.allowOversell antes de throw", () => {
+  const s = loadActionSource();
+  // Espera-se exatamente 2 callsites (branch sale + branch fiado) onde
+  // o throw OutOfStockError fica DENTRO de `if (!product?.allowOversell)`.
+  // Pattern tolerante a whitespace e comentário inline.
+  const guarded = s.match(
+    /if\s*\(\s*!\s*product\?\.allowOversell\s*\)\s*\{[\s\S]{0,300}?throw new OutOfStockError/g,
+  );
+  assert.equal(
+    guarded?.length,
+    2,
+    `Esperava 2 throws OutOfStockError guardados por !product?.allowOversell, achei ${guarded?.length ?? 0}`,
+  );
+});
+
+test("Sprint 1.2: nenhum throw OutOfStockError fica sem o guarda de allowOversell", () => {
+  const s = loadActionSource();
+  // Sanity-check: total de throws OutOfStockError no arquivo deve ser
+  // igual ao número de throws guardados. Se houver throw órfão, o
+  // bypass não funciona naquele caminho.
+  const allThrows = s.match(/throw new OutOfStockError/g) ?? [];
+  assert.equal(
+    allThrows.length,
+    2,
+    `Esperava exatamente 2 throws OutOfStockError, achei ${allThrows.length}`,
+  );
+});
