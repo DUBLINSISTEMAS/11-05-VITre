@@ -163,12 +163,12 @@
 
 ## 4. TUDO QUE VAI SER FEITO — lista exaustiva (nada oculto)
 
-### 🟦 SPRINT 0 — Higiene & base estável (1 dia)
+### 🟦 SPRINT 0 — Higiene & base estável (1 dia) ✅ **FECHADO 2026-05-22 (exceto 0.3)**
 
 Objetivo: zero trabalho perdido, base limpa pra começar.
 
-- [ ] **0.1** Rodar `RUN_INTEGRATION=1 npm run test:integration` localmente → confirmar 39/39 com SQL 58 hardened em prod
-- [ ] **0.2** Fatiar diff de 205 arquivos em ~20 commits temáticos:
+- [x] **0.1** Rodar `RUN_INTEGRATION=1 npm run test:integration` localmente → confirmar 39/39 com SQL 58 hardened em prod (2026-05-22 — 39/39 ✅)
+- [x] **0.2** Fatiar diff de 205 arquivos em ~20 commits temáticos:
   - `chore(db): aplicar SQLs 58-63 + estender check-sql-applied`
   - `feat(estoque): corrigir bug do estoque inicial (Onda 1.1)`
   - `feat(caixa): correção do fechamento Z + 6 tipos de adjustment (Onda 1.2)`
@@ -189,8 +189,8 @@ Objetivo: zero trabalho perdido, base limpa pra começar.
   - `feat(seguranca): SQL 58 lead anon restrict (Fase 2 Bloco 2)`
   - `feat(brand): rebrand Mangos Pay — sidebar/logos/icons`
   - `docs(plano): diagnóstico Fase 1 + plano blocos A-K + visão completa`
-- [ ] **0.3** Confirmar `CRON_SECRET` no Vercel ▸ Settings idêntico ao `.env.local`
-- [ ] **0.4** `npm test` + `tsc --noEmit` zero warnings (auditoria pré-Sprint 1)
+- [ ] **0.3** Confirmar `CRON_SECRET` no Vercel ▸ Settings idêntico ao `.env.local` *(MANUAL — depende do Anderson no painel Vercel)*
+- [x] **0.4** `npm test` + `tsc --noEmit` zero warnings (auditoria pré-Sprint 1) (2026-05-22 — 498/498 unit + tsc 0 warnings + 39/39 integration)
 
 ### 🟥 SPRINT 1 — Bugs ativos + base de relatórios (3-4 dias)
 
@@ -426,14 +426,15 @@ Tudo que normalmente passa batido e a gente paga depois. **Registrado pra não p
 | 2026-05-22 | Conselho 5 | Bloco L novo: smoke prod manual antes do lojista #1 |
 | 2026-05-22 | Conselho 5 | C reordenado: C3 (cupom) → C4 (lead) → C1 (coleção) → C5 (grupo) → C2 (atributo) |
 | 2026-05-22 | Anderson | Pediu visão completa visual + arquivo de memória — este documento criado |
+| 2026-05-22 | Claude | **Sprint 0 fechado**: 4 commits temáticos (chore db, fix pedidos, feat compras, feat produtos). Auditoria final: 498/498 unit + tsc 0 warnings + 39/39 integration. Pendente só 0.3 (CRON_SECRET no painel Vercel — manual). |
 
 ---
 
 ## 10. PRÓXIMA AÇÃO (sempre atualizar no fim de sessão)
 
-**▶️ AGORA**: aguardando OK do Anderson pra começar Sprint 0 (commit chunked + test:integration + CRON_SECRET).
+**▶️ AGORA**: Sprint 0 fechado (técnico). Anderson precisa confirmar `CRON_SECRET` no painel Vercel ▸ Settings ▸ Environment Variables — único passo manual restante.
 
-**DEPOIS DA SPRINT 0**: Sprint 1 (3 bugs ativos + base de relatórios).
+**DEPOIS DO 0.3 OK**: Sprint 1 (3 bugs ativos + base de relatórios) — começa por 1.1 (deletar `quick-product-form.tsx`).
 
 ---
 

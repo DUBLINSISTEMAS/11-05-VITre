@@ -42,12 +42,12 @@
 
 ---
 
-## Bloco A — Fundação (sem isso nada anda) — **STATUS: feito 95%**
+## Bloco A — Fundação (sem isso nada anda) — **STATUS: feito 100% (exceto A3 manual)**
 
 - [x] **A1**: SQLs 58–63 aplicadas em prod (2026-05-22)
-- [x] **A2**: Sentinela `check-sql-applied.mjs` estendida — cobertura 11→63 (64 checks)
-- [ ] **A3**: Confirmar `CRON_SECRET` no Vercel
-- [ ] **A4**: Rodar `RUN_INTEGRATION=1 npm run test:integration` localmente — confirmar 39/39 contra DB com SQL 58 hardened
+- [x] **A2**: Sentinela `check-sql-applied.mjs` estendida — cobertura 11→63 (64 checks) — commit `9675990` (2026-05-22)
+- [ ] **A3**: Confirmar `CRON_SECRET` no Vercel *(manual — painel Vercel ▸ Settings ▸ Environment Variables)*
+- [x] **A4**: Rodar `RUN_INTEGRATION=1 npm run test:integration` localmente — 39/39 ✅ contra DB com SQL 58 hardened (2026-05-22)
 
 ---
 
@@ -214,3 +214,4 @@ PÓS-#1                  I (refator) + G (CSV se necessário) + J (multi-tenant 
 |---|---|
 | 2026-05-22 | Diagnóstico Fase 1 entregue. Decisões A+B+C fechadas (costurar fantasmas, commit chunked, P0+P1 completo). SQLs 58-63 aplicadas em prod. Plano blocos A-K formalizado. |
 | 2026-05-22 | Conselho 5 agentes definiu ordem: K → B+H4+E1 → resto E → D → F → C (reordenado) → H+L → lojista #1 → I/G/J pós. Bloco L (smoke prod) adicionado. |
+| 2026-05-22 | **Sprint 0 técnico fechado**: 4 commits temáticos finais (`9675990` chore db, `156dc40` fix pedidos, `65c4e19` feat compras 2.4, `673a1c8` feat produtos 2.1-2.3+2.10). Working tree limpa. Auditoria: 498/498 unit + tsc 0 warnings + 39/39 integration. Resta só A3 manual (CRON_SECRET). |
