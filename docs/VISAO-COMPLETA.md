@@ -202,15 +202,15 @@ Objetivo: nenhum bug bloqueante no dia 1 do lojista. Status de pedido como singl
 - [x] **1.4** **Devolução desconta em todos os relatórios** — LEFT JOIN com `order_return_item`, subtrair quantidade × preço_snapshot do faturamento e CMV em: `load-sales.ts`, `load-top.ts`, `load-margin.ts`, `load-dre.ts`. Tipos expandidos com returned* fields. UI dos 4 relatórios mostra "−R$X devolvido" abaixo dos brutos + rodapé líquido — commit `28a5d2c`
 - [x] **1.5** Mini-auditoria: 505/505 unit + tsc 0 warnings + 39/39 integration
 
-### 🟧 SPRINT 2 — Vendas: fluxo de exceção (1 semana)
+### 🟧 SPRINT 2 — Vendas: fluxo de exceção (1 semana) ✅ **FECHADO 2026-05-22**
 
 Objetivo: devolução parcial existe. Frete sai de receita. DRE bate.
 
-- [ ] **2.1** **Devolução parcial item-a-item** — `record-return.ts` aceita `returnType='partial'` + `items: Array<{orderItemId, quantity}>`. Schema validation + advisory lock por order. UI: dialog em `order-detail-dialog.tsx` com checkbox por item + input qty + total recalculado
-- [ ] **2.2** Devolução com fiado em aberto **guiada** — em vez de `throw new Error("estorne o fiado primeiro")`, retorna estado especial + UI mostra "Há R$X de fiado pendente. Estornar agora?" com botão inline que chama `reverseReceivablePayment` e prossegue
-- [ ] **2.3** **Frete sai de "Receita"** no DRE — `load-dre.ts` separa `shipping_in_cents` em bucket próprio "Repasses (frete)". "Acréscimos" fica só pra taxa cartão/PIX
-- [ ] **2.4** SQL 64: índice trigram em `product_variant.name` (busca por nome em loja com variantes não usa index hoje)
-- [ ] **2.5** Mini-auditoria
+- [x] **2.1** **Devolução parcial item-a-item** — `record-return.ts` aceita `returnType='partial'` + `items: Array<{orderItemId, quantity}>`. `restockOrderItemsPartial` em `lib/order/restock.ts`. `load-detail.ts` traz `quantityReturned` por item. UI: novo `order-return-dialog.tsx` com tabs Tudo/Alguns itens + checkbox + qty input. order.status só vira 'returned' quando soma das parciais zera saldo. commit `70c6be7`
+- [x] **2.2** Devolução com fiado em aberto **guiada** — action retorna `errorCode='PENDING_RECEIVABLE'` + receivableId + remainingInCents. UI mostra subtela com instruções + botão "Abrir fiado" → `/admin/financeiro/receber?receivable={id}`. Sem inline estorno (transação cross-feature insegura). commit `70c6be7`
+- [x] **2.3** **Frete sai de "Receita"** no DRE — SQL 65 adiciona `order.shipping_in_cents NOT NULL DEFAULT 0` + CHECK. Schema TS + DRE separam. UI ganha linha "(−) Repasses (frete cobrado do cliente)". PDV ainda não popula (vai 0). commit `5342cc8`
+- [x] **2.4** SQL 64: índice trigram em `product_variant.name` — aplicado em prod, sentinela estendida. commit `39a4807`
+- [x] **2.5** Mini-auditoria: 513/513 unit + tsc 0 warnings + 39/39 integration + 66/66 SQLs aplicados
 
 ### 🟨 SPRINT 3 — Clientes + caixa (3-4 dias)
 
@@ -428,14 +428,15 @@ Tudo que normalmente passa batido e a gente paga depois. **Registrado pra não p
 | 2026-05-22 | Anderson | Pediu visão completa visual + arquivo de memória — este documento criado |
 | 2026-05-22 | Claude | **Sprint 0 fechado**: 4 commits temáticos (chore db, fix pedidos, feat compras, feat produtos). Auditoria final: 498/498 unit + tsc 0 warnings + 39/39 integration. Pendente só 0.3 (CRON_SECRET no painel Vercel — manual). |
 | 2026-05-22 | Claude | **Sprint 1 fechado**: 3 commits (`ffb7478` 1.1 quick form removido, `954ddb0` 1.2 allow_oversell honrado, `28a5d2c` 1.3+1.4 constants únicas + devolução desconta nos 4 relatórios). Auditoria: 505/505 unit + tsc 0 warnings + 39/39 integration. Nenhuma SQL nova exigida — schema já tinha tudo desde SQLs 55+62. |
+| 2026-05-22 | Claude | **Sprint 2 fechado**: 3 commits (`39a4807` 2.4 SQL 64 trigram, `70c6be7` 2.1+2.2 devolução parcial + fluxo guiado de fiado, `5342cc8` 2.3 SQL 65 shipping no DRE). 2 SQLs novas aplicadas em prod via DIRECT_URL. Auditoria: 513/513 unit + tsc 0 warnings + 39/39 integration + 66/66 SQLs aplicados. |
 
 ---
 
 ## 10. PRÓXIMA AÇÃO (sempre atualizar no fim de sessão)
 
-**▶️ AGORA**: Sprint 0 + Sprint 1 fechados. Único bloqueador é 0.3 (CRON_SECRET no painel Vercel — manual, depende do Anderson).
+**▶️ AGORA**: Sprints 0 + 1 + 2 fechadas. Único bloqueador continua sendo 0.3 (CRON_SECRET no painel Vercel — manual, depende do Anderson).
 
-**DEPOIS DO 0.3 OK**: Sprint 2 — devolução parcial item-a-item + devolução com fiado guiada + frete fora de receita (1 semana, mais peso de UX).
+**DEPOIS DO 0.3 OK**: Sprint 3 — Clientes + caixa (busca CPF, customer.notes no PDV, filtro fiado pendente, caixa fechado configurável).
 
 ---
 
