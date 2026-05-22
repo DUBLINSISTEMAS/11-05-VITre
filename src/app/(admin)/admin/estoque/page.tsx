@@ -127,15 +127,20 @@ export default async function EstoquePage({ searchParams }: EstoquePageProps) {
             <span className="hidden sm:inline">Gerar relatório</span>
             <span className="sm:hidden">Relatório</span>
           </Link>
+          {/* Onda 2.4 (2026-05-22) — entrada de mercadoria em batch via
+              fluxo de Compras (já existente em /admin/compras/novo). Antes
+              o CTA mandava lojista pra /admin/produtos pra abrir 30 vezes
+              o dialog "Lançar movimentação". Agora 1 compra = N entradas
+              de uma vez, com snapshot de custo unitário. */}
           <Link
-            href="/admin/produtos"
+            href="/admin/compras/novo"
             className="b3-btn b3-btn--cta"
             prefetch
-            title="Selecione um produto pra lançar movimentação manual"
+            title="Registra entrada em lote (compra de fornecedor) — N produtos numa única operação"
           >
             <PackageIcon size={14} aria-hidden />
-            <span className="hidden sm:inline">Nova movimentação</span>
-            <span className="sm:hidden">Nova</span>
+            <span className="hidden sm:inline">Nova entrada (compra)</span>
+            <span className="sm:hidden">Nova entrada</span>
           </Link>
         </div>
       </div>
