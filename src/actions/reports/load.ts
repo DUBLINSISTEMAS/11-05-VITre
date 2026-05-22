@@ -216,13 +216,18 @@ export async function loadFullReport(
     };
 
     // 5. Stock (snapshot atual, não filtrado por período — sempre "agora")
-    const stockRows = await tx
+    //
+    // Onda 1.6 (2026-05-22): antes puxava TODOS os produtos ativos
+    // rastreados pra filtrar zeroStock/lowStock no JS — em loja com 10k
+    // SKUs, 600ms-1s só pra descartar 99% no client. Agora filtra no SQL
+    // e limita 200 linhas por bucket (UI agrega; mais que isso já é
+    // sinal de problema de catálogo, não de relatório).
+    const STOCK_BUCKET_LIMIT = 200;
+    const LOW_STOCK_THRESHOLD = 3;
+    const zeroStockRows = await tx
       .select({
         id: productTable.id,
         name: productTable.name,
-        quantity: productTable.stockQuantity,
-        trackStock: productTable.trackStock,
-        isActive: productTable.isActive,
       })
       .from(productTable)
       .where(
@@ -230,16 +235,37 @@ export async function loadFullReport(
           eq(productTable.storeId, store.id),
           eq(productTable.trackStock, true),
           eq(productTable.isActive, true),
+          sql`COALESCE(${productTable.stockQuantity}, 0) <= 0`,
         ),
-      );
+      )
+      .orderBy(productTable.name)
+      .limit(STOCK_BUCKET_LIMIT);
+    const lowStockRows = await tx
+      .select({
+        id: productTable.id,
+        name: productTable.name,
+        quantity: productTable.stockQuantity,
+      })
+      .from(productTable)
+      .where(
+        and(
+          eq(productTable.storeId, store.id),
+          eq(productTable.trackStock, true),
+          eq(productTable.isActive, true),
+          sql`${productTable.stockQuantity} > 0`,
+          sql`${productTable.stockQuantity} <= ${LOW_STOCK_THRESHOLD}`,
+        ),
+      )
+      .orderBy(productTable.stockQuantity, productTable.name)
+      .limit(STOCK_BUCKET_LIMIT);
 
     const stock: StockReport = {
-      zeroStock: stockRows
-        .filter((s) => (s.quantity ?? 0) <= 0)
-        .map((s) => ({ id: s.id, name: s.name })),
-      lowStock: stockRows
-        .filter((s) => (s.quantity ?? 0) > 0 && (s.quantity ?? 0) <= 3)
-        .map((s) => ({ id: s.id, name: s.name, quantity: s.quantity ?? 0 })),
+      zeroStock: zeroStockRows.map((s) => ({ id: s.id, name: s.name })),
+      lowStock: lowStockRows.map((s) => ({
+        id: s.id,
+        name: s.name,
+        quantity: s.quantity ?? 0,
+      })),
     };
 
     return { range, sales, products, customers, leads, stock };

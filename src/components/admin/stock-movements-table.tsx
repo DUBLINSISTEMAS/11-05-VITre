@@ -5,9 +5,9 @@
 // Mobile responsivo via CSS @media 640px no globals.css.
 //
 // Decisões pixel-perfect vs handoff (B3EstoqueScreen) + schema:
-// - Handoff mostra SNAPSHOT de produto (saldo + min + status), Vitrê
+// - Handoff mostra SNAPSHOT de produto (saldo + min + status), Mangos Pay
 //   `/admin/estoque` é FEED de movimentações (auditoria event-sourced
-//   da Fase 4 ADR-0015). Mantemos semântica Vitrê + aplicamos visual Dublin
+//   da Fase 4 ADR-0015). Mantemos semântica Mangos Pay + aplicamos visual Dublin
 //   (memory `handoff-vs-schema-respect-data-model`).
 // - Pill de tipo usa cores Dublin: ok pra entrada/devolução, danger pra
 //   saída/venda, warn pra ajuste, neutro pra initial.
@@ -151,7 +151,7 @@ function ReferenceCell({
   if (referenceType === "order" && referenceId) {
     return (
       <span>
-        <span style={{ fontWeight: 600 }}>Pedido</span>{" "}
+        <span style={{ fontWeight: 600 }}>Venda</span>{" "}
         <span className="mono">{referenceId.slice(0, 8)}…</span>
         {notes ? <span> · {notes}</span> : null}
       </span>

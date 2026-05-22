@@ -5,7 +5,7 @@
  *   - Next 15 limita body de server action (`bodySizeLimit` em next.config
  *     é ignorado em algumas versões — bug #64680/#59277). Foto crua de
  *     iPhone (5-8 MB) estoura e retorna 413 antes da action ser invocada.
- *   - Lojista (típico Vitrê) está em 4G de cidade pequena — subir
+ *   - Lojista (típico Mangos Pay) está em 4G de cidade pequena — subir
  *     5 MB é caro. Comprimir pra ~200 KB no celular dela é 25× menos banda.
  *   - Suporta fotos grandes de celular (até 25 MB) sem precisar mexer em
  *     config server-side.

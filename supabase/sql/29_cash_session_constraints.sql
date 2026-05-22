@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — Constraints + RLS de cash_session/cash_adjustment (ADR-0022)
+-- Mangos Pay — Constraints + RLS de cash_session/cash_adjustment (ADR-0022)
 -- =====================================================================
 -- Aplicar APÓS `pnpm db:migrate` que aplica drizzle/0021_cash_session.sql
 -- (cria as 2 tabelas + enum + FKs + index composto + ALTER order ADD
@@ -20,7 +20,7 @@
 --   8. RLS cash_adjustment — herda via EXISTS check sobre cash_session
 --   9. FORCE ROW LEVEL SECURITY em ambas (convenção pós-cleanup 5e8b90c)
 --
--- Idempotente: pattern canônico Vitrê (DROP IF EXISTS / DO $$ IF NOT
+-- Idempotente: pattern canônico Mangos Pay (DROP IF EXISTS / DO $$ IF NOT
 -- EXISTS pra constraints; CREATE UNIQUE INDEX IF NOT EXISTS pra index;
 -- DROP POLICY IF EXISTS / CREATE POLICY pra RLS).
 --

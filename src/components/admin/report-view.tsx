@@ -60,7 +60,7 @@ export function ReportView({
         : s;
     };
 
-    add(`Relatório Vitrê - ${report.range.periodLabel}`);
+    add(`Relatório Mangos Pay - ${report.range.periodLabel}`);
     add("");
     add("VENDAS");
     add(`Total de vendas,${report.sales.totalSales}`);
@@ -122,7 +122,7 @@ export function ReportView({
     const a = document.createElement("a");
     const datePart = new Date().toISOString().slice(0, 10);
     a.href = url;
-    a.download = `vitre-relatorio-${datePart}.csv`;
+    a.download = `mangospay-relatorio-${datePart}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -284,7 +284,7 @@ export function ReportView({
             <Empty />
           ) : (
             <Table
-              headers={["Cliente", "Pedidos", "Gasto"]}
+              headers={["Cliente", "Vendas", "Gasto"]}
               rows={report.customers.topCustomers
                 .slice(0, 8)
                 .map((c) => [

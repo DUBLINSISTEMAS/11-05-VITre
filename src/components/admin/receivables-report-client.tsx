@@ -207,7 +207,7 @@ export function ReceivablesReportClient({
         columns={columns}
         rows={rows}
         totals={totalsFooter}
-        csvFileName={`vitre-fiados-${statusFilter}`}
+        csvFileName={`mangospay-fiados-${statusFilter}`}
         emptyMessage={
           statusFilter === "overdue"
             ? "Nenhum fiado vencido. Bom trabalho."

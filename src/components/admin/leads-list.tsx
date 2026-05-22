@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2Icon, ClockIcon, SearchIcon, TrashIcon, XCircleIcon } from "lucide-react";
+import { CheckCircle2Icon, ClockIcon, MessageSquareTextIcon, SearchIcon, TrashIcon, XCircleIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -127,9 +127,29 @@ export function LeadsList({
 
       {/* Lista */}
       {rows.length === 0 ? (
-        <div className="b3-card b3-card-pad text-center">
-          <p className="text-ink-3 text-[13px]">Nenhum recado do site encontrado.</p>
-        </div>
+        (filters.q ?? filters.status) ? (
+          <div className="b3-card b3-card-pad text-center">
+            <p className="text-ink-3 text-[13px]">
+              Nenhum recado encontrado com esses filtros.
+            </p>
+            <p className="text-ink-4 mt-1 text-[12px]">
+              Limpe a busca ou troque o status pra ver os outros.
+            </p>
+          </div>
+        ) : (
+          <div className="border-line flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-12">
+            <div className="bg-brand-wash text-brand flex size-12 items-center justify-center rounded-full">
+              <MessageSquareTextIcon className="size-6" />
+            </div>
+            <h2 className="text-lg font-semibold text-ink-1">
+              Ainda sem recados
+            </h2>
+            <p className="text-ink-4 max-w-sm text-sm">
+              Quando algum cliente clicar em &ldquo;Pedir pelo WhatsApp&rdquo;
+              na sua loja online, o recado dele aparece aqui.
+            </p>
+          </div>
+        )
       ) : (
         <div className="b3-card overflow-x-auto">
           <table className="b3-tbl w-full">

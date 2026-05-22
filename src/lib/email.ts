@@ -2,7 +2,7 @@
  * Cliente Resend + helpers de envio de email transacional.
  *
  * Templates HTML inline (sem react-email para manter o bundle leve).
- * Pegada visual: Vitre azul `#1E3FE6`, mobile-first, minimo de adornos.
+ * Pegada visual: azul `#1E3FE6` do Mangos Pay, mobile-first, minimo de adornos.
  */
 import { Resend } from "resend";
 
@@ -11,7 +11,7 @@ import { logger } from "@/lib/logger";
 
 const resend = new Resend(env.RESEND_API_KEY);
 
-const VITRE_PRIMARY = "#1E3FE6";
+const BRAND_PRIMARY = "#1E3FE6";
 
 if (
   process.env.NODE_ENV === "production" &&
@@ -36,13 +36,13 @@ export async function sendVerificationEmail({
 }: SendVerificationEmailInput) {
   const firstName = name?.split(" ")[0] ?? "";
   const result = await resend.emails.send({
-    from: `Vitrê <${env.RESEND_FROM_EMAIL}>`,
+    from: `Mangos Pay <${env.RESEND_FROM_EMAIL}>`,
     to,
-    subject: "Confirme seu e-mail no Vitrê",
+    subject: "Confirme seu e-mail no Mangos Pay",
     html: buildEmailHtml({
-      title: firstName ? `Bem-vindo, ${firstName}!` : "Bem-vindo ao Vitrê!",
+      title: firstName ? `Bem-vindo, ${firstName}!` : "Bem-vindo ao Mangos Pay!",
       bodyText:
-        "Confirme seu e-mail clicando no botão abaixo para começar a usar o Vitrê.",
+        "Confirme seu e-mail clicando no botão abaixo para começar a usar o Mangos Pay.",
       ctaUrl: url,
       ctaLabel: "Confirmar e-mail",
     }),
@@ -66,9 +66,9 @@ export async function sendPasswordResetEmail({
 }: SendPasswordResetEmailInput) {
   const firstName = name?.split(" ")[0];
   const result = await resend.emails.send({
-    from: `Vitrê <${env.RESEND_FROM_EMAIL}>`,
+    from: `Mangos Pay <${env.RESEND_FROM_EMAIL}>`,
     to,
-    subject: "Redefinir sua senha no Vitrê",
+    subject: "Redefinir sua senha no Mangos Pay",
     html: buildEmailHtml({
       title: firstName ? `Olá, ${firstName}` : "Redefinição de senha",
       bodyText:
@@ -110,7 +110,7 @@ function buildEmailHtml({
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:480px;background:#ffffff;border-radius:16px;padding:32px;border:1px solid #e5e5e5;">
           <tr>
             <td style="padding-bottom:24px;text-align:center;">
-              <div style="display:inline-block;background:${VITRE_PRIMARY};border-radius:12px;padding:10px 20px;color:#ffffff;font-weight:700;font-size:18px;letter-spacing:-0.02em;">Vitrê</div>
+              <div style="display:inline-block;background:${BRAND_PRIMARY};border-radius:12px;padding:10px 20px;color:#ffffff;font-weight:700;font-size:18px;letter-spacing:-0.02em;">Mangos Pay</div>
             </td>
           </tr>
           <tr>
@@ -121,17 +121,17 @@ function buildEmailHtml({
           </tr>
           <tr>
             <td style="padding-bottom:24px;">
-              <a href="${escapeHtml(ctaUrl)}" style="display:inline-block;background:${VITRE_PRIMARY};color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:12px;font-weight:600;font-size:16px;">${escapeHtml(ctaLabel)}</a>
+              <a href="${escapeHtml(ctaUrl)}" style="display:inline-block;background:${BRAND_PRIMARY};color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:12px;font-weight:600;font-size:16px;">${escapeHtml(ctaLabel)}</a>
             </td>
           </tr>
           <tr>
             <td style="font-size:13px;line-height:1.5;color:#a3a3a3;padding-top:24px;border-top:1px solid #f5f5f5;">
               Se o botão não funcionar, copie e cole este link no navegador:<br>
-              <a href="${escapeHtml(ctaUrl)}" style="color:${VITRE_PRIMARY};word-break:break-all;">${escapeHtml(ctaUrl)}</a>
+              <a href="${escapeHtml(ctaUrl)}" style="color:${BRAND_PRIMARY};word-break:break-all;">${escapeHtml(ctaUrl)}</a>
             </td>
           </tr>
         </table>
-        <div style="font-size:12px;color:#a3a3a3;margin-top:16px;">Vitrê — vitrine digital com checkout WhatsApp</div>
+        <div style="font-size:12px;color:#a3a3a3;margin-top:16px;">Mangos Pay — loja online com checkout WhatsApp</div>
       </td>
     </tr>
   </table>

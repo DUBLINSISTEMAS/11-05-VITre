@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — Cleanup de policy redundante em "order"
+-- Mangos Pay — Cleanup de policy redundante em "order"
 -- =====================================================================
 -- Auditoria 2026-05-19 (A3): a policy `order_anonymous_insert` (SQL 01:127-136)
 -- aplica `WITH CHECK (store_id = current GUC)` em INSERT — exatamente a

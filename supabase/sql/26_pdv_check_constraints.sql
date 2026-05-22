@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — CHECK constraints para PDV / venda balcão (Fase 5 / ADR-0016)
+-- Mangos Pay — CHECK constraints para PDV / venda balcão (Fase 5 / ADR-0016)
 -- =====================================================================
 -- Aplicar APÓS rodar `pnpm db:migrate` que aplica 0018_yielding_earthquake.sql
 -- (enums order_channel/order_payment_method + colunas channel/payment_method/

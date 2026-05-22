@@ -51,7 +51,7 @@ export const orderChannelEnum = pgEnum("order_channel", [
 
 /**
  * Método de pagamento informado pelo lojista no PDV (Fase 5 — ADR-0016).
- * APENAS metadado — Vitrê não processa cartão; o lojista usa POS físico
+ * APENAS metadado — Mangos Pay não processa cartão; o lojista usa POS físico
  * próprio e registra aqui o que foi cobrado, pra reconciliação/relatório.
  *
  *   - cash:   dinheiro (pode acompanhar cash_received_in_cents pra troco)
@@ -146,7 +146,7 @@ export const orderTable = pgTable(
      */
     channel: orderChannelEnum("channel").notNull().default("whatsapp"),
     /**
-     * Fase 5 — apenas metadado. Vitrê não processa cartão.
+     * Fase 5 — apenas metadado. Mangos Pay não processa cartão.
      *
      * @deprecated ADR-0034 Camada 1 — migrar pra tabela filha
      * `order_payment` (pagamento dividido). Coluna fica por 2 release
@@ -193,7 +193,7 @@ export const orderTable = pgTable(
     /**
      * ADR-0034 Camada 1 + ADR-0033 D2 — campo livre onde lojista anota
      * número da NF emitida em OUTRO sistema (Bling, contadora, emissor da
-     * prefeitura). Vitrê NÃO emite NF. Texto cru, sem máscara, sem
+     * prefeitura). Mangos Pay NÃO emite NF. Texto cru, sem máscara, sem
      * validação SEFAZ.
      */
     externalFiscalDoc: text("external_fiscal_doc"),
@@ -326,6 +326,22 @@ export const orderItemTable = pgTable(
      * margem trata NULL como "custo desconhecido", não como 0.
      */
     unitCostSnapshotInCents: integer("unit_cost_snapshot_in_cents"),
+
+    /**
+     * Desconto aplicado nesta linha (em centavos, soma sobre todas as
+     * unidades do item). NULL = sem desconto. CHECK constraints em
+     * supabase/sql/59_order_item_discount.sql garantem >= 0 e
+     * <= price_in_cents_snapshot × quantity.
+     *
+     * Complementa order.discount_in_cents (desconto geral do carrinho):
+     * lojista pode dar desconto seletivo (10% só no anel) E/OU geral
+     * (5% no carrinho inteiro). Total = sum((price × qty) − item_discount)
+     *                                  − order_discount + surcharge.
+     *
+     * Source of truth em centavos. % é só UX — convertido server-side
+     * antes de persistir. Snapshot fixa o histórico (margem, DRE).
+     */
+    discountInCents: integer("discount_in_cents"),
 
     quantity: integer("quantity").notNull(),
     createdAt: timestamp("created_at").notNull().defaultNow(),

@@ -7,9 +7,9 @@
 // Estrutura:
 // - Hamburger à esquerda abre Sheet drawer com SidebarContent completa
 //   (envolvida em flex column pro b3-side-foot ancorar no rodapé)
-// - Logo Vitrê central
+// - Logo Mangos Pay central
 // - Sino à direita (placeholder; vira badge real em B.6+)
-import { BellIcon, MenuIcon } from "lucide-react";
+import { BellIcon, ExternalLinkIcon, MenuIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
@@ -41,6 +41,7 @@ export function MobileHeader(props: MobileHeaderProps) {
             side="left"
             className="flex w-[280px] flex-col bg-white p-0 sm:max-w-[280px]"
             showCloseButton={false}
+            data-admin-sidebar="true"
           >
             <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
             <SidebarContent
@@ -55,10 +56,10 @@ export function MobileHeader(props: MobileHeaderProps) {
           href="/admin"
           prefetch
           className="hocus:bg-bg-app flex items-center gap-2 rounded-md px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-          aria-label="Vitrê — ir para o início"
+          aria-label="Mangos Pay — ir para o início"
         >
           <Image
-            src="/brand/logo-principal.webp"
+            src="/logos/logo.png"
             alt=""
             width={28}
             height={28}
@@ -66,18 +67,33 @@ export function MobileHeader(props: MobileHeaderProps) {
             className="size-7 rounded-md"
           />
           <span className="font-semibold tracking-tight text-ink-1">
-            Vitrê
+            Mangos Pay
           </span>
         </Link>
 
-        {/* Sino placeholder */}
-        <button
-          type="button"
-          className="rounded-md p-2 text-ink-2 outline-none transition-colors hocus:bg-bg-app focus-visible:ring-2 focus-visible:ring-ring/50"
-          aria-label="Notificações"
-        >
-          <BellIcon className="size-5" />
-        </button>
+        <div className="flex items-center gap-1">
+          {/* Acesso direto à loja online — storefront é o diferencial
+              defensável do produto, então fica a 1 toque tanto no desktop
+              (topbar) quanto no mobile (aqui). */}
+          <Link
+            href={`/${props.storeSlug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            prefetch={false}
+            className="rounded-md p-2 text-mangos-green-800 outline-none transition-colors hocus:bg-mangos-yellow-soft focus-visible:ring-2 focus-visible:ring-ring/50"
+            aria-label="Abrir loja online em uma nova aba"
+            title="Ver loja online"
+          >
+            <ExternalLinkIcon className="size-5" />
+          </Link>
+          <button
+            type="button"
+            className="rounded-md p-2 text-ink-2 outline-none transition-colors hocus:bg-bg-app focus-visible:ring-2 focus-visible:ring-ring/50"
+            aria-label="Notificações"
+          >
+            <BellIcon className="size-5" />
+          </button>
+        </div>
       </div>
     </header>
   );

@@ -3,6 +3,7 @@
 import {
   EyeIcon,
   EyeOffIcon,
+  LayoutGridIcon,
   PencilIcon,
   PlusIcon,
   SearchIcon,
@@ -75,14 +76,25 @@ export function CollectionsManager({
       </div>
 
       {collections.length === 0 ? (
-        <div className="b3-card b3-card-pad text-center">
-          <p className="text-ink-3 text-[13px]">
-            Nenhuma vitrine criada ainda.
+        <div className="border-line flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-12">
+          <div className="bg-brand-wash text-brand flex size-12 items-center justify-center rounded-full">
+            <LayoutGridIcon className="size-6" />
+          </div>
+          <h2 className="text-lg font-semibold text-ink-1">
+            Crie sua primeira vitrine
+          </h2>
+          <p className="text-ink-4 max-w-sm text-sm">
+            Vitrines agrupam produtos pra aparecer como seções na home da loja
+            online (ex: &ldquo;Promoções de maio&rdquo;, &ldquo;Mais
+            queridos&rdquo;).
           </p>
-          <p className="text-ink-4 mt-1 text-[12px]">
-            Vitrines aparecem como seções na home da sua loja online e em rotas
-            dedicadas tipo <code>/colecao/promocoes-maio</code>.
-          </p>
+          <button
+            type="button"
+            onClick={() => setShowCreate(true)}
+            className="b3-btn b3-btn--cta mt-2"
+          >
+            <PlusIcon size={14} /> Criar primeira vitrine
+          </button>
         </div>
       ) : (
         <div className="b3-card overflow-hidden">

@@ -54,6 +54,15 @@ export const storeTable = pgTable(
     description: text("description"),
     niche: nicheEnum("niche").notNull().default("outro"),
 
+    /**
+     * Onda 2.7 (2026-05-22) — CNPJ ou CPF do lojista (11 ou 14 dígitos,
+     * sem máscara). Aparece nos documentos impressos (recibo, A4 venda,
+     * fechamento Z) — não tem efeito fiscal (ADR-0033 veto). Opcional;
+     * cadastro de loja não exige.
+     * CHECK length BETWEEN 11 AND 14 em SQL 63.
+     */
+    document: text("document"),
+
     // WhatsApp
     whatsappNumber: text("whatsapp_number").notNull(), // E.164: +5599981757512
     whatsappDisplay: text("whatsapp_display").notNull(), // (99) 98175-7512
@@ -83,7 +92,7 @@ export const storeTable = pgTable(
     //   productCardStyle: "standard" (default) | "minimal" | "bold"
     //   heroStyle: "cover" (default) | "split" | "minimal"
     // CHECK constraints aplicados em supabase/sql/16_theme_check_constraints.sql.
-    // Defaults batem com canvas-v1 = preset "vitre-clean" (zero regressão pós-deploy).
+    // Defaults batem com canvas-v1 = preset "mangos-clean" (zero regressão pós-deploy).
     categoryShape: text("category_shape").notNull().default("rounded"),
     productCardStyle: text("product_card_style").notNull().default("standard"),
     heroStyle: text("hero_style").notNull().default("cover"),
@@ -128,7 +137,7 @@ export const storeTable = pgTable(
 
     // Desconto à vista em basis points. 0..9999. 0 = sem desconto.
     // Renderiza linha auxiliar "à vista R$ X (10% off)" no PDP.
-    // NÃO assume método (PIX/dinheiro) — Vitrê não processa transação;
+    // NÃO assume método (PIX/dinheiro) — Mangos Pay não processa transação;
     // método é combinado no WhatsApp. CHECK 0..9999 no SQL 17.
     cashDiscountBps: integer("cash_discount_bps").notNull().default(0),
 

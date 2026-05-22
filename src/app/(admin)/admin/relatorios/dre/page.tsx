@@ -10,7 +10,7 @@ import { DreReportClient } from "@/components/admin/dre-report-client";
 import { requireSession } from "@/lib/auth-server";
 
 export const metadata = {
-  title: "DRE — Vitrê",
+  title: "DRE — Mangos Pay",
 };
 
 interface SearchParams {

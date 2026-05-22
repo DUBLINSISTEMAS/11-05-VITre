@@ -161,9 +161,14 @@ type AnyTx = Parameters<
 >[0];
 
 /**
- * Calcula agregados (vendas cash, sangria, reforço, esperado). Helper
- * compartilhado entre loadActive e loadDetail. Queries em SÉRIE
- * (memory `node-pg-serialize-queries-in-tx` — pg deprecou paralelas).
+ * Calcula agregados (vendas cash + 6 tipos de adjustment, esperado).
+ * Helper compartilhado entre loadActive e loadDetail.
+ *
+ * Onda 1.2 (2026-05-21): adjustments agora rodam em UMA query agregada
+ * com CASE WHEN por tipo (substituiu 2 queries separadas que ignoravam
+ * 4 dos 6 tipos do enum). Defesa contra "quebra de caixa fantasma":
+ * `other_in` de recebimento de fiado em dinheiro agora soma; PIX não
+ * entra (corrigido em receivable/record-payment.ts).
  */
 async function computeSummary(
   tx: AnyTx,
@@ -184,43 +189,44 @@ async function computeSummary(
   const cashSalesInCents = Number(salesAgg?.totalCash ?? 0);
   const saleCount = Number(salesAgg?.count ?? 0);
 
-  const [adjAggSangria] = await tx
+  const [adjAgg] = await tx
     .select({
-      total: sql<string | null>`SUM(${cashAdjustmentTable.amountInCents})`,
+      sangria: sql<string>`COALESCE(SUM(CASE WHEN ${cashAdjustmentTable.type} = 'sangria' THEN ${cashAdjustmentTable.amountInCents} ELSE 0 END), 0)`,
+      reinforcement: sql<string>`COALESCE(SUM(CASE WHEN ${cashAdjustmentTable.type} = 'reinforcement' THEN ${cashAdjustmentTable.amountInCents} ELSE 0 END), 0)`,
+      paySupplier: sql<string>`COALESCE(SUM(CASE WHEN ${cashAdjustmentTable.type} = 'pay_supplier' THEN ${cashAdjustmentTable.amountInCents} ELSE 0 END), 0)`,
+      payBill: sql<string>`COALESCE(SUM(CASE WHEN ${cashAdjustmentTable.type} = 'pay_bill' THEN ${cashAdjustmentTable.amountInCents} ELSE 0 END), 0)`,
+      otherIn: sql<string>`COALESCE(SUM(CASE WHEN ${cashAdjustmentTable.type} = 'other_in' THEN ${cashAdjustmentTable.amountInCents} ELSE 0 END), 0)`,
+      otherOut: sql<string>`COALESCE(SUM(CASE WHEN ${cashAdjustmentTable.type} = 'other_out' THEN ${cashAdjustmentTable.amountInCents} ELSE 0 END), 0)`,
     })
     .from(cashAdjustmentTable)
-    .where(
-      and(
-        eq(cashAdjustmentTable.cashSessionId, s.id),
-        eq(cashAdjustmentTable.type, "sangria"),
-      ),
-    );
-  const sangriaInCents = Number(adjAggSangria?.total ?? 0);
+    .where(eq(cashAdjustmentTable.cashSessionId, s.id));
 
-  const [adjAggReinf] = await tx
-    .select({
-      total: sql<string | null>`SUM(${cashAdjustmentTable.amountInCents})`,
-    })
-    .from(cashAdjustmentTable)
-    .where(
-      and(
-        eq(cashAdjustmentTable.cashSessionId, s.id),
-        eq(cashAdjustmentTable.type, "reinforcement"),
-      ),
-    );
-  const reinforcementInCents = Number(adjAggReinf?.total ?? 0);
+  const sangriaInCents = Number(adjAgg?.sangria ?? 0);
+  const reinforcementInCents = Number(adjAgg?.reinforcement ?? 0);
+  const paySupplierInCents = Number(adjAgg?.paySupplier ?? 0);
+  const payBillInCents = Number(adjAgg?.payBill ?? 0);
+  const otherInInCents = Number(adjAgg?.otherIn ?? 0);
+  const otherOutInCents = Number(adjAgg?.otherOut ?? 0);
+
+  const inflowsInCents = reinforcementInCents + otherInInCents;
+  const outflowsInCents =
+    sangriaInCents + paySupplierInCents + payBillInCents + otherOutInCents;
 
   const expectedInCents =
     s.openingAmountInCents +
-    cashSalesInCents -
-    sangriaInCents +
-    reinforcementInCents;
+    cashSalesInCents +
+    inflowsInCents -
+    outflowsInCents;
 
   return {
     session: s,
     cashSalesInCents,
     sangriaInCents,
+    paySupplierInCents,
+    payBillInCents,
+    otherOutInCents,
     reinforcementInCents,
+    otherInInCents,
     expectedInCents,
     saleCount,
   };

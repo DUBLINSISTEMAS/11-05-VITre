@@ -4,7 +4,7 @@
  * Mostra info da loja: nome, descrição opcional, links pra contato
  * (WhatsApp, Instagram, Maps), e link "Sobre" pra página dedicada (Bloco D).
  *
- * "Powered by Vitrê" sutil — marketing involuntário sem competir com a
+ * "Powered by Mangos Pay" sutil — marketing involuntário sem competir com a
  * marca da lojista. Quando virar plano pago (Fase 3), pode ficar opcional.
  */
 import { Instagram, MapPin, MessageCircle } from "lucide-react";
@@ -107,12 +107,12 @@ export function StoreFooter({ store }: StoreFooterProps) {
             reservados.
           </span>
           <a
-            href="https://vitre.app"
+            href="https://mangospay.app"
             target="_blank"
             rel="noopener noreferrer"
             className="hocus:text-foreground transition-colors"
           >
-            Powered by Vitrê
+            Powered by Mangos Pay
           </a>
         </div>
       </div>

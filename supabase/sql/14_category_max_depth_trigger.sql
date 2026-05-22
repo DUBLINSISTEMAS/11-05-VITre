@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — trigger anti-3-níveis em category (defesa em profundidade)
+-- Mangos Pay — trigger anti-3-níveis em category (defesa em profundidade)
 -- =====================================================================
 -- App valida em Zod (max 2 níveis: raiz + filha direta). Mas o schema
 -- Postgres permite self-FK arbitrário — mutação direta SQL ou bug futuro

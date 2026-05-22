@@ -90,8 +90,8 @@ export function SacolaDrawer({
       // Highlight desaparece após 1.5s (alinhado com toast).
       window.setTimeout(() => setRecentLineKey(null), 1500);
     }
-    window.addEventListener("vitre:cart-added", handler);
-    return () => window.removeEventListener("vitre:cart-added", handler);
+    window.addEventListener("Mangos Pay:cart-added", handler);
+    return () => window.removeEventListener("Mangos Pay:cart-added", handler);
   }, []);
 
   const checkoutHref = `/${storeSlug}/sacola`;

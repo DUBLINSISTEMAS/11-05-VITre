@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — Trigger pra sincronizar cache `stock_quantity` (Fase 4 / ADR-0015)
+-- Mangos Pay — Trigger pra sincronizar cache `stock_quantity` (Fase 4 / ADR-0015)
 -- =====================================================================
 -- INVARIANTE: cada INSERT em `stock_movement` atualiza atomicamente o
 -- cache em `product.stock_quantity` ou `product_variant.stock_quantity`.

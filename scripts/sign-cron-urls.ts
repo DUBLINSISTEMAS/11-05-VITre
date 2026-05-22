@@ -20,7 +20,7 @@
  *        pnpm exec tsx scripts/sign-cron-urls.ts
  *   3. Cole o output em `vercel.json` (substitui o valor de `path`).
  *   4. Commit + deploy. Smoke real:
- *        curl -i "https://vitre.site/api/cron/keep-alive?sig=<a_gerada>"
+ *        curl -i "https://mangospay.app/api/cron/keep-alive?sig=<a_gerada>"
  *        # esperado 200; sem sig ou sig errada → 401.
  *
  * Rotação:

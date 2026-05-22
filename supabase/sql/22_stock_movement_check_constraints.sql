@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — CHECK constraints para `stock_movement` (Fase 4 / ADR-0015)
+-- Mangos Pay — CHECK constraints para `stock_movement` (Fase 4 / ADR-0015)
 -- =====================================================================
 -- Aplicar manualmente no Editor do Supabase APÓS rodar `pnpm db:migrate`
 -- que aplica `0017_military_hitman.sql`.

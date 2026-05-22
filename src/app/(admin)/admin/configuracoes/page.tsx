@@ -13,7 +13,7 @@ import { getCurrentStore } from "@/lib/store-context";
  * bagy-extra.jsx:648).
  *
  * Layout handoff: 2-col grid (form left + sidebar right com Plano + Zona de
- * perigo). Vitrê preserva StoreConfigForm + WhatsAppTemplateCard internos
+ * perigo). Mangos Pay preserva StoreConfigForm + WhatsAppTemplateCard internos
  * (598 linhas total — sweep shadcn→b3 fica como follow-up se necessário).
  *
  * Right column:
@@ -34,7 +34,7 @@ export default async function ConfiguracoesPage() {
     <div className="space-y-4 sm:space-y-6">
       <div>
         <h1 className="text-ink-1 text-[22px] font-bold tracking-[-0.025em]">
-          Configurações
+          Dados da loja
         </h1>
         <p className="text-ink-4 mt-1 text-[13px]">
           Identidade, contato e endereço da sua loja.
@@ -110,7 +110,7 @@ function DangerZoneCard() {
       </h3>
       <p className="text-ink-3 mt-2 text-[13px] leading-relaxed">
         Ações irreversíveis · cuidado. Excluir loja remove TUDO: produtos,
-        pedidos, clientes, imagens.
+        vendas, clientes, imagens.
       </p>
       <button
         type="button"

@@ -5,7 +5,7 @@
  *   - Lê `process.env.SENTRY_DSN` direto (não via `@/lib/env`): instrumentation
  *     roda ANTES do Next bootstrap, env validation com Zod ainda não está
  *     pronta. Se DSN ausente → no-op silencioso (dev local sem config).
- *   - `sendDefaultPii: false`: Vitrê NÃO permite Sentry capturar headers de
+ *   - `sendDefaultPii: false`: Mangos Pay NÃO permite Sentry capturar headers de
  *     request, cookies, request body. Erros vão sem PII por default.
  *   - `tracesSampleRate: 0`: tracing desligado por hora (Free tier tem
  *     limite separado de traces). Pode ativar gradativo se notar

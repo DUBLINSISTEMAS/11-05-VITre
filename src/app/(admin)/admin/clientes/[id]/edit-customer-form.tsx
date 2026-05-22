@@ -94,10 +94,10 @@ export function EditCustomerForm({
           <header className="mb-3 flex items-center justify-between gap-2">
             <div className="space-y-0.5">
               <h2 className="text-[13.5px] font-semibold tracking-tight text-ink-1">
-                Últimos pedidos vinculados
+                Últimas vendas vinculadas
               </h2>
               <p className="text-ink-4 text-xs">
-                Pedidos que apontam pra este cliente. Histórico antigo sem
+                Vendas que apontam pra este cliente. Histórico antigo sem
                 vínculo aparece direto em <code>/admin/pedidos</code>.
               </p>
             </div>
@@ -139,7 +139,7 @@ export function EditCustomerForm({
             Excluir cliente
           </h2>
           <p className="text-ink-4 text-xs leading-relaxed">
-            Pedidos vinculados <strong>não</strong> são apagados — eles
+            Vendas vinculadas <strong>não</strong> são apagadas — elas
             mantêm nome e telefone do momento da compra, só perdem o
             vínculo ativo com este cliente.
           </p>

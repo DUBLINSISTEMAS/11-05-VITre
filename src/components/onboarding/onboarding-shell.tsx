@@ -1,7 +1,7 @@
 // Shell do onboarding — Port Dublin v3 (ADR-0019, Onda A.4).
 //
 // Card centralizado max-w-880 sobre `--bg-app`, com:
-// - Header: logo Vitrê + link "PULAR" opcional (vai pra /admin direto)
+// - Header: logo Mangos Pay + link "PULAR" opcional (vai pra /admin direto)
 // - Stepper horizontal: N circles numerados + linhas conectoras
 //   (verde quando completo, brand quando atual, line-2 quando futuro)
 // - Body slot (children) com padding 36px 48px
@@ -18,7 +18,7 @@ import type { ReactNode } from "react";
 interface OnboardingShellProps {
   /** Passo atual (1-indexed). */
   step: number;
-  /** Total de passos. Default 4 (Vitrê: conta → identidade → tipo de negócio → bem-vindo). */
+  /** Total de passos. Default 4 (Mangos Pay: conta → identidade → tipo de negócio → bem-vindo). */
   total?: number;
   /**
    * Esconde o link "Já tenho conta · entrar". Default false.
@@ -53,11 +53,17 @@ export function OnboardingShell({
         <header className="flex items-center justify-between border-b border-line px-6 py-5 sm:px-8">
           <Link
             href="/"
-            aria-label="Vitrê"
-            className="hocus:text-brand text-ink-1 inline-flex items-center gap-2.5 transition-colors"
+            aria-label="Mangos Pay"
+            className="inline-flex items-center transition-opacity hocus:opacity-80"
           >
-            <VitreLogoMark />
-            <span className="text-[17px] font-bold tracking-[-0.4px]">Vitrê</span>
+            {/* logo.svg já contém ícone + wordmark — sem <span> de texto. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logos/logo.svg"
+              alt="Mangos Pay"
+              className="h-7 w-auto"
+              draggable={false}
+            />
           </Link>
 
           {hideSignInLink ? null : (
@@ -162,35 +168,3 @@ function Step({ index, label, isActive, isComplete, isLast }: StepProps) {
   );
 }
 
-// ─── Logo mark — silhueta de sacola ───────────────────────────────────
-function VitreLogoMark({ size = 28 }: { size?: number }) {
-  const stroke = 2.4;
-  return (
-    <span
-      aria-hidden
-      className="text-primary inline-flex items-center justify-center"
-      style={{ width: size, height: size }}
-    >
-      <svg viewBox="0 0 24 24" width={size * 0.78} height={size * 0.78} fill="none">
-        <path
-          d="M5.5 9.5h13l-.7 9.2a2 2 0 0 1-2 1.8h-7.6a2 2 0 0 1-2-1.8L5.5 9.5Z"
-          stroke="currentColor"
-          strokeWidth={stroke}
-          strokeLinejoin="round"
-        />
-        <path
-          d="M9 9.5V8a3 3 0 0 1 6 0v1.5"
-          stroke="currentColor"
-          strokeWidth={stroke}
-          strokeLinecap="round"
-        />
-        <path
-          d="M9 14.2c1.3 1.6 4.7 1.6 6 0"
-          stroke="currentColor"
-          strokeWidth={stroke - 0.2}
-          strokeLinecap="round"
-        />
-      </svg>
-    </span>
-  );
-}

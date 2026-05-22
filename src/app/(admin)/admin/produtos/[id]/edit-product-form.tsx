@@ -28,9 +28,21 @@ interface EditProductFormProps {
   initialData: ProductFormInitialData;
   categories: CategoryOption[];
   brands: BrandOption[];
+  /** Onda 2.3 — passa pro form filtrar campos por tipo de loja. */
+  storeNiche?:
+    | "roupa_feminina"
+    | "joia"
+    | "semijoia"
+    | "perfumaria"
+    | "outro";
 }
 
-export function EditProductForm({ initialData, categories, brands }: EditProductFormProps) {
+export function EditProductForm({
+  initialData,
+  categories,
+  brands,
+  storeNiche,
+}: EditProductFormProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   return (

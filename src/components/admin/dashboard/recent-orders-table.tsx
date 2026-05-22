@@ -1,5 +1,5 @@
-// Tabela "Pedidos recentes" no dashboard admin (port Dublin v3, Onda 5a).
-// Top N pedidos mais recentes — DataGrid 6-col mono no desktop, cards
+// Tabela "Vendas recentes" no dashboard admin (port Dublin v3, Onda 5a).
+// Top N vendas mais recentes — DataGrid 6-col mono no desktop, cards
 // compactos no mobile. NÃO usa `b3-tbl` (que é seletor pra <table> HTML);
 // aqui é grid CSS pra responsividade. Container adota `b3-card`; tokens
 // muted/accent/border substituídos por bg-app/ink/line Dublin.
@@ -32,7 +32,7 @@ export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
     <div className="b3-card overflow-hidden">
       <div className="flex items-baseline justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
         <h2 className="text-ink-1 text-[13.5px] font-semibold tracking-tight">
-          Pedidos recentes
+          Vendas recentes
         </h2>
         <Link
           href="/admin/pedidos"
@@ -45,7 +45,7 @@ export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
 
       {orders.length === 0 ? (
         <div className="text-ink-4 px-4 py-8 text-center text-sm">
-          Nenhum pedido ainda.
+          Nenhuma venda ainda.
         </div>
       ) : (
         <>
@@ -54,7 +54,7 @@ export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
             role="rowgroup"
             className={`text-eyebrow bg-bg-app hidden ${GRID_COLS} items-center gap-3 border-b border-line px-4 py-2.5 sm:grid sm:px-5`}
           >
-            <span>Pedido</span>
+            <span>Venda</span>
             <span>Cliente</span>
             <span>Total</span>
             <span>Quando</span>
@@ -67,7 +67,7 @@ export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
               <li key={o.id}>
                 {/* Desktop */}
                 <Link
-                  href="/admin/pedidos"
+                  href={`/admin/pedidos?detail=${o.id}`}
                   prefetch
                   className={`hocus:bg-bg-app group hidden ${GRID_COLS} items-center gap-3 px-4 py-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 sm:grid sm:px-5`}
                 >
@@ -96,7 +96,7 @@ export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
 
                 {/* Mobile: card compacto */}
                 <Link
-                  href="/admin/pedidos"
+                  href={`/admin/pedidos?detail=${o.id}`}
                   prefetch
                   className="hocus:bg-bg-app group flex items-center gap-3 px-4 py-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 sm:hidden"
                 >

@@ -13,7 +13,7 @@
  *  - {itens}       — lista formatada com 📦 *Nx Produto* — preço
  *  - {total}       — total em R$
  *  - {codigo}      — código curto do pedido (ABCD)
- *  - {link}        — URL pública do pedido (vitre.app/p/xxxx)
+ *  - {link}        — URL pública do pedido (mangospay.app/p/xxxx)
  *  - {observacoes} — "📝 obs do cliente" ou linha vazia
  */
 import { CopyIcon } from "lucide-react";
@@ -80,7 +80,7 @@ export function WhatsAppTemplateCard({
     ],
     totalInCents: 34970,
     shortCode: "A7K2",
-    publicUrl: "https://vitre.site/p/exemplo",
+    publicUrl: "https://mangospay.app/p/exemplo",
     customerNotes: "Retirar no fim da tarde.",
     // Preview do placeholder {formaPagamento} — não puxa do banco aqui
     // (template-card é client puro), só ilustra como ficaria quando
@@ -102,7 +102,7 @@ export function WhatsAppTemplateCard({
       setSavedSnapshot(payload);
       toast.success(
         payload == null
-          ? "Template restaurado pro padrão Vitrê."
+          ? "Template restaurado pro padrão Mangos Pay."
           : "Template salvo.",
       );
     });
@@ -120,11 +120,11 @@ export function WhatsAppTemplateCard({
     <section className="b3-card p-4 sm:p-5">
       <header className="mb-3">
         <h2 className="text-[15px] font-semibold tracking-tight text-ink-1">
-          Mensagem do pedido (WhatsApp)
+          Mensagem da venda (WhatsApp)
         </h2>
         <p className="text-ink-4 mt-1 text-[12.5px] leading-relaxed">
           Esta é a mensagem que CHEGA NO SEU WHATSAPP quando um cliente
-          finaliza o pedido. Edite à vontade. Use os placeholders abaixo
+          finaliza a compra. Edite à vontade. Use os placeholders abaixo
           pra inserir nome do cliente, total, etc.
         </p>
       </header>

@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — CHECK condicional de preço alinhado ao lifecycle do produto
+-- Mangos Pay — CHECK condicional de preço alinhado ao lifecycle do produto
 -- =====================================================================
 -- Refina os 3 CHECKs de preço do supabase/sql/07 (`>= 0`) pra invariantes
 -- semanticamente alinhadas com o domínio:

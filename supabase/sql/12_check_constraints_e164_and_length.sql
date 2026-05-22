@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — CHECK constraints E.164 + length (defesa em profundidade PII)
+-- Mangos Pay — CHECK constraints E.164 + length (defesa em profundidade PII)
 -- =====================================================================
 -- Zod valida formato/tamanho no boundary das server actions, mas DB
 -- expõe a tabela a SQL manual, scripts, ou futuras integrações. Estas

@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — 0004: hardening pedido público + invariantes 1 loja/owner +
+-- Mangos Pay — 0004: hardening pedido público + invariantes 1 loja/owner +
 -- UNIQUE (product_id, position) em product_image
 -- =====================================================================
 -- Esta migration consolida três mudanças e é IDEMPOTENTE (DO blocks +

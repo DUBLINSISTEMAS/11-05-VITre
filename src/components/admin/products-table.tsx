@@ -8,7 +8,7 @@
 //
 // Colunas: checkbox / FOTO (b3-avatar) / NOME / CATEGORIA (b3-pill) /
 // ESTOQUE (mono right) / PREÇO (mono right, promo c/ strikethrough) / STATUS.
-// SKU do handoff omitido — Vitrê schema atual sem SKU em productTable.
+// SKU do handoff omitido — Mangos Pay schema atual sem SKU em productTable.
 //
 // Selection state pra <BulkActionsToolbar> preservado. Stop propagation
 // no checkbox pra não disparar navegação.

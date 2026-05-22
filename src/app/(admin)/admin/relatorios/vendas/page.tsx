@@ -12,7 +12,7 @@ import { SalesReportClient } from "@/components/admin/sales-report-client";
 import { requireSession } from "@/lib/auth-server";
 
 export const metadata = {
-  title: "Relatório de Vendas — Vitrê",
+  title: "Relatório de Vendas — Mangos Pay",
 };
 
 interface SearchParams {

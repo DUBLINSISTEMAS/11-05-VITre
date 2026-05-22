@@ -59,7 +59,7 @@ export function StockInput({ value, onChange, disabled }: StockInputProps) {
       {value.trackStock ? (
         <div className="space-y-1.5">
           <Label htmlFor={qtyId} className="text-xs">
-            Quantidade disponível
+            Estoque atual
           </Label>
           <Input
             id={qtyId}

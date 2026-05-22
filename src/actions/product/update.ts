@@ -146,13 +146,38 @@ export async function updateProduct(
         });
       }
 
-      const productStockDelta =
-        data.variants.length === 0 && data.trackStock
-          ? (data.stockQuantity ?? 0) - (existing.stockQuantity ?? 0)
-          : 0;
-      const nextProductStockCache = data.trackStock
-        ? existing.stockQuantity ?? 0
-        : null;
+      // ---------------------------------------------------------------
+      // Cache de estoque (Onda 1.1 — 2026-05-21):
+      // `stock_movement` é a FONTE DE VERDADE (inventory.ts:4-7). O cache
+      // `product.stock_quantity` é gerenciado pelo trigger
+      // `sync_stock_cache_on_movement` (SQL 60). Aqui escrevemos cache
+      // SÓ na transição de trackStock (true→false zera pra NULL, false→true
+      // zera pra 0 pra trigger somar depois). Em todos os outros casos,
+      // deixamos o trigger ser dono — evita race com vendas concorrentes
+      // que descontaram o cache entre o load do form e este UPDATE.
+      // ---------------------------------------------------------------
+      const trackStockChanged = existing.trackStock !== data.trackStock;
+      const productStockCacheOverride: { stockQuantity?: number | null } =
+        trackStockChanged
+          ? { stockQuantity: data.trackStock ? 0 : null }
+          : {};
+
+      // Delta a registrar via movement:
+      //   false→true: tudo digitado vira saldo inicial (movement 'initial')
+      //   continua true: ajuste = novo - atual (movement 'adjustment')
+      //   true→false ou continua false: nada
+      let productStockDelta = 0;
+      let productStockMovementType: "initial" | "adjustment" = "adjustment";
+      if (data.variants.length === 0 && data.trackStock) {
+        if (!existing.trackStock) {
+          productStockDelta = data.stockQuantity ?? 0;
+          productStockMovementType = "initial";
+        } else {
+          productStockDelta =
+            (data.stockQuantity ?? 0) - (existing.stockQuantity ?? 0);
+          productStockMovementType = "adjustment";
+        }
+      }
 
       // 8. Mutação: produto + variantes (diff). Defesa em profundidade:
       // todo WHERE carrega `storeId` mesmo com RLS já filtrando.
@@ -167,7 +192,8 @@ export async function updateProduct(
           promoPriceInCents: data.promoPriceInCents,
           categoryId: data.categoryId,
           trackStock: data.trackStock,
-          stockQuantity: nextProductStockCache,
+          allowOversell: data.allowOversell,
+          ...productStockCacheOverride,
           installmentsOverride: data.installmentsOverride,
           cashDiscountOverrideBps: data.cashDiscountOverrideBps,
           isActive: data.isActive,
@@ -204,10 +230,13 @@ export async function updateProduct(
           storeId: store.id,
           productId: data.productId,
           variantId: null,
-          movementType: "adjustment",
+          movementType: productStockMovementType,
           quantityDelta: productStockDelta,
           referenceType: "manual",
-          notes: "Ajuste de estoque pelo editor do produto.",
+          notes:
+            productStockMovementType === "initial"
+              ? "Saldo inicial cadastrado no produto (controle ativado)."
+              : "Ajuste de estoque pelo editor do produto.",
           createdBy: userId,
         });
       }
@@ -252,17 +281,38 @@ export async function updateProduct(
       }
 
       for (const v of incomingWithId) {
-        const currentVariantStock = dbVariantById.get(v.id!)?.stockQuantity ?? 0;
-        const nextVariantStock = v.stockQuantity ?? 0;
-        const delta = v.stockQuantity !== null ? nextVariantStock - currentVariantStock : 0;
+        // Mesmo princípio do produto: cache é gerenciado pelo trigger.
+        // Escrevemos `stockQuantity` no UPDATE só na transição de tracking.
+        // Race-safe contra vendas concorrentes que descontaram o cache
+        // entre o load do form e este UPDATE.
+        const currentVariantStockRaw = dbVariantById.get(v.id!)?.stockQuantity ?? null;
+        const wasTracking = currentVariantStockRaw !== null;
+        const willTrack = v.stockQuantity !== null;
+        const currentVariantStock = currentVariantStockRaw ?? 0;
+        const trackChanged = wasTracking !== willTrack;
+
+        const variantCacheOverride: { stockQuantity?: number | null } =
+          trackChanged ? { stockQuantity: willTrack ? 0 : null } : {};
+
+        let variantDelta = 0;
+        let variantMovementType: "initial" | "adjustment" = "adjustment";
+        if (willTrack) {
+          if (!wasTracking) {
+            variantDelta = v.stockQuantity ?? 0;
+            variantMovementType = "initial";
+          } else {
+            variantDelta = (v.stockQuantity ?? 0) - currentVariantStock;
+            variantMovementType = "adjustment";
+          }
+        }
 
         await tx
           .update(productVariantTable)
           .set({
             name: v.name,
             priceInCents: v.priceInCents,
-            stockQuantity: v.stockQuantity !== null ? currentVariantStock : null,
-            trackStock: v.stockQuantity !== null,
+            ...variantCacheOverride,
+            trackStock: willTrack,
             // Eixo canvas-v1: zera colorHex quando axis="size" pra não
             // arrastar valor antigo se lojista trocou tamanho ↔ cor.
             axis: v.axis,
@@ -277,15 +327,18 @@ export async function updateProduct(
             ),
           );
 
-        if (delta !== 0) {
+        if (variantDelta !== 0) {
           await tx.insert(stockMovementTable).values({
             storeId: store.id,
             productId: data.productId,
             variantId: v.id!,
-            movementType: "adjustment",
-            quantityDelta: delta,
+            movementType: variantMovementType,
+            quantityDelta: variantDelta,
             referenceType: "manual",
-            notes: "Ajuste de estoque pelo editor do produto.",
+            notes:
+              variantMovementType === "initial"
+                ? "Saldo inicial cadastrado na variante (controle ativado)."
+                : "Ajuste de estoque pelo editor do produto.",
             createdBy: userId,
           });
         }

@@ -3,7 +3,7 @@
 // Hide-values toggle do dashboard — port Dublin v3 (ADR-0019, Onda A.5).
 // Botão eye/eye-off no header do card de vendas que esconde TODOS os valores
 // monetários do dashboard. Persiste em localStorage key
-// `vitre.dashboard.hide-values`.
+// `mangospay.dashboard.hide-values`.
 //
 // Implementação leve via Context — provider envolve o SalesSummaryCard,
 // consumers (5 stats) leem `hidden` e renderizam "•••••" em vez do valor.
@@ -21,7 +21,7 @@ import {
   useState,
 } from "react";
 
-const STORAGE_KEY = "vitre.dashboard.hide-values";
+const STORAGE_KEY = "mangospay.dashboard.hide-values";
 
 interface HideValuesContextValue {
   hidden: boolean;

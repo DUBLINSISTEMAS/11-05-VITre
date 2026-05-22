@@ -67,7 +67,11 @@ export default async function NovoProdutoPage() {
           </p>
         </div>
       </div>
-      <NewProductForm categories={categories} brands={brands} />
+      <NewProductForm
+        categories={categories}
+        brands={brands}
+        storeNiche={store.niche}
+      />
     </div>
   );
 }

@@ -1,11 +1,12 @@
 "use server";
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 
 import {
   customerTable,
   orderItemTable,
+  orderPaymentTable,
   orderReturnTable,
   orderTable,
 } from "@/db/schema";
@@ -44,6 +45,21 @@ export type OrderDetailReturn = {
   createdAt: Date;
 };
 
+/**
+ * Onda 1.2/1.3 (2026-05-22) — pagamento real do pedido. UMA linha por
+ * forma usada (R$80 cash + R$50 pix = 2 linhas). Antes o detalhe lia
+ * apenas `order.paymentMethod` legacy (primeira linha), escondendo
+ * pagamento misto do lojista e do cliente.
+ */
+export type OrderDetailPayment = {
+  id: string;
+  method: "cash" | "pix" | "debit" | "credit" | "other";
+  amountInCents: number;
+  /** Pra cálculo de troco quando method='cash'. NULL pros outros. */
+  cashReceivedInCents: number | null;
+  notes: string | null;
+};
+
 export type OrderDetail = {
   id: string;
   shortCode: string;
@@ -61,6 +77,8 @@ export type OrderDetail = {
   quoteValidUntil: Date | null;
   createdAt: Date;
   items: OrderDetailItem[];
+  /** Onda 1.3 — multi-pagamento real. Vazio em orçamento/quote ainda sem pagamento. */
+  payments: OrderDetailPayment[];
   /** Pre-Sprint-6 C — lista de devoluções (vazia quando venda não foi devolvida). */
   returns: OrderDetailReturn[];
 };
@@ -122,6 +140,25 @@ export async function loadOrderDetail(
       .from(orderItemTable)
       .where(eq(orderItemTable.orderId, orderId));
 
+    // Onda 1.3 — multi-pagamento real. Ordenado por createdAt ASC pra
+    // preservar a ordem em que o lojista digitou (cash, depois pix etc.).
+    const payments = await tx
+      .select({
+        id: orderPaymentTable.id,
+        method: orderPaymentTable.method,
+        amountInCents: orderPaymentTable.amountInCents,
+        cashReceivedInCents: orderPaymentTable.cashReceivedInCents,
+        notes: orderPaymentTable.notes,
+      })
+      .from(orderPaymentTable)
+      .where(
+        and(
+          eq(orderPaymentTable.orderId, orderId),
+          eq(orderPaymentTable.storeId, store.id),
+        ),
+      )
+      .orderBy(asc(orderPaymentTable.createdAt));
+
     let linkedCustomer: OrderDetailLinkedCustomer | null = null;
     if (order.customerId) {
       const c = await tx.query.customerTable.findFirst({
@@ -152,7 +189,7 @@ export async function loadOrderDetail(
       )
       .orderBy(desc(orderReturnTable.createdAt));
 
-    return { order, items, linkedCustomer, returns };
+    return { order, items, payments, linkedCustomer, returns };
   });
 
   if (!result) return { ok: false, error: "Pedido não encontrado." };
@@ -163,6 +200,7 @@ export async function loadOrderDetail(
       ...result.order,
       status: result.order.status as (typeof ORDER_STATUS_VALUES)[number],
       items: result.items,
+      payments: result.payments,
       linkedCustomer: result.linkedCustomer,
       returns: result.returns,
     },

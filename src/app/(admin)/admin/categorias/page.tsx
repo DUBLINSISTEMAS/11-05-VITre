@@ -60,7 +60,7 @@ export default async function CategoriasPage() {
       {/* Page header — H1 inline Dublin v3 (24px font-bold tracking -0.025em) */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[24px] font-bold tracking-[-0.025em] text-ink-1">
+          <h1 className="text-[22px] font-bold tracking-[-0.025em] text-ink-1">
             Categorias
           </h1>
           <p className="text-ink-4 mt-1 text-sm">

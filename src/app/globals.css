@@ -42,11 +42,15 @@
   --mangos-text-secondary: #5F756F;
   --mangos-text-muted: #8A9994;
 
-  /* — Brand do Mangos Pay (Dublin v3 navy BAGY-inspired, ADR-0019) — */
-  --brand: #1A3A8F;                              /* Navy sóbrio — substitui o carvão canvas-v1 */
-  --brand-2: #14306F;                            /* Hover/active state */
-  --brand-wash: #EEF1FB;                         /* Surface tinted (helpbar, side-item ativo) */
-  --brand-line: #C7D2EE;                         /* Borda tinted (focus ring soft, helpbar) */
+  /* — Brand do Mangos Pay (verde escuro + amarelo manga, rebrand 2026-05-21) —
+     Substituiu o navy Vitrê. Estes tokens alimentam todo `text-brand`,
+     `bg-brand`, focus rings, links etc fora do admin shell (auth, landing,
+     storefront default). Admin shell (`.b3-shell`) já tinha esse mesmo
+     verde via override scoped — agora root e admin estão alinhados. */
+  --brand: #174D44;                              /* mangos-green-800 — folha da manga */
+  --brand-2: #123D38;                            /* mangos-green-900 — hover/active */
+  --brand-wash: #FFF2C7;                         /* mangos-yellow-soft — surface tinted */
+  --brand-line: #DCCBAA;                         /* mangos-border-strong — borda tinted */
   --brand-foreground: oklch(0.99 0 0);
 
   /* — Dublin v3 surfaces & lines (BAGY-style admin) — */
@@ -715,10 +719,14 @@
        formatting context separado, preservando sticky. Bug reportado pelo
        founder 2026-05-18. */
     overflow-x: clip;
-    background: var(--bg-app);
-    /* Sidebar flush à esquerda + topo + base; gap só pro respiro entre
-       sidebar e b3-main (que tem padding próprio pro topbar flutuar). */
-    gap: 12px;
+    /* Fundo do shell = mesma cor da sidebar. Isso faz o cinza "vazar" nos
+       cantos arredondados do .b3-main (ref Abacate Pay 2026-05-21): a área
+       branca fica com top-left + bottom-left arredondados grandes, e a
+       sidebar parece envolvê-la em uma curva contínua. */
+    background: var(--mangos-side-bg);
+    /* Gap zero: sidebar encosta no main; a curva (border-radius do main)
+       cria a separação visual entre cinza-sidebar e branco-conteúdo. */
+    gap: 0;
 
     /* Mangos admin paleta — override scoped (Fase 2 redesign 2026-05-21).
        Substitui o navy Dublin v3 pelo verde escuro + amarelo Mangos APENAS
@@ -745,19 +753,43 @@
     flex-direction: column;
     min-width: 0;
     overflow-x: clip;
-    /* Fundo branco no main (Fase 2 redesign 2026-05-21, ref Abacate Pay).
-       Substitui o cinza --bg-app que vigorou de 2026-05-18 até aqui — cards
-       agora dependem de border + sombra leve em vez de contraste de fundo. */
+    /* Fundo CINZA igual à sidebar — área direita do shell é contínua em cinza
+       (ref Abacate Pay 2026-05-21). O card branco com border-radius flutua
+       DENTRO deste cinza via .b3-main-card. A topbar fica transparente
+       acima do card, sobre o mesmo cinza. */
+    background: var(--mangos-side-bg);
+    padding: 0;
+  }
+  /* Card branco que contém o conteúdo da página — flutua dentro do .b3-main
+     com margem visível mostrando o cinza em todos os 4 lados. Border-radius
+     em TODOS OS CANTOS pra dar o efeito "curva completa" que envolve o card
+     (top-left + top-right + bottom-left + bottom-right todos arredondados). */
+  .b3-main-card {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
     background: var(--surface);
-    /* Padding superior + direito permite o topbar flutuar (rounded card)
-       sem encostar nas bordas. Sidebar continua flush à esquerda/topo/base. */
-    padding: 12px 12px 0 0;
+    border-radius: 20px;
+    margin: 0 16px 16px 16px;
+    overflow-x: clip;
+    box-shadow: 0 1px 2px color-mix(in oklab, var(--ink-1) 4%, transparent),
+      0 4px 12px -6px color-mix(in oklab, var(--ink-1) 6%, transparent);
   }
   .b3-side {
     width: 280px;
-    background: var(--mangos-side-bg);
-    border-right: 1px solid var(--line);
-    border-radius: 0 18px 18px 0;
+    background-color: var(--mangos-side-bg);
+    /* Brand watermark — manga decorativa no canto inferior direito.
+       Background-image fica preso ao padding-box, não scrolla com o nav.
+       Opacidade baixíssima (~7%) pra não competir com o texto dos links. */
+    background-image: url("/logos/favicon.svg");
+    background-repeat: no-repeat;
+    background-position: right -50px bottom -40px;
+    background-size: 320px 320px;
+    /* Sem border-right nem border-radius: o cinza do sidebar precisa ir
+       flush até o topo, base e borda direita, sem contorno visível nem
+       cantos arredondados que revelariam o branco do main por trás
+       (ref Abacate Pay 2026-05-21). */
     position: sticky;
     top: 0;
     height: 100vh;
@@ -768,16 +800,105 @@
     flex-shrink: 0;
     align-self: flex-start;
   }
+  /* Watermark suave via pseudo-element pra controlar opacidade
+     independente do conteúdo (background-image em si não aceita opacity). */
+  .b3-side::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("/logos/favicon.svg");
+    background-repeat: no-repeat;
+    background-position: right -50px bottom -40px;
+    background-size: 320px 320px;
+    opacity: 0.07;
+    pointer-events: none;
+    z-index: 0;
+  }
+  /* Reset do background-image direto do .b3-side — o ::before assume. */
+  .b3-side { background-image: none; }
+  /* Conteúdo da sidebar fica acima do watermark. */
+  .b3-side > * { position: relative; z-index: 1; }
   .b3-side::-webkit-scrollbar { width: 0; }
+
+  /* Mesmo watermark no drawer mobile (Sheet com data-admin-sidebar). */
+  [data-admin-sidebar]::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("/logos/favicon.svg");
+    background-repeat: no-repeat;
+    background-position: right -50px bottom -40px;
+    background-size: 320px 320px;
+    opacity: 0.07;
+    pointer-events: none;
+    z-index: 0;
+  }
+  [data-admin-sidebar] > * { position: relative; z-index: 1; }
+
+  /* ========================================================
+   * VIEWPORT-LOCK do shell admin (desktop ≥ 1024px)
+   * --------------------------------------------------------
+   * Padrão Abacate Pay: a área branca do .b3-main precisa ter a curva
+   * top-left + bottom-left SEMPRE visíveis na viewport, não importa o
+   * tamanho do conteúdo. Pra isso o shell trava em height: 100vh e o
+   * scroll do conteúdo vira interno ao .b3-main (não scroll de página).
+   *
+   * Side effects positivos:
+   *  - Topbar (sticky top: 0 dentro do main) flutua corretamente sem
+   *    competir com scroll de página.
+   *  - Sidebar não precisa mais de position: sticky — vira filho flex
+   *    com align-self: stretch ocupando os 100vh do shell.
+   *  - Curva inferior do main fica colada na base da viewport (efeito
+   *    "abraço" da sidebar) qualquer que seja o conteúdo da página.
+   *
+   * Mobile (<1024px) mantém comportamento atual: sidebar é Sheet drawer
+   * fixed, conteúdo flui no scroll natural da página — bloco override
+   * mais abaixo (@media max-width: 1024px) cuida disso.
+   *
+   * Print: bloco @media print no fim do arquivo desativa o lock pra
+   * impressão fluir o conteúdo todo.
+   * ======================================================== */
+  @media (min-width: 1024px) {
+    .b3-shell {
+      height: 100vh;
+      min-height: 0;
+      overflow: hidden;
+      align-items: stretch;
+    }
+    .b3-side {
+      position: static;
+      top: auto;
+      height: auto;
+      min-height: 0;
+      align-self: stretch;
+    }
+    .b3-main {
+      flex: 1;
+      min-height: 0;
+      height: auto;
+      overflow: hidden;
+    }
+    /* Scroll do conteúdo é INTERNO ao card branco — não scroll de página.
+       Sem isso, o card cresce com o conteúdo e some pra baixo do fold,
+       perdendo a curva inferior. */
+    .b3-main-card {
+      overflow-y: auto;
+    }
+  }
+
   .b3-side-top {
-    padding: 16px 16px 16px;
+    padding: 18px 20px 14px;
     display: flex;
     align-items: center;
     gap: 10px;
-    border-bottom: 1px solid var(--line);
     cursor: pointer;
     min-height: 64px;
+    outline: none;
+    border-radius: 12px;
+    margin: 4px 8px 0;
+    transition: background-color 150ms;
   }
+  .b3-side-top:hover { background: color-mix(in oklab, var(--mangos-cream-soft) 60%, transparent); }
   .b3-logo-mark {
     width: 36px;
     height: 36px;
@@ -852,7 +973,10 @@
   }
   .b3-side-section .chev {
     color: var(--ink-4);
-    transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
+    /* 320ms (era 220ms) — mais perceptível na rotação, ainda fluido.
+       Mesmo easing iOS/Material/Stripe. */
+    transition: transform 320ms cubic-bezier(0.4, 0, 0.2, 1),
+                color 200ms ease-out;
   }
   .b3-side-section[data-open="true"] .chev {
     transform: rotate(180deg);
@@ -860,11 +984,13 @@
   }
   /* Collapsible panel — animação suave via grid-template-rows (sem JS de
      altura). Curva cubic-bezier(0.4, 0, 0.2, 1) = "standard easing" das
-     fintechs / Material 3 / Apple. 220ms = sweet spot pra não atrasar. */
+     fintechs / Material 3 / Apple. 320ms (era 220ms) — suave o suficiente
+     pra ler o movimento, sem virar lento. Sincronizado com a rotação do
+     chevron pra dar sensação coordenada. */
   .b3-side-collapsible {
     display: grid;
     grid-template-rows: 0fr;
-    transition: grid-template-rows 220ms cubic-bezier(0.4, 0, 0.2, 1);
+    transition: grid-template-rows 320ms cubic-bezier(0.4, 0, 0.2, 1);
   }
   .b3-side-collapsible[data-open="true"] {
     grid-template-rows: 1fr;
@@ -895,9 +1021,27 @@
     from { opacity: 0; transform: translateY(-4px); }
     to   { opacity: 1; transform: translateY(0); }
   }
+
+  /* ----- Pop do ícone quando o item vira ativo (mudança de rota) -----
+     Aplicada via React: AnimatedNavIcon detecta a transição inativo→ativo
+     e adiciona `b3-icon-pop` no Icon por 380ms. Curva symetric ease
+     (mesma do accordion) — sem bounce/overshoot pra não virar fofoca
+     visual. Pop sutil de 1.0 → 1.18 → 1.0 dá o "destaque" sem distrair. */
+  @keyframes b3-icon-pop {
+    0%   { transform: scale(1); }
+    45%  { transform: scale(1.18); }
+    100% { transform: scale(1); }
+  }
+  .b3-icon-pop {
+    animation: b3-icon-pop 360ms cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: center;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .b3-side-collapsible { transition: none; }
     .b3-side-section .chev { transition: none; }
+    .b3-side-item .chev { transition: none; }
+    .b3-icon-pop { animation: none; }
     .b3-side-collapsible[data-open="true"] .b3-side-item--nested {
       animation: none;
     }
@@ -937,7 +1081,9 @@
   .b3-side-item .chev {
     margin-left: auto;
     color: var(--ink-4);
-    transition: transform 200ms;
+    /* Mesma curva e duração do chevron do header de seção — consistência
+       de movimento em todo o accordion. */
+    transition: transform 280ms cubic-bezier(0.4, 0, 0.2, 1);
   }
   .b3-side-item[data-open="true"] .chev { transform: rotate(180deg); }
   .b3-side-item .dot {
@@ -981,22 +1127,26 @@
   }
   .b3-side-foot {
     margin-top: auto;
-    padding: 14px 16px 18px;
-    border-top: 1px solid var(--line);
+    padding: 10px 12px 16px;
+    border-top: 1px solid color-mix(in oklab, var(--mangos-border-strong) 35%, transparent);
+    margin-left: 8px;
+    margin-right: 8px;
+    padding-left: 4px;
+    padding-right: 4px;
   }
   .b3-side-foot-user {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px;
-    border-radius: 12px;
+    padding: 10px 8px;
+    border-radius: 10px;
     cursor: pointer;
-    background: var(--mangos-cream-soft);
-    border: 1px solid var(--line);
+    background: transparent;
+    border: 1px solid transparent;
     transition: background-color 150ms, border-color 150ms;
   }
   .b3-side-foot-user:hover {
-    background: var(--surface);
+    background: var(--mangos-cream-soft);
     border-color: var(--mangos-border-strong);
   }
   .b3-side-foot-avatar {
@@ -1031,21 +1181,19 @@
   .b3-side-toggle { display: none; }
   .b3-overlay-side { display: none; }
 
-  /* Topbar */
+  /* Topbar — TRANSPARENTE, flutua sobre o cinza do .b3-main acima do card
+     branco (ref Abacate Pay 2026-05-21). Sem background, sem borda — só
+     respiro. À esquerda fica o breadcrumb da rota atual; à direita ficam
+     as ações (search, ver loja, sino). */
   .b3-top {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 12px 24px;
-    background: color-mix(in oklab, var(--surface) 90%, transparent);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: 1px solid var(--line);
-    border-radius: 18px;
-    position: sticky;
-    top: 12px;
-    z-index: 30;
-    min-height: 64px;
+    gap: 12px;
+    padding: 16px 28px 14px;
+    background: transparent;
+    border: none;
+    min-height: 60px;
+    flex-shrink: 0;
   }
   .b3-search {
     flex: 1;
@@ -1086,6 +1234,88 @@
     color: var(--ink-4);
     flex-shrink: 0;
   }
+
+  /* ========================================================
+   * BREADCRUMB no topbar (ref Abacate Pay) — ícone + label / ícone + label
+   * Mostra a hierarquia da rota atual (seção / item) no canto superior
+   * esquerdo da área de conteúdo.
+   * ======================================================== */
+  .b3-breadcrumb {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    color: var(--ink-3);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+  }
+  .b3-breadcrumb-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    color: inherit;
+  }
+  .b3-breadcrumb-item svg {
+    flex-shrink: 0;
+    color: var(--ink-4);
+  }
+  .b3-breadcrumb-item > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .b3-breadcrumb-item[data-current="true"] {
+    color: var(--ink-1);
+    font-weight: 600;
+  }
+  .b3-breadcrumb-item[data-current="true"] svg {
+    color: var(--mangos-green-800);
+  }
+  .b3-breadcrumb-sep {
+    color: var(--ink-4);
+    font-size: 14px;
+    flex-shrink: 0;
+    user-select: none;
+  }
+
+  /* Botão Cmd+K compacto que substituiu o search bar largo no topbar.
+     Ícone-only com kbd hint, abre o command palette. */
+  .b3-search-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 10px 0 12px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink-3);
+    font-size: 12.5px;
+    cursor: pointer;
+    transition: background-color 150ms, border-color 150ms, color 150ms;
+  }
+  .b3-search-btn:hover {
+    background: var(--surface);
+    border-color: var(--mangos-border-strong);
+    color: var(--ink-1);
+  }
+  .b3-search-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--mangos-yellow) 35%, transparent);
+  }
+  .b3-search-btn svg { color: var(--ink-4); }
+  .b3-search-btn kbd {
+    font-family: var(--font-mono, "Geist Mono", ui-monospace, monospace);
+    font-size: 10px;
+    color: var(--ink-4);
+    padding: 2px 5px;
+    border-radius: 4px;
+    background: var(--mangos-cream-soft);
+    border: 1px solid var(--line);
+    line-height: 1;
+  }
   .b3-top-icbtn {
     width: 40px;
     height: 40px;
@@ -1100,6 +1330,37 @@
     position: relative;
     transition: background-color 150ms, color 150ms;
   }
+  /* CTA "Ver loja online" — fica entre o search e os ícones do topbar.
+     Pílula sutil com tom brand (verde Mangos), pra ser visível sem competir
+     com botões primários de página. Hover preenche em amarelo soft pra
+     confirmar interatividade. */
+  .b3-top-storelink {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid var(--mangos-border-strong);
+    background: var(--mangos-cream-soft);
+    color: var(--mangos-green-900);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    outline: none;
+    transition: background-color 150ms, border-color 150ms, color 150ms,
+      box-shadow 150ms, transform 150ms;
+  }
+  .b3-top-storelink:hover {
+    background: var(--mangos-yellow-soft);
+    border-color: var(--mangos-yellow);
+    color: var(--mangos-green-950);
+  }
+  .b3-top-storelink:active { transform: translateY(0.5px); }
+  .b3-top-storelink:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--mangos-yellow) 35%, transparent);
+  }
+  .b3-top-storelink svg { color: var(--mangos-green-800); }
   .b3-top-icbtn:hover { background: var(--mangos-cream-soft); color: var(--mangos-green-900); }
   .b3-top-icbtn:focus-visible {
     outline: none;
@@ -1153,20 +1414,31 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    height: 38px;
-    padding: 0 16px;
-    font-size: 13.5px;
+    /* Onda 2.8 (2026-05-22): 44px = mínimo confortável de toque mobile
+       (CLAUDE.md). 38px era OK no desktop mas pequeno no celular onde
+       a maioria do tempo de uso acontece. b3-btn--sm permanece em 32px
+       pra toolbars e chips densos. */
+    height: 44px;
+    padding: 0 18px;
+    font-size: 14px;
     font-weight: 600;
     border-radius: 8px;
     cursor: pointer;
     background: var(--surface);
     color: var(--ink-1);
     border: 1px solid var(--line);
-    transition: background 120ms, border-color 120ms;
+    transition: background 120ms, border-color 120ms, box-shadow 120ms;
   }
   .b3-btn:hover {
     background: var(--bg-app);
     border-color: var(--line-2);
+  }
+  /* Onda 2.8 — outline visível ao foco de teclado (Tab navigation).
+     Antes o foco não tinha nada — usuário de leitor de tela ou
+     teclado-only se perdia. */
+  .b3-btn:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
   }
   .b3-btn--cta {
     background: var(--brand);
@@ -1353,6 +1625,25 @@
     box-shadow: 0 0 0 3px var(--brand-wash);
   }
   .b3-input::placeholder { color: var(--ink-5); }
+
+  /* Custom chevron pro select (audit 2026-05-21) — o chevron nativo
+     varia de browser pra browser e fica grudado na borda. SVG inline
+     data-uri colocado como background-image dá:
+       - posicionamento controlado (right 10px center)
+       - tamanho consistente (10×10)
+       - cor mangos-ink-4 (#8A9994)
+       - sem regressão de acessibilidade (select continua nativo + tab/enter)
+     padding-right 32px reserva espaço pro chevron sem o texto encostar. */
+  .b3-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6' fill='none'><path d='M1 1l4 4 4-4' stroke='%238A9994' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 10px 6px;
+    padding-right: 32px;
+    cursor: pointer;
+  }
   .b3-row2 {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1765,6 +2056,13 @@
       justify-content: center;
     }
     .b3-side-toggle:hover { background: var(--bg-app); }
+    /* Card full-bleed em mobile — sem margens nas laterais nem border-radius,
+       pra usar toda a largura. O cinza do .b3-main fica invisível atrás. */
+    .b3-main-card {
+      margin: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
     .b3-top { padding: 12px 14px; }
     .b3-page { padding: 18px 14px; }
     .b3-detail-grid { grid-template-columns: 1fr !important; }
@@ -1807,6 +2105,60 @@
       display: block;
       border-bottom: 1px solid var(--line);
       padding: 8px 0;
+    }
+  }
+
+  /* ========================================================
+   * PRINT — sistema unificado (audit 2026-05-21)
+   *
+   * Antes: cada página chamava window.print() esperando que CSS @media
+   * print inline ESCONDESSE o chrome do admin (sidebar/topbar/drawer).
+   * Páginas que esqueceram o style print imprimem o chrome todo —
+   * sidebar ocupando 30% do papel, conteúdo espremido. Bug reportado
+   * na página /admin/pdv/caixa.
+   *
+   * Solução: regras globais que escondem TODO elemento com marker
+   * `data-admin-chrome` em impressão, automaticamente, em qualquer
+   * rota. Marker já existe em sidebar/topbar/drawer (consistência
+   * pré-existente). Páginas com root específico (.report-print-root
+   * ou .print-layout) ainda funcionam — esses blocos não conflitam.
+   *
+   * Também: desativa viewport-lock (overflow:hidden) e força fundo
+   * branco com texto preto pra economia de tinta + legibilidade.
+   * ======================================================== */
+  @media print {
+    /* Esconde chrome do admin em QUALQUER rota — sidebar, topbar,
+       mobile drawer, etc. Marker padronizado evita ter que adicionar
+       style print por página. */
+    [data-admin-chrome] {
+      display: none !important;
+    }
+
+    /* Desativa viewport-lock do shell pra conteúdo fluir o papel
+       inteiro. Sem isso, overflow:hidden do .b3-shell + overflow:auto
+       do .b3-main cortavam tudo que passa do fold. */
+    .b3-shell,
+    .b3-main,
+    .b3-main-card,
+    .b3-side {
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+    }
+    .b3-main,
+    .b3-main-card {
+      border-radius: 0 !important;
+      margin: 0 !important;
+      box-shadow: none !important;
+      background: white !important;
+    }
+
+    /* Cores neutras (preto sobre branco) — economia de tinta +
+       legibilidade em papel. Excluindo elementos dentro de
+       .print-layout (componente novo) que controla próprias cores. */
+    body:not(:has(.print-layout)) {
+      background: white !important;
+      color: black !important;
     }
   }
 

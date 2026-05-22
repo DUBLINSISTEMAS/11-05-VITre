@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — idempotency_key em order
+-- Mangos Pay — idempotency_key em order
 -- =====================================================================
 -- ⚠️ CONSOLIDADO em drizzle/0003_demonic_vapor.sql
 -- (coluna + UNIQUE declarados em src/db/schema/order.ts).

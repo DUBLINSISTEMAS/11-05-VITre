@@ -27,7 +27,7 @@ const APP_URL_HOST =
   clientEnv.APP_URL
     .replace(/^https?:\/\//, "")
     .replace(/\/$/, "")
-    .replace(/^www\./, "") || "vitre.app";
+    .replace(/^www\./, "") || "mangospay.app";
 
 // 5 cores canvas (mantidas pra compat — usuária ajusta depois no admin).
 const COLOR_SWATCHES = [

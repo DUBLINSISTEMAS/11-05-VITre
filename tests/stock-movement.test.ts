@@ -25,13 +25,26 @@ test("stock: aceita payload mínimo manual_in (productId + quantity)", () => {
   assert.equal(result.data.notes, null);
 });
 
-test("stock: aceita manual_out", () => {
-  const result = recordMovementSchema.safeParse({
+test("stock: manual_out EXIGE motivo (Onda 2.5)", () => {
+  // Sem notes → rejeita.
+  const without = recordMovementSchema.safeParse({
     productId: "550e8400-e29b-41d4-a716-446655440000",
     movementType: "manual_out",
     quantity: 3,
   });
-  assert.equal(result.success, true);
+  assert.equal(without.success, false);
+  if (without.success) return;
+  const issue = without.error.issues.find((i) => i.path[0] === "notes");
+  assert.ok(issue, "esperava issue em notes pra manual_out sem motivo");
+
+  // Com motivo válido → aceita.
+  const withReason = recordMovementSchema.safeParse({
+    productId: "550e8400-e29b-41d4-a716-446655440000",
+    movementType: "manual_out",
+    quantity: 3,
+    notes: "Brinde pra cliente fiel",
+  });
+  assert.equal(withReason.success, true);
 });
 
 test("stock: rejeita quantity 0", () => {
@@ -105,14 +118,25 @@ test("stock: adjustment positivo passa", () => {
   assert.equal(result.success, true);
 });
 
-test("stock: adjustment negative passa", () => {
-  const result = recordMovementSchema.safeParse({
+test("stock: adjustment negative SEM motivo é rejeitado (Onda 2.5)", () => {
+  // Sem notes → rejeita (ajuste negativo é semanticamente uma saída).
+  const without = recordMovementSchema.safeParse({
     productId: "550e8400-e29b-41d4-a716-446655440000",
     movementType: "adjustment",
     quantity: 5,
     adjustmentDirection: "negative",
   });
-  assert.equal(result.success, true);
+  assert.equal(without.success, false);
+
+  // Com motivo → aceita.
+  const withReason = recordMovementSchema.safeParse({
+    productId: "550e8400-e29b-41d4-a716-446655440000",
+    movementType: "adjustment",
+    quantity: 5,
+    adjustmentDirection: "negative",
+    notes: "Diferença de contagem física",
+  });
+  assert.equal(withReason.success, true);
 });
 
 test("stock: notes vazia vira null", () => {

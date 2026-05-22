@@ -32,7 +32,7 @@ interface QuickProductFormProps {
   onAfterSave: (opts: { productId: string; continueCreating?: boolean }) => void;
 }
 
-const SESSION_COUNTER_KEY = "vitre:product-quickcreate-session-count";
+const SESSION_COUNTER_KEY = "Mangos Pay:product-quickcreate-session-count";
 function bumpQuickCounter(): number {
   if (typeof window === "undefined") return 1;
   try {

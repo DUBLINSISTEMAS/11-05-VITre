@@ -5,7 +5,7 @@
  *
  * Distinção formal vs ADR-0008 (storefront sem login):
  *   - Consumidor anônimo do storefront = pessoa que entra em
- *     vitre.site/<loja> pra comprar. Sem perfil. ADR-0008.
+ *     mangospay.app/<loja> pra comprar. Sem perfil. ADR-0008.
  *   - Cliente cadastrado = registro do admin, criado pelo lojista pra
  *     histórico/follow-up/PDV (Fase 5). ADR-0014.
  *

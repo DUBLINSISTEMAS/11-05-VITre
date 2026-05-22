@@ -1,5 +1,5 @@
 /**
- * Better Auth — configuração principal do Vitrê.
+ * Better Auth — configuração principal do Mangos Pay.
  *
  * Auth gerencia apenas LOJISTAS. Cliente final do storefront NÃO loga.
  *
@@ -39,7 +39,7 @@ import { env } from "@/lib/env";
 const googleEnabled = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
 
 export const auth = betterAuth({
-  appName: "Vitrê",
+  appName: "Mangos Pay",
   // Single source of truth para client e server. Trocar AMBOS via .env quando
   // mudar de domínio (dev / preview Vercel / produção).
   baseURL: env.NEXT_PUBLIC_APP_URL,

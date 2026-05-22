@@ -60,6 +60,27 @@ export const recordMovementSchema = z
       message: "Ajuste exige direção (entrada ou saída).",
       path: ["adjustmentDirection"],
     },
+  )
+  // Onda 2.5 (2026-05-22): saída manual EXIGE motivo. Sem isso, histórico
+  // de estoque acumula "saiu 5 peças por quê??" sem auditoria possível
+  // — virou rotina em sistema legado. Aqui validamos no boundary; helper
+  // de UI sugere motivos comuns (perda, doação, brinde, ajuste, troca).
+  // manual_in fica opcional (entrada já tem contexto via compra/devolução).
+  // adjustment negativo idem — direção negativa é equivalente a saída.
+  .refine(
+    (data) => {
+      const isOutflow =
+        data.movementType === "manual_out" ||
+        (data.movementType === "adjustment" &&
+          data.adjustmentDirection === "negative");
+      if (!isOutflow) return true;
+      return data.notes !== null && data.notes.length >= 3;
+    },
+    {
+      message:
+        "Toda saída precisa de motivo (perda, doação, brinde, ajuste, troca, etc).",
+      path: ["notes"],
+    },
   );
 
 export type RecordMovementInput = z.input<typeof recordMovementSchema>;

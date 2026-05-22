@@ -13,7 +13,7 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { sql } from "drizzle-orm";
-import { InfoIcon, PackageIcon, PlusIcon, SearchXIcon } from "lucide-react";
+import { PackageIcon, PlusIcon, SearchXIcon } from "lucide-react";
 import { Suspense } from "react";
 import { z } from "zod";
 
@@ -319,7 +319,7 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
     <div className="b3-page">
       <div className="b3-page-hd">
         <div>
-          <h1 className="text-[24px] font-bold tracking-[-0.025em] text-ink-1">
+          <h1 className="text-[22px] font-bold tracking-[-0.025em] text-ink-1">
             Meus produtos
           </h1>
         </div>
@@ -335,15 +335,8 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
         <EmptyState />
       ) : (
         <div className="b3-card" style={{ overflow: "hidden" }}>
-          <div className="b3-helpbar">
-            <span className="b3-helpbar-ico">
-              <InfoIcon size={14} />
-            </span>
-            <span className="b3-helpbar-text">
-              Precisa de ajuda? Em breve teremos vídeos curtos sobre{" "}
-              <strong>produtos</strong>.
-            </span>
-          </div>
+          {/* Onda 2.11: helpbar "em breve teremos vídeos" removida.
+              Volta quando houver conteúdo real de vídeo. */}
 
           <Suspense fallback={<div className="b3-tabs h-12" />}>
             <ProductsStatusTabs counts={tabCounts} />

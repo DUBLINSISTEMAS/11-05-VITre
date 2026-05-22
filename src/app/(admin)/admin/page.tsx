@@ -210,7 +210,7 @@ export default async function AdminHomePage({
 
   return (
     <div className="b3-page">
-      <h1 className="mb-6 text-[24px] font-bold tracking-[-0.025em] text-ink-1">
+      <h1 className="mb-6 text-[22px] font-bold tracking-[-0.025em] text-ink-1">
         Hoje
       </h1>
 

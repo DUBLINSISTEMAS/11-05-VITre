@@ -2,13 +2,13 @@
  * Builder da mensagem WhatsApp de pedido.
  *
  * Dois modos:
- *  - `buildOrderMessage`: layout fixo do sistema (default Vitrê).
+ *  - `buildOrderMessage`: layout fixo do sistema (default Mangos Pay).
  *  - `buildOrderMessageFromTemplate`: template editável pelo lojista
  *    no /admin/configuracoes (Onda 6 — 2026-05-13). Suporta placeholders:
  *      {cliente}, {loja}, {itens}, {total}, {codigo}, {link}, {observacoes}
  *
  * Cap em ~1700 chars (margem de 200 do limite WhatsApp 2048). Se
- * estourar, lista é truncada e mostra "+ X itens em vitre.app/p/code".
+ * estourar, lista é truncada e mostra "+ X itens em mangospay.app/p/code".
  */
 import { formatBRL } from "@/lib/pricing";
 
@@ -42,7 +42,7 @@ export interface BuildMessageInput {
   items: WhatsAppItemInput[];
   totalInCents: number;
   shortCode: string;
-  publicUrl: string; // ex: "https://vitre.app/p/A7K2"
+  publicUrl: string; // ex: "https://mangospay.app/p/A7K2"
   customerNotes?: string;
 }
 

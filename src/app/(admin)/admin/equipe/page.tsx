@@ -155,9 +155,9 @@ export default async function EquipePage() {
           <RoleCard
             title="Operador"
             items={[
-              "PDV, pedidos, estoque",
-              "Clientes, leads, atributos",
-              "Cupons, banners",
+              "PDV, vendas, estoque",
+              "Clientes, recados, filtros da loja",
+              "Códigos de desconto, banners",
               "Sem acesso a equipe/plano",
             ]}
           />

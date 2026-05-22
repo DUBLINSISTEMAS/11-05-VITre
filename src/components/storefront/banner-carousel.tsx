@@ -11,7 +11,7 @@
  *
  * Transição: crossfade via opacity. Ambas as imagens permanecem montadas
  * (apenas o ativo em z-10) — evita FOUC quando o navegador ainda não
- * cacheou o segundo banner. Sem framer-motion (Vitrê migrou pra CSS).
+ * cacheou o segundo banner. Sem framer-motion (Mangos Pay migrou pra CSS).
  *
  * A11y:
  *  - aria-roledescription="carousel" + aria-label na section

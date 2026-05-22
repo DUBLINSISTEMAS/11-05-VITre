@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — RLS para `stock_movement` (Fase 4 / ADR-0015)
+-- Mangos Pay — RLS para `stock_movement` (Fase 4 / ADR-0015)
 -- =====================================================================
 -- O que isso faz:
 --   1. Habilita RLS na tabela.

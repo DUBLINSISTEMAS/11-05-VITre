@@ -56,7 +56,7 @@ export default async function AssinaturaPage() {
           features={[
             "Até 30 produtos",
             "PDV + Estoque + Clientes",
-            "Storefront público",
+            "Loja online pública",
             "Suporte por email",
           ]}
         />
@@ -69,7 +69,7 @@ export default async function AssinaturaPage() {
           features={[
             "Até 200 produtos",
             "Tudo do Starter +",
-            "Cupons, Atributos, Grupos",
+            "Códigos de desconto, Filtros, Grupos",
             "Equipe (3 usuários)",
             "Suporte prioritário",
           ]}
@@ -103,7 +103,7 @@ export default async function AssinaturaPage() {
             Sim, sem fidelidade. O acesso permanece até o fim do mês pago.
           </div>
           <div>
-            <b className="text-ink-1">Vitrê processa pagamentos?</b>
+            <b className="text-ink-1">Mangos Pay processa pagamentos?</b>
             <br />
             Não. Você combina forma de pagamento com seu cliente via WhatsApp
             ou registra no PDV (PIX/dinheiro/cartão no seu próprio POS).

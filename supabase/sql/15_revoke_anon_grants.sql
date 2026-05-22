@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitre - Revogar grants de roles publicas do Supabase
+-- Mangos Pay - Revogar grants de roles publicas do Supabase
 -- =====================================================================
 -- Contexto:
 --   Supabase cria GRANTS default de SELECT/INSERT/UPDATE/DELETE para as
@@ -18,7 +18,7 @@
 --   - Storage do Supabase usa policies separadas no schema `storage`
 --     (configuradas em 02_storage_buckets.sql); este revoke no schema
 --     `public` nao afeta Storage.
---   - `anon` e `authenticated` nao sao consumidas em nenhum fluxo Vitre.
+--   - `anon` e `authenticated` nao sao consumidas em nenhum fluxo Mangos Pay.
 --   - PostgREST (backend do supabase-js) deixa de responder para essas roles
 --     em tabelas public, que e o comportamento desejado.
 --
@@ -74,5 +74,5 @@ GROUP BY grantee;
 -- nao `public`). Estas policies nao sao afetadas pelos REVOKEs acima.
 -- 02_storage_buckets.sql continua permitindo:
 --   - SELECT publico nos buckets public do Storage (storefront).
---   - Escrita somente via service_role nas server actions do Vitre.
+--   - Escrita somente via service_role nas server actions do Mangos Pay.
 -- ============================================================

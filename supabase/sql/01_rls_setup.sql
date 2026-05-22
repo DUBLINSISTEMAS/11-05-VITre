@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — Setup de RLS (Row-Level Security)
+-- Mangos Pay — Setup de RLS (Row-Level Security)
 -- =====================================================================
 -- Como aplicar:
 --   1. As tabelas já existem (drizzle migrate aplicou).

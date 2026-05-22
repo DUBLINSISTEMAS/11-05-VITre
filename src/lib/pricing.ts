@@ -209,7 +209,7 @@ export function resolveCashDiscountBps(
  * Calcula desconto à vista a partir de `cashDiscountBps` (basis points).
  * Retorna `null` quando não há desconto efetivo ou preço inválido.
  *
- * Label NÃO menciona método (PIX/dinheiro) — Vitrê não processa
+ * Label NÃO menciona método (PIX/dinheiro) — Mangos Pay não processa
  * transação; o método específico vive em `paymentMethodsNote` (texto
  * livre do lojista) e é combinado no WhatsApp.
  *

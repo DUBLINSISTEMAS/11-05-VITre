@@ -138,9 +138,16 @@ export async function closeCashSession(
       }
 
       // 2. Recomputar closing_expected server-side:
-      //    expected = opening + vendas_dinheiro - sangria + reforço
-      //    Vendas em outros métodos (pix/cartão) NÃO entram — caixa físico
-      //    é só dinheiro. Cartão/PIX vão pra conta da loja, não pra gaveta.
+      //    expected = opening
+      //             + vendas_dinheiro
+      //             + (reinforcement + other_in)            ← entradas avulsas
+      //             - (sangria + pay_supplier + pay_bill + other_out)  ← saídas
+      //
+      // Vendas em outros métodos (pix/cartão) NÃO entram — caixa físico
+      // é só dinheiro. Cartão/PIX vão pra conta da loja, não pra gaveta.
+      //
+      // Onda 1.2 (2026-05-21): UMA query agregada cobre os 6 tipos de
+      // adjustment (antes só 2 — bug "quebra de caixa fantasma").
       const [salesAgg] = await tx
         .select({
           total: sql<string | null>`SUM(${orderTable.totalInCents})`,
@@ -155,37 +162,34 @@ export async function closeCashSession(
         );
       const cashSalesInCents = Number(salesAgg?.total ?? 0);
 
-      const [adjAggSangria] = await tx
+      const [adjAgg] = await tx
         .select({
-          total: sql<string | null>`SUM(${cashAdjustmentTable.amountInCents})`,
+          sangria: sql<string>`COALESCE(SUM(CASE WHEN ${cashAdjustmentTable.type} = 'sangria' THEN ${cashAdjustmentTable.amountInCents} ELSE 0 END), 0)`,
+          reinforcement: sql<string>`COALESCE(SUM(CASE WHEN ${cashAdjustmentTable.type} = 'reinforcement' THEN ${cashAdjustmentTable.amountInCents} ELSE 0 END), 0)`,
+          paySupplier: sql<string>`COALESCE(SUM(CASE WHEN ${cashAdjustmentTable.type} = 'pay_supplier' THEN ${cashAdjustmentTable.amountInCents} ELSE 0 END), 0)`,
+          payBill: sql<string>`COALESCE(SUM(CASE WHEN ${cashAdjustmentTable.type} = 'pay_bill' THEN ${cashAdjustmentTable.amountInCents} ELSE 0 END), 0)`,
+          otherIn: sql<string>`COALESCE(SUM(CASE WHEN ${cashAdjustmentTable.type} = 'other_in' THEN ${cashAdjustmentTable.amountInCents} ELSE 0 END), 0)`,
+          otherOut: sql<string>`COALESCE(SUM(CASE WHEN ${cashAdjustmentTable.type} = 'other_out' THEN ${cashAdjustmentTable.amountInCents} ELSE 0 END), 0)`,
         })
         .from(cashAdjustmentTable)
-        .where(
-          and(
-            eq(cashAdjustmentTable.cashSessionId, target.id),
-            eq(cashAdjustmentTable.type, "sangria"),
-          ),
-        );
-      const sangriaInCents = Number(adjAggSangria?.total ?? 0);
+        .where(eq(cashAdjustmentTable.cashSessionId, target.id));
 
-      const [adjAggReinf] = await tx
-        .select({
-          total: sql<string | null>`SUM(${cashAdjustmentTable.amountInCents})`,
-        })
-        .from(cashAdjustmentTable)
-        .where(
-          and(
-            eq(cashAdjustmentTable.cashSessionId, target.id),
-            eq(cashAdjustmentTable.type, "reinforcement"),
-          ),
-        );
-      const reinforcementInCents = Number(adjAggReinf?.total ?? 0);
+      const sangriaInCents = Number(adjAgg?.sangria ?? 0);
+      const reinforcementInCents = Number(adjAgg?.reinforcement ?? 0);
+      const paySupplierInCents = Number(adjAgg?.paySupplier ?? 0);
+      const payBillInCents = Number(adjAgg?.payBill ?? 0);
+      const otherInInCents = Number(adjAgg?.otherIn ?? 0);
+      const otherOutInCents = Number(adjAgg?.otherOut ?? 0);
+
+      const inflowsInCents = reinforcementInCents + otherInInCents;
+      const outflowsInCents =
+        sangriaInCents + paySupplierInCents + payBillInCents + otherOutInCents;
 
       const closingExpectedInCents =
         target.openingAmountInCents +
-        cashSalesInCents -
-        sangriaInCents +
-        reinforcementInCents;
+        cashSalesInCents +
+        inflowsInCents -
+        outflowsInCents;
 
       // 3. Validar: se diferença ≠ 0 exige notes (defesa em profundidade
       //    além do Zod, porque expected é recomputado server-side e pode

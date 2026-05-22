@@ -51,9 +51,9 @@ const QUICK_ACTIONS: QuickAction[] = [
     icon: ShoppingBagIcon,
   },
   {
-    label: "Pedidos",
+    label: "Vendas",
     href: "/admin/pedidos",
-    hint: "Lista de pedidos",
+    hint: "Lista de vendas",
     icon: PackageIcon,
   },
   {
@@ -73,7 +73,7 @@ const QUICK_ACTIONS: QuickAction[] = [
 function kindLabel(k: SearchHit["kind"]) {
   if (k === "product") return "Produtos";
   if (k === "customer") return "Clientes";
-  return "Pedidos";
+  return "Vendas";
 }
 
 export function CommandPalette() {
@@ -201,7 +201,7 @@ export function CommandPalette() {
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal
-        aria-label="Buscar no Vitrê"
+        aria-label="Buscar no Mangos Pay"
       >
         <div className="flex items-center gap-2 border-b px-4 py-3">
           <SearchIcon size={18} className="text-ink-3" aria-hidden />
@@ -211,7 +211,7 @@ export function CommandPalette() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Buscar produto, cliente, pedido… ou ação rápida"
+            placeholder="Buscar produto, cliente, venda… ou ação rápida"
             className="text-ink-1 placeholder:text-ink-4 flex-1 bg-transparent text-[14px] outline-none"
             aria-label="Buscar"
           />

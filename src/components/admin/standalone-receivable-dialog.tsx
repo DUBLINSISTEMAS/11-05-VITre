@@ -5,7 +5,7 @@
  *
  * Lojista lança receivable SEM venda associada. Casos típicos:
  * empréstimo em dinheiro, adiantamento, débito histórico de caderneta
- * que não passou por venda Vitrê.
+ * que não passou por venda Mangos Pay.
  *
  * Form:
  *   - Cliente (combobox com searchCustomers — exige cadastro prévio)
@@ -130,7 +130,7 @@ export function StandaloneReceivableDialog({
               Lançar fiado avulso
             </h3>
             <p className="text-ink-4 mt-0.5 text-xs">
-              Empréstimo, adiantamento ou débito histórico sem venda Vitrê.
+              Empréstimo, adiantamento ou débito histórico sem venda Mangos Pay.
             </p>
           </div>
           <button

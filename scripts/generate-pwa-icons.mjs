@@ -1,5 +1,5 @@
 /**
- * Gera ícones PWA a partir de public/brand/logo-principal.webp.
+ * Gera ícones PWA a partir de public/logos/logo.png.
  * Saída: public/icons/icon-{192,512}{,-maskable}.png
  *
  * `any`: fundo branco, padding 12%
@@ -13,7 +13,7 @@ import { resolve } from "node:path";
 import sharp from "sharp";
 
 const ROOT = resolve(process.cwd());
-const SRC = resolve(ROOT, "public/brand/logo-principal.webp");
+const SRC = resolve(ROOT, "public/logos/logo.png");
 const OUT_DIR = resolve(ROOT, "public/icons");
 
 async function ensureDir() {

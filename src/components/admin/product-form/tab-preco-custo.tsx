@@ -41,7 +41,9 @@ export function TabPrecoCusto({
       >
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="space-y-1.5">
-            <Label htmlFor="product-base-price">Preço de venda</Label>
+            <Label htmlFor="product-base-price" required>
+              Preço de venda
+            </Label>
             <Controller
               name="basePriceInCents"
               control={control}
@@ -197,7 +199,7 @@ export function TabPrecoCusto({
 
       <SubCard
         title="Tributação"
-        description="Vitrê não calcula imposto. Campo livre para integração futura com Bling/Tiny."
+        description="Mangos Pay não calcula imposto. Campo livre para integração futura com Bling/Tiny."
       >
         <div className="space-y-1.5">
           <Label htmlFor="product-ncm">NCM</Label>

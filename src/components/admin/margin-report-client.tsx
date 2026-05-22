@@ -241,7 +241,7 @@ export function MarginReportClient({
         columns={columns}
         rows={rows}
         totals={totalsFooter}
-        csvFileName="vitre-margem"
+        csvFileName="mangospay-margem"
         emptyMessage="Nenhuma venda no período selecionado."
         notes={
           coverage < 100

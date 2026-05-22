@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — index em verification.identifier (Better Auth performance)
+-- Mangos Pay — index em verification.identifier (Better Auth performance)
 -- =====================================================================
 -- Better Auth faz lookups em `verification` por `identifier` (e-mail)
 -- durante reset password, e-mail verification e magic-link. Sem index,

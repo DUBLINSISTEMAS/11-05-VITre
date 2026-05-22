@@ -4,8 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Termos de Uso | Vitre",
-  description: "Termos e condicoes de uso da plataforma Vitre.",
+  title: "Termos de Uso | Mangos Pay",
+  description: "Termos e condicoes de uso da plataforma Mangos Pay.",
 };
 
 export default function TermosPage() {
@@ -24,13 +24,13 @@ export default function TermosPage() {
 
           <div className="flex items-center gap-3 mb-4">
             <Image
-              src="/brand/logo-principal.webp"
+              src="/logos/logo.png"
               alt=""
               width={32}
               height={32}
               className="rounded-lg"
             />
-            <span className="text-lg font-bold">Vitre</span>
+            <span className="text-lg font-bold">Mangos Pay</span>
           </div>
 
           <h1 className="text-2xl font-bold tracking-tight mb-2">Termos de Uso</h1>
@@ -44,14 +44,14 @@ export default function TermosPage() {
           <section className="mb-8">
             <h2 className="text-lg font-semibold mb-3">1. Aceitacao dos Termos</h2>
             <p className="text-muted-foreground leading-relaxed">
-              Ao acessar e utilizar a plataforma Vitre, voce concorda em cumprir e estar vinculado a estes Termos de Uso. Se voce nao concordar com qualquer parte destes termos, nao devera usar nossos servicos.
+              Ao acessar e utilizar a plataforma Mangos Pay, voce concorda em cumprir e estar vinculado a estes Termos de Uso. Se voce nao concordar com qualquer parte destes termos, nao devera usar nossos servicos.
             </p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-lg font-semibold mb-3">2. Descricao do Servico</h2>
             <p className="text-muted-foreground leading-relaxed">
-              A Vitre e uma plataforma de comercio eletronico que permite a criacao e gerenciamento de lojas virtuais. Nossos servicos incluem:
+              A Mangos Pay e uma plataforma de comercio eletronico que permite a criacao e gerenciamento de lojas virtuais. Nossos servicos incluem:
             </p>
             <ul className="mt-3 space-y-2 text-muted-foreground">
               <li>Criacao de loja virtual personalizada</li>
@@ -84,14 +84,14 @@ export default function TermosPage() {
           <section className="mb-8">
             <h2 className="text-lg font-semibold mb-3">5. Propriedade Intelectual</h2>
             <p className="text-muted-foreground leading-relaxed">
-              Todo o conteudo da plataforma, incluindo marca, design e codigo, e propriedade da Vitre. Voce mantem a propriedade do conteudo que voce cria em sua loja.
+              Todo o conteudo da plataforma, incluindo marca, design e codigo, e propriedade da Mangos Pay. Voce mantem a propriedade do conteudo que voce cria em sua loja.
             </p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-lg font-semibold mb-3">6. Limitacao de Responsabilidade</h2>
             <p className="text-muted-foreground leading-relaxed">
-              A Vitre nao se responsabiliza por danos indiretos, incidentais ou consequenciais decorrentes do uso da plataforma. Nosso limite maximo de responsabilidade sera o valor pago pelo usuario nos ultimos 12 meses.
+              A Mangos Pay nao se responsabiliza por danos indiretos, incidentais ou consequenciais decorrentes do uso da plataforma. Nosso limite maximo de responsabilidade sera o valor pago pelo usuario nos ultimos 12 meses.
             </p>
           </section>
 
@@ -106,8 +106,8 @@ export default function TermosPage() {
             <h2 className="text-lg font-semibold mb-3">8. Contato</h2>
             <p className="text-muted-foreground leading-relaxed">
               Para duvidas sobre estes Termos, entre em contato pelo email:{" "}
-              <a href="mailto:suporte@vitre.app" className="text-primary hover:underline">
-                suporte@vitre.app
+              <a href="mailto:suporte@mangospay.app" className="text-primary hover:underline">
+                suporte@mangospay.app
               </a>
             </p>
           </section>

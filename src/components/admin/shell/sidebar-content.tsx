@@ -23,10 +23,10 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 
-import { MangoLogo } from "@/components/brand/mango-logo";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -95,7 +95,10 @@ export function SidebarContent({
 
   return (
     <>
-      {/* b3-side-top: brand Mangos Pay (logo + wordmark) — link pra /admin */}
+      {/* b3-side-top: brand Mangos Pay (logo + wordmark) — link pra /admin.
+          Imagem única do logo.svg (o arquivo já contém o ícone da manga +
+          o nome "Mangos Pay" juntos). Usar <img> em vez de next/image
+          porque next/image exige `dangerouslyAllowSVG: true` no config. */}
       <Link
         href="/admin"
         prefetch
@@ -103,7 +106,13 @@ export function SidebarContent({
         aria-label="Mangos Pay — ir para o início"
         onClick={onNavigate}
       >
-        <MangoLogo />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/logos/logo.svg"
+          alt="Mangos Pay"
+          className="h-8 w-auto"
+          draggable={false}
+        />
       </Link>
 
       <nav className="flex-1 overflow-y-auto py-2" aria-label="Navegação principal">
@@ -177,7 +186,14 @@ function NavSection({
       >
         <Icon size={17} aria-hidden />
         <span className="flex-1 truncate">{section.label}</span>
-        <ChevronDownIcon size={14} className="chev" aria-hidden />
+        {/* Chevron maior + traço 2.2 — mais presente visualmente. Rotação
+            animada de 180° controlada pelo CSS (.b3-side-section .chev). */}
+        <ChevronDownIcon
+          size={18}
+          strokeWidth={2.2}
+          className="chev"
+          aria-hidden
+        />
       </button>
 
       <div
@@ -199,6 +215,43 @@ function NavSection({
         </div>
       </div>
     </div>
+  );
+}
+
+// ----- ICON com pop animation ao virar ativo (mudança de rota) -----
+//
+// Detecta a transição inativo → ativo via ref + effect e aplica a classe
+// `b3-icon-pop` por 380ms (sincronizado com a duração da animação CSS).
+// Próxima ativação: classe removida → re-aplicada, animation re-roda.
+//
+// Acessibilidade: a animação respeita prefers-reduced-motion via media
+// query no globals.css (a classe vira no-op naquele contexto).
+function AnimatedNavIcon({
+  Icon,
+  isActive,
+}: {
+  Icon: LucideIcon;
+  isActive: boolean;
+}) {
+  const prevActiveRef = useRef(isActive);
+  const [animating, setAnimating] = useState(false);
+
+  useEffect(() => {
+    if (isActive && !prevActiveRef.current) {
+      setAnimating(true);
+      const timer = setTimeout(() => setAnimating(false), 380);
+      prevActiveRef.current = isActive;
+      return () => clearTimeout(timer);
+    }
+    prevActiveRef.current = isActive;
+  }, [isActive]);
+
+  return (
+    <Icon
+      size={17}
+      aria-hidden
+      className={animating ? "b3-icon-pop" : undefined}
+    />
   );
 }
 
@@ -233,10 +286,16 @@ function NavItemRow({ item, pathname, onNavigate, nested }: NavItemRowProps) {
           data-active={isActive ? "true" : undefined}
           data-open={isOpen ? "true" : undefined}
         >
-          <Icon size={17} aria-hidden />
+          <AnimatedNavIcon Icon={Icon} isActive={isActive} />
           <span className="flex-1 truncate">{item.label}</span>
           {item.dot ? <span className="dot" aria-hidden /> : null}
-          <ChevronDownIcon size={11} className="chev" aria-hidden />
+          {/* Mesmo padrão do header de seção — chevron maior + stroke 2.2. */}
+          <ChevronDownIcon
+            size={15}
+            strokeWidth={2.2}
+            className="chev"
+            aria-hidden
+          />
         </button>
 
         {isOpen ? (
@@ -263,7 +322,8 @@ function NavItemRow({ item, pathname, onNavigate, nested }: NavItemRowProps) {
         aria-disabled="true"
         title="Em breve"
       >
-        <Icon size={17} aria-hidden />
+        {/* Soon nunca é ativo — passa false (no-op). */}
+        <AnimatedNavIcon Icon={Icon} isActive={false} />
         <span className="flex-1 truncate">{item.label}</span>
         <SoonBadge />
       </div>
@@ -280,7 +340,7 @@ function NavItemRow({ item, pathname, onNavigate, nested }: NavItemRowProps) {
         className={itemClass}
         data-active={isActive ? "true" : undefined}
       >
-        <Icon size={17} aria-hidden />
+        <AnimatedNavIcon Icon={Icon} isActive={isActive} />
         <span className="flex-1 truncate">{item.label}</span>
       </a>
     );
@@ -295,7 +355,7 @@ function NavItemRow({ item, pathname, onNavigate, nested }: NavItemRowProps) {
       data-active={isActive ? "true" : undefined}
       aria-current={isActive ? "page" : undefined}
     >
-      <Icon size={17} aria-hidden />
+      <AnimatedNavIcon Icon={Icon} isActive={isActive} />
       <span className="flex-1 truncate">{item.label}</span>
     </Link>
   );
@@ -350,7 +410,7 @@ function SupportFooterLink({
   const Icon = ADMIN_NAV_SUPPORT.icon;
   const isActive = isItemActive(ADMIN_NAV_SUPPORT, pathname);
   return (
-    <div className="border-t border-border px-2 py-1">
+    <div className="px-2 py-1">
       <Link
         href={ADMIN_NAV_SUPPORT.href!}
         prefetch
@@ -359,7 +419,7 @@ function SupportFooterLink({
         data-active={isActive ? "true" : undefined}
         aria-current={isActive ? "page" : undefined}
       >
-        <Icon size={17} aria-hidden />
+        <AnimatedNavIcon Icon={Icon} isActive={isActive} />
         <span className="flex-1 truncate">{ADMIN_NAV_SUPPORT.label}</span>
       </Link>
     </div>
@@ -478,7 +538,7 @@ function StoreFooter({
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <Link href={`/${storeSlug}`} target="_blank" rel="noopener noreferrer">
-                <StoreIcon className="size-4" /> Ver minha vitrine
+                <StoreIcon className="size-4" /> Ver loja online
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>

@@ -209,8 +209,8 @@ export function ThemeSelector({ currentTheme }: ThemeSelectorProps) {
 
       <p className="text-xs text-ink-4">
         Trocar de modelo é seguro e não afeta seus produtos, categorias ou
-        pedidos — apenas o visual da vitrine. Você pode mudar quantas vezes
-        quiser.
+        vendas — apenas o visual da loja online. Você pode mudar quantas
+        vezes quiser.
       </p>
     </div>
   );

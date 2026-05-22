@@ -1,6 +1,6 @@
 "use client";
 
-import { PencilIcon, PlusIcon, TrashIcon } from "lucide-react";
+import { BookmarkIcon, PencilIcon, PlusIcon, TrashIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -117,11 +117,26 @@ export function BrandsManager({ initialBrands }: BrandsManagerProps) {
       </div>
 
       {brands.length === 0 ? (
-        <div className="b3-card b3-card-pad text-center">
-          <p className="text-ink-3 text-[13px]">
-            Nenhuma marca cadastrada. Crie a primeira pra reutilizar em vários
-            produtos.
+        <div className="border-line flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-12">
+          <div className="bg-brand-wash text-brand flex size-12 items-center justify-center rounded-full">
+            <BookmarkIcon className="size-6" />
+          </div>
+          <h2 className="text-lg font-semibold text-ink-1">
+            Cadastre suas marcas
+          </h2>
+          <p className="text-ink-4 max-w-sm text-sm">
+            Marcas aparecem como filtro na loja online e ficam disponíveis no
+            cadastro de cada produto.
           </p>
+          <button
+            type="button"
+            onClick={openCreate}
+            className="b3-btn b3-btn--cta mt-2"
+            style={{ height: 36 }}
+          >
+            <PlusIcon size={13} />
+            Cadastrar primeira marca
+          </button>
         </div>
       ) : (
         <div className="b3-card overflow-x-auto">

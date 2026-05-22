@@ -1,6 +1,6 @@
-# Vitrê
+# Mangos Pay
 
-SaaS multi-tenant de catálogo digital com checkout via WhatsApp para lojas de pequeno e médio porte (roupa, joia, semijoia, perfumaria).
+SaaS multi-tenant de loja online com checkout WhatsApp para lojas de pequeno e médio porte (roupa, joia, semijoia, perfumaria).
 
 > **Estado atual**: Fase 1.6 (carrinho + checkout WhatsApp) concluída. Próximo: storefront público polido + multi-loja.
 > **Cliente piloto**: Sandra Brito Collection (Pedreiras-MA).
@@ -39,10 +39,10 @@ Abre em `http://localhost:3000`.
 ## Estrutura
 
 ```
-vitre/
+mangos-pay/
 ├── docs/                   ← documentação técnica (Obsidian-compatible)
 ├── public/
-│   ├── brand/              ← logos do Vitrê
+│   ├── brand/              ← logos do Mangos Pay
 │   └── lottie/             ← order-approved.json
 ├── scripts/                ← health checks e utilitários (db:check, db:apply)
 ├── src/

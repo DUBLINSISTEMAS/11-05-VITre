@@ -22,7 +22,7 @@ import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
 export const metadata = {
-  title: "Custo & Margem — Vitrê",
+  title: "Custo & Margem — Mangos Pay",
 };
 
 export default async function ProdutosCustosPage() {
@@ -36,29 +36,47 @@ export default async function ProdutosCustosPage() {
     );
   }
 
-  const rows = await withTenant(store.id, session.user.id, async (tx) => {
-    return tx
-      .select({
-        id: productTable.id,
-        name: productTable.name,
-        basePriceInCents: productTable.basePriceInCents,
-        costPriceInCents: productTable.costPriceInCents,
-        defaultCommissionBps: productTable.defaultCommissionBps,
-        brand: productTable.brand,
-        internalCode: productTable.internalCode,
-      })
-      .from(productTable)
-      .where(eq(productTable.storeId, store.id))
-      // Sem custo primeiro (NULL aparece como 1, valor preenchido como 0)
-      .orderBy(
-        sql`(${productTable.costPriceInCents} IS NULL) DESC`,
-        asc(productTable.name),
-      );
-  });
+  // Onda 1.6 — limit defensivo. Loja com 5k SKUs estourava render
+  // (2.5MB payload, ~12s). 1500 é teto razoável da UI de bulk-edit;
+  // acima disso, lojista usa filtros (Sprint 3+).
+  const PRODUCTS_LIMIT = 1500;
 
-  const totalProducts = rows.length;
+  const { rows, totalRows } = await withTenant(
+    store.id,
+    session.user.id,
+    async (tx) => {
+      const rows = await tx
+        .select({
+          id: productTable.id,
+          name: productTable.name,
+          basePriceInCents: productTable.basePriceInCents,
+          costPriceInCents: productTable.costPriceInCents,
+          defaultCommissionBps: productTable.defaultCommissionBps,
+          brand: productTable.brand,
+          internalCode: productTable.internalCode,
+        })
+        .from(productTable)
+        .where(eq(productTable.storeId, store.id))
+        // Sem custo primeiro (NULL aparece como 1, valor preenchido como 0)
+        .orderBy(
+          sql`(${productTable.costPriceInCents} IS NULL) DESC`,
+          asc(productTable.name),
+        )
+        .limit(PRODUCTS_LIMIT);
+
+      const [countRow] = await tx
+        .select({ value: sql<number>`count(*)::int` })
+        .from(productTable)
+        .where(eq(productTable.storeId, store.id));
+
+      return { rows, totalRows: countRow?.value ?? 0 };
+    },
+  );
+
+  const totalProducts = totalRows;
   const withoutCost = rows.filter((r) => r.costPriceInCents === null).length;
-  const withCost = totalProducts - withoutCost;
+  const withCost = rows.filter((r) => r.costPriceInCents !== null).length;
+  const truncated = totalRows > PRODUCTS_LIMIT;
 
   return (
     <div className="mx-auto max-w-[1360px] space-y-4 p-4 sm:p-6">
@@ -110,7 +128,16 @@ export default async function ProdutosCustosPage() {
           </p>
         </div>
       ) : (
-        <CostGridClient initialRows={rows} />
+        <>
+          {truncated ? (
+            <div className="rounded-lg border border-amber-400/30 bg-amber-50 px-3 py-2 text-[12px] text-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+              Mostrando os primeiros {PRODUCTS_LIMIT.toLocaleString("pt-BR")}{" "}
+              de {totalRows.toLocaleString("pt-BR")} produtos. Filtre por
+              marca ou categoria pra editar produtos fora dessa janela.
+            </div>
+          ) : null}
+          <CostGridClient initialRows={rows} />
+        </>
       )}
     </div>
   );

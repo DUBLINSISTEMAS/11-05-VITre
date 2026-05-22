@@ -19,10 +19,12 @@
 
 import {
   BanknoteIcon,
+  ChevronDownIcon,
   CreditCardIcon,
   HandCoinsIcon,
   MinusIcon,
   PackageIcon,
+  PercentIcon,
   PlusIcon,
   ReceiptIcon,
   ScanBarcodeIcon,
@@ -86,6 +88,13 @@ interface CartItem {
   thumbUrl: string | null;
   trackStock: boolean;
   stockQuantity: number | null;
+  /**
+   * Desconto por linha em centavos (Fase 4 / 2026-05-21). NULL ou 0 = sem
+   * desconto. Source of truth em cents — % é só UX. Validação server-side
+   * garante `<= priceInCents × quantity`. Persiste em
+   * `order_item.discount_in_cents`.
+   */
+  discountInCents: number | null;
 }
 
 interface PaymentMethodOption {
@@ -137,6 +146,60 @@ function makeDefaultPaymentLine(): PaymentLineState {
     cashReceivedInput: "",
     notes: "",
   };
+}
+
+/**
+ * Auto-ajuste LIFO de paymentLines pra match um novo total.
+ *
+ * Audit 2026-05-21 — sênior administração/varejo: lojista de balcão NÃO
+ * quer fazer matemática. Quando o total muda (item adicionado, qty,
+ * desconto, acréscimo), o valor da forma de pagamento auto-ajusta pra
+ * fechar a conta. Estratégia LIFO — desconta/adiciona da ÚLTIMA linha
+ * primeiro (foi a última coisa que o lojista preencheu, ajuste vem por
+ * lá com menor surpresa). Se zera, propaga pra anterior.
+ *
+ * NÃO mexe em cashReceivedInput (valor recebido em dinheiro) — esse o
+ * lojista digitou separadamente quando cliente entregou cédula. Troco
+ * recalcula sozinho.
+ *
+ * Pure function — chamada via useEffect que dispara só quando
+ * totalInCents OU creditAmountInCents mudam. Como setPaymentLines NÃO
+ * muda total/credit, não há loop infinito.
+ */
+function rebalancePaymentLines(
+  newTotal: number,
+  creditAmount: number,
+  lines: PaymentLineState[],
+): PaymentLineState[] {
+  // Valor que deve estar em payments[] (excluído fiado parcial).
+  const targetSum = Math.max(0, newTotal - creditAmount);
+  const currentSum = lines.reduce(
+    (acc, l) => acc + (inputToCents(l.amountInput) ?? 0),
+    0,
+  );
+  const delta = targetSum - currentSum;
+  if (delta === 0) return lines;
+  if (lines.length === 0) return lines;
+
+  const next = lines.map((l) => ({ ...l }));
+  let remaining = delta;
+
+  // LIFO: ajusta da última pra primeira linha.
+  for (let i = next.length - 1; i >= 0; i--) {
+    if (remaining === 0) break;
+    const current = inputToCents(next[i].amountInput) ?? 0;
+    const desired = current + remaining;
+    if (desired >= 0) {
+      // Cabe na linha — set e termina.
+      next[i].amountInput = desired === 0 ? "" : centsToInput(desired);
+      remaining = 0;
+    } else {
+      // delta negativo grande — zera linha atual e propaga restante.
+      next[i].amountInput = "";
+      remaining = desired; // ainda negativo, propaga pra próxima iter.
+    }
+  }
+  return next;
 }
 
 function inputToCents(value: string): number | null {
@@ -211,10 +274,18 @@ export function PdvShell() {
   const [isSubmitting, startSubmit] = useTransition();
   const [lastSale, setLastSale] = useState<LastSale | null>(null);
 
-  const subtotalInCents = useMemo(
+  // Subtotal LÍQUIDO de descontos por linha. O subtotal bruto (sem
+  // item discounts) é exposto separado pra UI mostrar breakdown
+  // "Subtotal bruto → descontos por item → subtotal líquido".
+  const subtotalGrossInCents = useMemo(
     () => cart.reduce((s, it) => s + it.priceInCents * it.quantity, 0),
     [cart],
   );
+  const itemDiscountsTotalInCents = useMemo(
+    () => cart.reduce((s, it) => s + (it.discountInCents ?? 0), 0),
+    [cart],
+  );
+  const subtotalInCents = subtotalGrossInCents - itemDiscountsTotalInCents;
 
   // R$ canônico — sempre lê do AmountInput (que é sincronizado tanto por
   // edição direta quanto pela edição em %).
@@ -289,6 +360,24 @@ export function PdvShell() {
     return diff > 0 ? acc + diff : acc;
   }, 0);
   const troco = trocoTotalInCents > 0 ? trocoTotalInCents : null;
+
+  // Audit 2026-05-21 — auto-ajuste do valor da forma de pagamento ao
+  // mudar totalInCents (cart/desconto/acréscimo) ou creditAmountInCents
+  // (fiado parcial). Lojista de balcão não precisa refazer matemática:
+  // o sistema fecha a conta sozinho via LIFO (rebalancePaymentLines).
+  //
+  // Dep array intencionalmente SÓ [totalInCents, creditAmountInCents] —
+  // se entrasse paymentLines no array, viraria loop (setPaymentLines
+  // dispara o effect que chama setPaymentLines de novo). Como total/credit
+  // NÃO derivam de paymentLines, mudar paymentLines não retriggera
+  // o effect → comportamento estável.
+  useEffect(() => {
+    setPaymentLines((prev) =>
+      rebalancePaymentLines(totalInCents, creditAmountInCents, prev),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalInCents, creditAmountInCents]);
+
   // Validação per-linha de cash com recebido < amount (bloqueia submit).
   const paymentLinesAllValid = paymentLines.every((line) => {
     const amt = inputToCents(line.amountInput) ?? 0;
@@ -336,16 +425,21 @@ export function PdvShell() {
       variant: PdvProductVariantHit | null,
       effectivePrice: number,
     ) => {
+      // Audit 2026-05-21 — limpa banner "Venda registrada" da venda
+      // ANTERIOR ao começar a próxima venda. Antes, lojista finalizava,
+      // adicionava produto novo e ainda via "Total R$ X" da venda
+      // anterior por cima do carrinho atual. Confuso.
+      setLastSale(null);
       setCart((prev) => {
+        const trackStock = variant?.trackStock ?? product.trackStock;
+        const stockQuantity =
+          variant?.stockQuantity ?? product.stockQuantity;
         const existing = prev.find(
           (it) =>
             it.productId === product.id &&
             it.variantId === (variant?.id ?? null),
         );
         if (existing) {
-          const trackStock = variant?.trackStock ?? product.trackStock;
-          const stockQuantity =
-            variant?.stockQuantity ?? product.stockQuantity;
           if (
             trackStock &&
             stockQuantity !== null &&
@@ -360,6 +454,19 @@ export function PdvShell() {
             it === existing ? { ...it, quantity: it.quantity + 1 } : it,
           );
         }
+        // Audit 2026-05-21 — primeiro add também precisa checar stock.
+        // Antes, o check só rodava quando o item já existia no carrinho
+        // (path "existing"). Item esgotado escapava no primeiro add e
+        // só o servidor pegava com OUT_OF_STOCK. UX melhor rejeitar
+        // antes da venda inteira ser montada.
+        if (trackStock && stockQuantity !== null && stockQuantity < 1) {
+          toast.error(
+            stockQuantity === 0
+              ? "Produto sem estoque."
+              : `Estoque insuficiente — só tem ${stockQuantity}.`,
+          );
+          return prev;
+        }
         return [
           ...prev,
           {
@@ -370,8 +477,9 @@ export function PdvShell() {
             priceInCents: effectivePrice,
             quantity: 1,
             thumbUrl: product.thumbUrl,
-            trackStock: variant?.trackStock ?? product.trackStock,
-            stockQuantity: variant?.stockQuantity ?? product.stockQuantity,
+            trackStock,
+            stockQuantity,
+            discountInCents: null,
           },
         ];
       });
@@ -411,6 +519,28 @@ export function PdvShell() {
 
   const removeItem = (idx: number) =>
     setCart((prev) => prev.filter((_, i) => i !== idx));
+
+  /**
+   * Define desconto da linha (Fase 4). `discountInCents = null` ou 0 limpa.
+   * Server faz validação final (CHECK constraint + action), aqui só clamp
+   * defensivo no UI pra evitar request rejeitado por valor negativo OU
+   * acima do bruto da linha.
+   */
+  const updateItemDiscount = (idx: number, discountInCents: number | null) => {
+    setCart((prev) => {
+      const item = prev[idx];
+      if (!item) return prev;
+      const lineGross = item.priceInCents * item.quantity;
+      let clamped: number | null = discountInCents;
+      if (clamped !== null) {
+        if (clamped <= 0) clamped = null;
+        else if (clamped > lineGross) clamped = lineGross;
+      }
+      return prev.map((it, i) =>
+        i === idx ? { ...it, discountInCents: clamped } : it,
+      );
+    });
+  };
 
   const reset = useCallback(() => {
     setCart([]);
@@ -503,6 +633,7 @@ export function PdvShell() {
         productId: it.productId,
         variantId: it.variantId,
         quantity: it.quantity,
+        discountInCents: it.discountInCents,
       })),
       customerId,
       walkInName: customerId ? null : walkInName.trim() || null,
@@ -562,6 +693,7 @@ export function PdvShell() {
         productId: it.productId,
         variantId: it.variantId,
         quantity: it.quantity,
+        discountInCents: it.discountInCents,
       })),
       customerId,
       walkInName: null,
@@ -613,6 +745,7 @@ export function PdvShell() {
         productId: it.productId,
         variantId: it.variantId,
         quantity: it.quantity,
+        discountInCents: it.discountInCents,
       })),
       customerId,
       walkInName: customerId ? null : walkInName.trim() || null,
@@ -657,6 +790,33 @@ export function PdvShell() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      // Audit 2026-05-21 — F-keys (F2/F3/F4/F8/F9) DEVEM skipar quando o
+      // foco está num sub-dialog (ProductPicker, QuickSale, FullCreate).
+      // Antes, F4 podia disparar handleSubmit enquanto picker tava aberto
+      // → state inconsistente (selecionados não confirmados). Estratégia:
+      // o modal "Nova Venda" tem data-pdv-modal="true"; F-keys disparam
+      // dentro dele OU fora de modais. Sub-dialogs sem esse marker bloqueiam.
+      const isFkey = ["F2", "F3", "F4", "F8", "F9"].includes(e.key);
+      if (isFkey) {
+        const ae = document.activeElement;
+        const closestModal = ae?.closest(
+          '[role="dialog"][data-state="open"]',
+        );
+        // Se foco está num dialog que NÃO é o modal Nova Venda, abortar.
+        // Quando PdvShell está standalone (/admin/pdv), closestModal=null
+        // → handler segue. Quando dentro do modal Nova Venda,
+        // closestModal=esse modal (tem data-pdv-modal) → handler segue.
+        // Quando dentro de sub-dialog (picker etc), closestModal=picker
+        // (sem data-pdv-modal) → handler aborta.
+        if (
+          closestModal &&
+          !closestModal.hasAttribute("data-pdv-modal")
+        ) {
+          return;
+        }
+      }
+
       switch (e.key) {
         case "F2": {
           e.preventDefault();
@@ -694,7 +854,9 @@ export function PdvShell() {
           return;
         }
         case "F9": {
-          // Sprint 1A — abrir input de desconto manual (R$).
+          // Atalho de desconto: foca o input R$ (não o %). Audit 2026-05-21
+          // — F9 SEMPRE foca o campo em R$ pra evitar confusão "digitei
+          // achando reais mas estava em %".
           e.preventDefault();
           const el = document.getElementById(
             "pdv-discount-amount",
@@ -727,58 +889,70 @@ export function PdvShell() {
   }, [reset]);
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col gap-2 lg:h-[calc(100vh-2.5rem)]">
-      {/* Topo: cliente — única linha fina, sempre visível */}
-      <div className="b3-card shrink-0">
-        <CustomerComboboxLight
-          customerId={customerId}
-          customerLabel={customerLabel}
-          walkInName={walkInName}
-          walkInPhone={walkInPhone}
-          setWalkInName={setWalkInName}
-          setWalkInPhone={setWalkInPhone}
-          onPick={(c) => {
-            setCustomerId(c?.id ?? null);
-            setCustomerLabel(c ? `${c.name} · ${c.phone}` : "");
-            if (c) {
-              setWalkInName("");
-              setWalkInPhone("");
-            }
-          }}
-        />
-      </div>
+    <div className="flex h-[calc(100vh-4rem)] flex-col lg:h-[calc(100vh-2.5rem)]">
+      {/* Layout 2-col (rebalance 2026-05-21 audit). Coluna ESQUERDA
+          empilha Cliente + Search + Carrinho. Coluna DIREITA é o
+          painel de Pagamento — ocupa do TOPO do modal até o final,
+          alinhado com a linha de Cliente do outro lado. Cliente fica
+          flush com o carrinho abaixo (mesma largura de coluna), sem
+          deslocamento horizontal. Proporção 1:1.1 — pagamento ligeiramente
+          maior porque é onde lojista gasta mais tempo. */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 lg:grid-cols-[1fr_1.1fr]">
+        {/* ─── Coluna esquerda: Cliente + Search + Cart ─── */}
+        <div className="flex min-h-0 flex-col gap-2">
+          {/* Cliente — linha fina no topo da coluna esquerda */}
+          <div className="b3-card shrink-0">
+            <CustomerComboboxLight
+              customerId={customerId}
+              customerLabel={customerLabel}
+              walkInName={walkInName}
+              walkInPhone={walkInPhone}
+              setWalkInName={setWalkInName}
+              setWalkInPhone={setWalkInPhone}
+              onPick={(c) => {
+                setCustomerId(c?.id ?? null);
+                setCustomerLabel(c ? `${c.name} · ${c.phone}` : "");
+                if (c) {
+                  setWalkInName("");
+                  setWalkInPhone("");
+                }
+              }}
+            />
+          </div>
 
-      {/* Body: 2 colunas — carrinho (esquerda flex) + pagamento (direita 380px) */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 lg:grid-cols-[1fr_380px]">
-        {/* Carrinho — coluna esquerda */}
-        <section className="b3-card flex flex-col overflow-hidden">
-          {/* Toolbar: scanner GTIN + botão "+ Adicionar produto" */}
-          <CartToolbar
-            onScanResult={(hit) => {
-              const effectivePrice = getEffectivePrice({
-                basePriceInCents: hit.basePriceInCents,
-                promoPriceInCents: hit.promoPriceInCents,
-                promoStartsAt: hit.promoStartsAt,
-                promoEndsAt: hit.promoEndsAt,
-              });
-              addToCart(hit, null, effectivePrice);
-            }}
-            onOpenPicker={() => setPickerOpen(true)}
-            cartCount={cart.length}
-          />
+          {/* Carrinho: search bar + lista de items (scroll interno) */}
+          <section className="b3-card flex min-h-0 flex-1 flex-col overflow-hidden">
+            <CartToolbar
+              onScanResult={(hit) => {
+                const effectivePrice = getEffectivePrice({
+                  basePriceInCents: hit.basePriceInCents,
+                  promoPriceInCents: hit.promoPriceInCents,
+                  promoStartsAt: hit.promoStartsAt,
+                  promoEndsAt: hit.promoEndsAt,
+                });
+                addToCart(hit, null, effectivePrice);
+              }}
+              onOpenPicker={() => setPickerOpen(true)}
+              cartCount={cart.length}
+            />
 
-          {/* Lista de items — scroll interno */}
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <CartPanel
+            {/* Lista de items — scroll interno */}
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <CartPanel
               items={cart}
               updateQty={updateQty}
+              updateItemDiscount={updateItemDiscount}
               removeItem={removeItem}
               onOpenPicker={() => setPickerOpen(true)}
             />
           </div>
         </section>
+        </div>
+        {/* fim da coluna esquerda */}
 
-        {/* Pagamento + Total — coluna direita 380px */}
+        {/* ─── Coluna direita: Pagamento + Total + Finalizar ───
+            Ocupa do topo do modal até o final, alinhada com Cliente
+            do outro lado. Painel inteiro num único card branco. */}
         <aside className="b3-card flex min-h-0 flex-col overflow-hidden">
           {/* Pagamento scroll interno */}
           <div className="min-h-0 flex-1 overflow-y-auto">
@@ -812,20 +986,23 @@ export function PdvShell() {
             )}
           </div>
 
-          {/* Footer — total + botões SEMPRE visíveis */}
-          <div className="border-line bg-bg-app shrink-0 border-t p-3">
+          {/* Footer — total + botões SEMPRE visíveis. Densificação
+              2026-05-21: padding p-3→p-2.5, mb-2→mb-1.5, total
+              text-[22px]→text-[19px] (menos "grosso"), breakdown
+              text-[11px]→text-[10.5px], banner lastSale menor. */}
+          <div className="border-line bg-bg-app shrink-0 border-t p-2.5">
             {lastSale ? (
-              <div className="border-brand-line bg-brand-wash mb-2 rounded-md border p-2">
-                <div className="text-brand text-[11px] font-bold uppercase tracking-[0.06em]">
+              <div className="border-brand-line bg-brand-wash mb-1.5 rounded-md border p-2">
+                <div className="text-brand text-[10.5px] font-bold uppercase tracking-[0.06em]">
                   Venda registrada
                 </div>
-                <div className="text-ink-2 mt-0.5 text-[12px]">
+                <div className="text-ink-2 mt-0.5 text-[11.5px]">
                   Total {formatBRL(lastSale.totalInCents)}
                 </div>
-                <div className="mt-2 grid grid-cols-2 gap-1.5">
+                <div className="mt-1.5 grid grid-cols-2 gap-1.5">
                   <button
                     type="button"
-                    className="b3-btn b3-btn--sm"
+                    className="b3-btn b3-btn--sm h-8"
                     onClick={() => setLastSale(null)}
                   >
                     Nova venda
@@ -833,7 +1010,7 @@ export function PdvShell() {
                   {lastSale.publicToken ? (
                     <button
                       type="button"
-                      className="b3-btn b3-btn--sm b3-btn--brand"
+                      className="b3-btn b3-btn--sm b3-btn--cta h-8"
                       onClick={() => {
                         window.open(
                           `/admin/pdv/recibo/${lastSale.publicToken}`,
@@ -849,26 +1026,52 @@ export function PdvShell() {
               </div>
             ) : null}
 
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-ink-1 text-[13px] font-bold">Total</span>
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="text-ink-1 text-[12.5px] font-semibold">Total</span>
               <span
                 className={cn(
-                  "mono text-[22px] font-bold tracking-[-0.02em]",
+                  "mono text-[19px] font-bold tracking-[-0.02em]",
                   cart.length === 0 ? "text-ink-4" : "text-ink-1",
                 )}
               >
                 {formatBRL(totalInCents)}
               </span>
             </div>
-            {discountInCents > 0 || surchargeInCents > 0 ? (
-              <div className="text-ink-4 mb-2 space-y-0.5 text-[11px]">
+            {itemDiscountsTotalInCents > 0 ||
+            discountInCents > 0 ||
+            surchargeInCents > 0 ? (
+              <div className="text-ink-4 mb-1.5 space-y-0 text-[10.5px] leading-snug">
+                {/* Subtotal BRUTO antes de qualquer desconto. Só aparece se
+                    houver descontos pra evitar redundância com Subtotal líquido. */}
+                {itemDiscountsTotalInCents > 0 ? (
+                  <div className="flex justify-between">
+                    <span>Subtotal bruto</span>
+                    <span className="mono">
+                      {formatBRL(subtotalGrossInCents)}
+                    </span>
+                  </div>
+                ) : null}
+                {/* Soma dos descontos por linha (cada item editou individualmente) */}
+                {itemDiscountsTotalInCents > 0 ? (
+                  <div className="flex justify-between">
+                    <span>Descontos por item</span>
+                    <span className="mono text-mangos-orange">
+                      −{formatBRL(itemDiscountsTotalInCents)}
+                    </span>
+                  </div>
+                ) : null}
+                {/* Subtotal LÍQUIDO de item discounts (entrada do desconto geral) */}
                 <div className="flex justify-between">
-                  <span>Subtotal</span>
+                  <span>
+                    {itemDiscountsTotalInCents > 0
+                      ? "Subtotal líquido"
+                      : "Subtotal"}
+                  </span>
                   <span className="mono">{formatBRL(subtotalInCents)}</span>
                 </div>
                 {discountInCents > 0 ? (
                   <div className="flex justify-between">
-                    <span>Desconto</span>
+                    <span>Desconto geral</span>
                     <span className="mono text-danger">
                       −{formatBRL(discountInCents)}
                     </span>
@@ -890,7 +1093,7 @@ export function PdvShell() {
               disabled={!canSubmit}
               onClick={handleSubmit}
               className={cn(
-                "b3-btn b3-btn--cta h-11 w-full",
+                "b3-btn b3-btn--cta h-10 w-full",
                 !canSubmit && "cursor-not-allowed opacity-50",
               )}
             >
@@ -908,7 +1111,7 @@ export function PdvShell() {
                 disabled={cart.length === 0 || isSubmitting}
                 onClick={handleSubmitQuote}
                 className={cn(
-                  "b3-btn h-9 text-[12px]",
+                  "b3-btn h-8 text-[11.5px]",
                   (cart.length === 0 || isSubmitting) &&
                     "cursor-not-allowed opacity-50",
                 )}
@@ -927,7 +1130,7 @@ export function PdvShell() {
                     : undefined
                 }
                 className={cn(
-                  "b3-btn h-9 text-[12px]",
+                  "b3-btn h-8 text-[11.5px]",
                   (cart.length === 0 || isSubmitting || !customerId) &&
                     "cursor-not-allowed opacity-50",
                 )}
@@ -1042,7 +1245,11 @@ function CartToolbar({
   };
 
   return (
-    <div className="border-line bg-surface flex shrink-0 items-center gap-2 border-b px-3 py-2">
+    // Fundo cinza sidebar (audit 2026-05-21) — destaca a área de "ações
+    // rápidas" (busca + adicionar) do resto do card branco do carrinho.
+    // Input dentro fica em branco (bg-surface) contrastando com o cinza
+    // ao redor. Badge F2 vira branco pra ficar legível sobre o cinza.
+    <div className="border-line flex shrink-0 items-center gap-2 border-b bg-[var(--mangos-side-bg)] px-3 py-2">
       <div className="relative flex-1">
         <ScanBarcodeIcon
           aria-hidden
@@ -1057,16 +1264,16 @@ function CartToolbar({
           onKeyDown={handleKeyDown}
           placeholder="Bipe código (Enter)"
           disabled={scanning}
-          className="border-line focus:border-brand h-9 w-full rounded-md border bg-bg-card pr-12 pl-9 text-[13px] outline-none transition"
+          className="border-line focus:border-brand bg-surface h-9 w-full rounded-md border pr-12 pl-9 text-[13px] outline-none transition"
         />
-        <span className="mono bg-bg-app text-ink-4 absolute top-1/2 right-2 -translate-y-1/2 rounded px-1.5 py-[1px] text-[10px]">
+        <span className="mono bg-surface text-ink-4 border-line absolute top-1/2 right-2 -translate-y-1/2 rounded border px-1.5 py-[1px] text-[10px]">
           F2
         </span>
       </div>
       <button
         type="button"
         onClick={onOpenPicker}
-        className="b3-btn b3-btn--brand h-9 shrink-0 text-[12.5px]"
+        className="b3-btn b3-btn--cta h-9 shrink-0 text-[12.5px]"
       >
         <PlusIcon size={13} />
         Adicionar produto
@@ -1088,14 +1295,41 @@ function CartToolbar({
 function CartPanel({
   items,
   updateQty,
+  updateItemDiscount,
   removeItem,
   onOpenPicker,
 }: {
   items: CartItem[];
   updateQty: (idx: number, delta: number) => void;
+  updateItemDiscount: (idx: number, discountInCents: number | null) => void;
   removeItem: (idx: number) => void;
   onOpenPicker: () => void;
 }) {
+  // Desconto per-item escondido por padrão atrás de um ícone "%" por linha
+  // (rebalance 2026-05-21 — conselho dos 5 agentes). Decisão sênior de
+  // PDV: 90% das vendas balcão não usam desconto por item; quando o
+  // lojista quer dar, clica no "%" da linha e o input expande embaixo.
+  // Set indexado por `productId-variantId` (estável a reordenações) em
+  // vez de índice numérico do array (que muda quando o lojista remove
+  // itens). Limpa quando carrinho zera.
+  const itemKey = (it: CartItem) =>
+    `${it.productId}-${it.variantId ?? "p"}`;
+  const [discountOpen, setDiscountOpen] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (items.length === 0 && discountOpen.size > 0) {
+      setDiscountOpen(new Set());
+    }
+  }, [items.length, discountOpen.size]);
+
+  const toggleDiscountRow = (key: string) => {
+    setDiscountOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
   if (items.length === 0) {
     return (
       <div className="text-ink-4 flex h-full flex-col items-center justify-center gap-3 p-10 text-center">
@@ -1113,7 +1347,7 @@ function CartPanel({
         <button
           type="button"
           onClick={onOpenPicker}
-          className="b3-btn b3-btn--brand mt-1"
+          className="b3-btn b3-btn--cta mt-1"
         >
           <PlusIcon size={13} />
           Adicionar produto
@@ -1121,85 +1355,314 @@ function CartPanel({
       </div>
     );
   }
-  // Carrinho denso — 1 linha por item: thumb 32px · nome · qty +/− · subtotal · ×
+
+  // ──────────────────────────────────────────────────────────────────
+  // Carrinho estilo planilha — 5 colunas (rebalance 2026-05-21).
+  //
+  // Header: PRODUTO · QTD · PREÇO UN · SUBTOTAL · (ações)
+  // Ações: botão "%" (toggle de desconto da linha) + "×" (remover).
+  // Sub-row de desconto aparece EMBAIXO da linha quando lojista clica
+  // no "%". Default colapsado = 90% das vendas não usa per-item.
+  // Quando desconto > 0, o "%" fica destacado em mangos-orange como
+  // sinalização permanente de que há desconto aplicado ali.
+  //
+  // Mobile (< lg): mantém layout denso flex-wrap.
+  // ──────────────────────────────────────────────────────────────────
+  const GRID_TEMPLATE = "lg:grid-cols-[1fr_92px_88px_104px_64px]";
+
   return (
-    <ul className="divide-line divide-y">
-      {items.map((it, idx) => (
-        <li
-          key={`${it.productId}-${it.variantId ?? "p"}`}
-          className="hover:bg-bg-app/50 flex items-center gap-2 px-3 py-2 transition"
-        >
-          {/* Thumb */}
-          <div className="bg-bg-app size-9 shrink-0 overflow-hidden rounded">
-            {it.thumbUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={it.thumbUrl}
-                alt={it.productName}
-                className="size-full object-cover"
-              />
-            ) : (
-              <div className="flex size-full items-center justify-center">
-                <PackageIcon className="text-ink-4 size-3.5" />
-              </div>
-            )}
-          </div>
+    <>
+      {/* Header da "planilha" — só em lg+. Sticky pra não sumir no scroll. */}
+      <div
+        aria-hidden
+        className={cn(
+          "border-line bg-bg-app sticky top-0 z-10 hidden border-b lg:grid",
+          GRID_TEMPLATE,
+          "gap-2 px-3 py-2",
+          "text-ink-4 text-[10px] font-bold uppercase tracking-[0.06em]",
+        )}
+      >
+        <span>Produto</span>
+        <span className="text-center">Qtd</span>
+        <span className="text-right">Preço un.</span>
+        <span className="text-right">Subtotal</span>
+        <span />
+      </div>
 
-          {/* Nome + preço unitário */}
-          <div className="min-w-0 flex-1">
-            <p className="text-ink-1 truncate text-[13px] font-medium">
-              {it.productName}
-              {it.variantName ? (
-                <span className="text-ink-4 ml-1.5 font-normal">
-                  · {it.variantName}
+      <ul className="divide-line divide-y">
+        {items.map((it, idx) => {
+          const key = itemKey(it);
+          const lineGross = it.priceInCents * it.quantity;
+          const lineDiscount = it.discountInCents ?? 0;
+          const lineNet = lineGross - lineDiscount;
+          const hasDiscount = lineDiscount > 0;
+          const showDiscountInput = discountOpen.has(key);
+          return (
+            <li
+              key={key}
+              className={cn(
+                "hover:bg-bg-app/40 transition",
+                hasDiscount && "bg-mangos-cream-soft/40",
+              )}
+            >
+              {/* Linha principal — 5 cols em lg+, flex denso em mobile. */}
+              <div
+                className={cn(
+                  "px-3 py-2 flex flex-wrap items-center gap-2",
+                  "lg:grid",
+                  GRID_TEMPLATE,
+                  "lg:gap-2",
+                )}
+              >
+                {/* Produto: thumb + nome */}
+                <div className="flex min-w-0 flex-1 items-center gap-2 lg:flex-initial">
+                  <div className="bg-bg-app size-9 shrink-0 overflow-hidden rounded">
+                    {it.thumbUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={it.thumbUrl}
+                        alt={it.productName}
+                        className="size-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex size-full items-center justify-center">
+                        <PackageIcon className="text-ink-4 size-3.5" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-ink-1 truncate text-[13px] font-medium">
+                      {it.productName}
+                      {it.variantName ? (
+                        <span className="text-ink-4 ml-1.5 font-normal">
+                          · {it.variantName}
+                        </span>
+                      ) : null}
+                    </p>
+                    {/* Preço un na linha mobile (em desktop fica em coluna própria) */}
+                    <p className="text-ink-4 mono text-[11px] lg:hidden">
+                      {formatBRL(it.priceInCents)} cada
+                    </p>
+                  </div>
+                </div>
+
+                {/* Qty stepper */}
+                <div className="flex shrink-0 items-center justify-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => updateQty(idx, -1)}
+                    className="text-ink-2 hover:bg-bg-app size-6 rounded transition"
+                    aria-label="Diminuir"
+                  >
+                    <MinusIcon className="mx-auto size-3" />
+                  </button>
+                  <span className="w-7 text-center text-[13px] font-medium tabular-nums">
+                    {it.quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => updateQty(idx, 1)}
+                    className="text-ink-2 hover:bg-bg-app size-6 rounded transition"
+                    aria-label="Aumentar"
+                  >
+                    <PlusIcon className="mx-auto size-3" />
+                  </button>
+                </div>
+
+                {/* Preço un. — só desktop (mobile mostra abaixo do nome) */}
+                <span className="mono hidden text-right text-[12.5px] tabular-nums text-ink-2 lg:inline">
+                  {formatBRL(it.priceInCents)}
                 </span>
+
+                {/* Subtotal (líquido) + label "−R$ X" laranja quando há desconto */}
+                <div className="shrink-0 text-right">
+                  <span className="mono text-ink-1 text-[13px] font-semibold tabular-nums">
+                    {formatBRL(lineNet)}
+                  </span>
+                  {hasDiscount ? (
+                    <div className="text-mangos-orange mono text-[10.5px] tabular-nums">
+                      −{formatBRL(lineDiscount)}
+                    </div>
+                  ) : null}
+                </div>
+
+                {/* Ações: % (toggle desconto da linha) + × (remover) */}
+                <div className="flex shrink-0 items-center justify-end gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => toggleDiscountRow(key)}
+                    aria-expanded={showDiscountInput}
+                    aria-label={
+                      hasDiscount
+                        ? "Editar desconto da linha"
+                        : "Aplicar desconto na linha"
+                    }
+                    title={
+                      hasDiscount
+                        ? "Editar desconto desta linha"
+                        : "Aplicar desconto nesta linha"
+                    }
+                    className={cn(
+                      "inline-flex size-6 items-center justify-center rounded transition",
+                      hasDiscount
+                        ? "bg-mangos-orange/12 text-mangos-orange hover:bg-mangos-orange/20"
+                        : "text-ink-4 hover:bg-bg-app hover:text-ink-2",
+                    )}
+                  >
+                    <PercentIcon className="size-3" strokeWidth={2.2} aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeItem(idx)}
+                    aria-label="Remover item"
+                    title="Remover item"
+                    className="text-ink-4 hover:text-danger inline-flex size-6 items-center justify-center rounded transition hover:bg-bg-app"
+                  >
+                    <Trash2Icon className="size-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Sub-row de desconto — aparece quando lojista clica no "%".
+                  Fica visualmente "encostada" na linha pai via borda lateral
+                  amarela mangos e fundo creme suave. Apenas o input
+                  DiscountCell + label + botão "Pronto" pra fechar. */}
+              {showDiscountInput ? (
+                <div
+                  className={cn(
+                    "border-l-2 border-mangos-yellow bg-mangos-cream-soft",
+                    "flex items-center gap-3 px-3 py-2 pl-[44px]",
+                    "border-b border-b-line/50",
+                  )}
+                >
+                  <span className="text-ink-4 text-[11px] font-medium uppercase tracking-wide">
+                    Desconto nesta linha
+                  </span>
+                  <div className="w-[120px]">
+                    <DiscountCell
+                      lineGross={lineGross}
+                      discountInCents={it.discountInCents}
+                      onChange={(cents) => updateItemDiscount(idx, cents)}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleDiscountRow(key)}
+                    className="text-ink-4 hover:text-ink-1 ml-auto text-[12px] font-medium transition"
+                  >
+                    Pronto
+                  </button>
+                </div>
               ) : null}
-            </p>
-            <p className="text-ink-4 mono text-[11px]">
-              {formatBRL(it.priceInCents)} cada
-            </p>
-          </div>
+            </li>
+          );
+        })}
+      </ul>
+    </>
+  );
+}
 
-          {/* Qty +/− */}
-          <div className="flex shrink-0 items-center gap-0.5">
-            <button
-              type="button"
-              onClick={() => updateQty(idx, -1)}
-              className="text-ink-2 hover:bg-bg-app size-6 rounded transition"
-              aria-label="Diminuir"
-            >
-              <MinusIcon className="mx-auto size-3" />
-            </button>
-            <span className="w-7 text-center text-[13px] font-medium tabular-nums">
-              {it.quantity}
-            </span>
-            <button
-              type="button"
-              onClick={() => updateQty(idx, 1)}
-              className="text-ink-2 hover:bg-bg-app size-6 rounded transition"
-              aria-label="Aumentar"
-            >
-              <PlusIcon className="mx-auto size-3" />
-            </button>
-          </div>
+function DiscountCell({
+  lineGross,
+  discountInCents,
+  onChange,
+}: {
+  /** Subtotal bruto da linha (priceInCents × quantity) — pra calcular % */
+  lineGross: number;
+  /** Valor atual em cents. null = sem desconto. */
+  discountInCents: number | null;
+  /** Callback ao mudar — null limpa, número é cents validados (clamped no PdvShell). */
+  onChange: (cents: number | null) => void;
+}) {
+  // Mode controla o formato do input: '%' digita percentual, 'amount' digita R$.
+  // Source of truth é sempre cents (vem do parent). Toggle muda só a interpretação.
+  const [mode, setMode] = useState<"pct" | "amount">("pct");
+  // Display local pra preservar o que o lojista digitou (ex: "10,5" enquanto
+  // ele ainda não terminou). Sincroniza quando o parent muda OU o modo muda.
+  const [display, setDisplay] = useState<string>("");
 
-          {/* Subtotal */}
-          <span className="text-ink-1 mono w-20 shrink-0 text-right text-[13px] font-semibold tabular-nums">
-            {formatBRL(it.priceInCents * it.quantity)}
-          </span>
+  // Reconcile display ↔ discountInCents quando o modo muda ou o parent atualiza.
+  // Usa ref pra não re-renderizar em loop quando o setDisplay dispara.
+  const lastSeenRef = useRef<{ cents: number | null; mode: "pct" | "amount" }>({
+    cents: discountInCents,
+    mode,
+  });
+  useEffect(() => {
+    const last = lastSeenRef.current;
+    const centsChanged = last.cents !== discountInCents;
+    const modeChanged = last.mode !== mode;
+    if (!centsChanged && !modeChanged) return;
+    lastSeenRef.current = { cents: discountInCents, mode };
+    if (discountInCents === null || discountInCents === 0) {
+      setDisplay("");
+      return;
+    }
+    if (mode === "pct") {
+      const pct = (discountInCents / lineGross) * 100;
+      // 1 casa decimal; sem zero à direita ("10" em vez de "10,0")
+      const formatted = pct.toFixed(1).replace(/\.0$/, "").replace(".", ",");
+      setDisplay(formatted);
+    } else {
+      setDisplay((discountInCents / 100).toFixed(2).replace(".", ","));
+    }
+  }, [discountInCents, lineGross, mode]);
 
-          {/* Remover */}
-          <button
-            type="button"
-            onClick={() => removeItem(idx)}
-            className="text-ink-4 hover:text-danger shrink-0"
-            aria-label="Remover"
-          >
-            <Trash2Icon className="size-3.5" />
-          </button>
-        </li>
-      ))}
-    </ul>
+  const handleInput = (raw: string) => {
+    // Aceita só dígitos, vírgula e ponto. Limpa outros chars.
+    const cleaned = raw.replace(/[^\d.,]/g, "");
+    setDisplay(cleaned);
+    const parsed = parseFloat(cleaned.replace(",", "."));
+    if (!isFinite(parsed) || parsed <= 0) {
+      onChange(null);
+      return;
+    }
+    if (mode === "pct") {
+      // % → cents (round-to-nearest pra não perder centavo)
+      const cents = Math.round((parsed / 100) * lineGross);
+      onChange(cents);
+    } else {
+      const cents = Math.round(parsed * 100);
+      onChange(cents);
+    }
+  };
+
+  const toggleMode = () => {
+    setMode((m) => (m === "pct" ? "amount" : "pct"));
+  };
+
+  return (
+    <div className="relative flex items-center">
+      <input
+        type="text"
+        inputMode="decimal"
+        value={display}
+        onChange={(e) => handleInput(e.target.value)}
+        placeholder={mode === "pct" ? "0" : "0,00"}
+        aria-label={
+          mode === "pct" ? "Desconto em porcentagem" : "Desconto em reais"
+        }
+        className={cn(
+          "b3-input mono tabular-nums",
+          "h-7 w-full pr-8 text-right text-[12px]",
+        )}
+      />
+      <button
+        type="button"
+        onClick={toggleMode}
+        className={cn(
+          "absolute right-1 rounded px-1.5 py-0.5 text-[10px] font-bold",
+          "text-ink-4 hover:bg-bg-app hover:text-ink-1 transition",
+        )}
+        title={
+          mode === "pct"
+            ? "Mudar pra valor em R$"
+            : "Mudar pra porcentagem"
+        }
+        aria-label="Trocar entre % e R$"
+      >
+        {mode === "pct" ? "%" : "R$"}
+      </button>
+    </div>
   );
 }
 
@@ -1246,8 +1709,10 @@ function PaymentSection({
   notes: string;
   setNotes: (v: string) => void;
 }) {
+  // Audit 2026-05-21 — densificado: h-9→h-8, text-[13px]→text-[12.5px]
+  // pra caber sem scroll quando Mais opções expandido.
   const inputCls =
-    "border-line bg-surface focus:border-brand h-9 w-full rounded-[8px] border px-3 text-[13px] outline-none transition";
+    "border-line bg-surface focus:border-brand h-8 w-full rounded-[8px] border px-3 text-[12.5px] outline-none transition";
 
   const updateLine = (id: string, patch: Partial<PaymentLineState>) => {
     setPaymentLines((prev) =>
@@ -1277,13 +1742,20 @@ function PaymentSection({
   };
 
   return (
-    <div className="space-y-3 p-[18px]">
-      <div className="text-ink-4 text-[11px] font-bold uppercase tracking-[0.06em]">
-        Pagamento
-      </div>
+    <div className="space-y-2.5 p-3">
+      {/* Layout 2-col interno (audit 2026-05-21): Pagamento esquerda
+          (1fr) + Desconto direita (200px) lado a lado. Densificação
+          sênior: paddings menores, labels 10px, gaps mínimos — tudo
+          cabe sem scroll mesmo com Mais opções expandido. */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_200px]">
+        {/* ─── Coluna esquerda: Pagamento (forma + valor + recebido) ─── */}
+        <div className="flex flex-col gap-1.5">
+          <div className="text-ink-4 text-[10px] font-bold uppercase tracking-[0.06em]">
+            Pagamento
+          </div>
 
-      {/* Lista de linhas de pagamento (Sprint 1A) */}
-      <div className="flex flex-col gap-2">
+          {/* Lista de linhas de pagamento (Sprint 1A) */}
+          <div className="flex flex-col gap-1.5">
         {paymentLines.map((line, idx) => {
           const amt = inputToCents(line.amountInput) ?? 0;
           const recv = inputToCents(line.cashReceivedInput);
@@ -1296,13 +1768,13 @@ function PaymentSection({
           return (
             <div
               key={line.id}
-              className="rounded-[10px] border border-line bg-surface p-2.5"
+              className="rounded-[8px] border border-line bg-surface p-2"
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <select
                   aria-label="Forma de pagamento"
-                  className="b3-select h-9 text-[12.5px]"
-                  style={{ width: 140 }}
+                  className="b3-select h-8 text-[12px]"
+                  style={{ width: 120 }}
                   value={line.method}
                   onChange={(e) =>
                     updateLine(line.id, {
@@ -1338,7 +1810,7 @@ function PaymentSection({
                   disabled={paymentLines.length <= 1}
                   aria-label="Remover forma de pagamento"
                   className={cn(
-                    "flex size-9 shrink-0 items-center justify-center rounded-[8px] border border-line text-ink-4 transition",
+                    "flex size-8 shrink-0 items-center justify-center rounded-[8px] border border-line text-ink-4 transition",
                     paymentLines.length > 1
                       ? "hover:border-danger hover:text-danger"
                       : "cursor-not-allowed opacity-30",
@@ -1349,12 +1821,12 @@ function PaymentSection({
               </div>
 
               {line.method === "cash" ? (
-                <div className="mt-2 grid grid-cols-[140px_1fr] items-center gap-2">
+                <div className="mt-1.5 grid grid-cols-[120px_1fr] items-center gap-1.5">
                   <label
                     htmlFor={`cash-recv-${line.id}`}
-                    className="text-ink-4 text-[11px]"
+                    className="text-ink-4 text-[10.5px]"
                   >
-                    Recebido (pra troco)
+                    Recebido
                   </label>
                   <input
                     id={`cash-recv-${line.id}`}
@@ -1372,16 +1844,16 @@ function PaymentSection({
                     )}
                   />
                   {lineTroco !== null ? (
-                    <p className="col-span-2 text-ink-4 text-[11px]">
-                      Troco desta linha:{" "}
+                    <p className="col-span-2 text-ink-4 text-[10.5px]">
+                      Troco:{" "}
                       <span className="text-ink-1 font-semibold">
                         {formatBRL(lineTroco)}
                       </span>
                     </p>
                   ) : null}
                   {lineInvalid ? (
-                    <p className="col-span-2 text-danger text-[11px]">
-                      Valor recebido menor que o valor da linha.
+                    <p className="col-span-2 text-danger text-[10.5px]">
+                      Recebido menor que o valor.
                     </p>
                   ) : null}
                 </div>
@@ -1413,81 +1885,18 @@ function PaymentSection({
           <button
             type="button"
             onClick={addLine}
-            className="b3-btn b3-btn--sm self-start gap-2"
+            className="b3-btn b3-btn--sm h-7 self-start gap-1.5 px-2 text-[11.5px]"
           >
             <PlusIcon className="size-3" /> Adicionar forma
           </button>
         ) : null}
 
-        {/* Sprint 4C — fiado parcial direto na venda */}
-        <div className="border-line mt-1 rounded-[10px] border bg-bg-card p-3">
-          <div className="mb-2 flex items-center gap-2">
-            <HandCoinsIcon size={13} className="text-brand" />
-            <span className="text-ink-2 text-[12px] font-medium">
-              Lançar saldo como fiado
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <span className="text-ink-4 absolute top-1/2 left-3 -translate-y-1/2 text-[12px]">
-                R$
-              </span>
-              <input
-                aria-label="Saldo a virar fiado"
-                inputMode="decimal"
-                placeholder="0,00"
-                value={creditAmountInput}
-                onChange={(e) => setCreditAmountInput(e.target.value)}
-                className={`${inputCls} pl-9 tabular-nums`}
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                // Quitar saldo restante (paymentsRemaining = total - sum - credit).
-                // Preset: somar o que falta ao creditAmount atual.
-                const remainingNow =
-                  totalInCents - paymentsSumInCents - creditAmountInCents;
-                if (remainingNow <= 0) return;
-                const newCredit = creditAmountInCents + remainingNow;
-                setCreditAmountInput(
-                  (newCredit / 100).toFixed(2).replace(".", ","),
-                );
-              }}
-              className="b3-btn b3-btn--sm whitespace-nowrap"
-              title="Atribuir o saldo restante ao fiado"
-            >
-              Saldo restante
-            </button>
-            <button
-              type="button"
-              onClick={() => setCreditAmountInput("")}
-              className="b3-btn b3-btn--sm whitespace-nowrap"
-              title="Limpar fiado"
-              disabled={creditAmountInCents === 0}
-            >
-              Limpar
-            </button>
-          </div>
-          {creditAmountInCents > 0 ? (
-            <div className="mt-2 space-y-1 text-[11px]">
-              {!hasCustomerSelected ? (
-                <div className="text-danger flex items-center gap-1">
-                  <TriangleAlertIcon size={11} />
-                  Selecione um cliente cadastrado pra registrar o fiado.
-                </div>
-              ) : (
-                <div className="text-ink-4">
-                  Vence em 30 dias. Será criado automaticamente em
-                  /admin/financeiro/receber.
-                </div>
-              )}
-            </div>
-          ) : null}
-        </div>
+        {/* Card de fiado parcial movido pra <MoreOptionsDisclosure>
+            (rebalance 2026-05-21). Era visível por default mas 90% das
+            vendas balcão não usam — escondido reduz ruído. */}
 
         {/* Indicador Falta / Sobra / Completo (considera fiado também) */}
-        <div className="mt-1 text-[12px]">
+        <div className="text-[11px]">
           {paymentsRemainingInCents === 0 &&
           (paymentsSumInCents > 0 || creditAmountInCents > 0) ? (
             <span className="text-ok font-semibold">
@@ -1513,100 +1922,250 @@ function PaymentSection({
             </span>
           ) : null}
         </div>
-      </div>
-
-      {/* ADR-0020 — desconto + acréscimo 2x2 com auto-cálculo bidirecional R$/% */}
-      <div className="space-y-2">
-        <div className="text-ink-4 text-[11px] font-medium">
-          Ajustes (opcional)
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          {/* Desconto R$ */}
-          <div className="space-y-1">
-            <label
-              htmlFor="discount-amount"
-              className="text-ink-3 text-[10px] font-medium uppercase tracking-[0.04em]"
-            >
-              Desconto R$
-            </label>
-            <input
-              id="pdv-discount-amount"
-              inputMode="decimal"
-              placeholder="0,00"
-              value={discountAmountInput}
-              onChange={(e) => onDiscountAmountChange(e.target.value)}
-              className={inputCls}
-            />
-          </div>
-          {/* Desconto % */}
-          <div className="space-y-1">
-            <label
-              htmlFor="discount-pct"
-              className="text-ink-3 text-[10px] font-medium uppercase tracking-[0.04em]"
-            >
-              Desconto %
-            </label>
-            <input
-              id="discount-pct"
-              inputMode="decimal"
-              placeholder="0"
-              value={discountPctInput}
-              onChange={(e) => onDiscountPctChange(e.target.value)}
-              className={inputCls}
-            />
-          </div>
-          {/* Acréscimo R$ */}
-          <div className="space-y-1">
-            <label
-              htmlFor="surcharge-amount"
-              className="text-ink-3 text-[10px] font-medium uppercase tracking-[0.04em]"
-            >
-              Acréscimo R$
-            </label>
-            <input
-              id="surcharge-amount"
-              inputMode="decimal"
-              placeholder="0,00"
-              value={surchargeAmountInput}
-              onChange={(e) => onSurchargeAmountChange(e.target.value)}
-              className={inputCls}
-            />
-          </div>
-          {/* Acréscimo % */}
-          <div className="space-y-1">
-            <label
-              htmlFor="surcharge-pct"
-              className="text-ink-3 text-[10px] font-medium uppercase tracking-[0.04em]"
-            >
-              Acréscimo %
-            </label>
-            <input
-              id="surcharge-pct"
-              inputMode="decimal"
-              placeholder="0"
-              value={surchargePctInput}
-              onChange={(e) => onSurchargePctChange(e.target.value)}
-              className={inputCls}
-            />
           </div>
         </div>
-      </div>
+        {/* fim da coluna esquerda (Pagamento) */}
 
-      <div className="space-y-1">
-        <label htmlFor="notes" className="text-ink-4 text-[11px] font-medium">
-          Observação (opcional)
-        </label>
-        <textarea
-          id="notes"
-          placeholder="Ex: cheque #123, vale, fiado…"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          rows={2}
-          maxLength={500}
-          className="border-line bg-surface focus:border-brand w-full resize-none rounded-[8px] border px-3 py-2 text-[13px] outline-none transition"
-        />
+        {/* ─── Coluna direita: Desconto compacto ─── */}
+        <div className="flex flex-col gap-1.5">
+          <div className="text-ink-4 text-[10px] font-bold uppercase tracking-[0.06em]">
+            Desconto
+          </div>
+          {/* 2 inputs R$ + % empilhados verticalmente (coluna estreita
+              de 200px não comporta horizontal). Reconcile bidirecional
+              vive no PdvShell (lastDiscountEdit + useEffect). F9 foca
+              o R$ direto. */}
+          <div className="space-y-1.5">
+            <div className="relative">
+              <span className="text-ink-4 absolute top-1/2 left-2.5 -translate-y-1/2 text-[11px] font-medium">
+                R$
+              </span>
+              <input
+                id="pdv-discount-amount"
+                inputMode="decimal"
+                placeholder="0,00"
+                value={discountAmountInput}
+                onChange={(e) => onDiscountAmountChange(e.target.value)}
+                aria-label="Desconto em reais"
+                className={cn(inputCls, "pl-8 tabular-nums")}
+              />
+            </div>
+            <div className="relative">
+              <input
+                id="pdv-discount-pct"
+                inputMode="decimal"
+                placeholder="0"
+                value={discountPctInput}
+                onChange={(e) => onDiscountPctChange(e.target.value)}
+                aria-label="Desconto em porcentagem"
+                className={cn(inputCls, "pr-7 tabular-nums")}
+              />
+              <span className="text-ink-4 absolute top-1/2 right-2.5 -translate-y-1/2 text-[11px] font-medium">
+                %
+              </span>
+            </div>
+          </div>
+        </div>
+        {/* fim da coluna direita (Desconto) */}
       </div>
+      {/* fim do grid 2-col Pagamento|Desconto */}
+
+      {/* Mais opções — esconde acréscimo, fiado parcial e observação atrás
+          de um disclosure. 90% das vendas balcão não tocam nesses campos. */}
+      <MoreOptionsDisclosure
+        creditAmountInput={creditAmountInput}
+        setCreditAmountInput={setCreditAmountInput}
+        creditAmountInCents={creditAmountInCents}
+        totalInCents={totalInCents}
+        paymentsSumInCents={paymentsSumInCents}
+        hasCustomerSelected={hasCustomerSelected}
+        surchargeAmountInput={surchargeAmountInput}
+        surchargePctInput={surchargePctInput}
+        onSurchargeAmountChange={onSurchargeAmountChange}
+        onSurchargePctChange={onSurchargePctChange}
+        notes={notes}
+        setNotes={setNotes}
+        inputCls={inputCls}
+      />
     </div>
+  );
+}
+
+// Component OrderDiscountField removido em audit 2026-05-21 — desconto
+// virou inline na coluna direita do PaymentSection (2-col interno com
+// pagamento + desconto lado a lado).
+
+/**
+ * Disclosure "Mais opções" — esconde acréscimo + fiado parcial + observação.
+ * Default fechado. Lojista clica pra expandir quando precisa. Bookmark
+ * acessível via `<details><summary>` nativo (zero JS extra, keyboard-friendly).
+ */
+function MoreOptionsDisclosure({
+  creditAmountInput,
+  setCreditAmountInput,
+  creditAmountInCents,
+  totalInCents,
+  paymentsSumInCents,
+  hasCustomerSelected,
+  surchargeAmountInput,
+  surchargePctInput,
+  onSurchargeAmountChange,
+  onSurchargePctChange,
+  notes,
+  setNotes,
+  inputCls,
+}: {
+  creditAmountInput: string;
+  setCreditAmountInput: (v: string) => void;
+  creditAmountInCents: number;
+  totalInCents: number;
+  paymentsSumInCents: number;
+  hasCustomerSelected: boolean;
+  surchargeAmountInput: string;
+  surchargePctInput: string;
+  onSurchargeAmountChange: (v: string) => void;
+  onSurchargePctChange: (v: string) => void;
+  notes: string;
+  setNotes: (v: string) => void;
+  inputCls: string;
+}) {
+  // Abre automaticamente se algum campo "avançado" já tem valor — evita
+  // esconder dado que o lojista já preencheu (ex: reabrir orçamento que
+  // tinha acréscimo). defaultOpen vira true uma única vez no mount.
+  const defaultOpen =
+    creditAmountInCents > 0 ||
+    !!surchargeAmountInput ||
+    !!surchargePctInput ||
+    !!notes.trim();
+
+  return (
+    <details className="group" {...(defaultOpen ? { open: true } : {})}>
+      <summary
+        className={cn(
+          "list-none cursor-pointer select-none",
+          "flex items-center gap-1.5",
+          "text-ink-4 hover:text-ink-2 text-[12px] font-medium transition",
+          "[&::-webkit-details-marker]:hidden",
+        )}
+      >
+        <ChevronDownIcon
+          size={14}
+          strokeWidth={2.2}
+          className="transition-transform duration-200 group-open:rotate-180"
+          aria-hidden
+        />
+        Mais opções
+        <span className="text-ink-4/70 text-[11px] font-normal">
+          (acréscimo, fiado parcial, observação)
+        </span>
+      </summary>
+
+      {/* Layout 2-col interno (audit 2026-05-21 — densificação sênior):
+          Acréscimo (R$+%) esquerda, Fiado parcial direita. Observação
+          full-width abaixo. Tudo cabe sem scroll, mesmo expandido. */}
+      <div className="mt-2 space-y-2">
+        <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+          {/* Acréscimo — sub-bloco R$/% lado a lado */}
+          <div>
+            <div className="text-ink-4 mb-1 text-[10px] font-bold uppercase tracking-[0.06em]">
+              Acréscimo
+            </div>
+            <div className="grid grid-cols-[1fr_60px] gap-1.5">
+              <div className="relative">
+                <span className="text-ink-4 absolute top-1/2 left-2.5 -translate-y-1/2 text-[10.5px] font-medium">
+                  R$
+                </span>
+                <input
+                  id="surcharge-amount"
+                  inputMode="decimal"
+                  placeholder="0,00"
+                  value={surchargeAmountInput}
+                  onChange={(e) => onSurchargeAmountChange(e.target.value)}
+                  className={cn(inputCls, "pl-7 tabular-nums")}
+                />
+              </div>
+              <div className="relative">
+                <input
+                  id="surcharge-pct"
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={surchargePctInput}
+                  onChange={(e) => onSurchargePctChange(e.target.value)}
+                  className={cn(inputCls, "pr-6 tabular-nums")}
+                />
+                <span className="text-ink-4 absolute top-1/2 right-2 -translate-y-1/2 text-[10.5px] font-medium">
+                  %
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Fiado parcial — sub-bloco compacto (input + "Saldo restante") */}
+          <div>
+            <div className="text-ink-4 mb-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.06em]">
+              <HandCoinsIcon size={11} aria-hidden />
+              Fiado parcial
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="relative flex-1">
+                <span className="text-ink-4 absolute top-1/2 left-2.5 -translate-y-1/2 text-[10.5px] font-medium">
+                  R$
+                </span>
+                <input
+                  aria-label="Saldo a virar fiado"
+                  inputMode="decimal"
+                  placeholder="0,00"
+                  value={creditAmountInput}
+                  onChange={(e) => setCreditAmountInput(e.target.value)}
+                  className={cn(inputCls, "pl-7 tabular-nums")}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const remainingNow =
+                    totalInCents - paymentsSumInCents - creditAmountInCents;
+                  if (remainingNow <= 0) return;
+                  const newCredit = creditAmountInCents + remainingNow;
+                  setCreditAmountInput(
+                    (newCredit / 100).toFixed(2).replace(".", ","),
+                  );
+                }}
+                className="b3-btn b3-btn--sm h-8 whitespace-nowrap px-2 text-[11px]"
+                title="Atribuir o saldo restante ao fiado"
+              >
+                Restante
+              </button>
+            </div>
+            {creditAmountInCents > 0 && !hasCustomerSelected ? (
+              <div className="text-danger mt-1 flex items-center gap-1 text-[10.5px]">
+                <TriangleAlertIcon size={10} />
+                Selecione um cliente cadastrado.
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Observação — full width abaixo, 1 linha visível (expansível) */}
+        <div>
+          <label
+            htmlFor="notes"
+            className="text-ink-4 mb-1 block text-[10px] font-bold uppercase tracking-[0.06em]"
+          >
+            Observação
+          </label>
+          <textarea
+            id="notes"
+            placeholder="Ex: cheque #123, vale, fiado…"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={1}
+            maxLength={500}
+            className="border-line bg-surface focus:border-brand w-full resize-y rounded-[8px] border px-3 py-1.5 text-[12.5px] outline-none transition"
+          />
+        </div>
+      </div>
+    </details>
   );
 }
 
@@ -1908,7 +2467,7 @@ function QuickSaleDialog({
           <DialogTitle>Venda rápida</DialogTitle>
           <DialogDescription>
             Só o nome é obrigatório. O cliente NÃO será cadastrado no sistema —
-            o nome fica salvo apenas neste pedido.
+            o nome fica salvo apenas nesta venda.
           </DialogDescription>
         </DialogHeader>
         <form

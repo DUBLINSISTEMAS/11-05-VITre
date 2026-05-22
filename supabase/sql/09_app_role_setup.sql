@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — Onda C / Step 1: criar role `vitre_app` para a aplicação
+-- Mangos Pay — Onda C / Step 1: criar role `vitre_app` para a aplicação
 -- =====================================================================
 -- Por quê:
 --   Hoje a conexão Drizzle (DATABASE_URL) usa role `postgres` (superuser),

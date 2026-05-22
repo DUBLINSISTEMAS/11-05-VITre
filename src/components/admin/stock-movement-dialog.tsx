@@ -69,6 +69,16 @@ const TYPE_HINT: Record<MovementType, string> = {
   adjustment: "Contagem física diferente do sistema — ajusta o saldo.",
 };
 
+// Onda 2.5 — atalhos de motivo pra saída. Lojista clica e o texto entra
+// no campo de motivo (editável). Reduz fricção sem perder rastreabilidade.
+const OUTFLOW_REASON_PRESETS = [
+  "Perda",
+  "Doação",
+  "Brinde",
+  "Troca",
+  "Uso interno",
+] as const;
+
 export function StockMovementDialog({
   productId,
   productName,
@@ -257,17 +267,58 @@ export function StockMovementDialog({
             </p>
           </div>
 
-          {/* Notas */}
+          {/* Notas — obrigatório quando saída (Onda 2.5). */}
           <div className="space-y-2">
-            <Label htmlFor="stock-movement-notes">Observação (opcional)</Label>
-            <Textarea
-              id="stock-movement-notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Ex: NF-12345 fornecedor X, ou inventário 2026-05-16."
-              rows={2}
-              maxLength={500}
-            />
+            {(() => {
+              const isOutflow =
+                movementType === "manual_out" ||
+                (movementType === "adjustment" && direction === "negative");
+              return (
+                <>
+                  <Label htmlFor="stock-movement-notes">
+                    {isOutflow ? (
+                      <>
+                        Motivo <span className="text-danger">*</span>
+                      </>
+                    ) : (
+                      "Observação (opcional)"
+                    )}
+                  </Label>
+                  {isOutflow ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {OUTFLOW_REASON_PRESETS.map((r) => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => setNotes(r)}
+                          className="b3-pill text-[11px] hover:bg-bg-app cursor-pointer"
+                        >
+                          {r}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                  <Textarea
+                    id="stock-movement-notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder={
+                      isOutflow
+                        ? "Ex: 2 peças com defeito, devolvidas pra reposição."
+                        : "Ex: NF-12345 fornecedor X, ou inventário 2026-05-16."
+                    }
+                    rows={2}
+                    maxLength={500}
+                    required={isOutflow}
+                  />
+                  {isOutflow ? (
+                    <p className="text-ink-4 text-xs">
+                      Toda saída precisa de motivo — histórico fica auditável.
+                    </p>
+                  ) : null}
+                </>
+              );
+            })()}
           </div>
 
           <DialogFooter className="gap-2">

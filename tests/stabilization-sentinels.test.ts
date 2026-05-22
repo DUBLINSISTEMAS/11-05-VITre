@@ -36,8 +36,19 @@ test("stock: produto create/update gera stock_movement initial/adjustment", () =
   assert.match(create, /stockMovementTable/);
   assert.match(create, /movementType:\s*["']initial["']/);
   assert.match(update, /stockMovementTable/);
-  assert.match(update, /movementType:\s*["']adjustment["']/);
-  assert.match(update, /quantityDelta:\s*[^,]*delta/);
+  // Onda 1.1 (2026-05-21): update agora decide entre 'initial' (false→true)
+  // e 'adjustment' (continua true) em runtime via variável tipada — antes
+  // era literal hardcoded "adjustment".
+  assert.match(
+    update,
+    /movementType:\s*(?:productStockMovementType|variantMovementType|["'](?:initial|adjustment)["'])/,
+  );
+  // Ainda exigimos a presença das duas strings literais como source-of-truth
+  // dos tipos possíveis no fluxo (defesa contra someone renomear sem
+  // atualizar a semântica).
+  assert.match(update, /["']initial["']/);
+  assert.match(update, /["']adjustment["']/);
+  assert.match(update, /quantityDelta:\s*[^,]*[Dd]elta/);
   assert.doesNotMatch(
     update,
     /\.delete\(productVariantTable\)/,

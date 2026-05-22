@@ -136,8 +136,8 @@ export function BulkActionsToolbar({
             </AlertDialogTitle>
             <AlertDialogDescription>
               Esta ação não pode ser desfeita. As imagens dos produtos
-              também serão removidas. Pedidos antigos com esses produtos
-              continuam preservados (snapshots).
+              também serão removidas. Vendas antigas com esses produtos
+              continuam preservadas (snapshots).
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

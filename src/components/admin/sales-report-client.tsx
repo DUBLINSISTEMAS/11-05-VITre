@@ -261,7 +261,7 @@ export function SalesReportClient({
         columns={columns}
         rows={rows}
         totals={totals}
-        csvFileName="vitre-relatorio-vendas"
+        csvFileName="mangospay-relatorio-vendas"
         emptyMessage="Nenhuma venda no período selecionado."
         notes={
           rows.length === 5000

@@ -1,6 +1,6 @@
 "use client";
 
-import { PencilIcon, PlusIcon, TrashIcon } from "lucide-react";
+import { PencilIcon, PlusIcon, TrashIcon, TruckIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -207,13 +207,26 @@ export function SuppliersManager({ initialSuppliers }: SuppliersManagerProps) {
       </div>
 
       {suppliers.length === 0 ? (
-        <div className="b3-card b3-card-pad text-center">
-          <p className="text-ink-3 text-[13px]">
-            Nenhum fornecedor cadastrado.
+        <div className="border-line flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-12">
+          <div className="bg-brand-wash text-brand flex size-12 items-center justify-center rounded-full">
+            <TruckIcon className="size-6" />
+          </div>
+          <h2 className="text-lg font-semibold text-ink-1">
+            Cadastre seus fornecedores
+          </h2>
+          <p className="text-ink-4 max-w-sm text-sm">
+            Fornecedores ficam disponíveis em Compras pra registrar entrada
+            de mercadoria com custo unitário.
           </p>
-          <p className="text-ink-4 mt-1 text-[12px]">
-            Cadastre fornecedores pra usar em compras (entrada de mercadoria).
-          </p>
+          <button
+            type="button"
+            onClick={openCreate}
+            className="b3-btn b3-btn--cta mt-2"
+            style={{ height: 36 }}
+          >
+            <PlusIcon size={13} />
+            Cadastrar primeiro fornecedor
+          </button>
         </div>
       ) : (
         <div className="b3-card overflow-x-auto">

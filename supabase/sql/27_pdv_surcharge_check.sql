@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — CHECK constraint surcharge_in_cents >= 0 (ADR-0020)
+-- Mangos Pay — CHECK constraint surcharge_in_cents >= 0 (ADR-0020)
 -- =====================================================================
 -- Aplicar APÓS rodar `pnpm db:migrate` que aplica drizzle/0019_pdv_surcharge.sql
 -- (adiciona a coluna `surcharge_in_cents integer NULLABLE`).

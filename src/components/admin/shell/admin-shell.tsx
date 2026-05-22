@@ -35,10 +35,16 @@ export function AdminShell({ children, ...userProps }: AdminShellProps) {
       <AdminSidebar {...userProps} />
 
       <div className="b3-main">
-        <TopBar />
+        <TopBar storeSlug={userProps.storeSlug} />
         <MobileHeader {...userProps} />
 
-        <main className="flex-1 px-4 pt-4 pb-12 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 lg:pb-12 print:px-0 print:py-0">
+        {/*
+          Card branco flutuante (ref Abacate Pay 2026-05-21) — fundo branco
+          com border-radius 20px e margem visível em volta mostrando o cinza
+          do .b3-main. Scroll do conteúdo é interno a este card (não scroll
+          de página) pra a curva inferior ficar sempre visível na viewport.
+        */}
+        <main className="b3-main-card flex-1 px-4 pt-4 pb-12 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 lg:pb-12 print:px-0 print:py-0 print:m-0 print:rounded-none print:shadow-none">
           {/*
             Wrapper de compat: páginas ainda não migradas pra `b3-page` (Ondas
             A.4→A.17) continuam centralizadas e com gaps verticais. Páginas

@@ -1,6 +1,6 @@
 "use client";
 
-import { PencilIcon, PlusIcon, TrashIcon } from "lucide-react";
+import { FilterIcon, PencilIcon, PlusIcon, TrashIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -127,19 +127,26 @@ export function AttributesManager({
   if (initialAttributes.length === 0) {
     return (
       <>
-        <div className="b3-card b3-card-pad text-center">
-          <p className="text-ink-3 text-[13px]">
-            Você ainda não tem filtros da loja. Crie o primeiro (ex: Cor,
-            Tamanho, Material) para usar em vários produtos.
+        <div className="border-line flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-12">
+          <div className="bg-brand-wash text-brand flex size-12 items-center justify-center rounded-full">
+            <FilterIcon className="size-6" />
+          </div>
+          <h2 className="text-lg font-semibold text-ink-1">
+            Crie o primeiro filtro da loja
+          </h2>
+          <p className="text-ink-4 max-w-sm text-sm">
+            Filtros aparecem na loja online pra o cliente refinar busca por
+            cor, tamanho, material, etc. Crie uma vez e reaproveite em vários
+            produtos.
           </p>
           <button
             type="button"
             onClick={openCreateAttribute}
-            className="b3-btn b3-btn--cta mt-4"
-            style={{ height: 40 }}
+            className="b3-btn b3-btn--cta mt-2"
+            style={{ height: 36 }}
           >
-            <PlusIcon size={14} />
-            Criar primeiro filtro da loja
+            <PlusIcon size={13} />
+            Criar primeiro filtro
           </button>
         </div>
         <EditDialogs

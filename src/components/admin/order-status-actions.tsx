@@ -155,7 +155,7 @@ export function OrderStatusActions({
               disabled={isPending}
               className="text-destructive hover:bg-destructive/10 hover:text-destructive"
             >
-              <XCircleIcon /> Cancelar pedido
+              <XCircleIcon /> Cancelar venda
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>

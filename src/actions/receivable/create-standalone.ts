@@ -9,7 +9,7 @@
  *   - Empréstimo em dinheiro pro cliente ("emprestei R$ 50, devolve mês
  *     que vem")
  *   - Adiantamento de venda futura
- *   - Débito histórico que não veio de venda Vitrê (sistema antigo,
+ *   - Débito histórico que não veio de venda Mangos Pay (sistema antigo,
  *     caderneta de papel)
  *
  * Validação: customer obrigatório (RLS-scoped). dueDate opcional.

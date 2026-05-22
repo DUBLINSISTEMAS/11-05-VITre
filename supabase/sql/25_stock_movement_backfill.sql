@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — Backfill de stock_movement (Fase 4 / ADR-0015)
+-- Mangos Pay — Backfill de stock_movement (Fase 4 / ADR-0015)
 -- =====================================================================
 -- Cria 1 movement do tipo `initial` pra cada produto/variant com
 -- track_stock=true e stock_quantity > 0.

@@ -15,7 +15,7 @@ import { ReceivablesReportClient } from "@/components/admin/receivables-report-c
 import { requireSession } from "@/lib/auth-server";
 
 export const metadata = {
-  title: "Relatório de Fiados — Vitrê",
+  title: "Relatório de Fiados — Mangos Pay",
 };
 
 interface SearchParams {

@@ -84,6 +84,13 @@ export async function createProductFromValues(
           wholesalePriceInCents: data.wholesalePriceInCents,
           promoPriceInCents: data.promoPriceInCents,
           trackStock: data.trackStock,
+          allowOversell: data.allowOversell,
+          // `stock_quantity` é CACHE — a fonte de verdade é `stock_movement`
+          // (ver inventory.ts:4-7). Nasce zerado quando trackStock=true; o
+          // INSERT do movement inicial abaixo dispara o trigger
+          // `sync_stock_cache_on_movement` (SQL 60), que soma o delta em cima
+          // deste 0. Trigger é SECURITY DEFINER + RAISE EXCEPTION em row_count=0,
+          // então qualquer falha silenciosa aborta a tx inteira.
           stockQuantity: data.trackStock ? 0 : null,
           installmentsOverride: data.installmentsOverride,
           cashDiscountOverrideBps: data.cashDiscountOverrideBps,

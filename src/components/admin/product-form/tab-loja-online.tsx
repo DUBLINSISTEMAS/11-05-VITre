@@ -32,6 +32,12 @@ interface TabLojaOnlineProps {
   errors: FieldErrors<ProductFormValues>;
   isPending: boolean;
   isDraft: boolean;
+  /**
+   * Onda 2.3 — quando false (joia, semijoia, perfumaria, outro), esconde
+   * Composição/Modelagem/Forro/Lavagem. Lojista de joia não preenche
+   * "lavagem de colar" — campo só polui.
+   */
+  showApparelMetaFields?: boolean;
 }
 
 export function TabLojaOnline({
@@ -40,6 +46,7 @@ export function TabLojaOnline({
   errors,
   isPending,
   isDraft,
+  showApparelMetaFields = true,
 }: TabLojaOnlineProps) {
   return (
     <div className="flex flex-col gap-4">
@@ -252,45 +259,50 @@ export function TabLojaOnline({
         </div>
       </SubCard>
 
-      <SubCard
-        title="Conteúdo do storefront"
-        description="Aparecem na ficha do produto na vitrine pública. Tudo opcional."
-      >
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <MetaField
-            id="product-composition"
-            label="Composição"
-            placeholder="Ex: 100% linho"
-            error={errors.composition?.message}
-            disabled={isPending}
-            {...register("composition")}
-          />
-          <MetaField
-            id="product-modeling"
-            label="Modelagem"
-            placeholder="Ex: Evasê midi"
-            error={errors.modeling?.message}
-            disabled={isPending}
-            {...register("modeling")}
-          />
-          <MetaField
-            id="product-lining"
-            label="Forro"
-            placeholder="Ex: Não possui"
-            error={errors.lining?.message}
-            disabled={isPending}
-            {...register("lining")}
-          />
-          <MetaField
-            id="product-washing"
-            label="Lavagem"
-            placeholder="Ex: À mão"
-            error={errors.washing?.message}
-            disabled={isPending}
-            {...register("washing")}
-          />
-        </div>
-      </SubCard>
+      {/* Onda 2.3 — apenas pra moda (composição, modelagem, etc não fazem
+          sentido em joia/semijoia/perfumaria). Onda 1.7 + 2.11 também
+          renomeou o título do storefront. */}
+      {showApparelMetaFields ? (
+        <SubCard
+          title="Detalhes pra ficha do produto"
+          description="Aparecem na ficha do produto na vitrine pública. Tudo opcional."
+        >
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <MetaField
+              id="product-composition"
+              label="Composição"
+              placeholder="Ex: 100% linho"
+              error={errors.composition?.message}
+              disabled={isPending}
+              {...register("composition")}
+            />
+            <MetaField
+              id="product-modeling"
+              label="Modelagem"
+              placeholder="Ex: Evasê midi"
+              error={errors.modeling?.message}
+              disabled={isPending}
+              {...register("modeling")}
+            />
+            <MetaField
+              id="product-lining"
+              label="Forro"
+              placeholder="Ex: Não possui"
+              error={errors.lining?.message}
+              disabled={isPending}
+              {...register("lining")}
+            />
+            <MetaField
+              id="product-washing"
+              label="Lavagem"
+              placeholder="Ex: À mão"
+              error={errors.washing?.message}
+              disabled={isPending}
+              {...register("washing")}
+            />
+          </div>
+        </SubCard>
+      ) : null}
     </div>
   );
 }

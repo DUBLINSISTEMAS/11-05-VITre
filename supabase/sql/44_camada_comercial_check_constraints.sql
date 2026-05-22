@@ -1,4 +1,4 @@
--- ADR-0034 Camada 1 — Dado-fonte da Camada Comercial Vitrê.
+-- ADR-0034 Camada 1 — Dado-fonte da Camada Comercial Mangos Pay.
 -- CHECK constraints + UNIQUE parciais que Drizzle não captura.
 -- Idempotente (DROP IF EXISTS antes de criar). Aplicar em prod após
 -- a migration drizzle/0031_*.sql.
@@ -38,7 +38,7 @@ ALTER TABLE "product" ADD CONSTRAINT product_gtin_format
     OR (gtin ~ '^[0-9]+$' AND length(gtin) IN (8, 12, 13, 14))
   );
 
--- NCM: 8 dígitos exatos (formato BR). NULL aceito. Vitrê não valida
+-- NCM: 8 dígitos exatos (formato BR). NULL aceito. Mangos Pay não valida
 -- tabela TIPI nem dígito verificador — só formato (ADR-0033).
 ALTER TABLE "product" DROP CONSTRAINT IF EXISTS product_ncm_format;
 ALTER TABLE "product" ADD CONSTRAINT product_ncm_format

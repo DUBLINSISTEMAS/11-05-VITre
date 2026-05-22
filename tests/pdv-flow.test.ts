@@ -232,6 +232,9 @@ test("pdv-shell: footer (Total+Submit) tem shrink-0 pra nunca encolher", () => {
     "src/components/admin/pdv/pdv-shell.tsx",
     "utf8",
   );
-  // Botão Finalizar não pode ser empurrado pra fora do viewport
-  assert.match(src, /border-line bg-bg-app shrink-0 border-t p-3/);
+  // Botão Finalizar não pode ser empurrado pra fora do viewport. O test
+  // procura por "bg-bg-app shrink-0 border-t" sem prender em padding
+  // específico (que muda em densificações UX) — o intent estrutural é
+  // shrink-0 + border-t, não o p-3.
+  assert.match(src, /bg-bg-app shrink-0 border-t/);
 });

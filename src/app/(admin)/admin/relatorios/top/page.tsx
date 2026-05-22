@@ -11,7 +11,7 @@ import { TopProductsReportClient } from "@/components/admin/top-products-report-
 import { requireSession } from "@/lib/auth-server";
 
 export const metadata = {
-  title: "Top Produtos — Vitrê",
+  title: "Top Produtos — Mangos Pay",
 };
 
 interface SearchParams {

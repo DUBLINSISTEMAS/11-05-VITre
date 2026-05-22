@@ -7,9 +7,12 @@
  * SOMA dos pagamentos atinge ou ultrapassa o valor do fiado, seta
  * `receivable.paid_at` + `paid_method` automaticamente.
  *
- * Quando há `cash_session` ativa, gera `cash_adjustment` type='other_in'
- * com o VALOR DO PAGAMENTO ATUAL (não do receivable inteiro) — permite
- * reconciliar entradas de fiado parciais com o fechamento Z.
+ * Quando há `cash_session` ativa E o método é `cash`, gera
+ * `cash_adjustment` type='other_in' com o VALOR DO PAGAMENTO ATUAL (não
+ * do receivable inteiro) — permite reconciliar entradas de fiado parciais
+ * com o fechamento Z. Onda 1.2 (2026-05-21): pagamentos em PIX/cartão NÃO
+ * geram adjustment — o dinheiro físico não entra na gaveta, então inflar
+ * o `closing_expected` com PIX virava quebra de caixa fantasma.
  *
  * Append-only: cada pagamento é uma linha em `receivable_payment`. Erro
  * de digitação vira lançamento reverso (futuro — Sprint 4 não inclui).
@@ -197,34 +200,38 @@ export async function recordReceivablePayment(
             .where(eq(receivableTable.id, data.receivableId));
         }
 
-        // 5) cash_adjustment se há sessão de caixa aberta. Sempre o
-        //    valor DESTE pagamento (não acumulado).
-        const [activeCash] = await tx
-          .select({ id: cashSessionTable.id })
-          .from(cashSessionTable)
-          .where(
-            and(
-              eq(cashSessionTable.storeId, store.id),
-              sql`${cashSessionTable.closedAt} IS NULL`,
-            ),
-          )
-          .limit(1);
-
+        // 5) cash_adjustment SÓ quando o método é dinheiro E há sessão
+        //    de caixa aberta. PIX/débito/crédito não entram na gaveta
+        //    física, então não somam no closing_expected (Onda 1.2 —
+        //    fix da quebra de caixa fantasma).
         let cashAdjustmentId: string | null = null;
-        if (activeCash) {
-          const [adj] = await tx
-            .insert(cashAdjustmentTable)
-            .values({
-              cashSessionId: activeCash.id,
-              type: "other_in",
-              amountInCents: data.amountInCents,
-              reason: fullyPaid
-                ? `Quitação fiado #${data.receivableId.slice(0, 8)}`
-                : `Pagamento parcial fiado #${data.receivableId.slice(0, 8)}`,
-              createdByUserId: userId,
-            })
-            .returning({ id: cashAdjustmentTable.id });
-          cashAdjustmentId = adj?.id ?? null;
+        if (data.method === "cash") {
+          const [activeCash] = await tx
+            .select({ id: cashSessionTable.id })
+            .from(cashSessionTable)
+            .where(
+              and(
+                eq(cashSessionTable.storeId, store.id),
+                sql`${cashSessionTable.closedAt} IS NULL`,
+              ),
+            )
+            .limit(1);
+
+          if (activeCash) {
+            const [adj] = await tx
+              .insert(cashAdjustmentTable)
+              .values({
+                cashSessionId: activeCash.id,
+                type: "other_in",
+                amountInCents: data.amountInCents,
+                reason: fullyPaid
+                  ? `Quitação fiado #${data.receivableId.slice(0, 8)}`
+                  : `Pagamento parcial fiado #${data.receivableId.slice(0, 8)}`,
+                createdByUserId: userId,
+              })
+              .returning({ id: cashAdjustmentTable.id });
+            cashAdjustmentId = adj?.id ?? null;
+          }
         }
 
         revalidatePath("/admin/financeiro/receber");

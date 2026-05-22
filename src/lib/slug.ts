@@ -1,7 +1,7 @@
 /**
- * Geração e validação de slugs para o Vitrê.
+ * Geração e validação de slugs para o Mangos Pay.
  *
- * - Slug de loja é PARTE DA URL pública (`vitre.app/[storeSlug]`).
+ * - Slug de loja é PARTE DA URL pública (`mangospay.app/[storeSlug]`).
  * - Slug de categoria/produto é único POR LOJA.
  *
  * Regras: lowercase, 3-40 chars, apenas a-z 0-9 e hífen, não começa/termina com hífen.
@@ -58,6 +58,9 @@ export const RESERVED_SLUGS = new Set<string>([
   "terms",
   "termos",
   "vitre",
+  "mangos",
+  "mangospay",
+  "mangos-pay",
   "www",
   "_next",
   "_legacy",

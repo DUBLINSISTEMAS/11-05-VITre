@@ -1,5 +1,5 @@
 /**
- * Camada Comercial Vitrê — tabelas da ADR-0034 (Camada 1 dado-fonte).
+ * Camada Comercial Mangos Pay — tabelas da ADR-0034 (Camada 1 dado-fonte).
  *
  * Agrupadas neste arquivo pra evitar inflar `order.ts` / `inventory.ts` e
  * manter o domínio comercial localizável. Convive com tabelas existentes:
@@ -168,7 +168,7 @@ export type NewSupplier = typeof supplierTable.$inferInsert;
 // =====================================================================
 // Cabeçalho da compra. Items na tabela `purchase_item`.
 //
-// invoice_number = NF do fornecedor ANOTADA — Vitrê NÃO emite NF (ADR-0033).
+// invoice_number = NF do fornecedor ANOTADA — Mangos Pay NÃO emite NF (ADR-0033).
 // É só rastro pra contadoria/conferência.
 //
 // payment_method reaproveita `order_payment_method` — fornecedor recebe
@@ -357,7 +357,7 @@ export const receivableTable = pgTable(
 
     /**
      * FK opcional pra order. NULL = fiado stand-alone (empréstimo,
-     * adiantamento, débito histórico que não vem de venda Vitrê).
+     * adiantamento, débito histórico que não vem de venda Mangos Pay).
      */
     orderId: uuid("order_id").references(() => orderTable.id, {
       onDelete: "set null",

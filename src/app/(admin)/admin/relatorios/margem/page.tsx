@@ -11,7 +11,7 @@ import { MarginReportClient } from "@/components/admin/margin-report-client";
 import { requireSession } from "@/lib/auth-server";
 
 export const metadata = {
-  title: "Margem por Produto — Vitrê",
+  title: "Margem por Produto — Mangos Pay",
 };
 
 interface SearchParams {

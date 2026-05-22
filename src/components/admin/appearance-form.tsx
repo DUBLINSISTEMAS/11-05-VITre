@@ -28,7 +28,6 @@ export interface AppearanceInitialData {
   primaryColor: string;
   bannerRotationSec: number;
   logoUrl: string | null;
-  iconUrl: string | null;
 }
 
 interface AppearanceFormProps {
@@ -89,19 +88,13 @@ export function AppearanceForm({ initialData }: AppearanceFormProps) {
     >
       <FormCard
         title="Visual"
-        description="Logo, ícone e a cor que destaca a sua vitrine."
+        description="Logo e a cor que destaca a sua vitrine."
       >
         <StoreImageUploader
           kind="logo"
           currentUrl={initialData.logoUrl}
           label="Logo da loja"
           hint="Aparece no topo da sua loja e no painel admin. Use a versão completa do seu logo (com nome). Recomendado: 400×200 px, fundo transparente, PNG ou WebP."
-        />
-        <StoreImageUploader
-          kind="icon"
-          currentUrl={initialData.iconUrl}
-          label="Ícone da loja"
-          hint="Aparece na aba do navegador (favicon) e quando alguém compartilha sua loja em redes sociais. Use a versão compacta (só símbolo, sem texto). Recomendado: 512×512 px quadrado, PNG ou WebP."
         />
 
         <div className="space-y-1.5 pt-2">

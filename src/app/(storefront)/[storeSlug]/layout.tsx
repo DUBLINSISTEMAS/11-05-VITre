@@ -10,7 +10,7 @@
  * Brand color: passada como prop pro shell, que injeta `--brand-store`
  * no wrapping div via inline style server-side (ADR-0011). Escopo
  * restrito: bottom-nav + badge da sacola. CTAs/promo/focus rings ficam
- * em `--primary` (Vitrê azul fixo), promo em `rose-600`, success em
+ * em `--primary` (azul fixo do Mangos Pay), promo em `rose-600`, success em
  * `--success`. Sem CSS-in-JS runtime, sem hydration mismatch.
  *
  * Brand contained: storefront tem header próprio, sem ReactQueryProvider
@@ -40,16 +40,18 @@ export async function generateMetadata({
     },
     description:
       store.description ??
-      `Vitrine digital de ${store.name}. Compre via WhatsApp, sem cadastro.`,
+      `Loja online de ${store.name}. Compre via WhatsApp, sem cadastro.`,
     openGraph: {
       title: store.name,
       description: store.description ?? undefined,
       images: store.logoUrl ? [{ url: store.logoUrl }] : undefined,
       type: "website",
     },
-    icons: store.iconUrl
-      ? { icon: store.iconUrl }
-      : { icon: "/brand/icone-branco.webp" },
+    // Favicon Mangos Pay sempre fixo — mesmo na loja online do lojista.
+    // Logo do lojista (store.logoUrl) continua aparecendo no header da loja.
+    icons: {
+      icon: { url: "/logos/favicon.svg", type: "image/svg+xml" },
+    },
   };
 }
 

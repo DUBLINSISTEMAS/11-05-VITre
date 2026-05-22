@@ -10,7 +10,7 @@
  *    Mantém TS+Drizzle type-safe, migrations ALTER simples.
  *  - 3 presets curados (NÃO editor avançado). Lojista escolhe um todo,
  *    não combina dimensões livremente.
- *  - Defaults da migration = preset "vitre-clean" = canvas-v1 atual.
+ *  - Defaults da migration = preset "mangos-clean" = canvas-v1 atual.
  *    Sandra (e qualquer loja pre-existente) NÃO muda visualmente até
  *    clicar "Aplicar" em outro preset.
  *  - Tematização toca FORMA/DENSIDADE/LAYOUT. Cor e tipografia continuam
@@ -36,9 +36,9 @@ export interface ThemePreset {
 }
 
 export const THEME_PRESETS = {
-  "vitre-clean": {
-    id: "vitre-clean",
-    name: "Vitrê Clean",
+  "mangos-clean": {
+    id: "mangos-clean",
+    name: "Mangos Pay Clean",
     description:
       "O modelo padrão. Categorias arredondadas, cards editoriais e hero com imagem em destaque. Pegada minimalista profissional, ideal pra qualquer nicho.",
     categoryShape: "rounded",
@@ -68,7 +68,7 @@ export const THEME_PRESETS = {
   },
 } as const satisfies Record<string, ThemePreset>;
 
-export type ThemePresetId = "vitre-clean" | "boutique" | "bazar";
+export type ThemePresetId = "mangos-clean" | "boutique" | "bazar";
 
 export const THEME_PRESET_IDS = Object.keys(THEME_PRESETS) as [
   ThemePresetId,

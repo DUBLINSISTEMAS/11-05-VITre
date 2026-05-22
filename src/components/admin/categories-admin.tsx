@@ -11,7 +11,7 @@
 //   ícone toggle visibility + actions ("Adicionar" só pra root + "Editar"
 //   ícone + "Excluir" texto danger)
 //
-// Mantém capacidade Vitrê:
+// Mantém capacidade Mangos Pay:
 // - Reorder via ↑↓ (DnD nativo NÃO implementado; arrows são UX
 //   acessível-friendly mas menos fluido)
 // - Toggle visibilidade
@@ -24,7 +24,6 @@ import {
   EyeIcon,
   EyeOffIcon,
   ImageIcon,
-  InfoIcon,
   Loader2Icon,
   PencilIcon,
   Trash2Icon,
@@ -165,22 +164,9 @@ export function CategoriesAdmin({
 
   return (
     <div className="b3-card overflow-hidden">
-      {/* Helpbar topo (cola no topo do card via border-radius custom) */}
-      <div className="b3-helpbar" style={{ borderRadius: "12px 12px 0 0" }}>
-        <span className="b3-helpbar-ico">
-          <InfoIcon className="size-3.5" aria-hidden />
-        </span>
-        <span className="b3-helpbar-text">
-          Precisa de ajuda?{" "}
-          <button
-            type="button"
-            onClick={() => toast.info("Vídeo de ajuda em breve.")}
-            className="text-brand underline-offset-2 hover:underline"
-          >
-            Assista o vídeo sobre categorias
-          </button>
-        </span>
-      </div>
+      {/* Onda 2.11: helpbar com link de vídeo removido. Promessa quebrada
+          de "vídeo em breve" frustra mais do que ajuda; volta quando
+          houver conteúdo real. */}
 
       {/* Grid: descrição esquerda 300px + tree direita */}
       <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-[300px_1fr]">

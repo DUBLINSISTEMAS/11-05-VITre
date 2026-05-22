@@ -202,6 +202,6 @@ type RemoveStoreImageInput = z.infer<typeof removeStoreImageSchema>;
  * aqui pra evitar import cíclico (themes.ts é client-safe).
  */
 export const applyThemeSchema = z.object({
-  presetId: z.enum(["vitre-clean", "boutique", "bazar"]),
+  presetId: z.enum(["mangos-clean", "boutique", "bazar"]),
 });
 export type ApplyThemeInput = z.infer<typeof applyThemeSchema>;

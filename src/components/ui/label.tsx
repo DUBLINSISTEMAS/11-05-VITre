@@ -5,10 +5,21 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Onda 2.8 (2026-05-22) — Label aceita `required` opcional que renderiza
+ * asterisco vermelho. Padroniza marcação de obrigatório (antes existia
+ * em só 3 forms; agora qualquer form pode usar).
+ */
+type LabelProps = React.ComponentProps<typeof LabelPrimitive.Root> & {
+  required?: boolean;
+};
+
 function Label({
   className,
+  required,
+  children,
   ...props
-}: React.ComponentProps<typeof LabelPrimitive.Root>) {
+}: LabelProps) {
   return (
     <LabelPrimitive.Root
       data-slot="label"
@@ -17,7 +28,18 @@ function Label({
         className
       )}
       {...props}
-    />
+    >
+      {children}
+      {required ? (
+        <span
+          aria-hidden
+          className="text-danger ml-0.5"
+          title="Campo obrigatório"
+        >
+          *
+        </span>
+      ) : null}
+    </LabelPrimitive.Root>
   )
 }
 

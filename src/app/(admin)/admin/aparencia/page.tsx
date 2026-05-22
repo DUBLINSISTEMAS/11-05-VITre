@@ -6,7 +6,7 @@ import { getCurrentStore } from "@/lib/store-context";
 /**
  * Aparência — Onda A.13 pixel-perfect Dublin v3.
  *
- * Handoff Dublin v3 não tem screen 1:1 de "Aparência" — esta é tela Vitrê
+ * Handoff Dublin v3 não tem screen 1:1 de "Aparência" — esta é tela Mangos Pay
  * própria (themes + brand). Aplicamos chrome canônico: H1 22px font-bold
  * tracking -0.025em + section header upper 11px (padrão Aparência/Pagamento).
  */
@@ -24,8 +24,8 @@ export default async function AparenciaPage() {
           Aparência
         </h1>
         <p className="text-ink-4 mt-1 text-[13px]">
-          Modelo da vitrine, logo, ícone, cor e como o carrossel de banners
-          se comporta.
+          Modelo da vitrine, logo, cor e como o carrossel de banners se
+          comporta.
         </p>
       </div>
 
@@ -54,7 +54,6 @@ export default async function AparenciaPage() {
           primaryColor: store.primaryColor,
           bannerRotationSec: store.bannerRotationSec,
           logoUrl: store.logoUrl,
-          iconUrl: store.iconUrl,
         }}
       />
     </div>

@@ -764,3 +764,111 @@ test("SQL 26 é idempotente (DROP IF EXISTS + IF NOT EXISTS)", () => {
   assert.ok(dropCount >= 4, "esperado 4 DROP IF EXISTS");
   assert.ok(guardCount >= 4, "esperado 4 IF NOT EXISTS guards");
 });
+
+// ---------------------------------------------------------------------
+// SQL 59 — desconto por item (per-item discount)
+// ---------------------------------------------------------------------
+
+test("balcaoItemSchema aceita discountInCents válido (0 ou positivo)", () => {
+  const r0 = createBalcaoSaleSchema.safeParse({
+    ...validBase(),
+    items: [
+      {
+        productId: "550e8400-e29b-41d4-a716-446655440000",
+        variantId: null,
+        quantity: 2,
+        discountInCents: 0,
+      },
+    ],
+  });
+  assert.equal(r0.success, true);
+
+  const rPositive = createBalcaoSaleSchema.safeParse({
+    ...validBase(),
+    items: [
+      {
+        productId: "550e8400-e29b-41d4-a716-446655440000",
+        variantId: null,
+        quantity: 2,
+        discountInCents: 500,
+      },
+    ],
+  });
+  assert.equal(rPositive.success, true);
+});
+
+test("balcaoItemSchema aceita discountInCents omitido (backward compat)", () => {
+  const r = createBalcaoSaleSchema.safeParse({
+    ...validBase(),
+    items: [
+      {
+        productId: "550e8400-e29b-41d4-a716-446655440000",
+        variantId: null,
+        quantity: 1,
+      },
+    ],
+  });
+  assert.equal(r.success, true);
+});
+
+test("balcaoItemSchema rejeita discountInCents negativo", () => {
+  const r = createBalcaoSaleSchema.safeParse({
+    ...validBase(),
+    items: [
+      {
+        productId: "550e8400-e29b-41d4-a716-446655440000",
+        variantId: null,
+        quantity: 1,
+        discountInCents: -100,
+      },
+    ],
+  });
+  assert.equal(r.success, false);
+});
+
+test("Action create-balcao-sale persiste discountInCents em todos os 3 INSERTs (sale/quote/fiado)", () => {
+  const s = loadActionSource();
+  const matches = s.match(/discountInCents: ci\.itemDiscountInCents/g) ?? [];
+  assert.equal(
+    matches.length,
+    3,
+    `Esperava 3 inserções (sale + quote + fiado), achei ${matches.length}.`,
+  );
+});
+
+test("Action create-balcao-sale valida desconto por linha > price × qty (ITEM_DISCOUNT_OVER_LINE)", () => {
+  const s = loadActionSource();
+  assert.ok(
+    s.includes('errorCode: "ITEM_DISCOUNT_OVER_LINE"'),
+    "Action precisa retornar ITEM_DISCOUNT_OVER_LINE quando rawItemDiscount > lineGross",
+  );
+  assert.ok(
+    /rawItemDiscount\s*>\s*lineGross/.test(s),
+    "Validação rawItemDiscount > lineGross deve existir no source",
+  );
+});
+
+test("SQL 59 cria as 2 CHECK constraints esperadas (nonneg + not_above_line)", () => {
+  const sql = readFileSync(
+    "supabase/sql/59_order_item_discount.sql",
+    "utf8",
+  );
+  assert.match(sql, /order_item_discount_nonneg/);
+  assert.match(sql, /order_item_discount_not_above_line/);
+  assert.match(
+    sql,
+    /discount_in_cents\s+<=\s+price_in_cents_snapshot\s+\*\s+quantity/,
+    "CHECK upper bound deve referenciar price × qty",
+  );
+});
+
+test("SQL 59 é idempotente (DROP IF EXISTS + IF NOT EXISTS)", () => {
+  const sql = readFileSync(
+    "supabase/sql/59_order_item_discount.sql",
+    "utf8",
+  );
+  const dropCount = (sql.match(/DROP CONSTRAINT IF EXISTS/g) || []).length;
+  const guardCount = (sql.match(/IF NOT EXISTS/g) || []).length;
+  assert.ok(dropCount >= 2, "esperado 2 DROP IF EXISTS");
+  assert.ok(guardCount >= 2, "esperado 2 IF NOT EXISTS guards");
+});

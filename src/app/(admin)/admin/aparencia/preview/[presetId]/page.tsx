@@ -115,7 +115,7 @@ export default async function ThemePreviewPage({ params }: PreviewPageProps) {
 
   return (
     // Storefront usa CSS var --brand-store setada por store-shell.tsx no
-    // mundo real. Aqui setamos inline pro preview (azul Vitrê default).
+    // mundo real. Aqui setamos inline pro preview (azul do Mangos Pay default).
     <div
       className="min-h-svh bg-background"
       style={{ ["--brand-store" as string]: "#1E3FE6" } as React.CSSProperties}

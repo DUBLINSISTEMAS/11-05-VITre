@@ -54,9 +54,9 @@ interface EstoquePageProps {
  * - H1 inline 24px font-bold tracking -0.025em (substitui AdminPageHeader)
  * - CTA "Nova movimentação" → Link pra /admin/produtos com hint (movimentação
  *   nasce per-produto via dialog em /admin/produtos/[id])
- * - KPI cards (StockKpiCards) PRESERVADOS acima da tabela (snapshot Vitrê)
+ * - KPI cards (StockKpiCards) PRESERVADOS acima da tabela (snapshot Mangos Pay)
  * - `b3-card` wrapping helpbar + toolbar + tabela + pager
- * - Handoff mostra SNAPSHOT por produto (saldo+min+status), Vitrê mostra
+ * - Handoff mostra SNAPSHOT por produto (saldo+min+status), Mangos Pay mostra
  *   FEED de movimentações (event-sourced). Mantemos semântica + visual Dublin
  *   (memory `handoff-vs-schema-respect-data-model`).
  *
@@ -104,7 +104,7 @@ export default async function EstoquePage({ searchParams }: EstoquePageProps) {
     <div className="space-y-4 sm:space-y-6">
       {/* H1 + CTAs Dublin v3 (substitui AdminPageHeader) */}
       <div className="flex items-end justify-between gap-4">
-        <h1 className="text-[24px] font-bold tracking-[-0.025em] text-ink-1">
+        <h1 className="text-[22px] font-bold tracking-[-0.025em] text-ink-1">
           Estoque
         </h1>
         <div className="flex items-center gap-2">
@@ -140,7 +140,7 @@ export default async function EstoquePage({ searchParams }: EstoquePageProps) {
         </div>
       </div>
 
-      {/* KPI cards Vitrê — preservados sobre layout BAGY */}
+      {/* KPI cards Mangos Pay — preservados sobre layout BAGY */}
       <StockKpiCards kpis={kpis} />
 
       {items.length === 0 && !hasFilters ? (

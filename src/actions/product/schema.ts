@@ -58,6 +58,9 @@ export const productUnitSchema = z.enum([
   "L",
   "m2",
   "m3",
+  // Onda 2.10 — glossário CLAUDE.md.
+  "par",
+  "duzia",
 ]);
 export type ProductUnit = z.infer<typeof productUnitSchema>;
 
@@ -223,6 +226,12 @@ const productFormFieldsSchema = z.object({
     .min(0, "Estoque não pode ser negativo.")
     .nullable(),
   /**
+   * Onda 2.15 — permite venda mesmo com saldo zerado (encomenda).
+   * Default false. Só faz sentido quando trackStock=true; quando
+   * trackStock=false, o estoque já é ilimitado.
+   */
+  allowOversell: z.boolean().default(false),
+  /**
    * Override de max-parcelas APENAS deste produto. null = usa default
    * da loja (`store.cardMaxInstallments`). Range 1..12 (CHECK no
    * SQL 17). Fase 2 / ADR-0013.
@@ -317,7 +326,7 @@ const productFormFieldsSchema = z.object({
     .transform((v) => v ?? null),
   /**
    * NCM brasileiro pra integração futura com Bling/Tiny. Texto livre 8
-   * dígitos. Vitrê NÃO valida tabela TIPI nem calcula imposto (ADR-0033).
+   * dígitos. Mangos Pay NÃO valida tabela TIPI nem calcula imposto (ADR-0033).
    */
   ncm: optionalNcm,
 });

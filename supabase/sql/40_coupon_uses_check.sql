@@ -1,6 +1,6 @@
 -- Auditoria 2026-05-18 — defesa em profundidade.
 -- Garante que uses_count nunca ultrapassa max_uses no DB, mesmo que
--- app-layer (incrementCouponUses) tenha bug. Pattern Vitrê: DROP IF
+-- app-layer (incrementCouponUses) tenha bug. Pattern Mangos Pay: DROP IF
 -- EXISTS + ADD (não há ADD CONSTRAINT IF NOT EXISTS em Postgres).
 --
 -- Pareado com auditoria S5 (cupom race): incrementCouponUses agora roda

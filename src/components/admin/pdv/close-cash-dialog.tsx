@@ -176,19 +176,44 @@ export function CloseCashDialog({
 
           <div className="space-y-1.5">
             <Label htmlFor="close-notes" className="text-[12.5px]">
-              Observações
+              {hasDelta ? "Motivo da diferença" : "Observações"}
               {hasDelta ? (
                 <span className="text-destructive ml-0.5">*</span>
               ) : (
                 <span className="text-ink-4 ml-1 text-[11px]">(opcional)</span>
               )}
             </Label>
+            {/* Onda 2.14 — atalhos de motivo comuns. Clicar pré-preenche
+                o campo abaixo (editável pra adicionar detalhes). Substitui
+                "texto livre puro" que viralizou em "diferença sem motivo"
+                no relatório. */}
+            {hasDelta ? (
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  "Erro de troco",
+                  "Cobrança a maior",
+                  "Cobrança a menor",
+                  "Sangria não lançada",
+                  "Recebimento não lançado",
+                  "Não sei",
+                ].map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setNotes(r)}
+                    className="b3-pill text-[11px] hover:bg-bg-app cursor-pointer"
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             <Textarea
               id="close-notes"
               rows={3}
               placeholder={
                 hasDelta
-                  ? "Descreva o motivo da diferença (sobra, falta, sangria não registrada…)"
+                  ? "Clique numa categoria acima ou descreva."
                   : "Observações livres sobre o fechamento."
               }
               value={notes}

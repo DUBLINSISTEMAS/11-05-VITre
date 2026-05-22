@@ -1,6 +1,6 @@
 # Deploy Vercel (Fase 1.7)
 
-Procedimento pra subir o Vitrê do "pronto em dev" pra produção.
+Procedimento pra subir o Mangos Pay do "pronto em dev" pra produção.
 Sandra Brito Collection é o primeiro tenant real.
 
 ## Quando usar
@@ -18,7 +18,7 @@ Para rollback, ver final do doc.
 - [ ] Conta Vercel logada (`vercel login`)
 - [ ] Conta GitHub com permissão de import no repo
 - [ ] Acesso ao projeto Supabase de produção (ou criar um agora)
-- [ ] Acesso ao painel Resend com domínio verificado (`vitre.site` ou
+- [ ] Acesso ao painel Resend com domínio verificado (`mangospay.app` ou
       similar) — sem isso, email de reset/verificação não chega
 - [ ] Acesso ao Upstash Redis de produção
 - [ ] (Opcional) Sentry: DSN do projeto de produção
@@ -92,7 +92,7 @@ Aceitar criar novo projeto. Quando perguntar o framework, ele detecta
 Next.js automaticamente.
 
 Em alternativa, no painel Vercel: New Project → Import Git Repository →
-selecionar `vitre`.
+selecionar `Mangos Pay`.
 
 ### 5. Configurar envs no painel Vercel
 
@@ -102,7 +102,7 @@ Painel: Project → Settings → Environment Variables.
 
 | Chave | Valor (origem) |
 |---|---|
-| `NEXT_PUBLIC_APP_URL` | `https://vitre.site` (ou o domínio real) |
+| `NEXT_PUBLIC_APP_URL` | `https://mangospay.app` (ou o domínio real) |
 | `NODE_ENV` | `production` (Vercel já define automaticamente, mas garante) |
 | `DATABASE_URL` | URI pooler 6543 do Supabase de prod (com `?pgbouncer=true&connection_limit=1`) |
 | `DIRECT_URL` | URI direta 5432 do Supabase de prod |
@@ -111,7 +111,7 @@ Painel: Project → Settings → Environment Variables.
 | `SUPABASE_SERVICE_ROLE_KEY` | service_role key do Supabase de prod |
 | `BETTER_AUTH_SECRET` | gerado no passo 3 |
 | `RESEND_API_KEY` | da conta Resend (domínio JÁ verificado) |
-| `RESEND_FROM_EMAIL` | `noreply@vitre.site` (ou domínio verificado) |
+| `RESEND_FROM_EMAIL` | `noreply@mangospay.app` (ou domínio verificado) |
 | `UPSTASH_REDIS_REST_URL` | do projeto Upstash de prod |
 | `UPSTASH_REDIS_REST_TOKEN` | do projeto Upstash de prod |
 | `CRON_SECRET` | gerado no passo 3 |
@@ -177,8 +177,8 @@ schema Zod em `src/lib/env.ts` mostra exatamente qual.
 
 ### 9. Smoke test em produção
 
-Substituir `<dom>` pelo domínio real (`vitre.site` ou
-`vitre-app.vercel.app`):
+Substituir `<dom>` pelo domínio real (`mangospay.app` ou
+`mangospay.vercel.app`):
 
 - [ ] `https://<dom>/api/health` retorna `200 { ok: true }`
 - [ ] `https://<dom>/sandra-brito` (ou qualquer loja seedada) carrega

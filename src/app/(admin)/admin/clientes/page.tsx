@@ -1,5 +1,5 @@
 import { and, asc, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
-import { InfoIcon, PlusIcon, SearchXIcon, UsersIcon } from "lucide-react";
+import { PlusIcon, SearchXIcon, UsersIcon } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { z } from "zod";
@@ -127,7 +127,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
     <div className="space-y-4 sm:space-y-6">
       {/* H1 + CTA Dublin v3 (substitui AdminPageHeader) */}
       <div className="flex items-end justify-between gap-4">
-        <h1 className="text-[24px] font-bold tracking-[-0.025em] text-ink-1">
+        <h1 className="text-[22px] font-bold tracking-[-0.025em] text-ink-1">
           Meus clientes
         </h1>
         <Link href="/admin/clientes/novo" className="b3-btn b3-btn--cta" prefetch>
@@ -141,15 +141,8 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
         <EmptyState />
       ) : (
         <div className="b3-card overflow-hidden">
-          {/* Helpbar topo (cola via border-radius custom) */}
-          <div className="b3-helpbar" style={{ borderRadius: "12px 12px 0 0" }}>
-            <span className="b3-helpbar-ico">
-              <InfoIcon className="size-3.5" aria-hidden />
-            </span>
-            <span className="b3-helpbar-text">
-              Precisa de ajuda? <a>Assista o vídeo sobre clientes</a>
-            </span>
-          </div>
+          {/* Onda 2.11: helpbar com link de vídeo removido — sem href real
+              o link só frustrava. Volta quando houver vídeo. */}
 
           {/* Toolbar: busca + ordenar/filtros + counter */}
           <Suspense

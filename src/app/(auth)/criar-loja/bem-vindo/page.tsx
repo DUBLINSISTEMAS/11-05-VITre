@@ -13,10 +13,10 @@ const APP_URL_HOST =
   clientEnv.APP_URL
     .replace(/^https?:\/\//, "")
     .replace(/\/$/, "")
-    .replace(/^www\./, "") || "vitre.app";
+    .replace(/^www\./, "") || "mangospay.app";
 
 const APP_URL_FULL =
-  clientEnv.APP_URL.replace(/\/$/, "") || "https://vitre.app";
+  clientEnv.APP_URL.replace(/\/$/, "") || "https://mangospay.app";
 
 export default function BemVindoPage() {
   return (

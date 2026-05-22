@@ -1,12 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["gru1"],
   "crons": [
     {
-      "path": "/api/cron/keep-alive?sig=REPLACE_WITH_HMAC_FROM_SIGN_CRON_URLS",
+      "path": "/api/cron/keep-alive?sig=bfffaab5ee631a41d867ca89742162fce0969f675003c2cd7e7e96129ad73561",
       "schedule": "0 9 * * *"
     },
     {
-      "path": "/api/cron/expire-orders?sig=REPLACE_WITH_HMAC_FROM_SIGN_CRON_URLS",
+      "path": "/api/cron/expire-orders?sig=ebff284b88227152037195050e6662157d34ab752368e65669f1f84f379b7bdc",
       "schedule": "0 6 * * *"
     }
   ]

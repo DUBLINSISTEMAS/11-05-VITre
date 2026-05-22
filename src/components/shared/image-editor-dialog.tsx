@@ -169,7 +169,7 @@ export function ImageEditorDialog({
  *
  * Notas:
  *  - rotation aplicada antes do crop (canvas rotaciona origin).
- *  - WebP é o formato final do pipeline Vitrê (server re-comprime via
+ *  - WebP é o formato final do pipeline Mangos Pay (server re-comprime via
  *    sharp 800x800 WebP 75% — esse output já está pré-otimizado).
  */
 async function cropAndRotateImage(

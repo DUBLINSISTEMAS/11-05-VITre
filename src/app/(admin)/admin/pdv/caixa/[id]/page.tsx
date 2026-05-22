@@ -4,8 +4,10 @@ import { notFound } from "next/navigation";
 
 import { loadCashSessionDetail } from "@/actions/cash-session/load";
 import { PrintButton } from "@/components/admin/pdv/print-button";
+import { PrintStoreHeader } from "@/components/admin/print/print-store-header";
 import { requireSession } from "@/lib/auth-server";
 import { formatBRL } from "@/lib/pricing";
+import { getCurrentStore } from "@/lib/store-context";
 
 export const dynamic = "force-dynamic";
 
@@ -13,10 +15,20 @@ interface CashSessionDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
+// Onda 1.2 (2026-05-21): label PT-BR pros 6 tipos de cash_adjustment.
+// Antes mapeava só sangria/reinforcement — outros tipos viravam undefined
+// na pílula da linha de movimentação.
 const ADJ_LABEL: Record<string, string> = {
   sangria: "Sangria",
   reinforcement: "Reforço",
+  pay_supplier: "Pagar fornecedor",
+  pay_bill: "Pagar conta",
+  other_in: "Entrada avulsa",
+  other_out: "Saída avulsa",
 };
+
+// Tipos que somam no esperado (entram na gaveta).
+const INFLOW_TYPES = new Set(["reinforcement", "other_in"]);
 
 const METHOD_LABEL: Record<string, string> = {
   cash: "Dinheiro",
@@ -35,9 +47,12 @@ const METHOD_LABEL: Record<string, string> = {
 export default async function CashSessionDetailPage({
   params,
 }: CashSessionDetailPageProps) {
-  await requireSession();
+  const session = await requireSession();
   const { id } = await params;
-  const detail = await loadCashSessionDetail(id);
+  const [detail, store] = await Promise.all([
+    loadCashSessionDetail(id),
+    getCurrentStore(session.user.id),
+  ]);
   if (!detail) notFound();
 
   const isClosed = detail.session.closedAt !== null;
@@ -86,12 +101,19 @@ export default async function CashSessionDetailPage({
 
       {/* Bloco principal imprimível */}
       <div className="b3-card space-y-4 p-5 print:border-0 print:shadow-none">
-        {/* Header impressão */}
-        <header className="border-line hidden border-b pb-3 print:block">
-          <h2 className="text-[16px] font-bold">
-            {isClosed ? "Z de caixa" : "Z parcial"}
+        {/* Onda 2.7 — header universal (logo + CNPJ + endereço + tel)
+            visível só em impressão; tela mantém chrome do admin. */}
+        {store ? (
+          <div className="hidden border-b border-line pb-3 print:block">
+            <PrintStoreHeader store={store} variant="a4" />
+          </div>
+        ) : null}
+        {/* Header do documento Z (também só em impressão) */}
+        <header className="border-line hidden border-b pb-3 pt-2 print:block">
+          <h2 className="text-[16px] font-bold text-center">
+            {isClosed ? "Z DE CAIXA" : "Z PARCIAL"}
           </h2>
-          <p className="text-[12px]">
+          <p className="text-[12px] text-center">
             Aberto em {formatDateTime(detail.session.openedAt)}
             {isClosed && detail.session.closedAt
               ? ` · fechado em ${formatDateTime(detail.session.closedAt)}`
@@ -111,12 +133,38 @@ export default async function CashSessionDetailPage({
             <Row label={`Vendas em dinheiro (${detail.saleCount})`} accent="ok">
               + {formatBRL(detail.cashSalesInCents)}
             </Row>
-            <Row label="Sangria" accent="danger">
-              − {formatBRL(detail.sangriaInCents)}
-            </Row>
-            <Row label="Reforço" accent="warn">
-              + {formatBRL(detail.reinforcementInCents)}
-            </Row>
+            {/* Entradas — só mostra linha se valor > 0 (Onda 1.2). */}
+            {detail.reinforcementInCents > 0 ? (
+              <Row label="Reforço" accent="ok">
+                + {formatBRL(detail.reinforcementInCents)}
+              </Row>
+            ) : null}
+            {detail.otherInInCents > 0 ? (
+              <Row label="Entradas avulsas" accent="ok">
+                + {formatBRL(detail.otherInInCents)}
+              </Row>
+            ) : null}
+            {/* Saídas — só mostra linha se valor > 0. */}
+            {detail.sangriaInCents > 0 ? (
+              <Row label="Sangria" accent="danger">
+                − {formatBRL(detail.sangriaInCents)}
+              </Row>
+            ) : null}
+            {detail.paySupplierInCents > 0 ? (
+              <Row label="Pagar fornecedor" accent="danger">
+                − {formatBRL(detail.paySupplierInCents)}
+              </Row>
+            ) : null}
+            {detail.payBillInCents > 0 ? (
+              <Row label="Pagar conta" accent="danger">
+                − {formatBRL(detail.payBillInCents)}
+              </Row>
+            ) : null}
+            {detail.otherOutInCents > 0 ? (
+              <Row label="Saídas avulsas" accent="danger">
+                − {formatBRL(detail.otherOutInCents)}
+              </Row>
+            ) : null}
             <div className="border-line my-1 border-t" />
             <Row label="Esperado em dinheiro" strong>
               {formatBRL(closingExpected)}
@@ -165,36 +213,37 @@ export default async function CashSessionDetailPage({
               Movimentações
             </h3>
             <ul className="border-line divide-line divide-y rounded-[8px] border">
-              {detail.adjustments.map((a) => (
-                <li
-                  key={a.id}
-                  className="flex items-center gap-3 px-3 py-2 text-[12.5px]"
-                >
-                  <span
-                    className={`b3-pill ${
-                      a.type === "sangria"
-                        ? "b3-pill--danger"
-                        : "b3-pill--warn"
-                    }`}
+              {detail.adjustments.map((a) => {
+                const isInflow = INFLOW_TYPES.has(a.type);
+                return (
+                  <li
+                    key={a.id}
+                    className="flex items-center gap-3 px-3 py-2 text-[12.5px]"
                   >
-                    {ADJ_LABEL[a.type]}
-                  </span>
-                  <span className="text-ink-4 mono shrink-0 text-[11.5px]">
-                    {formatTime(a.createdAt)}
-                  </span>
-                  <span className="text-ink-1 min-w-0 flex-1 truncate">
-                    {a.reason ?? "—"}
-                  </span>
-                  <span
-                    className={`mono font-semibold ${
-                      a.type === "sangria" ? "text-danger" : "text-warn"
-                    }`}
-                  >
-                    {a.type === "sangria" ? "−" : "+"}
-                    {formatBRL(a.amountInCents)}
-                  </span>
-                </li>
-              ))}
+                    <span
+                      className={`b3-pill ${
+                        isInflow ? "b3-pill--ok" : "b3-pill--danger"
+                      }`}
+                    >
+                      {ADJ_LABEL[a.type] ?? a.type}
+                    </span>
+                    <span className="text-ink-4 mono shrink-0 text-[11.5px]">
+                      {formatTime(a.createdAt)}
+                    </span>
+                    <span className="text-ink-1 min-w-0 flex-1 truncate">
+                      {a.reason ?? "—"}
+                    </span>
+                    <span
+                      className={`mono font-semibold ${
+                        isInflow ? "text-ok" : "text-danger"
+                      }`}
+                    >
+                      {isInflow ? "+" : "−"}
+                      {formatBRL(a.amountInCents)}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </section>
         ) : null}

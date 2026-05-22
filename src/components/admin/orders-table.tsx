@@ -32,10 +32,28 @@ export interface OrderTableRow {
   createdAt: Date;
   channel?: OrderChannel;
   paymentMethod?: OrderPaymentMethod | null;
+  /**
+   * Onda 1.3 (2026-05-22) — quantas linhas em order_payment este pedido tem.
+   * 0 = orçamento/quote sem pagamento. 1 = forma única (mostra label). 2+ =
+   * pagamento misto (mostra "Misto"). Padrão 0 quando caller não fornecer
+   * (mantém compat com legacy).
+   */
+  paymentCount?: number;
+  /**
+   * Onda 2.13 — saldo fiado em aberto vinculado a esta venda. > 0 renderiza
+   * badge "Fiado R$X" na linha, pra lojista enxergar sem clicar.
+   */
+  creditOutstandingInCents?: number;
 }
 
 export interface OrdersTableProps {
   orders: ReadonlyArray<OrderTableRow>;
+  /**
+   * Onda 2.12 — abre modal de detalhe automaticamente quando vindo de link
+   * externo (dashboard "Vendas recentes", lista de fiados → "Ver venda").
+   * Setado pela page via `?detail=<uuid>`.
+   */
+  initialOpenOrderId?: string | null;
 }
 
 const PAYMENT_LABELS: Record<OrderPaymentMethod, string> = {
@@ -46,13 +64,23 @@ const PAYMENT_LABELS: Record<OrderPaymentMethod, string> = {
   other: "Outro",
 };
 
-function paymentLabel(method: OrderPaymentMethod | null | undefined): string {
+function paymentLabel(
+  method: OrderPaymentMethod | null | undefined,
+  paymentCount: number | undefined,
+): string {
+  // Multi-pagamento — não engana mostrando só a primeira forma.
+  if (paymentCount && paymentCount > 1) return "Misto";
   if (!method) return "—";
   return PAYMENT_LABELS[method];
 }
 
-export function OrdersTable({ orders }: OrdersTableProps) {
-  const [openOrderId, setOpenOrderId] = useState<string | null>(null);
+export function OrdersTable({
+  orders,
+  initialOpenOrderId,
+}: OrdersTableProps) {
+  const [openOrderId, setOpenOrderId] = useState<string | null>(
+    initialOpenOrderId ?? null,
+  );
 
   return (
     <>
@@ -102,7 +130,9 @@ export function OrdersTable({ orders }: OrdersTableProps) {
                 )}
               </td>
               <td>
-                <span className="b3-pill">{paymentLabel(o.paymentMethod)}</span>
+                <span className="b3-pill">
+                  {paymentLabel(o.paymentMethod, o.paymentCount)}
+                </span>
               </td>
               <td
                 className="mono"
@@ -114,7 +144,17 @@ export function OrdersTable({ orders }: OrdersTableProps) {
                 {formatBRL(o.totalInCents)}
               </td>
               <td>
-                <OrderStatusBadge status={o.status} />
+                <div className="flex flex-wrap items-center gap-1">
+                  <OrderStatusBadge status={o.status} />
+                  {(o.creditOutstandingInCents ?? 0) > 0 ? (
+                    <span
+                      className="b3-pill b3-pill--warn"
+                      title="Saldo fiado em aberto vinculado a esta venda"
+                    >
+                      Fiado {formatBRL(o.creditOutstandingInCents!)}
+                    </span>
+                  ) : null}
+                </div>
               </td>
               <td
                 className="mono"

@@ -230,6 +230,7 @@ export default async function EditProdutoPage({ params }: EditProdutoPageProps) 
           categoryId: product.categoryId,
           trackStock: product.trackStock,
           stockQuantity: product.stockQuantity,
+          allowOversell: product.allowOversell,
           installmentsOverride: product.installmentsOverride,
           cashDiscountOverrideBps: product.cashDiscountOverrideBps,
           isActive: product.isActive,

@@ -14,6 +14,7 @@
  */
 
 import {
+  CheckCircle2Icon,
   ClockIcon,
   ExternalLinkIcon,
   HandCoinsIcon,
@@ -59,12 +60,16 @@ export function ReceivablesList({ rows: initial, totals }: ReceivablesListProps)
 
   if (initial.length === 0) {
     return (
-      <div className="b3-card b3-card-pad text-center">
-        <p className="text-ink-3 text-[13px]">
-          Nenhum fiado pendente. Bom trabalho.
-        </p>
-        <p className="text-ink-4 mt-1 text-[12px]">
-          Fiados novos aparecem aqui quando você lança uma venda como fiado no PDV.
+      <div className="border-line flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-12">
+        <div className="flex size-12 items-center justify-center rounded-full bg-ok-wash text-ok">
+          <CheckCircle2Icon className="size-6" />
+        </div>
+        <h2 className="text-lg font-semibold text-ink-1">
+          Nenhum fiado pendente
+        </h2>
+        <p className="text-ink-4 max-w-sm text-sm">
+          Bom trabalho. Fiados novos aparecem aqui automaticamente quando
+          você lança uma venda como fiado no PDV.
         </p>
       </div>
     );
@@ -135,7 +140,7 @@ export function ReceivablesList({ rows: initial, totals }: ReceivablesListProps)
               <th>Cliente</th>
               <th className="text-right">Saldo</th>
               <th>Status</th>
-              <th>Pedido</th>
+              <th>Venda</th>
               <th style={{ width: 160 }} />
             </tr>
           </thead>
@@ -211,7 +216,7 @@ export function ReceivablesList({ rows: initial, totals }: ReceivablesListProps)
                   <td>
                     {r.orderId ? (
                       <Link
-                        href={`/admin/pedidos?q=${r.orderId.slice(0, 8)}`}
+                        href={`/admin/pedidos?detail=${r.orderId}`}
                         className="text-ink-3 hover:text-brand inline-flex items-center gap-1 text-[12px]"
                         prefetch
                       >

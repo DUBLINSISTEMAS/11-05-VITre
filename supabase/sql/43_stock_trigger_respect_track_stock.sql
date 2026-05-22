@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — Onda C #8 (auditoria 2026-05-19): trigger sync_stock respeita
+-- Mangos Pay — Onda C #8 (auditoria 2026-05-19): trigger sync_stock respeita
 -- product/variant.track_stock=false
 -- =====================================================================
 -- Antes (SQL 24): qualquer INSERT em `stock_movement` atualizava

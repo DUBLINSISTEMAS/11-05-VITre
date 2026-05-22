@@ -197,7 +197,7 @@ export function DreReportClient({
         storeInfo={storeInfo}
         columns={columns}
         rows={lines}
-        csvFileName="vitre-dre"
+        csvFileName="mangospay-dre"
         emptyMessage="Nenhuma venda no período selecionado."
         notes={`Baseado em ${summary.totalOrderCount} ${
           summary.totalOrderCount === 1 ? "venda" : "vendas"

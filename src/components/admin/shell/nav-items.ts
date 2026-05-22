@@ -21,7 +21,6 @@ import {
   PaletteIcon,
   ReceiptIcon,
   ReceiptTextIcon,
-  ScanBarcodeIcon,
   ShoppingCartIcon,
   StoreIcon,
   TagIcon,
@@ -74,13 +73,16 @@ export const ADMIN_NAV_HOME: AdminNavItem = {
 
 export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
   {
+    // "Venda balcão" (PDV full-page) removida em 2026-05-21 — consolidada
+    // em "Vendas". Nova venda agora abre como modal a partir do listing
+    // (/admin/pedidos). Rota /admin/pdv segue viva como fallback de URL
+    // direta. Ver `new-sale-modal.tsx`.
     k: "operacao",
     label: "Operação",
     icon: ZapIcon,
     items: [
-      { k: "pdv",      label: "Venda balcão",            icon: ScanBarcodeIcon,    href: "/admin/pdv",       exact: true },
-      { k: "caixa",    label: "Caixa do dia",            icon: WalletIcon,         href: "/admin/pdv/caixa"             },
       { k: "vendas",   label: "Vendas",                  icon: ReceiptIcon,        href: "/admin/pedidos"               },
+      { k: "caixa",    label: "Caixa do dia",            icon: WalletIcon,         href: "/admin/pdv/caixa"             },
       { k: "estoque",  label: "Movimentação de estoque", icon: ArrowLeftRightIcon, href: "/admin/estoque",   exact: true },
       { k: "receber",  label: "A receber",               icon: ClockIcon,          href: "/admin/financeiro/receber"    },
       { k: "contatos", label: "Recados do site",         icon: InboxIcon,          href: "/admin/contatos"              },

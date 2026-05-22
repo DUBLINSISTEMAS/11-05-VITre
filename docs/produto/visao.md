@@ -1,6 +1,6 @@
 # Visão do Vitrê
 
-SaaS de catálogo digital com checkout via WhatsApp para lojas de pequeno e médio porte (roupa, joia, semijoia, perfumaria) em cidades do interior do Brasil.
+SaaS de loja online com checkout WhatsApp para lojas de pequeno e médio porte (roupa, joia, semijoia, perfumaria) em cidades do interior do Brasil.
 
 ## Proposta de valor
 
@@ -23,6 +23,6 @@ SaaS de catálogo digital com checkout via WhatsApp para lojas de pequeno e méd
 
 ## Tese central (a validar)
 
-> Lojista de roupa/joia/perfumaria de cidade pequena pagaria R$ 30-100/mês para ter um catálogo digital com checkout WhatsApp em vez de mandar fotos soltas no Instagram.
+> Lojista de roupa/joia/perfumaria de cidade pequena pagaria R$ 30-100/mês para ter uma loja online com checkout WhatsApp em vez de mandar fotos soltas no Instagram.
 
 Status: **validada parcialmente** (1 lojista — Sandra Brito Collection — confirmou interesse e aguarda entrega).

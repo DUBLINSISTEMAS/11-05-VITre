@@ -21,14 +21,14 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Vitrê — Vitrine digital com checkout WhatsApp",
-    template: "%s · Vitrê",
+    default: "Mangos Pay — Loja online com checkout WhatsApp",
+    template: "%s · Mangos Pay",
   },
   description:
-    "Monte sua vitrine digital em minutos. Foto pelo celular, link único pro WhatsApp, sem mensalidade pra começar.",
+    "Monte sua loja online em minutos. Foto pelo celular, link único pro WhatsApp, sem mensalidade pra começar.",
   metadataBase: new URL(env.NEXT_PUBLIC_APP_URL),
-  applicationName: "Vitrê",
-  authors: [{ name: "Vitrê" }],
+  applicationName: "Mangos Pay",
+  authors: [{ name: "Mangos Pay" }],
   formatDetection: {
     email: false,
     address: false,
@@ -36,12 +36,12 @@ export const metadata: Metadata = {
   },
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: "/brand/icone-branco.webp",
+    icon: { url: "/logos/favicon.svg", type: "image/svg+xml" },
     apple: "/icons/apple-touch-icon.png",
   },
   appleWebApp: {
     capable: true,
-    title: "Vitrê",
+    title: "Mangos Pay",
     statusBarStyle: "default",
   },
 };

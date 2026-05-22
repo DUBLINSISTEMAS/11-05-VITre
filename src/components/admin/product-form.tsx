@@ -1,10 +1,19 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2Icon, PlusCircleIcon, SaveIcon } from "lucide-react";
+import {
+  DollarSignIcon,
+  Grid2X2Icon,
+  Loader2Icon,
+  PackageIcon,
+  PlusCircleIcon,
+  SaveIcon,
+  StoreIcon,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   useCallback,
+  useEffect,
   useRef,
   useState,
   useTransition,
@@ -19,7 +28,13 @@ import {
 } from "@/actions/product/schema";
 import { updateProduct } from "@/actions/product/update";
 import { uploadProductImage } from "@/actions/product/upload-image";
+import { MangoIcon } from "@/components/brand/mango-icon";
 import { Button } from "@/components/ui/button";
+import {
+  clearFormDraft,
+  loadFormDraft,
+  useFormDraft,
+} from "@/hooks/use-form-draft";
 import { cn } from "@/lib/utils";
 
 import {
@@ -50,6 +65,8 @@ export interface ProductFormInitialData {
   categoryId: string | null;
   trackStock: boolean;
   stockQuantity: number | null;
+  /** Onda 2.15 — permite vender mesmo zerado (encomenda). */
+  allowOversell: boolean;
   /**
    * Override do max-parcelas APENAS pra este produto. null = usa
    * default da loja (`store.cardMaxInstallments`). Fase 2 — ADR-0013.
@@ -104,6 +121,13 @@ export interface ProductFormInitialData {
 
 interface ProductFormProps {
   initialData: ProductFormInitialData;
+  /**
+   * Onda 2.3 (2026-05-22) — tipo de loja do onboarding. Usado pra esconder
+   * campos irrelevantes (ex: "Modelagem", "Forro", "Lavagem" só fazem
+   * sentido pra roupa; em joia/semijoia/perfumaria saem). Quando `undefined`,
+   * mostra todos os campos (fallback conservador).
+   */
+  storeNiche?: "roupa_feminina" | "joia" | "semijoia" | "perfumaria" | "outro";
   /** Lista de categorias da loja, pra popular o Select. Pode ser vazia. */
   categories: CategoryOption[];
   /**
@@ -130,12 +154,18 @@ interface ProductFormProps {
   ) => Promise<{ ok: true; productId: string } | { ok: false; error: string; fieldErrors?: Record<string, string> }>;
 }
 
-const TAB_NAV: { key: TabKey; label: string }[] = [
-  { key: "identidade", label: "Identidade" },
-  { key: "preco-custo", label: "Preço & Custo" },
-  { key: "estoque", label: "Estoque" },
-  { key: "variantes", label: "Variantes" },
-  { key: "loja-online", label: "Loja online" },
+// Ícones nas tabs — match com painel admin mangos reference. MangoIcon
+// na Identidade reforça a identidade da marca; demais usam lucide.
+const TAB_NAV: {
+  key: TabKey;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
+  { key: "identidade", label: "Identidade", icon: MangoIcon },
+  { key: "preco-custo", label: "Preço & Custo", icon: DollarSignIcon },
+  { key: "estoque", label: "Estoque", icon: PackageIcon },
+  { key: "variantes", label: "Variantes", icon: Grid2X2Icon },
+  { key: "loja-online", label: "Loja online", icon: StoreIcon },
 ];
 
 /**
@@ -165,7 +195,11 @@ export function ProductForm({
   isDraft,
   onAfterSave,
   onCreateProduct,
+  storeNiche,
 }: ProductFormProps) {
+  // Onda 2.3 — campos "Composição/Modelagem/Forro/Lavagem" só fazem
+  // sentido pra roupa. Pra joia, semijoia, perfumaria, outro: escondemos.
+  const showApparelMetaFields = storeNiche === "roupa_feminina";
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const submittingRef = useRef(false);
@@ -185,6 +219,8 @@ export function ProductForm({
     control,
     formState: { errors },
     setError,
+    watch,
+    reset,
   } = useForm<ProductFormValues>({
     resolver: zodResolver(productFormSchema),
     defaultValues: {
@@ -195,6 +231,7 @@ export function ProductForm({
       categoryId: initialData.categoryId,
       trackStock: initialData.trackStock,
       stockQuantity: initialData.stockQuantity,
+      allowOversell: initialData.allowOversell,
       installmentsOverride: initialData.installmentsOverride,
       cashDiscountOverrideBps: initialData.cashDiscountOverrideBps,
       isActive: initialData.isActive,
@@ -231,6 +268,40 @@ export function ProductForm({
     "save",
   );
   const [activeTab, setActiveTab] = useState<TabKey>("identidade");
+
+  // Onda 2.9 (2026-05-22) — autosave de rascunho. Só faz sentido em
+  // criação (modo Detalhado de novo produto). Em edit o estado do form
+  // bate com o banco; salvar localStorage em paralelo confundiria mais
+  // do que ajudaria. Limpamos no submit ok mais abaixo.
+  const draftKey = "product-create";
+  const watchedValues = watch();
+  useFormDraft(draftKey, watchedValues, { skip: !isCreating });
+
+  // Restore: se há rascunho recente, oferece via toast UMA vez por mount.
+  // Heurística simples — só oferece se o nome veio vazio (initialData de
+  // criação) e o draft tem nome preenchido.
+  const restoreOfferedRef = useRef(false);
+  useEffect(() => {
+    if (!isCreating || restoreOfferedRef.current) return;
+    if (initialData.name !== "") return;
+    const draft = loadFormDraft<ProductFormValues>(draftKey);
+    if (!draft || !draft.name || draft.name.trim() === "") return;
+    restoreOfferedRef.current = true;
+    toast("Rascunho encontrado", {
+      description: `"${draft.name.slice(0, 40)}" — restaurar o que você estava cadastrando?`,
+      duration: 12000,
+      action: {
+        label: "Restaurar",
+        onClick: () => reset(draft),
+      },
+      cancel: {
+        label: "Descartar",
+        onClick: () => clearFormDraft(draftKey),
+      },
+    });
+    // Disable warning de exhaustive-deps — reset/initialData.name é estável aqui.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCreating]);
 
   const onSubmit = (values: ProductFormValues) => {
     if (submittingRef.current) return;
@@ -295,6 +366,9 @@ export function ProductForm({
           toast.success("Produto salvo.");
         }
 
+        // Onda 2.9 — rascunho serviu, limpa pra não reaparecer depois.
+        if (isCreating) clearFormDraft(draftKey);
+
         if (submitMode === "save") {
           if (onAfterSave) {
             onAfterSave({});
@@ -345,18 +419,22 @@ export function ProductForm({
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      // Padding-bottom em mobile pra conteúdo não ficar atrás do sticky save.
-      className="mx-auto max-w-[760px] pb-36 lg:pb-4"
+      // Padding-bottom em mobile pra clear do sticky save mobile (3.5rem nav +
+      // 0.25rem gap + altura do save). Desktop: pb-28 pra clear da bottom
+      // action bar fixa (h-20 + buffer). Form vai full-width até xl (1280px)
+      // pra abrir espaço pro grid 12-col da Identidade (princípio 9).
+      className="mx-auto pb-36 lg:pb-28 xl:max-w-[1280px]"
     >
       {/* === Navegação de abas === */}
       <div
-        className="b3-tabs mb-4"
+        className="b3-tabs mb-6"
         role="tablist"
         aria-label="Seções do produto"
       >
         {TAB_NAV.map((tab) => {
           const errCount = getTabErrorCount(tab.key, errors);
           const isActive = activeTab === tab.key;
+          const Icon = tab.icon;
           return (
             <button
               key={tab.key}
@@ -367,6 +445,7 @@ export function ProductForm({
               className="b3-tab"
               onClick={() => setActiveTab(tab.key)}
             >
+              <Icon className="h-4 w-4" />
               {tab.label}
               {errCount > 0 ? (
                 <span
@@ -432,36 +511,29 @@ export function ProductForm({
           errors={errors}
           isPending={isPending}
           isDraft={isDraft}
+          showApparelMetaFields={showApparelMetaFields}
         />
       </div>
 
-      {/* === Save desktop (inline ao final do form, ≥lg) === */}
-      <div className="mt-6 hidden flex-col items-end gap-2 lg:flex">
-        <div className={cn("flex w-full max-w-[400px] flex-col gap-2")}>
-          <Button
-            type="submit"
-            disabled={isPending}
-            onClick={() => setSubmitMode("save")}
-            className="w-full"
-            size="lg"
-          >
-            {isPending && submitMode === "save" ? (
-              <>
-                <Loader2Icon className="animate-spin" /> Salvando…
-              </>
-            ) : (
-              <>
-                <SaveIcon /> Salvar
-              </>
-            )}
-          </Button>
+      {/* === Bottom action bar desktop (sticky no rodapé, ≥lg) ===
+           Cobre o main full-width; em desktop a sidebar (280px) fica
+           descoberta visualmente. Cancelar volta pra lista; Salvar
+           preserva fluxo de "Salvar e adicionar outro" em rascunho. */}
+      <div
+        className={cn(
+          "fixed inset-x-0 bottom-0 z-40 hidden lg:flex",
+          "border-t border-mangos-border bg-white/90 backdrop-blur",
+          "lg:left-[280px]",
+        )}
+      >
+        <div className="mx-auto flex w-full max-w-[1280px] items-center justify-end gap-3 px-8 py-4">
           {isDraft ? (
             <Button
               type="submit"
               variant="outline"
               disabled={isPending}
               onClick={() => setSubmitMode("saveAndContinue")}
-              className="w-full"
+              className="h-11"
             >
               {isPending && submitMode === "saveAndContinue" ? (
                 <>
@@ -473,7 +545,34 @@ export function ProductForm({
                 </>
               )}
             </Button>
-          ) : null}
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isPending}
+              onClick={() => router.push("/admin/produtos")}
+              className="h-11 px-6"
+            >
+              Cancelar
+            </Button>
+          )}
+          <Button
+            type="submit"
+            disabled={isPending}
+            onClick={() => setSubmitMode("save")}
+            className="h-11 min-w-[220px]"
+            size="lg"
+          >
+            {isPending && submitMode === "save" ? (
+              <>
+                <Loader2Icon className="animate-spin" /> Salvando…
+              </>
+            ) : (
+              <>
+                <SaveIcon /> Salvar produto
+              </>
+            )}
+          </Button>
         </div>
       </div>
 

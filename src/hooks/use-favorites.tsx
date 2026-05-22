@@ -41,7 +41,7 @@ const EMPTY_STATE: FavoritesState = {
 };
 
 function storageKey(storeSlug: string): string {
-  return `vitre-favorites-${storeSlug}`;
+  return `mangos-favorites-${storeSlug}`;
 }
 
 function readFavorites(storeSlug: string): FavoritesState {

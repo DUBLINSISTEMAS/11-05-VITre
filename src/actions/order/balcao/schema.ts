@@ -32,6 +32,22 @@ export const balcaoItemSchema = z.object({
   productId: z.string().uuid(),
   variantId: z.string().uuid().nullable(),
   quantity: z.number().int().min(1).max(99),
+  /**
+   * Desconto por linha em centavos (soma sobre todas as unidades do item).
+   * NULL/undefined = sem desconto. Validação `<= price × qty` acontece
+   * SERVER-SIDE depois do snapshot de preço (action). CHECK constraint no
+   * DB faz a defesa final (supabase/sql/59).
+   *
+   * Source of truth em cents. % é só UX no PdvShell — convertido antes
+   * de mandar o payload.
+   */
+  discountInCents: z
+    .number()
+    .int()
+    .min(0, "Desconto não pode ser negativo")
+    .max(99_999_999, "Desconto acima do máximo")
+    .nullable()
+    .optional(),
 });
 type BalcaoItemInput = z.infer<typeof balcaoItemSchema>;
 
@@ -192,6 +208,9 @@ export const createBalcaoSaleSchema = z
       .number()
       .int()
       .min(0, "Desconto não pode ser negativo")
+      // .max audit 2026-05-21 — mesmo limit do amountInCents
+      // (R$ 999.999,99) pra evitar overflow PostgreSQL int32 (~R$ 21M).
+      .max(99_999_999, "Desconto acima do máximo")
       .nullable(),
     /**
      * ADR-0026 / fix auditoria 2026-05-18 — FK opcional para cupom.
@@ -205,6 +224,8 @@ export const createBalcaoSaleSchema = z
       .number()
       .int()
       .min(0, "Acréscimo não pode ser negativo")
+      // .max audit 2026-05-21 — mesmo limit do amountInCents.
+      .max(99_999_999, "Acréscimo acima do máximo")
       .nullable(),
     /** Observação livre do pedido inteiro (cheque #, vale, fiado, etc).
      * String vazia vira null pra ficar consistente com o CHECK do DB. */

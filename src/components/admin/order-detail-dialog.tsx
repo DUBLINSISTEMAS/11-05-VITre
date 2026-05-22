@@ -27,6 +27,14 @@ import {
 } from "@/components/ui/dialog";
 import { formatBRL } from "@/lib/pricing";
 
+const PAYMENT_LABELS: Record<string, string> = {
+  cash: "Dinheiro",
+  pix: "PIX",
+  debit: "Débito",
+  credit: "Crédito",
+  other: "Outro",
+};
+
 interface OrderDetailDialogProps {
   /** ID do pedido aberto. null = fechado. */
   orderId: string | null;
@@ -266,6 +274,48 @@ function OrderDetailContent({
             </span>
           </div>
         </section>
+
+        {/* Pagamento — Onda 1.3 (2026-05-22). Multi-pagamento real
+            (R$80 cash + R$50 pix). Antes o detalhe nem mostrava forma de
+            pagamento. Em quote/awaiting sem payments, esconde a seção. */}
+        {order.payments.length > 0 ? (
+          <section className="b3-card space-y-3 p-4">
+            <h3 className="text-[13.5px] font-semibold tracking-tight text-ink-1">
+              {order.payments.length > 1 ? "Pagamentos" : "Pagamento"}
+            </h3>
+            <ul className="divide-y divide-line">
+              {order.payments.map((p) => {
+                const troco =
+                  p.method === "cash" &&
+                  p.cashReceivedInCents !== null &&
+                  p.cashReceivedInCents > p.amountInCents
+                    ? p.cashReceivedInCents - p.amountInCents
+                    : null;
+                return (
+                  <li
+                    key={p.id}
+                    className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0 text-sm"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-ink-1">
+                        {PAYMENT_LABELS[p.method] ?? p.method}
+                      </p>
+                      {troco !== null ? (
+                        <p className="text-ink-4 font-mono text-[11.5px] tabular-nums">
+                          Recebido {formatBRL(p.cashReceivedInCents!)} · troco{" "}
+                          {formatBRL(troco)}
+                        </p>
+                      ) : null}
+                    </div>
+                    <span className="font-mono text-sm font-semibold tabular-nums text-ink-1">
+                      {formatBRL(p.amountInCents)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ) : null}
 
         {/* Ações */}
         <section className="b3-card space-y-3 p-4">

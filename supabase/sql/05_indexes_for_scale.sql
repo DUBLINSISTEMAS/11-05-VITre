@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — Indexes para sustentar escala de catálogo
+-- Mangos Pay — Indexes para sustentar escala de catálogo
 -- =====================================================================
 -- Source of truth: este arquivo. Os indexes parciais e GIN trigram NÃO
 -- são declarados em src/db/schema/*.ts porque o Drizzle 0.45 não captura

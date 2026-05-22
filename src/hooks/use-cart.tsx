@@ -102,7 +102,7 @@ export function CartProvider({ storeSlug, children }: CartProviderProps) {
     if (typeof window !== "undefined") {
       const lineKey = `${input.productId}:${input.variantId ?? "_"}`;
       window.dispatchEvent(
-        new CustomEvent("vitre:cart-added", { detail: { lineKey } }),
+        new CustomEvent("Mangos Pay:cart-added", { detail: { lineKey } }),
       );
     }
   }, []);

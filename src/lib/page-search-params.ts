@@ -142,3 +142,23 @@ export const idOrNullSchema = z
     if (!t) return null;
     return UUID_REGEX.test(t) ? t : null;
   });
+
+/**
+ * `?de=YYYY-MM-DD` / `?ate=YYYY-MM-DD` — data ISO sem timezone.
+ *
+ * Retorna `Date` (UTC à meia-noite) ou `null` se inválido. Não aceita
+ * timestamp completo (sem hora) — listagens diárias usam dia-cheio.
+ * Use junto com `endOfDay()` no caller pro fim do range.
+ *
+ * Onda 1.4 (2026-05-22) — filtro de data na listagem de vendas.
+ */
+const DATE_ISO_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+export const dateOrNullSchema = z
+  .string()
+  .optional()
+  .transform((v): Date | null => {
+    const t = v?.trim();
+    if (!t || !DATE_ISO_REGEX.test(t)) return null;
+    const d = new Date(`${t}T00:00:00`);
+    return Number.isNaN(d.getTime()) ? null : d;
+  });

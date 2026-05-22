@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — 0003: regulariza idempotency_key + adiciona image_url em category
+-- Mangos Pay — 0003: regulariza idempotency_key + adiciona image_url em category
 -- =====================================================================
 -- Esta migration consolida:
 --   (a) `image_url` em `category` (NOVO — Fase 1.5 storefront)

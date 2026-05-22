@@ -12,10 +12,10 @@ import { getCurrentStore } from "@/lib/store-context";
  * cada domínio funcional do admin tem rota própria (Pagamento, Aparência,
  * Configurações). Memory team `admin-rota-dedicada-por-dominio-2026-05-16`.
  *
- * Handoff trazido: H1 22px + info banner brand-wash "Vitrê não processa
+ * Handoff trazido: H1 22px + info banner brand-wash "Mangos Pay não processa
  * pagamentos" (educacional). PaymentConfigForm preservado intacto — controla
  * exibição de parcelas/desconto à vista no storefront (Fase 2/ADR-0013), que
- * é semântica Vitrê própria não coberta pelo handoff.
+ * é semântica Mangos Pay própria não coberta pelo handoff.
  */
 export default async function PagamentoPage() {
   const session = await requireSession();
@@ -51,7 +51,7 @@ export default async function PagamentoPage() {
           />
           <div>
             <div className="text-ink-1 text-[14px] font-bold">
-              Vitrê não processa pagamentos
+              Mangos Pay não processa pagamentos
             </div>
             <div className="text-ink-3 mt-1 text-[12.5px] leading-relaxed">
               Você combina o pagamento direto com o cliente via WhatsApp ou

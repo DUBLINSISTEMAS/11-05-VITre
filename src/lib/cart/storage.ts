@@ -1,7 +1,7 @@
 /**
  * Persistência do carrinho em localStorage.
  *
- * Chave: `vitre:cart:${storeSlug}` — humano-amigável pra debug. Rename
+ * Chave: `Mangos Pay:cart:${storeSlug}` — humano-amigável pra debug. Rename
  * de slug (Fase 2+) orfana o cart antigo, aceitável.
  *
  * TTL de 7 dias via `savedAt`. Carrinho vencido = empty cart (não tenta
@@ -23,7 +23,7 @@ import {
 const TTL_MS = CART_TTL_DAYS * 24 * 60 * 60 * 1000;
 
 function buildKey(storeSlug: string): string {
-  return `vitre:cart:${storeSlug}`;
+  return `Mangos Pay:cart:${storeSlug}`;
 }
 
 function isBrowser(): boolean {

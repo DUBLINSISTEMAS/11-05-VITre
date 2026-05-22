@@ -7,7 +7,7 @@
  *   - Rápido: nome + preço + foto (3 campos). Pra cadastro em massa.
  *   - Completo: form de 5 abas. Pra peça que merece todos os campos.
  *
- * Preferência do lojista persistida em sessionStorage (vitre:product-create-mode).
+ * Preferência do lojista persistida em sessionStorage (Mangos Pay:product-create-mode).
  */
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -19,15 +19,26 @@ import { ProductForm } from "@/components/admin/product-form";
 import { QuickProductForm } from "@/components/admin/quick-product-form";
 import { cn } from "@/lib/utils";
 
-const MODE_KEY = "vitre:product-create-mode";
+const MODE_KEY = "Mangos Pay:product-create-mode";
 type Mode = "quick" | "full";
 
 interface NewProductFormProps {
   categories: CategoryOption[];
   brands: BrandOption[];
+  /** Onda 2.3 — usado pra esconder campos de moda em joia/perfume/outro. */
+  storeNiche?:
+    | "roupa_feminina"
+    | "joia"
+    | "semijoia"
+    | "perfumaria"
+    | "outro";
 }
 
-export function NewProductForm({ categories, brands }: NewProductFormProps) {
+export function NewProductForm({
+  categories,
+  brands,
+  storeNiche,
+}: NewProductFormProps) {
   const router = useRouter();
   const [resetKey, setResetKey] = useState(0);
   const [mode, setMode] = useState<Mode>("quick");
@@ -92,6 +103,7 @@ export function NewProductForm({ categories, brands }: NewProductFormProps) {
           isDraft
           categories={categories}
           brands={brands}
+          storeNiche={storeNiche}
           onCreateProduct={createProductFromValues}
           onAfterSave={(opts) => {
             if (opts.continueCreating) {
@@ -111,6 +123,7 @@ export function NewProductForm({ categories, brands }: NewProductFormProps) {
             categoryId: null,
             trackStock: false,
             stockQuantity: null,
+            allowOversell: false,
             installmentsOverride: null,
             cashDiscountOverrideBps: null,
             isActive: true,

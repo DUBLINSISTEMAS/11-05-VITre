@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — CHECK constraints de domínio
+-- Mangos Pay — CHECK constraints de domínio
 -- =====================================================================
 -- Defesa em profundidade: Zod valida no boundary do server action, mas o DB
 -- precisa rejeitar igualmente caso uma mutação escape (script ad-hoc, SQL

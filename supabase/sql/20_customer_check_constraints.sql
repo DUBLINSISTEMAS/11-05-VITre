@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — CHECK constraints para `customer` (Fase 3 / ADR-0014)
+-- Mangos Pay — CHECK constraints para `customer` (Fase 3 / ADR-0014)
 -- =====================================================================
 -- Defesa em profundidade: Zod valida no boundary das server actions,
 -- mas DB expõe a tabela a SQL manual, scripts e futuras integrações.

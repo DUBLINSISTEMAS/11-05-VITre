@@ -15,7 +15,7 @@ export interface SuggestedColor {
 }
 
 export const SUGGESTED_PRIMARY_COLORS: readonly SuggestedColor[] = [
-  { name: "Azul Vitrê", value: "#1E3FE6" },
+  { name: "Azul Mangos Pay", value: "#1E3FE6" },
   { name: "Vermelho", value: "#DC2626" },
   { name: "Rosa", value: "#E91E63" },
   { name: "Verde", value: "#10B981" },

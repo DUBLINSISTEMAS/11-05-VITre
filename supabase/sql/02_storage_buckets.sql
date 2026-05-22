@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — Setup de Supabase Storage buckets
+-- Mangos Pay — Setup de Supabase Storage buckets
 -- =====================================================================
 -- Como aplicar:
 --   1. Abra Supabase Dashboard → SQL Editor → cole este arquivo → Run.
@@ -83,7 +83,7 @@ END $$;
 
 -- ============================================================
 -- IMPORTANTE: a escrita (INSERT/UPDATE/DELETE) é feita APENAS pelo
--- service_role do Vitrê em server actions. Sem policy de write para
+-- service_role do Mangos Pay em server actions. Sem policy de write para
 -- anon/authenticated → ataques diretos via supabase-js anon são bloqueados.
 -- ============================================================
 

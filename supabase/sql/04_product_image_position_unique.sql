@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — UNIQUE(product_id, position) em product_image
+-- Mangos Pay — UNIQUE(product_id, position) em product_image
 -- =====================================================================
 -- ⚠️ CONSOLIDADO em drizzle/0004_public_order_token_stock_hardening.sql
 -- (constraint declarada também em src/db/schema/catalog.ts).

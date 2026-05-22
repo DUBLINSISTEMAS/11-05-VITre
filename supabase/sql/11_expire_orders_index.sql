@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — index parcial para o cron expire-orders
+-- Mangos Pay — index parcial para o cron expire-orders
 -- =====================================================================
 -- Cron `/api/cron/expire-orders` varre cross-tenant:
 --   WHERE status = 'awaiting_whatsapp' AND expires_at < now()

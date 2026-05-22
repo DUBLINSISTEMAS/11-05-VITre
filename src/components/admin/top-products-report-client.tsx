@@ -188,7 +188,7 @@ export function TopProductsReportClient({
         columns={columns}
         rows={ranked}
         totals={totalsFooter}
-        csvFileName={`vitre-top-${orderBy}`}
+        csvFileName={`mangospay-top-${orderBy}`}
         emptyMessage="Nenhuma venda no período selecionado."
       />
     </>

@@ -4,8 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Politica de Privacidade | Vitre",
-  description: "Politica de privacidade e protecao de dados da plataforma Vitre.",
+  title: "Politica de Privacidade | Mangos Pay",
+  description: "Politica de privacidade e protecao de dados da plataforma Mangos Pay.",
 };
 
 export default function PrivacidadePage() {
@@ -24,13 +24,13 @@ export default function PrivacidadePage() {
 
           <div className="flex items-center gap-3 mb-4">
             <Image
-              src="/brand/logo-principal.webp"
+              src="/logos/logo.png"
               alt=""
               width={32}
               height={32}
               className="rounded-lg"
             />
-            <span className="text-lg font-bold">Vitre</span>
+            <span className="text-lg font-bold">Mangos Pay</span>
           </div>
 
           <h1 className="text-2xl font-bold tracking-tight mb-2">Politica de Privacidade</h1>
@@ -44,7 +44,7 @@ export default function PrivacidadePage() {
           <section className="mb-8">
             <h2 className="text-lg font-semibold mb-3">1. Introducao</h2>
             <p className="text-muted-foreground leading-relaxed">
-              A Vitre esta comprometida em proteger sua privacidade. Esta politica descreve como coletamos, usamos e protegemos suas informacoes pessoais em conformidade com a Lei Geral de Protecao de Dados (LGPD).
+              A Mangos Pay esta comprometida em proteger sua privacidade. Esta politica descreve como coletamos, usamos e protegemos suas informacoes pessoais em conformidade com a Lei Geral de Protecao de Dados (LGPD).
             </p>
           </section>
 
@@ -126,8 +126,8 @@ export default function PrivacidadePage() {
             <h2 className="text-lg font-semibold mb-3">9. Contato</h2>
             <p className="text-muted-foreground leading-relaxed">
               Para exercer seus direitos ou esclarecer duvidas sobre privacidade, entre em contato com nosso Encarregado de Dados:{" "}
-              <a href="mailto:privacidade@vitre.app" className="text-primary hover:underline">
-                privacidade@vitre.app
+              <a href="mailto:privacidade@mangospay.app" className="text-primary hover:underline">
+                privacidade@mangospay.app
               </a>
             </p>
           </section>

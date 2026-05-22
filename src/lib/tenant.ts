@@ -60,7 +60,7 @@ export async function withTenant<T>(
  * Bypass RLS — uso APENAS para:
  *   - resolver `storeSlug` antes de saber o tenant (storefront)
  *   - jobs de sistema (cron, seeds, sitemap cross-tenant)
- *   - operações cross-tenant (futuro: admin Vitrê)
+ *   - operações cross-tenant (futuro: admin Mangos Pay)
  *
  * Usa `serviceDb` (pool dedicado com role `postgres` BYPASSRLS via
  * DIRECT_URL). O pool padrão `db` usa role `vitre_app` NOBYPASSRLS, então

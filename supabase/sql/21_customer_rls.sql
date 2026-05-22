@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — RLS para `customer` (Fase 3 / ADR-0014)
+-- Mangos Pay — RLS para `customer` (Fase 3 / ADR-0014)
 -- =====================================================================
 -- Como aplicar:
 --   1. Rodar primeiro a migration `drizzle/0016_overrated_starhawk.sql`

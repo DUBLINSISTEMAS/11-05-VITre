@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — CHECK/UNIQUE de documento (CPF/CNPJ) em customer (ADR-0021)
+-- Mangos Pay — CHECK/UNIQUE de documento (CPF/CNPJ) em customer (ADR-0021)
 -- =====================================================================
 -- Aplicar APÓS rodar `pnpm db:migrate` que aplica drizzle/0020_customer_pf_pj.sql
 -- (cria enum customer_type, adiciona colunas type + document).
@@ -10,7 +10,7 @@
 --   3. document é único por loja quando não-NULL (múltiplos NULL OK)
 --
 -- Idempotente: DROP CONSTRAINT IF EXISTS + IF NOT EXISTS guard (pattern
--- canônico Vitrê — Postgres não suporta ADD CONSTRAINT IF NOT EXISTS).
+-- canônico Mangos Pay — Postgres não suporta ADD CONSTRAINT IF NOT EXISTS).
 -- Aplicar via: pnpm exec tsx scripts/apply-sql.ts supabase/sql/28_customer_document_check.sql
 -- =====================================================================
 

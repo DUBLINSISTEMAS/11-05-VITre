@@ -7,7 +7,7 @@
 //   checkbox master (disabled, bulk actions onda futura)
 //   `b3-toolbar-search` com SearchIcon + input
 //   Select Categoria (shadcn) — substitui Filtros popover (Popover não
-//     instalado; manteve inline simples conforme handoff Vitrê)
+//     instalado; manteve inline simples conforme handoff Mangos Pay)
 //   button "Ordenar" placeholder (toast)
 //   button "Filtros" placeholder (toast — bandeja avançada onda futura)
 //   flex spacer

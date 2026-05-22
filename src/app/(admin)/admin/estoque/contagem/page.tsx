@@ -29,7 +29,7 @@ export default async function ContagemFisicaPage() {
             <span className="mx-1.5">/</span>
             <span className="text-ink-2">Contagem física</span>
           </div>
-          <h1 className="text-[24px] font-bold tracking-[-0.025em] text-ink-1">
+          <h1 className="text-[22px] font-bold tracking-[-0.025em] text-ink-1">
             Contagem física
           </h1>
           <p className="text-ink-4 mt-1 text-sm">

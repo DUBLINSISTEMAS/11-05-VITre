@@ -37,16 +37,14 @@ interface SubCardProps {
 
 export function SubCard({ title, description, children }: SubCardProps) {
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-line bg-bg-app/30 p-3 sm:p-4">
-      <header className="space-y-0.5">
-        <h3 className="text-[12.5px] font-semibold tracking-tight text-ink-1">
-          {title}
-        </h3>
+    <section className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-4 shadow-xs sm:p-5">
+      <header className="space-y-1">
+        <h3 className="text-sm font-bold tracking-tight text-ink-1">{title}</h3>
         {description ? (
-          <p className="text-ink-4 text-[11px] leading-snug">{description}</p>
+          <p className="text-ink-4 text-xs leading-snug">{description}</p>
         ) : null}
       </header>
-      <div className="flex flex-col gap-3">{children}</div>
+      <div className="flex flex-col gap-4">{children}</div>
     </section>
   );
 }
@@ -214,7 +212,7 @@ export function CategoryField({
 // "Salvar e adicionar outro" do modo criação.
 // ============================================================================
 
-const SESSION_COUNTER_KEY = "vitre:product-create-session-count";
+const SESSION_COUNTER_KEY = "Mangos Pay:product-create-session-count";
 export function bumpSessionCounter(): number {
   if (typeof window === "undefined") return 1;
   try {

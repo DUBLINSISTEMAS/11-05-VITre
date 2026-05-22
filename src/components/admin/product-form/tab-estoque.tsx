@@ -26,20 +26,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 
 import { SubCard } from "./shared";
 
+// Onda 2.10 — bate com glossário CLAUDE.md (un, kg, g, m, m², L, ml, par, dúzia).
+// `pc/cm/m3` permanecem no enum do DB pra produtos legados mas saíram do select.
 const UNIT_OPTIONS: { value: ProductUnit; label: string }[] = [
   { value: "un", label: "un" },
-  { value: "pc", label: "pç" },
   { value: "kg", label: "kg" },
   { value: "g", label: "g" },
   { value: "m", label: "m" },
-  { value: "cm", label: "cm" },
-  { value: "ml", label: "ml" },
-  { value: "L", label: "L" },
   { value: "m2", label: "m²" },
-  { value: "m3", label: "m³" },
+  { value: "L", label: "L" },
+  { value: "ml", label: "ml" },
+  { value: "par", label: "par" },
+  { value: "duzia", label: "dúzia" },
 ];
 
 interface TabEstoqueProps {
@@ -92,6 +94,44 @@ export function TabEstoque({
           </p>
         ) : null}
       </SubCard>
+
+      {/* Onda 2.15 — permite vender mesmo zerado. Só relevante quando
+          trackStock=true (sem controle, já é ilimitado). Default OFF
+          preserva o bloqueio histórico de OUT_OF_STOCK no PDV. */}
+      {trackStock ? (
+        <SubCard
+          title="Encomenda / pré-venda"
+          description="Quando ligado, o PDV aceita vender mesmo se o estoque chegou a zero — útil pra peça personalizada ou pré-venda. Lojista vê aviso, mas a venda passa."
+        >
+          <Controller
+            name="allowOversell"
+            control={control}
+            render={({ field }) => (
+              <div className="bg-bg-app flex items-center justify-between gap-3 rounded-xl border border-line p-3">
+                <div className="space-y-0.5">
+                  <Label
+                    htmlFor="product-allow-oversell"
+                    className="cursor-pointer text-sm"
+                  >
+                    Permitir vender mesmo zerado
+                  </Label>
+                  <p className="text-ink-4 text-xs">
+                    {field.value
+                      ? "PDV mostra aviso e deixa fechar a venda."
+                      : "PDV bloqueia a venda quando o saldo chega a zero (padrão)."}
+                  </p>
+                </div>
+                <Switch
+                  id="product-allow-oversell"
+                  checked={field.value}
+                  disabled={isPending}
+                  onCheckedChange={field.onChange}
+                />
+              </div>
+            )}
+          />
+        </SubCard>
+      ) : null}
 
       {trackStock ? (
         <SubCard

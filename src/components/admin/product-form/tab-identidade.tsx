@@ -65,46 +65,68 @@ export function TabIdentidade({
   localBrands,
   onBrandCreated,
 }: TabIdentidadeProps) {
+  // Grid 12-col xl: Básico + Mídia ocupam col-span-7 (esquerda);
+  // Classificação ocupa col-span-5 (direita). Princípio 9 do norte:
+  // inteligência espacial — campo curto não estica, agrupamento visual.
   return (
-    <div className="flex flex-col gap-4">
-      <SubCard title="Básico">
-        <div className="space-y-1.5">
-          <Label htmlFor="product-name">Nome</Label>
-          <Input
-            id="product-name"
-            placeholder="Ex: Vestido midi preto"
-            disabled={isPending}
-            aria-invalid={!!errors.name}
-            {...register("name")}
-          />
-          {errors.name?.message ? (
-            <p className="text-destructive text-xs">{errors.name.message}</p>
-          ) : null}
-        </div>
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-12 xl:gap-6">
+      <div className="flex flex-col gap-4 xl:col-span-7">
+        <SubCard title="Básico">
+          <div className="space-y-1.5">
+            <Label htmlFor="product-name" required>
+              Nome
+            </Label>
+            <Input
+              id="product-name"
+              placeholder="Ex: Vestido midi preto"
+              disabled={isPending}
+              aria-invalid={!!errors.name}
+              {...register("name")}
+            />
+            {errors.name?.message ? (
+              <p className="text-destructive text-xs">{errors.name.message}</p>
+            ) : null}
+          </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="product-description">Descrição</Label>
-          <Textarea
-            id="product-description"
-            placeholder="Detalhes, medidas, material…"
-            rows={4}
-            disabled={isPending}
-            aria-invalid={!!errors.description}
-            {...register("description")}
-          />
-          {errors.description?.message ? (
-            <p className="text-destructive text-xs">
-              {errors.description.message}
-            </p>
-          ) : null}
-        </div>
-      </SubCard>
+          <div className="space-y-1.5">
+            <Label htmlFor="product-description">Descrição</Label>
+            <Textarea
+              id="product-description"
+              placeholder="Detalhes, medidas, material…"
+              rows={4}
+              disabled={isPending}
+              aria-invalid={!!errors.description}
+              {...register("description")}
+            />
+            {errors.description?.message ? (
+              <p className="text-destructive text-xs">
+                {errors.description.message}
+              </p>
+            ) : null}
+          </div>
+        </SubCard>
 
-      <SubCard
-        title="Classificação"
-        description="Marca e categoria ajudam a filtrar e organizar na loja online."
-      >
-        <div className="grid gap-3 sm:grid-cols-2">
+        <SubCard
+          title="Mídia"
+          description="A primeira foto vira a capa. Tire pelo celular ou escolha da galeria."
+        >
+          <ImageUploader
+            productId={productId}
+            images={images}
+            onChange={onImagesChange}
+            mode={isCreating ? "staged" : "server"}
+            stagedFiles={stagedFiles}
+            onStagedChange={onStagedChange}
+            disabled={isPending}
+          />
+        </SubCard>
+      </div>
+
+      <div className="flex flex-col gap-4 xl:col-span-5">
+        <SubCard
+          title="Classificação"
+          description="Marca e categoria ajudam a filtrar e organizar na loja online."
+        >
           <div className="space-y-1.5">
             <Label htmlFor="product-brand">Marca</Label>
             {/*
@@ -164,23 +186,8 @@ export function TabIdentidade({
               )}
             />
           </div>
-        </div>
-      </SubCard>
-
-      <SubCard
-        title="Mídia"
-        description="A primeira foto vira a capa. Tire pelo celular ou escolha da galeria."
-      >
-        <ImageUploader
-          productId={productId}
-          images={images}
-          onChange={onImagesChange}
-          mode={isCreating ? "staged" : "server"}
-          stagedFiles={stagedFiles}
-          onStagedChange={onStagedChange}
-          disabled={isPending}
-        />
-      </SubCard>
+        </SubCard>
+      </div>
     </div>
   );
 }

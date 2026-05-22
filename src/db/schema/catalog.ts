@@ -74,8 +74,11 @@ export type NewCategory = typeof categoryTable.$inferInsert;
 /**
  * ADR-0034 Camada 1 — unidade de venda. Default `un` cobre 95% varejo SMB BR.
  * Adicionar valor novo se aparecer caso real (ex: `caixa`, `pacote`). Não
- * usar pra cálculo automático — Vitrê não converte unidades.
+ * usar pra cálculo automático — Mangos Pay não converte unidades.
  */
+// Onda 2.10 (2026-05-22): par/duzia adicionados via SQL 61 pra alinhar
+// com glossário CLAUDE.md. `pc/cm/m3` permanecem no enum por compat com
+// produtos legados — mas saíram do select da UI (tab-estoque.tsx).
 export const productUnitEnum = pgEnum("product_unit", [
   "un",
   "pc",
@@ -87,6 +90,8 @@ export const productUnitEnum = pgEnum("product_unit", [
   "L",
   "m2",
   "m3",
+  "par",
+  "duzia",
 ]);
 
 // =====================================================================
@@ -130,6 +135,14 @@ export const productTable = pgTable(
     promoEndsAt: timestamp("promo_ends_at"),
     trackStock: boolean("track_stock").notNull().default(false),
     stockQuantity: integer("stock_quantity"),
+    /**
+     * Onda 2.15 (2026-05-22) — permite venda mesmo com saldo zerado.
+     * Casos de uso: produto sob encomenda, pré-venda, peça personalizada
+     * em joalheria. Default false preserva o bloqueio (OUT_OF_STOCK).
+     * Quando true, PDV emite aviso em vez de erro.
+     * Aplicado em SQL 62.
+     */
+    allowOversell: boolean("allow_oversell").notNull().default(false),
 
     // =====================================================================
     // ADR-0034 Camada 1 — Dado-fonte de gestão.
@@ -181,7 +194,7 @@ export const productTable = pgTable(
     defaultCommissionBps: integer("default_commission_bps"),
     /**
      * NCM brasileiro (8 dígitos sem máscara) pra futura integração com
-     * Bling/Tiny. **Vitrê NÃO valida nem calcula imposto a partir disso**
+     * Bling/Tiny. **Mangos Pay NÃO valida nem calcula imposto a partir disso**
      * (ADR-0033 veto fiscal). Campo livre — lojista anota o que o
      * contador disser.
      */

@@ -5,7 +5,7 @@
  * a cor da loja como `--brand-store` no wrapping div via inline style
  * (ADR-0011). Escopo restrito: bottom-nav (pill ativa, ícone, label,
  * badge) + badge contador da sacola no header. Tudo o mais (CTAs, promo,
- * focus rings, links, skip link) usa `--primary` Vitrê fixo.
+ * focus rings, links, skip link) usa `--primary` Mangos Pay fixo.
  *
  * Por que CSS var server-side e não BrandProvider client?
  *   - Zero hydration mismatch (cor pintada já no HTML inicial).

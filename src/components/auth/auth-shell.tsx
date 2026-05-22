@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
@@ -20,29 +19,33 @@ interface AuthShellProps {
 }
 
 const DEFAULT_BRAND = {
-  eyebrow: "★ GESTÃO COMPLETA · CATÁLOGO + WHATSAPP",
+  eyebrow: "GESTÃO COMPLETA · LOJA ONLINE · WHATSAPP",
   headline: (
     <>
-      Sua loja merece
+      Vende mais.
       <br />
-      um sistema sério.
+      Confunde menos.
     </>
   ),
   pitch:
-    "O Vitrê é tudo o que sua loja precisa: catálogo online, PDV, estoque, clientes e relatórios — direto do celular.",
+    "Mangos Pay junta catálogo online, balcão, estoque e clientes num só lugar. Feito pra loja de rua brasileira — no celular ou no computador.",
 };
 
 /**
- * Split-brand auth layout — Dublin v3 (ADR-0019).
+ * Split-brand auth layout — rebrand Mangos Pay (2026-05-21).
  *
- * Desktop (≥1024px): grid 2 colunas 50/50. Esquerda navy gradient com
- * logo + pitch. Direita surface branco com form centrado max-w-[460px].
+ * Desktop (≥1024px): grid 2 colunas 50/50. Esquerda verde Mangos com
+ * gradiente, logo real do arquivo `/logos/logo.svg` (ícone + wordmark
+ * juntos), watermark `/logos/favicon.svg` grande atrás do conteúdo,
+ * headline copywriter + pitch. Direita surface branco com form centrado
+ * max-w-[460px].
  *
- * Mobile (<1024px): stack vertical. Strip brand compacto no topo
- * (logo + 1 linha curta) + form abaixo.
+ * Mobile (<1024px): stack vertical. Strip brand compacto no topo + form
+ * abaixo.
  *
- * Substitui AuthCard nas rotas /entrar /redefinir /recuperar. AuthCard
- * continua em /criar-loja (será migrado na Onda 3 do port Dublin).
+ * Logos via <img> (não next/image): next/image exigiria
+ * `dangerouslyAllowSVG: true` no config — desnecessário pra assets
+ * próprios.
  */
 export function AuthShell({
   title,
@@ -55,59 +58,86 @@ export function AuthShell({
   const brandContent = { ...DEFAULT_BRAND, ...brand };
 
   return (
-    <main className="min-h-dvh bg-surface lg:grid lg:grid-cols-2">
-      {/* Brand panel — esquerda no desktop, strip topo no mobile */}
+    // Fundo geral cinza (mesmo do sidebar admin). Aside esquerdo flush nesse
+    // cinza; section direita vira card branco flutuante com cantos
+    // arredondados + margem mostrando o cinza (efeito "abraço" Abacate Pay,
+    // replicado do `.b3-shell` + `.b3-main-card`). Mobile fica sem o efeito
+    // (margens só em lg:) pra não desperdiçar viewport pequeno.
+    <main className="min-h-dvh bg-[var(--mangos-side-bg)] lg:grid lg:grid-cols-2">
+      {/* Brand panel — esquerda no desktop, strip topo no mobile.
+          Fundo cinza-100 (mesmo do sidebar admin) — o logo e o texto
+          escuro destacam sem competir com o verde já presente no logo. */}
       <aside
         className={cn(
-          "relative flex flex-col justify-between bg-brand text-white",
+          "relative flex flex-col justify-between overflow-hidden text-mangos-text-primary",
           "px-6 py-8 lg:px-14 lg:py-14",
-          "bg-[linear-gradient(135deg,var(--brand),#2A4FA8)]",
+          "bg-[var(--mangos-side-bg)]",
         )}
       >
-        {/* Logo */}
+        {/* Watermark — favicon (manga) atrás do conteúdo. Opacidade casa
+            com a do sidebar admin (~7%) pra ficar perceptível mas não
+            competir com o texto. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/logos/favicon.svg"
+          alt=""
+          aria-hidden
+          draggable={false}
+          className={cn(
+            "pointer-events-none absolute -right-16 -bottom-20 opacity-[0.07]",
+            "h-[360px] w-[360px] lg:-right-24 lg:-bottom-28 lg:h-[560px] lg:w-[560px]",
+          )}
+        />
+
+        {/* Logo — arquivo real /logos/logo.svg (ícone manga + wordmark
+            "Mangos Pay" já dentro do SVG). Por isso não há <span> de texto. */}
         <Link
           href="/"
-          className="inline-flex w-fit items-center gap-3 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-          aria-label="Vitrê"
+          className="relative inline-flex w-fit items-center rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-mangos-yellow/60"
+          aria-label="Mangos Pay — ir para o início"
         >
-          <Image
-            src="/brand/logo-principal.webp"
-            alt=""
-            width={44}
-            height={44}
-            priority
-            className="rounded-xl bg-white/15 p-1"
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logos/logo.svg"
+            alt="Mangos Pay"
+            className="h-9 w-auto lg:h-10"
+            draggable={false}
           />
-          <span className="text-xl font-bold tracking-tight">Vitrê</span>
         </Link>
 
         {/* Pitch (escondido no mobile pra não ocupar viewport) */}
-        <div className="hidden lg:block">
+        <div className="relative hidden lg:block">
           {brandContent.eyebrow && (
-            <div className="mb-4 text-[11px] font-bold uppercase tracking-[0.16em] text-white/70">
+            <div className="mb-4 text-[11px] font-bold uppercase tracking-[0.16em] text-mangos-orange">
               {brandContent.eyebrow}
             </div>
           )}
-          <h1 className="text-[44px] font-bold leading-[1.05] tracking-[-0.03em]">
+          <h1 className="text-[44px] font-bold leading-[1.05] tracking-[-0.03em] text-mangos-green-950">
             {brandContent.headline}
           </h1>
           {brandContent.pitch && (
-            <p className="mt-5 max-w-[380px] text-[15px] leading-[1.55] text-white/85">
+            <p className="mt-5 max-w-[400px] text-[15px] leading-[1.55] text-mangos-text-secondary">
               {brandContent.pitch}
             </p>
           )}
         </div>
 
         {/* Footer mono — só desktop */}
-        <div className="hidden font-mono text-[11.5px] tracking-wider text-white/60 lg:block">
-          © {new Date().getFullYear()} Vitrê · Sistema de gestão pra sua loja
+        <div className="relative hidden font-mono text-[11.5px] tracking-wider text-mangos-text-muted lg:block">
+          © {new Date().getFullYear()} Mangos Pay · Sistema de gestão pra sua loja
         </div>
       </aside>
 
-      {/* Form panel — direita no desktop, abaixo no mobile */}
+      {/* Form panel — card branco flutuante no desktop, flush no mobile.
+          Em desktop: bg-surface (branco) + margem 16px em todos os lados
+          mostrando o cinza ao redor + cantos arredondados 20px + sombra
+          sutil (espelha `.b3-main-card` do admin). Em mobile: branco
+          flush, sem rounding/shadow. */}
       <section
         className={cn(
-          "flex items-center justify-center px-6 py-10 lg:px-14 lg:py-14",
+          "flex items-center justify-center bg-surface px-6 py-10",
+          "lg:m-4 lg:rounded-[20px] lg:px-14 lg:py-14",
+          "lg:shadow-[0_1px_2px_color-mix(in_oklab,var(--ink-1)_4%,transparent),0_4px_12px_-6px_color-mix(in_oklab,var(--ink-1)_6%,transparent)]",
           className,
         )}
       >

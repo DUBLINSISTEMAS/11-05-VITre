@@ -1,6 +1,6 @@
 {
-  "name": "Vitrê — Gestão",
-  "short_name": "Vitrê",
+  "name": "Mangos Pay — Gestão",
+  "short_name": "Mangos Pay",
   "description": "Sistema de gestão de loja: catálogo, PDV, estoque.",
   "id": "/admin",
   "start_url": "/admin",

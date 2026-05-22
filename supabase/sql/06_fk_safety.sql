@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — FK safety: troca CASCADE por RESTRICT em deletes catastróficos
+-- Mangos Pay — FK safety: troca CASCADE por RESTRICT em deletes catastróficos
 -- =====================================================================
 -- Mudanças:
 --   1. store.owner_id → user.id     CASCADE → RESTRICT

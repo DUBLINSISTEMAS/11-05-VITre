@@ -13,7 +13,7 @@ interface SlugInputProps {
   onChange: (value: string) => void;
   onAvailabilityChange?: (available: boolean) => void;
   disabled?: boolean;
-  appUrl: string; // ex: "vitre-app.vercel.app"
+  appUrl: string; // ex: "mangospay.vercel.app"
 }
 
 type Status =
@@ -28,7 +28,7 @@ type Status =
 
 /**
  * Input de slug com:
- * - Prefixo visual `vitre.app/`
+ * - Prefixo visual `mangospay.app/`
  * - Sanitização ao digitar (lowercase, sem espaço, hífen)
  * - Debounced check de disponibilidade no servidor (500ms)
  * - Last-request-wins (cancela checks anteriores)

@@ -1,5 +1,5 @@
 /**
- * Vitrê service worker — Fase 6 / ADR-0017.
+ * Mangos Pay service worker — Fase 6 / ADR-0017.
  *
  * Estratégia:
  *   - cache-first pra assets estáticos (/_next/static, /brand, /icons, fontes)
@@ -25,8 +25,8 @@
  *        bump se mudar a estratégia de cache ou os assets de /public.
  */
 
-// Formato: vitre-YYYYMMDD — BUMP THIS ON DEPLOY se mudou estratégia de cache.
-const CACHE_VERSION = "vitre-20260519";
+// Formato: mangospay-YYYYMMDD — BUMP THIS ON DEPLOY se mudou estratégia de cache.
+const CACHE_VERSION = "mangospay-20260519";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 
 self.addEventListener("install", () => {
@@ -61,7 +61,7 @@ self.addEventListener("fetch", (event) => {
 
   const isStatic =
     url.pathname.startsWith("/_next/static/") ||
-    url.pathname.startsWith("/brand/") ||
+    url.pathname.startsWith("/logos/") ||
     url.pathname.startsWith("/icons/") ||
     url.pathname.endsWith(".woff2") ||
     url.pathname.endsWith(".woff");

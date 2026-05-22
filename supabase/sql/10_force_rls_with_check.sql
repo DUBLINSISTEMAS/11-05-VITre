@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — Onda C / Step 2: FORCE RLS + WITH CHECK em todas tabelas
+-- Mangos Pay — Onda C / Step 2: FORCE RLS + WITH CHECK em todas tabelas
 -- =====================================================================
 -- Aplicar APÓS 09_app_role_setup.sql (depende da role vitre_app existir
 -- e ser a usada pelo `DATABASE_URL` da app — postgres ainda bypassa RLS,

@@ -1,5 +1,5 @@
 -- =====================================================================
--- Vitrê — RLS para product_related (Onda 4 — 2026-05-13)
+-- Mangos Pay — RLS para product_related (Onda 4 — 2026-05-13)
 -- =====================================================================
 -- Como aplicar:
 --   1. Rodar primeiro a migration `drizzle/0012_hesitant_spitfire.sql`

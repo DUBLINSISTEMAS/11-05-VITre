@@ -10,8 +10,8 @@ import { requireSession } from "@/lib/auth-server";
 
 export const dynamic = "force-dynamic";
 
-const VITRE_SUPPORT_WA = "5599981757512"; // founder WhatsApp
-const VITRE_SUPPORT_EMAIL = "felipe@vitre.site";
+const SUPPORT_WA = "5599981757512"; // founder WhatsApp
+const SUPPORT_EMAIL = "felipe@mangospay.app";
 
 /**
  * Suporte — placeholder UI (B.6). Sem backend de ticket. Canais externos:
@@ -20,10 +20,10 @@ const VITRE_SUPPORT_EMAIL = "felipe@vitre.site";
 export default async function SuportePage() {
   await requireSession();
 
-  const waUrl = `https://wa.me/${VITRE_SUPPORT_WA}?text=${encodeURIComponent(
-    "Olá, sou usuário do Vitrê e preciso de ajuda com:",
+  const waUrl = `https://wa.me/${SUPPORT_WA}?text=${encodeURIComponent(
+    "Olá, sou usuário do Mangos Pay e preciso de ajuda com:",
   )}`;
-  const emailUrl = `mailto:${VITRE_SUPPORT_EMAIL}?subject=${encodeURIComponent("Suporte Vitrê")}`;
+  const emailUrl = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Suporte Mangos Pay")}`;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -50,7 +50,7 @@ export default async function SuportePage() {
         <ChannelCard
           icon={MailIcon}
           title="Email"
-          subtitle={VITRE_SUPPORT_EMAIL}
+          subtitle={SUPPORT_EMAIL}
           ctaLabel="Enviar email"
           href={emailUrl}
         />
@@ -66,21 +66,21 @@ export default async function SuportePage() {
           <TourCard
             step="1"
             title="Cadastre seus produtos"
-            description="Comece em /admin/produtos. Cada produto pode ter fotos, preço promo, variantes e atributos."
+            description="Comece em /admin/produtos. Cada produto pode ter fotos, preço promo, variantes e filtros de loja."
           />
           <TourCard
             step="2"
-            title="Configure seu storefront"
+            title="Configure sua loja online"
             description="Em /admin/aparencia, escolha cor da marca e modelo da loja. Em /admin/banners, suba destaques."
           />
           <TourCard
             step="3"
             title="Compartilhe seu link"
-            description={`Seu link público fica em vitre.site/<sua-loja>. Compartilhe no Instagram, Stories, link na bio.`}
+            description={`Seu link público fica em mangospay.app/<sua-loja>. Compartilhe no Instagram, Stories, link na bio.`}
           />
           <TourCard
             step="4"
-            title="Receba pedidos pelo WhatsApp"
+            title="Receba vendas pelo WhatsApp"
             description="Cliente fecha carrinho → escolhe pagamento → abre WhatsApp com tudo preenchido."
           />
           <TourCard
@@ -91,7 +91,7 @@ export default async function SuportePage() {
           <TourCard
             step="6"
             title="Acompanhe os relatórios"
-            description="Em /admin/relatorios, veja vendas, top produtos, clientes e leads do período."
+            description="Em /admin/relatorios, veja vendas, top produtos, clientes e recados do período."
           />
         </div>
       </div>
@@ -148,7 +148,7 @@ export default async function SuportePage() {
 }
 
 const FAQ_ITEMS = [
-  "Como meus clientes finalizam compras? Pelo WhatsApp — Vitrê não processa pagamento.",
+  "Como meus clientes finalizam compras? Pelo WhatsApp — Mangos Pay não processa pagamento.",
   "Posso integrar com SEFAZ/NFe? Ainda não. Foco hoje é gestão simples sem fiscal.",
   "Como faço backup dos meus dados? Os dados ficam em prod permanente; export em CSV em /admin/relatorios.",
   "Funciona no celular? Sim. O painel todo é mobile-first. PDV também.",

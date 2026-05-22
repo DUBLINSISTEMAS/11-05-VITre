@@ -23,6 +23,7 @@
  */
 
 import {
+  ArrowLeftIcon,
   CheckIcon,
   ChevronDownIcon,
   ChevronRightIcon,
@@ -31,6 +32,7 @@ import {
   SearchIcon,
   XIcon,
 } from "lucide-react";
+import { Dialog as DialogPrimitive } from "radix-ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -42,12 +44,6 @@ import {
   type PdvProductVariantHit,
   searchProductsForPdv,
 } from "@/actions/product/search-for-pdv";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { formatBRL, resolveVariantPrice } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
@@ -188,18 +184,81 @@ export function ProductPickerDialog({
 
   const selectedCount = selected.size;
 
+  const close = useCallback(() => onOpenChange(false), [onOpenChange]);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="border-line flex h-[90vh] max-h-[760px] w-[96vw] max-w-[1100px] flex-col gap-0 overflow-hidden p-0 sm:max-w-[1100px]"
-      >
-        {/* Header — título + busca + close */}
-        <DialogHeader className="border-line shrink-0 border-b px-4 py-3 sm:px-5">
-          <div className="flex items-center gap-3">
-            <DialogTitle className="text-ink-1 shrink-0 text-[14px] font-semibold tracking-tight">
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Portal>
+        {/* Overlay sutil — sem blur (o modal pai já desfoca o admin atrás).
+            Apenas um dim leve pra destacar o picker do venda modal embaixo. */}
+        <DialogPrimitive.Overlay
+          className={cn(
+            "fixed inset-0 z-50 bg-black/30",
+            "duration-[150ms] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
+          )}
+        />
+
+        {/* Modal — mesmo estilo do new-sale-modal, mas menor:
+            ~1000×720 em desktop, fullscreen em mobile. */}
+        <DialogPrimitive.Content
+          aria-describedby={undefined}
+          className={cn(
+            "bg-surface fixed top-1/2 left-1/2 z-50 flex -translate-x-1/2 -translate-y-1/2 flex-col outline-none",
+            "h-dvh w-screen rounded-none",
+            "lg:h-[85vh] lg:max-h-[720px] lg:w-[92vw] lg:max-w-[1000px] lg:rounded-[20px]",
+            "lg:shadow-[0_10px_40px_-12px_rgba(0,0,0,0.25),0_4px_12px_-6px_rgba(0,0,0,0.1)]",
+            "duration-[150ms] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+          )}
+        >
+          {/* ── Header 56px: voltar / título centralizado / fechar.
+              Mesmo padrão do new-sale-modal — ícones size-4, strokeWidth 1.6,
+              ink-4 (cinza claro) com hover ink-2. */}
+          <header
+            className={cn(
+              "flex h-14 shrink-0 items-center justify-between",
+              "border-line border-b px-3",
+            )}
+          >
+            <button
+              type="button"
+              onClick={close}
+              aria-label="Voltar"
+              className={cn(
+                "text-ink-4 inline-flex size-8 items-center justify-center rounded-md outline-none",
+                "hocus:bg-bg-app hocus:text-ink-2 transition-colors",
+                "focus-visible:ring-2 focus-visible:ring-ring/40",
+              )}
+            >
+              <ArrowLeftIcon className="size-4" strokeWidth={1.6} aria-hidden />
+            </button>
+
+            <DialogPrimitive.Title
+              className={cn(
+                "text-ink-1 text-[15px] font-semibold tracking-[-0.01em]",
+                "max-w-[60vw] truncate sm:max-w-none",
+              )}
+            >
               Adicionar produto
-            </DialogTitle>
-            <div className="relative flex-1">
+            </DialogPrimitive.Title>
+
+            <button
+              type="button"
+              onClick={close}
+              aria-label="Fechar"
+              className={cn(
+                "text-ink-4 inline-flex size-8 items-center justify-center rounded-md outline-none",
+                "hocus:bg-bg-app hocus:text-ink-2 transition-colors",
+                "focus-visible:ring-2 focus-visible:ring-ring/40",
+              )}
+            >
+              <XIcon className="size-4" strokeWidth={1.6} aria-hidden />
+            </button>
+          </header>
+
+          {/* ── Busca — linha dedicada, full width. Resolve o problema do X
+              de close ficar em cima do input. ── */}
+          <div className="border-line shrink-0 border-b px-4 py-3 sm:px-5">
+            <div className="relative">
               <SearchIcon
                 size={14}
                 className="text-ink-4 pointer-events-none absolute top-1/2 left-3 -translate-y-1/2"
@@ -219,12 +278,11 @@ export function ProductPickerDialog({
                   className="text-ink-4 hover:text-ink-1 absolute top-1/2 right-3 -translate-y-1/2"
                   aria-label="Limpar busca"
                 >
-                  <XIcon size={14} />
+                  <XIcon size={14} strokeWidth={1.6} />
                 </button>
               ) : null}
             </div>
           </div>
-        </DialogHeader>
 
         {/* Chips de categoria — scroll horizontal em mobile */}
         {categories.length > 0 ? (
@@ -326,8 +384,9 @@ export function ProductPickerDialog({
             </div>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
 
@@ -437,22 +496,27 @@ function ProductCard({
           <div className="text-ink-1 line-clamp-2 text-[12px] font-medium leading-tight">
             {product.name}
           </div>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            {onPromo ? (
-              <>
-                <span className="text-ink-4 text-[10px] line-through">
-                  {formatBRL(product.basePriceInCents)}
-                </span>
-                <span className="text-brand text-[12px] font-semibold tabular-nums">
-                  {formatBRL(effectivePrice)}
-                </span>
-              </>
-            ) : (
-              <span className="text-ink-1 text-[12px] font-semibold tabular-nums">
+          {/* Audit 2026-05-21 — layout vertical quando promo (riscado em
+              cima, novo embaixo). Antes era horizontal `flex items-baseline`
+              com gap; em cards 5-col (160px), o riscado + novo preço
+              juntos estouravam largura e quebravam linha com gap esquisito.
+              Vertical garante hierarquia clara e cabe sempre. */}
+          {onPromo ? (
+            <div className="mt-1 leading-tight">
+              <span className="text-ink-4 block text-[10px] tabular-nums line-through">
+                {formatBRL(product.basePriceInCents)}
+              </span>
+              <span className="text-brand block text-[12.5px] font-semibold tabular-nums">
                 {formatBRL(effectivePrice)}
               </span>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="mt-1">
+              <span className="text-ink-1 text-[12.5px] font-semibold tabular-nums">
+                {formatBRL(effectivePrice)}
+              </span>
+            </div>
+          )}
           {!hasVariants && product.trackStock && product.stockQuantity !== null ? (
             <div
               className={cn(

@@ -44,7 +44,7 @@ test("success page links to publicToken instead of shortCode", () => {
 
   assert.match(page, /order\.publicToken/);
   assert.doesNotMatch(page, /href=\{`\/p\/\$\{order\.shortCode\}`\}/);
-  assert.doesNotMatch(page, /vitre\.app\/p\/\{order\.shortCode\}/);
+  assert.doesNotMatch(page, /Mangos Pay\.app\/p\/\{order\.shortCode\}/);
 });
 
 test("whatsapp opened tracking uses publicToken instead of shortCode", () => {

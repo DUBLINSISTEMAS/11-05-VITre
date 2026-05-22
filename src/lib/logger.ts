@@ -1,5 +1,5 @@
 /**
- * Logger estruturado para o Vitrê.
+ * Logger estruturado para o Mangos Pay.
  *
  * Por quê:
  *   - `console.error("...", err)` perde contexto: Vercel agrega como string

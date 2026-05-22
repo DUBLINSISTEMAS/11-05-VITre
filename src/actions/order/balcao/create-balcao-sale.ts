@@ -69,6 +69,7 @@ export type CreateBalcaoSaleErrorCode =
   | "CUSTOMER_REQUIRED_FOR_FIADO"
   | "CASH_RECEIVED_TOO_LOW"
   | "DISCOUNT_OVER_TOTAL"
+  | "ITEM_DISCOUNT_OVER_LINE"
   | "PAYMENTS_SUM_MISMATCH"
   | "COUPON_INVALID"
   | "SHORTCODE_RETRY_EXHAUSTED"
@@ -182,23 +183,35 @@ export async function createBalcaoSale(
         }
 
         // 6. Agrega itens por (productId, variantId) — protege contra
-        //    duplicatas no payload (mesmo product 2x).
+        //    duplicatas no payload (mesmo product 2x). Descontos por linha
+        //    SOMAM quando o mesmo item duplica (defesa em depth; UI normal
+        //    não duplica, mas payload tampered pode). CHECK constraint
+        //    final (no DB) garante que o total agregado nunca passa do
+        //    bruto da linha agregada.
         const aggregatedKey = (p: string, v: string | null) =>
           `${p}|${v ?? ""}`;
         const aggregated = new Map<
           string,
-          { productId: string; variantId: string | null; quantity: number }
+          {
+            productId: string;
+            variantId: string | null;
+            quantity: number;
+            discountInCents: number;
+          }
         >();
         for (const it of data.items) {
           const k = aggregatedKey(it.productId, it.variantId);
+          const itDiscount = it.discountInCents ?? 0;
           const cur = aggregated.get(k);
           if (cur) {
             cur.quantity += it.quantity;
+            cur.discountInCents += itDiscount;
           } else {
             aggregated.set(k, {
               productId: it.productId,
               variantId: it.variantId,
               quantity: it.quantity,
+              discountInCents: itDiscount,
             });
           }
         }
@@ -271,6 +284,8 @@ export async function createBalcaoSale(
           variantName: string | null;
           priceInCents: number;
           quantity: number;
+          /** Desconto da linha em centavos. NULL = sem desconto (default). */
+          itemDiscountInCents: number | null;
         }> = [];
         let subtotalInCents = 0;
 
@@ -317,7 +332,22 @@ export async function createBalcaoSale(
             now,
           );
 
-          subtotalInCents += effectivePrice * it.quantity;
+          // Desconto por linha (Fase 4 / pulo de sprint 2026-05-21).
+          // Server-side defesa: nunca > price × qty (CHECK no DB também
+          // pega via supabase/sql/59). Subtrai do bruto antes de somar no
+          // subtotal — o subtotal já vem LÍQUIDO de descontos por linha.
+          const lineGross = effectivePrice * it.quantity;
+          const rawItemDiscount = it.discountInCents;
+          if (rawItemDiscount > lineGross) {
+            return {
+              ok: false,
+              errorCode: "ITEM_DISCOUNT_OVER_LINE" as const,
+              errorMessage: `Desconto do item "${product.name}" maior que o subtotal da linha.`,
+            };
+          }
+          const itemDiscountInCents = rawItemDiscount > 0 ? rawItemDiscount : null;
+
+          subtotalInCents += lineGross - rawItemDiscount;
           computedItems.push({
             productId: it.productId,
             variantId: it.variantId,
@@ -325,6 +355,7 @@ export async function createBalcaoSale(
             variantName: variant?.name ?? null,
             priceInCents: effectivePrice,
             quantity: it.quantity,
+            itemDiscountInCents,
           });
         }
 
@@ -494,6 +525,7 @@ export async function createBalcaoSale(
                       imageUrlSnapshot: null,
                       priceInCentsSnapshot: ci.priceInCents,
                       quantity: ci.quantity,
+                      discountInCents: ci.itemDiscountInCents,
                     })),
                   );
                 }
@@ -703,6 +735,7 @@ export async function createBalcaoSale(
                       imageUrlSnapshot: null,
                       priceInCentsSnapshot: ci.priceInCents,
                       quantity: ci.quantity,
+                      discountInCents: ci.itemDiscountInCents,
                     })),
                   );
                 }
@@ -1049,6 +1082,7 @@ export async function createBalcaoSale(
                     imageUrlSnapshot: null, // PDV não precisa snapshot de imagem
                     priceInCentsSnapshot: ci.priceInCents,
                     quantity: ci.quantity,
+                    discountInCents: ci.itemDiscountInCents,
                   })),
                 );
               }

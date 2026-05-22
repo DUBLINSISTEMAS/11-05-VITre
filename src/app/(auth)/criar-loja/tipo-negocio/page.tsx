@@ -14,7 +14,7 @@ import {
   SIGNUP_WHATSAPP_KEY,
 } from "@/components/onboarding/storage-keys";
 
-// 4 nichos visuais — Dublin v3 handoff usa 6 chips, Vitrê schema só aceita 4.
+// 4 nichos visuais — Dublin v3 handoff usa 6 chips, Mangos Pay schema só aceita 4.
 const NICHE_CARDS = [
   { value: "roupa_feminina", label: "Roupa" },
   { value: "joia", label: "Joia" },

@@ -1,0 +1,24 @@
+-- Mangos Pay — order_item.discount_in_cents (desconto por linha no PDV).
+--
+-- Coluna NULLABLE (NULL = sem desconto). CHECK constraints (>=0 e
+-- <= price × qty) vivem em supabase/sql/59_order_item_discount.sql,
+-- aplicados via `pnpm db:apply` APÓS este migrate.
+--
+-- NOTA TÉCNICA — drizzle meta vs prod (descoberto 2026-05-21):
+--   A meta do drizzle (drizzle/meta/0032_snapshot.json) tava fora de
+--   sync com prod — várias tabelas (audit_event, brand) e colunas
+--   (quote_valid_until, brand_id) já existem em prod via supabase/sql/*
+--   manuais mas nunca passaram pelo drizzle-kit generate. Quando rodei
+--   `drizzle-kit generate` pra adicionar discount_in_cents, ele tentou
+--   gerar tudo de uma vez (CREATE TABLE audit_event etc.) — o que
+--   crasharia em prod porque já existe.
+--
+--   Decisão: reduzir este migrate APENAS à minha mudança real. O
+--   snapshot 0033 ficou com o estado completo do schema.ts (correto),
+--   então generates futuros funcionam normal. A inconsistência é
+--   cosmética — afeta só quem fizer migrate em DB virgem partindo do
+--   snapshot 0032, cenário que o time não usa (bootstrap via prod dump
+--   ou supabase/sql/* manual).
+--
+--   Sincronizar essa dívida é Fase 5 ou commit dedicado de housekeeping.
+ALTER TABLE "order_item" ADD COLUMN "discount_in_cents" integer;
