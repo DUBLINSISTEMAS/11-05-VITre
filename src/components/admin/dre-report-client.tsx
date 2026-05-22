@@ -70,7 +70,7 @@ export function DreReportClient({
     },
     {
       kind: "plus",
-      label: "(+) Acréscimos (taxas, frete, embalagem)",
+      label: "(+) Acréscimos (taxas cartão/PIX, embalagem)",
       value: summary.surchargesInCents,
     },
     // Sprint 1.4 — devoluções no período (vinculadas às vendas, não à
@@ -80,6 +80,15 @@ export function DreReportClient({
       kind: "minus",
       label: "(−) Devoluções (vendas que voltaram)",
       value: summary.returnedRevenueInCents,
+    },
+    // Sprint 2.3 — frete sai da receita. É repasse pra transportadora,
+    // não dinheiro que fica com o lojista. Pedidos antigos têm 0 — o
+    // shipping_in_cents (SQL 65) só passa a ser populado quando UI de
+    // PDV/checkout adicionar o campo separado de surcharge.
+    {
+      kind: "minus",
+      label: "(−) Repasses (frete cobrado do cliente)",
+      value: summary.shippingInCents,
     },
     {
       kind: "subtotal",

@@ -206,3 +206,51 @@ test("DRE expõe returnedRevenueInCents + returnedCogsInCents", () => {
     "dre-report-client deve renderizar linha de devoluções",
   );
 });
+
+// ---------------------------------------------------------------------
+// Sprint 2.3 — frete (shipping_in_cents) sai da receita no DRE.
+// ---------------------------------------------------------------------
+
+test("Sprint 2.3: order.shippingInCents existe no schema e é populado pelo DRE", () => {
+  const orderSchema = src("src/db/schema/order.ts");
+  assert.match(
+    orderSchema,
+    /shippingInCents:\s*integer\("shipping_in_cents"\)\.notNull\(\)\.default\(0\)/,
+    "order schema deve declarar shippingInCents NOT NULL DEFAULT 0",
+  );
+
+  const dre = src("src/actions/reports/load-dre.ts");
+  assert.match(
+    dre,
+    /shipping:\s*sql<number>`coalesce\(sum\(\${orderTable\.shippingInCents}\)/,
+    "load-dre deve agregar shipping no orderAgg",
+  );
+  // netRevenue precisa subtrair shipping (repasse, não receita)
+  assert.match(
+    dre,
+    /netRevenue\s*=\s*\([^)]*netRevenue[^)]*\)\s*-\s*shipping\s*-\s*returnedRevenue/,
+    "netRevenue deve subtrair shipping (repasse pra transportadora)",
+  );
+
+  const types = src("src/actions/reports/types.ts");
+  assert.match(
+    types,
+    /shippingInCents:\s*number/,
+    "DreSimpleSummary deve incluir shippingInCents",
+  );
+
+  // UI mostra linha de repasse
+  const dreUi = src("src/components/admin/dre-report-client.tsx");
+  assert.match(
+    dreUi,
+    /Repasses \(frete cobrado do cliente\)/,
+    "dre-report-client deve renderizar linha de repasses (frete)",
+  );
+  // E o label antigo "Acréscimos (taxas, frete, embalagem)" não pode
+  // ressurgir (frete saiu daqui)
+  assert.doesNotMatch(
+    dreUi,
+    /Acréscimos \(taxas, frete, embalagem\)/,
+    "Label antigo que dizia frete dentro de Acréscimos não pode voltar",
+  );
+});

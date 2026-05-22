@@ -93,6 +93,7 @@ const checks = [
   { id: "63",  desc: "store.document column (Onda 2.7)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='store' AND column_name='document'" },
   // Sprint 2 (2026-05-22)
   { id: "64",  desc: "índice trigram em product_variant.name (Sprint 2.4)", q: "SELECT 1 FROM pg_indexes WHERE tablename='product_variant' AND indexname='product_variant_name_trgm_idx'" },
+  { id: "65",  desc: "order.shipping_in_cents column + CHECK nonneg (Sprint 2.3)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='order' AND column_name='shipping_in_cents'" },
 ];
 
 const url = process.env.DIRECT_URL;

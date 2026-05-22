@@ -131,8 +131,17 @@ export interface DreSimpleSummary {
   grossRevenueInCents: number;
   /** Descontos concedidos no período. */
   discountsInCents: number;
-  /** Acréscimos cobrados (taxas cartão, frete). */
+  /**
+   * Acréscimos cobrados — taxas cartão/PIX, embalagem, "fechar redondo".
+   * Sprint 2.3: frete saiu daqui pra `shippingInCents` (repasse, não receita).
+   */
   surchargesInCents: number;
+  /**
+   * Sprint 2.3: frete cobrado do cliente e repassado pra transportadora.
+   * Aparece como linha separada "Repasses (frete)" no DRE. NÃO entra
+   * na receita líquida.
+   */
+  shippingInCents: number;
   /**
    * Sprint 1.4: receita devolvida vinculada às vendas do período.
    * = SUM(qty_returned * item.price_snapshot).

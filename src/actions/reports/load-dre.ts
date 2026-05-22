@@ -68,12 +68,15 @@ export async function loadDreSimple(
       inArray(orderTable.status, COUNTABLE_STATUSES),
     );
 
-    // 1) Agregados em order: receita líquida, descontos, acréscimos, count.
+    // 1) Agregados em order. Sprint 2.3 separa shipping (frete) de
+    //    surcharge (taxas). Pedidos pré-SQL-65 têm shipping=0; novos
+    //    pedidos podem ter valor quando UI for migrada.
     const [orderAgg] = await tx
       .select({
         netRevenue: sql<number>`coalesce(sum(${orderTable.totalInCents}), 0)::int`,
         discounts: sql<number>`coalesce(sum(${orderTable.discountInCents}), 0)::int`,
         surcharges: sql<number>`coalesce(sum(${orderTable.surchargeInCents}), 0)::int`,
+        shipping: sql<number>`coalesce(sum(${orderTable.shippingInCents}), 0)::int`,
         count: sql<number>`count(*)::int`,
       })
       .from(orderTable)
@@ -111,12 +114,15 @@ export async function loadDreSimple(
     const grossRevenue = itemAgg?.grossRevenue ?? 0;
     const discounts = orderAgg?.discounts ?? 0;
     const surcharges = orderAgg?.surcharges ?? 0;
+    const shipping = orderAgg?.shipping ?? 0;
     const returnedRevenue = returnAgg?.returnedRevenue ?? 0;
     const returnedCogs = returnAgg?.returnedCogs ?? 0;
-    // netRevenue agora é order.total das vendas do período MENOS devoluções.
-    // Manter `order.total` como base preserva a invariante de pricing
-    // (total = grossRevenue - discounts + surcharges).
-    const netRevenue = (orderAgg?.netRevenue ?? 0) - returnedRevenue;
+    // Sprint 2.3 — invariante de pricing:
+    //   order.total = grossRevenue - discount + surcharge + shipping
+    // Pra netRevenue (receita do lojista), removemos shipping (repasse
+    // que sai pra transportadora) e devoluções.
+    const netRevenue =
+      (orderAgg?.netRevenue ?? 0) - shipping - returnedRevenue;
     const cogs = (itemAgg?.cogs ?? 0) - returnedCogs;
     const grossProfit = netRevenue - cogs;
     const totalItems = itemAgg?.totalItems ?? 0;
@@ -130,6 +136,7 @@ export async function loadDreSimple(
         grossRevenueInCents: grossRevenue,
         discountsInCents: discounts,
         surchargesInCents: surcharges,
+        shippingInCents: shipping,
         returnedRevenueInCents: returnedRevenue,
         netRevenueInCents: netRevenue,
         cogsInCents: cogs,

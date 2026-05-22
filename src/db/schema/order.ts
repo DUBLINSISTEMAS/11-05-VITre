@@ -159,11 +159,34 @@ export const orderTable = pgTable(
     /** Fase 5 — desconto manual no balcão (em centavos). */
     discountInCents: integer("discount_in_cents"),
     /**
-     * ADR-0020 — acréscimo manual no balcão (taxa cartão, frete, embalagem,
-     * "fechar redondo"). Simétrico a discount_in_cents. NULL = sem acréscimo.
-     * CHECK >= 0 via supabase/sql/27_pdv_surcharge_check.sql.
+     * ADR-0020 + Sprint 2.3 — acréscimo manual no balcão.
+     *
+     * Originalmente um bucket único pra "taxa cartão, frete, embalagem,
+     * fechar redondo". Sprint 2.3 separou frete em `shippingInCents`
+     * (porque frete é repasse pra transportadora, não receita do lojista).
+     *
+     * Surcharge agora deve representar APENAS:
+     *   - Taxa de cartão repassada ao cliente
+     *   - Taxa de PIX (rara)
+     *   - Embalagem cobrada
+     *   - Ajuste de "fechar redondo"
+     *
+     * Pedidos pré-Sprint-2.3 podem ter frete misturado aqui — sem como
+     * inferir retroativamente. CHECK >= 0 via SQL 27.
      */
     surchargeInCents: integer("surcharge_in_cents"),
+    /**
+     * Sprint 2.3 (2026-05-22) — frete cobrado do cliente, repassado pra
+     * transportadora/correios. NÃO entra como receita no DRE — vira
+     * linha "Repasses (frete)" separada.
+     *
+     * NOT NULL DEFAULT 0 (SQL 65). CHECK >= 0 (order_shipping_nonneg).
+     *
+     * Quando UI de PDV/checkout for migrada pra coletar frete separado
+     * de surcharge, o total do pedido deve passar a somar
+     * shipping_in_cents também (hoje sempre zero pra novas vendas).
+     */
+    shippingInCents: integer("shipping_in_cents").notNull().default(0),
     /**
      * Fase 5 — valor recebido em dinheiro (pra cálculo de troco).
      *
