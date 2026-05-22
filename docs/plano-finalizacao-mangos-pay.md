@@ -85,19 +85,19 @@
 
 - [x] **E1**: Devoluções descontam em todos os relatórios — `load-sales.ts`, `load-top.ts`, `load-margin.ts`, `load-dre.ts` fazem LEFT JOIN com `order_return_item` e subtraem do total/CMV. Tipos `*ReportRow` ganharam `returned*` fields. UI mostra "−R$X devolvido" abaixo dos brutos + rodapé líquido. Vinculação por período da venda original (não da devolução). (commit `28a5d2c`)
 - [x] **E2**: Frete sai de "Receita" no DRE — SQL 65 cria `order.shipping_in_cents`, DRE separa em "Repasses (frete)" e "Acréscimos" fica só pra taxa cartão/PIX/embalagem. PDV ainda não popula (Sprint posterior migra UI). (Sprint 2.3, commit `5342cc8`)
-- [ ] **E3**: `<ReportLayout/>` consome `<PrintStoreHeader/>` — adiciona CNPJ aos 5 relatórios A4 (Onda 2.7 esqueceu este lugar)
-- [ ] **E4**: Filtro por categoria/marca em `/admin/relatorios/vendas` + agrupamento por dia (subheaders com soma)
-- [ ] **E5**: Aging 0-30 / 31-60 / 60+ em `/admin/financeiro/receber/relatorio`
-- [ ] **E6**: Documentar critério de custeio no rodapé do relatório de margem ("Custo unitário fixado no momento da venda — snapshot histórico, não FIFO/médio")
+- [x] **E3**: CNPJ nos 5 relatórios A4 via `loadStoreInfoForReport` (Sprint 4.1, commit `81c0ad5`)
+- [x] **E4**: Filtro por categoria/marca + agrupamento por dia (Sprint 4.2+4.3, commit `81c0ad5`)
+- [x] **E5**: Aging 0-30 / 31-60 / 60+ (Sprint 4.4, commit `81c0ad5`)
+- [x] **E6**: Critério de custeio no rodapé margem (Sprint 4.5, commit `81c0ad5`)
 
 ---
 
 ## Bloco F — Impressão em impressora COMUM
 
-- [ ] **F1**: Recibo PDV em mm + variant — `?fmt=a4|thermal` na URL. Default detecta via cookie ou prompt no 1º print. Layout térmico: `max-w-[80mm]`, `@page { size: 80mm auto }`. A4: `max-w-[210mm]`, header completo
-- [ ] **F2**: Fechamento Z em layout A4 próprio (não reusar card da tela) — header + tabela densa + assinatura do operador
-- [ ] **F3**: Rodapé universal — "Gerado em DD/MM/AAAA HH:MM por {operador} · Página X de Y" em recibo/A4/Z (hoje só ReportLayout tem)
-- [ ] **F4**: Deletar `print-layout.tsx` (317 linhas, zero callers) + `print-store.ts` (helper desatualizado)
+- [x] **F1**: Recibo PDV em `?fmt=a4|thermal` — default 'thermal' preserva impressora 80mm. UI tem toggle. (Sprint 4.6, commit `60a8845`)
+- [x] **F2**: Fechamento Z em A4 próprio — área Operador/Conferido por + rodapé universal. (Sprint 4.7, commit `60a8845`)
+- [x] **F3**: Rodapé universal "Gerado em ... por {operador} · Página N" via CSS counter(page). Aplicado nos 5 A4 + recibo + Z. (Sprint 4.8, commits `81c0ad5` + `60a8845`)
+- [ ] **F4**: Deletar `print-layout.tsx` (317 linhas, zero callers) + `print-store.ts` (helper desatualizado) *(Sprint 6 — limpeza estrutural)*
 
 ---
 
@@ -218,3 +218,4 @@ PÓS-#1                  I (refator) + G (CSV se necessário) + J (multi-tenant 
 | 2026-05-22 | **Sprint 1 fechado**: Bloco B (3 bugs ativos) + E1 (devolução desconta) + H4 (RETURNABLE extraído). 3 commits: `ffb7478` quick form removido, `954ddb0` allow_oversell honrado, `28a5d2c` constants únicas + 4 relatórios descontam devolução. Auditoria: 505/505 unit + tsc 0 warnings + 39/39 integration. Nenhuma SQL nova exigida — schema já tinha tudo desde SQLs 55 + 62. |
 | 2026-05-22 | **Sprint 2 fechado**: D1 (devolução parcial) + D2 (fiado guiado) + E2 (frete no DRE) + I5 (trigram). 2 SQLs novas aplicadas em prod (64, 65). 3 commits: `39a4807` SQL 64 trigram, `70c6be7` 2.1+2.2 devolução parcial + fluxo guiado, `5342cc8` 2.3 SQL 65 shipping no DRE. Auditoria: 513/513 unit + tsc 0 warnings + 39/39 integration + 66/66 SQLs aplicados. |
 | 2026-05-22 | **Sprint 3 fechado**: D3 (busca CPF/CNPJ) + D4 (notes no PDV) + D5 (histórico linka detalhe) + D6 (filtro fiado pendente) + D7 (setting requireOpenCashSession). 1 SQL nova aplicada em prod (66). 3 commits: `6b2c8a0` clientes 3.1-3.3, `56c93ff` filtro fiado, `6f79e98` setting caixa + SQL 66. Auditoria: 519/519 unit + tsc 0 warnings + 39/39 integration + 67/67 SQLs aplicados. |
+| 2026-05-22 | **Sprint 4 fechado**: E3+E4+E5+E6 (relatórios A4 contador-grade) + F1+F2+F3 (impressão recibo dual / Z A4 / rodapé universal). 2 commits: `81c0ad5` 4.1-4.5+4.8 (CNPJ + filtros + agrupamento + aging + custeio + operador), `60a8845` 4.6-4.7 (recibo fmt + Z A4). Nenhuma SQL nova exigida. Auditoria: 527/527 unit + tsc 0 warnings + 39/39 integration + 67/67 SQLs aplicados. |

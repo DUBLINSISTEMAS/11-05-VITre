@@ -223,19 +223,19 @@ Objetivo: operadora não trava em fluxo comum de cliente.
 - [x] **3.5** Caixa fechado configurável — SQL 66 cria `store.require_open_cash_session BOOL DEFAULT false`. Novo `PdvPolicyCard` em `/admin/configuracoes` + `updatePdvPolicy` action. PDV bloqueia com `CASH_SESSION_REQUIRED` quando setting ativo + sem caixa + mode != 'quote'. commit `6f79e98`
 - [x] **3.6** Mini-auditoria: 519/519 unit + tsc 0 warnings + 39/39 integration + 67/67 SQLs aplicados
 
-### 🟩 SPRINT 4 — Relatórios contador-grade + impressão (3-4 dias)
+### 🟩 SPRINT 4 — Relatórios contador-grade + impressão (3-4 dias) ✅ **FECHADO 2026-05-22**
 
 Objetivo: contador fecha o mês sem reabrir Excel.
 
-- [ ] **4.1** `<ReportLayout/>` consome `<PrintStoreHeader/>` — adiciona CNPJ aos 5 relatórios A4
-- [ ] **4.2** Filtro por categoria/marca em `/admin/relatorios/vendas` — JOIN com `product.categoryId`, dropdown multi-select
-- [ ] **4.3** Agrupamento por dia em `/admin/relatorios/vendas` — opção toggle "agrupar"; cria subheaders por data + soma + quebra de página
-- [ ] **4.4** Aging 0-30 / 31-60 / 60+ em `/admin/financeiro/receber/relatorio` — colunas + subtotais
-- [ ] **4.5** Documentar critério de custeio em rodapé do relatório de margem: "Custo unitário fixado no momento da venda (snapshot histórico — não FIFO/médio)"
-- [ ] **4.6** **Recibo PDV em mm + variant** — `?fmt=a4|thermal` na URL. Cookie lembra preferência. Térmico: `max-w-[80mm]`, `@page { size: 80mm auto }`. A4: `max-w-[210mm]`, header completo
-- [ ] **4.7** **Fechamento Z em layout A4 próprio** — não reusar card da tela. Header + tabela densa + assinatura do operador + linha para "Conferido por"
-- [ ] **4.8** Rodapé universal em recibo/A4/Z — "Gerado em DD/MM/AAAA HH:MM por {operador} · Página X de Y"
-- [ ] **4.9** Mini-auditoria
+- [x] **4.1** `<ReportLayout/>` ganha `document` no ReportStoreInfo. CNPJ/CPF nos 5 relatórios A4. `loadStoreInfoForReport` formata CPF/CNPJ. commit `81c0ad5`
+- [x] **4.2** Filtro por categoria/marca em `/admin/relatorios/vendas` — `?categoryIds=` + `?brandIds=` (CSV). EXISTS subquery. Novo `loadReportFilterOptions`. UI: 2 selects. commit `81c0ad5`
+- [x] **4.3** Agrupamento por dia — toggle "Agrupar por dia". `GroupedSalesReport` renderiza seção por dia com subtotal + quebra de página. commit `81c0ad5`
+- [x] **4.4** Aging 0-30 / 31-60 / 60+ em `/admin/financeiro/receber/relatorio` — coluna "Em aberto há" + 4 cards de aging (current/1-30/31-60/61+). 31-60 amarelo, 61+ vermelho. commit `81c0ad5`
+- [x] **4.5** Critério de custeio no rodapé margem — "snapshot histórico, não FIFO ou custo médio". commit `81c0ad5`
+- [x] **4.6** Recibo PDV em `?fmt=a4|thermal` — default thermal preserva impressora 80mm. UI com toggle. commit `60a8845`
+- [x] **4.7** Fechamento Z em A4 próprio — área "Operador / Conferido por" pra assinatura + rodapé universal. commit `60a8845`
+- [x] **4.8** Rodapé universal — `ReportLayout.operatorName`, `loadReportOperatorName`, `counter(page)` via globals.css. 5 A4 + recibo + Z. commits `81c0ad5` + `60a8845`
+- [x] **4.9** Mini-auditoria: 527/527 unit + tsc 0 warnings + 67/67 SQLs
 
 ### 🟪 SPRINT 5 — 5 fantasmas viram features reais (1 semana)
 
@@ -430,14 +430,15 @@ Tudo que normalmente passa batido e a gente paga depois. **Registrado pra não p
 | 2026-05-22 | Claude | **Sprint 1 fechado**: 3 commits (`ffb7478` 1.1 quick form removido, `954ddb0` 1.2 allow_oversell honrado, `28a5d2c` 1.3+1.4 constants únicas + devolução desconta nos 4 relatórios). Auditoria: 505/505 unit + tsc 0 warnings + 39/39 integration. Nenhuma SQL nova exigida — schema já tinha tudo desde SQLs 55+62. |
 | 2026-05-22 | Claude | **Sprint 2 fechado**: 3 commits (`39a4807` 2.4 SQL 64 trigram, `70c6be7` 2.1+2.2 devolução parcial + fluxo guiado de fiado, `5342cc8` 2.3 SQL 65 shipping no DRE). 2 SQLs novas aplicadas em prod via DIRECT_URL. Auditoria: 513/513 unit + tsc 0 warnings + 39/39 integration + 66/66 SQLs aplicados. |
 | 2026-05-22 | Claude | **Sprint 3 fechado**: 3 commits (`6b2c8a0` 3.1-3.3 busca CPF + notes no PDV + histórico linka detalhe, `56c93ff` 3.4 filtro fiado pendente, `6f79e98` 3.5 SQL 66 requireOpenCashSession). 1 SQL nova aplicada em prod. Auditoria: 519/519 unit + tsc 0 warnings + 39/39 integration + 67/67 SQLs aplicados. |
+| 2026-05-22 | Claude | **Sprint 4 fechado**: 2 commits (`81c0ad5` 4.1+4.2+4.3+4.4+4.5+4.8 relatórios A4 com CNPJ/filtros/agrupamento/aging/custeio/operador, `60a8845` 4.6+4.7 recibo PDV fmt + Z A4). Auditoria: 527/527 unit + tsc 0 warnings + 39/39 integration + 67/67 SQLs aplicados. |
 
 ---
 
 ## 10. PRÓXIMA AÇÃO (sempre atualizar no fim de sessão)
 
-**▶️ AGORA**: Sprints 0 + 1 + 2 + 3 fechadas. Único bloqueador continua sendo 0.3 (CRON_SECRET no painel Vercel — manual, depende do Anderson).
+**▶️ AGORA**: Sprints 0 + 1 + 2 + 3 + 4 fechadas. Único bloqueador continua sendo 0.3 (CRON_SECRET no painel Vercel — manual, depende do Anderson).
 
-**DEPOIS DO 0.3 OK**: Sprint 4 — Relatórios contador-grade + impressão (CNPJ nos A4, filtro categoria/marca, agrupamento por dia, aging fiado, recibo PDV em A4/térmico, rodapé universal).
+**DEPOIS DO 0.3 OK**: Sprint 5 — 5 fantasmas viram features reais (cupom no checkout, recado público, coleção na home, grupo afeta PDV, atributo chips dinâmicos).
 
 ---
 
