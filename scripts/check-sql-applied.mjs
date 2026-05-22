@@ -84,6 +84,13 @@ const checks = [
   { id: "56",  desc: "audit_event table com RLS forced (Sprint 6A)", q: "SELECT 1 FROM pg_class WHERE relname='audit_event' AND relrowsecurity=true AND relforcerowsecurity=true" },
   // PDV fix 2026-05-20 — SQL 57 (sentinela de não-regressão)
   { id: "57",  desc: "SQL 57 dropou order_balcao_requires_payment_method (orçamento/fiado)", q: "SELECT 1 FROM pg_constraint WHERE conname='order_balcao_requires_payment_method'", expectEmpty: true },
+  // Onda 1+2 — SQLs 58-63 (2026-05-21/22)
+  { id: "58",  desc: "lead_anon_insert restrito a anonymous user (Fase 2 Bloco 2)", q: "SELECT 1 FROM pg_policies WHERE tablename='lead' AND policyname='lead_anon_insert' AND with_check ILIKE '%current_user_id%' AND with_check ILIKE '%anonymous%'" },
+  { id: "59",  desc: "order_item discount CHECK constraints (>=0 e <= price*qty)", q: "SELECT 1 FROM pg_constraint WHERE conname IN ('order_item_discount_nonneg','order_item_discount_not_above_line') HAVING count(*) = 2" },
+  { id: "60",  desc: "stock_movement trigger SECURITY DEFINER (Onda 1.1)", q: "SELECT 1 FROM pg_proc WHERE proname='sync_stock_cache_on_movement' AND prosecdef = true" },
+  { id: "61",  desc: "product_unit enum aceita 'par' e 'duzia' (Onda 2.10)", q: "SELECT 1 FROM pg_enum WHERE enumtypid=(SELECT oid FROM pg_type WHERE typname='product_unit') AND enumlabel IN ('par','duzia') HAVING count(*) = 2" },
+  { id: "62",  desc: "product.allow_oversell column (Onda 2.15)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='product' AND column_name='allow_oversell'" },
+  { id: "63",  desc: "store.document column (Onda 2.7)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='store' AND column_name='document'" },
 ];
 
 const url = process.env.DIRECT_URL;
