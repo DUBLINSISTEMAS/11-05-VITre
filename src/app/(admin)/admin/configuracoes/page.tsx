@@ -1,6 +1,7 @@
 import { TrashIcon } from "lucide-react";
 
 import { BusinessHoursForm } from "@/components/admin/business-hours-form";
+import { PdvPolicyCard } from "@/components/admin/pdv-policy-card";
 import { StoreConfigForm } from "@/components/admin/store-config-form";
 import { WhatsAppTemplateCard } from "@/components/admin/whatsapp-template-card";
 import type { BusinessHoursJson } from "@/db/schema/store";
@@ -65,6 +66,11 @@ export default async function ConfiguracoesPage() {
 
           <BusinessHoursForm
             initialHours={store.businessHours as BusinessHoursJson | null}
+          />
+
+          {/* Sprint 3.5 — disciplina opcional do PDV. */}
+          <PdvPolicyCard
+            initialRequireOpenCashSession={store.requireOpenCashSession}
           />
         </div>
 

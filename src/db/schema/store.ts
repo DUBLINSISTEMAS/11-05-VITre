@@ -63,6 +63,20 @@ export const storeTable = pgTable(
      */
     document: text("document"),
 
+    /**
+     * Sprint 3.5 (2026-05-22) — quando true, PDV bloqueia registro de
+     * venda balcão se não houver `cash_session` ativa pra loja. Default
+     * false preserva comportamento atual (Onda 2.6 mostra banner amarelo
+     * mas não bloqueia).
+     *
+     * Lojista ativa em /admin/configuracoes quando quer disciplina fiscal
+     * (toda venda balcão sempre vinculada a um caixa aberto = fechamento
+     * Z sem vendas órfãs).
+     */
+    requireOpenCashSession: boolean("require_open_cash_session")
+      .notNull()
+      .default(false),
+
     // WhatsApp
     whatsappNumber: text("whatsapp_number").notNull(), // E.164: +5599981757512
     whatsappDisplay: text("whatsapp_display").notNull(), // (99) 98175-7512

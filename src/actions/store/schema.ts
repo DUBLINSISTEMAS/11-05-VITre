@@ -205,3 +205,14 @@ export const applyThemeSchema = z.object({
   presetId: z.enum(["mangos-clean", "boutique", "bazar"]),
 });
 export type ApplyThemeInput = z.infer<typeof applyThemeSchema>;
+
+/**
+ * Sprint 3.5 — schema da action updatePdvPolicy. Settings operacionais
+ * do PDV, isolados do form de identidade da loja porque mudam por
+ * razões diferentes (lojista que decide endurecer fluxo vs lojista
+ * que mudou de nome/endereço).
+ */
+export const updatePdvPolicySchema = z.object({
+  requireOpenCashSession: z.boolean(),
+});
+export type UpdatePdvPolicyInput = z.infer<typeof updatePdvPolicySchema>;

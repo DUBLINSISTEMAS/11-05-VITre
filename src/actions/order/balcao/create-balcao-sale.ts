@@ -73,6 +73,9 @@ export type CreateBalcaoSaleErrorCode =
   | "PAYMENTS_SUM_MISMATCH"
   | "COUPON_INVALID"
   | "SHORTCODE_RETRY_EXHAUSTED"
+  // Sprint 3.5 — store.require_open_cash_session=true bloqueia venda
+  // sem cash_session ativa.
+  | "CASH_SESSION_REQUIRED"
   | "UNKNOWN";
 
 export interface CreateBalcaoSaleResult {
@@ -460,6 +463,23 @@ export async function createBalcaoSale(
           )
           .limit(1);
         const cashSessionIdForOrder = activeCashSession?.id ?? null;
+
+        // Sprint 3.5 — setting opt-in que exige caixa aberto pra venda
+        // balcão. Default false preserva comportamento antigo (só
+        // banner amarelo da Onda 2.6). Orçamento (quote) NÃO requer
+        // caixa — não há entrada de dinheiro. Vendas e fiado, sim.
+        if (
+          store.requireOpenCashSession &&
+          cashSessionIdForOrder === null &&
+          data.mode !== "quote"
+        ) {
+          return {
+            ok: false,
+            errorCode: "CASH_SESSION_REQUIRED" as const,
+            errorMessage:
+              "Caixa fechado. Abra um caixa antes de registrar venda (configurado em /admin/configuracoes).",
+          };
+        }
 
         // ============================================================
         // Sprint 1A Fase 4 — BRANCH ORÇAMENTO (mode='quote')

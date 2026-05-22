@@ -211,6 +211,138 @@ test("DRE expõe returnedRevenueInCents + returnedCogsInCents", () => {
 // Sprint 2.3 — frete (shipping_in_cents) sai da receita no DRE.
 // ---------------------------------------------------------------------
 
+// ---------------------------------------------------------------------
+// Sprint 3 — clientes + caixa
+// ---------------------------------------------------------------------
+
+test("Sprint 3.1: searchCustomers retorna notes + matcha por documento normalizado", () => {
+  const s = src("src/actions/customer/search.ts");
+  // Trata documento (digits-only) via normalizeDocument quando query tem
+  // 3+ dígitos. Sem isso, lojista que digita CPF não acha cliente.
+  assert.match(
+    s,
+    /normalizeDocument\(/,
+    "searchCustomers deve normalizar query pra digits e bater contra customer.document",
+  );
+  assert.match(
+    s,
+    /notes:\s*customerTable\.notes/,
+    "searchCustomers deve incluir notes nos hits (pra badge do PDV)",
+  );
+  // Tipo precisa expor notes
+  assert.match(
+    s,
+    /notes:\s*string\s*\|\s*null/,
+    "CustomerSearchHit deve declarar notes: string | null",
+  );
+});
+
+test("Sprint 3.2: PDV renderiza badge de anotação do cliente vinculado", () => {
+  const pdv = src("src/components/admin/pdv/pdv-shell.tsx");
+  assert.match(
+    pdv,
+    /customerNotes,\s*setCustomerNotes/,
+    "PDV deve guardar customerNotes em state",
+  );
+  assert.match(
+    pdv,
+    /Anotação sobre este cliente/,
+    "badge da anotação deve aparecer com label claro",
+  );
+  // onPick precisa setar notes do hit
+  assert.match(
+    pdv,
+    /setCustomerNotes\(c\?\.notes\s*\?\?\s*null\)/,
+    "onPick deve salvar c.notes no state",
+  );
+});
+
+test("Sprint 3.3: histórico do cliente linka pro detalhe via ?detail={orderId}", () => {
+  const f = src("src/app/(admin)/admin/clientes/[id]/edit-customer-form.tsx");
+  assert.match(
+    f,
+    /href=\{`\/admin\/pedidos\?detail=\$\{o\.id\}`\}/,
+    "edit-customer-form deve linkar pra /admin/pedidos?detail={orderId}",
+  );
+  // Não pode ressuscitar o link antigo via ?q=
+  assert.doesNotMatch(
+    f,
+    /\/admin\/pedidos\?q=\$\{encodeURIComponent\(o\.shortCode\)\}/,
+    "Link antigo via ?q= (Onda pré-2.12) não pode ressuscitar",
+  );
+});
+
+test("Sprint 3.4: pedidos/page aceita fiado=pendente + EXISTS subquery", () => {
+  const page = src("src/app/(admin)/admin/pedidos/page.tsx");
+  assert.match(
+    page,
+    /fiado:\s*enumOrNull\(\["pendente"\]/,
+    "pedidosSearchSchema deve aceitar fiado: 'pendente' | null",
+  );
+  assert.match(
+    page,
+    /fiadoFilter\s*===\s*"pendente"/,
+    "page deve aplicar filtro quando fiadoFilter='pendente'",
+  );
+  assert.match(
+    page,
+    /EXISTS\s*\(\s*SELECT 1 FROM \$\{receivableTable\} r/,
+    "filtro deve usar EXISTS subquery em receivable",
+  );
+
+  // UI toolbar tem o toggle
+  const tb = src("src/components/admin/orders-toolbar.tsx");
+  assert.match(
+    tb,
+    /Só fiado pendente/,
+    "OrdersToolbar deve renderizar botão 'Só fiado pendente'",
+  );
+  assert.match(
+    tb,
+    /toggleFiadoPendente/,
+    "OrdersToolbar deve expor handler toggleFiadoPendente",
+  );
+});
+
+test("Sprint 3.5: store.requireOpenCashSession + PDV bloqueia + UI card", () => {
+  const schema = src("src/db/schema/store.ts");
+  // Tolera quebras de linha do Prettier entre os chains do Drizzle.
+  assert.match(
+    schema,
+    /requireOpenCashSession:\s*boolean\("require_open_cash_session"\)\s*\.notNull\(\)\s*\.default\(false\)/s,
+    "schema deve expor requireOpenCashSession NOT NULL DEFAULT false",
+  );
+
+  // PDV bloqueia quando setting ativo + sem caixa + mode != quote
+  const pdv = src("src/actions/order/balcao/create-balcao-sale.ts");
+  assert.match(
+    pdv,
+    /store\.requireOpenCashSession\s*&&\s*cashSessionIdForOrder\s*===\s*null\s*&&\s*data\.mode\s*!==\s*"quote"/,
+    "create-balcao-sale deve bloquear venda quando setting ativo + sem caixa",
+  );
+  assert.match(
+    pdv,
+    /CASH_SESSION_REQUIRED/,
+    "errorCode 'CASH_SESSION_REQUIRED' deve existir pro UI rotear",
+  );
+
+  // Action update-pdv-policy existe
+  const action = src("src/actions/store/update-pdv-policy.ts");
+  assert.match(
+    action,
+    /requireOpenCashSession:\s*data\.requireOpenCashSession/,
+    "updatePdvPolicy deve setar require_open_cash_session no UPDATE",
+  );
+
+  // Card no /admin/configuracoes
+  const config = src("src/app/(admin)/admin/configuracoes/page.tsx");
+  assert.match(
+    config,
+    /<PdvPolicyCard/,
+    "configuracoes/page deve renderizar <PdvPolicyCard/>",
+  );
+});
+
 test("Sprint 2.3: order.shippingInCents existe no schema e é populado pelo DRE", () => {
   const orderSchema = src("src/db/schema/order.ts");
   assert.match(
