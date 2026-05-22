@@ -492,6 +492,172 @@ test("Sprint 4.8: ReportLayout aceita operatorName + helper loadReportOperatorNa
   );
 });
 
+// ---------------------------------------------------------------------
+// Sprint 5 — 5 fantasmas viram features reais
+// ---------------------------------------------------------------------
+
+test("Sprint 5.1: checkout aceita cupom via validateCouponForPublic + UI", () => {
+  // Action pública anon-callable
+  const pub = src("src/actions/coupon/public.ts");
+  assert.match(
+    pub,
+    /export async function validateCouponForPublic/,
+    "validateCouponForPublic deve estar exportado",
+  );
+  assert.match(
+    pub,
+    /withServiceRole/,
+    "anon precisa de service role pra ler store por slug",
+  );
+  assert.match(
+    pub,
+    /checkRateLimit\(rateLimits\.createOrder/,
+    "deve ter rate limit por IP (anti brute-force de códigos)",
+  );
+
+  // UI do checkout aplica + envia couponCode
+  const ui = src("src/components/storefront/checkout-panel.tsx");
+  assert.match(ui, /appliedCoupon/);
+  assert.match(
+    ui,
+    /couponCode:\s*appliedCoupon\?\.code\s*\?\?\s*null/,
+    "checkout deve passar couponCode pro createOrderFromCart",
+  );
+  // Bloco antigo "ESCONDIDO" não pode ressuscitar como comentário
+  // sem ativação.
+  assert.doesNotMatch(
+    ui,
+    /^\s*\*\s*4\.\s*Cupom — ESCONDIDO/m,
+    "comentário antigo 'ESCONDIDO' não pode mais existir — cupom está ativo",
+  );
+});
+
+test("Sprint 5.2: /contato + action submitContactMessage + link no footer", () => {
+  // Rota
+  const page = src(
+    "src/app/(storefront)/[storeSlug]/contato/page.tsx",
+  );
+  assert.match(page, /ContactForm/);
+  assert.match(page, /Fale conosco/);
+
+  // Action
+  const action = src("src/actions/lead/submit-contact.ts");
+  assert.match(action, /source:\s*"contact_form"/);
+  assert.match(
+    action,
+    /withServiceRole/,
+    "formulário público requer service role (anon)",
+  );
+
+  // Footer linka
+  const footer = src("src/components/storefront/store-footer.tsx");
+  assert.match(footer, /\$\{baseHref\}\/contato/);
+
+  // Schema TS expõe contact_form no enum
+  const lead = src("src/db/schema/lead.ts");
+  assert.match(lead, /"contact_form"/);
+});
+
+test("Sprint 5.3: home renderiza Vitrines + CollectionStrip", () => {
+  const loader = src("src/lib/storefront/home-loader.ts");
+  assert.match(loader, /collections:\s*HomeCollection\[\]/);
+  assert.match(
+    loader,
+    /storefrontCollectionTable.*showInHome/s,
+    "loader deve filtrar showInHome=true",
+  );
+
+  const home = src("src/app/(storefront)/[storeSlug]/page.tsx");
+  assert.match(home, /<CollectionStrip/);
+
+  const strip = src("src/components/storefront/collection-strip.tsx");
+  assert.match(
+    strip,
+    /href=\{`\/\$\{storeSlug\}\/colecao\/\$\{c\.slug\}`\}/,
+    "CollectionStrip deve linkar pra /[storeSlug]/colecao/[slug]",
+  );
+});
+
+test("Sprint 5.4: customer_group.default_pricing_tier + PDV aplica wholesale", () => {
+  const schema = src("src/db/schema/customer.ts");
+  assert.match(
+    schema,
+    /defaultPricingTier:\s*customerPricingTierEnum/,
+    "customer_group schema deve declarar defaultPricingTier enum",
+  );
+  assert.match(
+    schema,
+    /export type CustomerPricingTier/,
+    "tipo CustomerPricingTier deve estar exportado",
+  );
+
+  // searchCustomers traz tier via JOIN
+  const search = src("src/actions/customer/search.ts");
+  assert.match(
+    search,
+    /groupPricingTier:\s*customerGroupTable\.defaultPricingTier/,
+    "searchCustomers deve trazer tier do grupo via LEFT JOIN",
+  );
+
+  // PDV usa wholesalePrice quando tier='wholesale'
+  const pdv = src("src/components/admin/pdv/pdv-shell.tsx");
+  assert.match(pdv, /applyPricingTier/);
+  assert.match(
+    pdv,
+    /customerPricingTier === "wholesale"/,
+    "PDV deve detectar tier wholesale",
+  );
+  assert.match(
+    pdv,
+    /product\.wholesalePriceInCents/,
+    "PDV deve usar wholesalePriceInCents quando tier ativo",
+  );
+});
+
+test("Sprint 5.5: chips de atributo dinâmicos no storefront", () => {
+  // Loader
+  const al = src("src/lib/storefront/attributes-loader.ts");
+  assert.match(
+    al,
+    /export async function .*loadActiveAttributesForStore|loadActiveAttributesForStore = cache/,
+    "loadActiveAttributesForStore deve estar exportado",
+  );
+  assert.match(
+    al,
+    /productCount === 0/,
+    "loader deve filtrar valores sem produto (anti-poluição)",
+  );
+
+  // Listagem aceita attributeValueId
+  const pl = src("src/lib/storefront/products-loader.ts");
+  assert.match(pl, /attributeValueId\?:\s*string/);
+  assert.match(
+    pl,
+    /EXISTS\s*\(\s*SELECT 1 FROM \$\{productAttributeValueTable\}/,
+    "filtro de atributo deve usar EXISTS subquery (não INNER JOIN — evita dup)",
+  );
+
+  // Chips component
+  const chips = src("src/components/storefront/category-filter-chips.tsx");
+  assert.match(chips, /attributes\?: StorefrontAttribute\[\]/);
+  assert.match(
+    chips,
+    /attr.*type === "color".*colorHex/s,
+    "swatch de cor deve renderizar quando type='color' E colorHex preenchido",
+  );
+
+  // Página de categoria passa atributos
+  const cat = src(
+    "src/app/(storefront)/[storeSlug]/categoria/[categorySlug]/page.tsx",
+  );
+  assert.match(cat, /loadActiveAttributesForStore/);
+  assert.match(
+    cat,
+    /attributes=\{attributes\}/,
+    "categoria page deve passar attributes pro CategoryFilterChips",
+  );
+});
+
 test("Sprint 2.3: order.shippingInCents existe no schema e é populado pelo DRE", () => {
   const orderSchema = src("src/db/schema/order.ts");
   assert.match(

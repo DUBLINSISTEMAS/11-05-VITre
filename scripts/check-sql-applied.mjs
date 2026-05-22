@@ -95,6 +95,8 @@ const checks = [
   { id: "64",  desc: "índice trigram em product_variant.name (Sprint 2.4)", q: "SELECT 1 FROM pg_indexes WHERE tablename='product_variant' AND indexname='product_variant_name_trgm_idx'" },
   { id: "65",  desc: "order.shipping_in_cents column + CHECK nonneg (Sprint 2.3)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='order' AND column_name='shipping_in_cents'" },
   { id: "66",  desc: "store.require_open_cash_session column (Sprint 3.5)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='store' AND column_name='require_open_cash_session'" },
+  { id: "67",  desc: "lead_source enum aceita 'contact_form' (Sprint 5.2)", q: "SELECT 1 FROM pg_enum WHERE enumtypid=(SELECT oid FROM pg_type WHERE typname='lead_source') AND enumlabel='contact_form'" },
+  { id: "68",  desc: "customer_group.default_pricing_tier + enum customer_pricing_tier (Sprint 5.4)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='customer_group' AND column_name='default_pricing_tier'" },
 ];
 
 const url = process.env.DIRECT_URL;

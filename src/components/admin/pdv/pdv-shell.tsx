@@ -270,6 +270,16 @@ export function PdvShell() {
   // Sprint 3.2 — notas internas do cliente vinculado. Renderiza badge
   // "📝 anotação" no card. Set quando onPick recebe hit com notes.
   const [customerNotes, setCustomerNotes] = useState<string | null>(null);
+  // Sprint 5.4 — tier de pricing do grupo do cliente. 'wholesale' faz
+  // addToCart usar product.wholesalePriceInCents quando disponível.
+  // Items JÁ no carrinho não são recalculados (ver toast no onPick) —
+  // lojista re-adiciona se quiser ajustar.
+  const [customerPricingTier, setCustomerPricingTier] = useState<
+    "regular" | "wholesale" | null
+  >(null);
+  const [customerGroupLabel, setCustomerGroupLabel] = useState<string | null>(
+    null,
+  );
   // Venda rápida (Frente A.2): nome/tel direto no order, sem cadastro de
   // customer. Só usados quando customerId === null.
   const [walkInName, setWalkInName] = useState<string>("");
@@ -422,12 +432,34 @@ export function PdvShell() {
     setSurchargeAmountInput(centsToInput(cents));
   };
 
+  // Sprint 5.4 — quando o cliente vinculado é tier 'wholesale' E o
+  // produto tem wholesalePriceInCents cadastrado, substitui o preço
+  // efetivo. Variante NÃO tem campo wholesale (decisão atual: tier é
+  // a nível produto). Fallback: se cliente é atacado mas produto não
+  // tem preço atacado, mantém o preço normal (lojista sabe — ou ajusta
+  // depois com desconto manual).
+  const applyPricingTier = useCallback(
+    (product: PdvProductHit, fallbackPrice: number): number => {
+      if (
+        customerPricingTier === "wholesale" &&
+        product.wholesalePriceInCents !== null &&
+        product.wholesalePriceInCents > 0
+      ) {
+        return product.wholesalePriceInCents;
+      }
+      return fallbackPrice;
+    },
+    [customerPricingTier],
+  );
+
   const addToCart = useCallback(
     (
       product: PdvProductHit,
       variant: PdvProductVariantHit | null,
       effectivePrice: number,
     ) => {
+      // Sprint 5.4 — aplica tier ANTES de inserir no carrinho.
+      const finalPrice = applyPricingTier(product, effectivePrice);
       // Audit 2026-05-21 — limpa banner "Venda registrada" da venda
       // ANTERIOR ao começar a próxima venda. Antes, lojista finalizava,
       // adicionava produto novo e ainda via "Total R$ X" da venda
@@ -477,7 +509,7 @@ export function PdvShell() {
             variantId: variant?.id ?? null,
             productName: product.name,
             variantName: variant?.name ?? null,
-            priceInCents: effectivePrice,
+            priceInCents: finalPrice,
             quantity: 1,
             thumbUrl: product.thumbUrl,
             trackStock,
@@ -487,7 +519,7 @@ export function PdvShell() {
         ];
       });
     },
-    [],
+    [applyPricingTier],
   );
 
   // Redesign — adapter do ProductPickerDialog. Cada item selecionado
@@ -909,6 +941,8 @@ export function PdvShell() {
               customerId={customerId}
               customerLabel={customerLabel}
               customerNotes={customerNotes}
+              customerGroupLabel={customerGroupLabel}
+              customerPricingTier={customerPricingTier}
               walkInName={walkInName}
               walkInPhone={walkInPhone}
               setWalkInName={setWalkInName}
@@ -917,6 +951,18 @@ export function PdvShell() {
                 setCustomerId(c?.id ?? null);
                 setCustomerLabel(c ? `${c.name} · ${c.phone}` : "");
                 setCustomerNotes(c?.notes ?? null);
+                // Sprint 5.4 — pricing tier do grupo. Quando cliente é
+                // de grupo 'wholesale' E carrinho já tem itens, avisa
+                // que itens novos virão em preço atacado (existentes
+                // ficam como estão; lojista reposiciona se quiser).
+                const tier = c?.groupPricingTier ?? null;
+                setCustomerPricingTier(tier);
+                setCustomerGroupLabel(c?.groupName ?? null);
+                if (tier === "wholesale" && cart.length > 0) {
+                  toast.info(
+                    "Cliente atacado vinculado — novos itens virão em preço de atacado. Os itens atuais ficam no preço original.",
+                  );
+                }
                 if (c) {
                   setWalkInName("");
                   setWalkInPhone("");
@@ -2178,6 +2224,8 @@ function CustomerComboboxLight({
   customerId,
   customerLabel,
   customerNotes,
+  customerGroupLabel,
+  customerPricingTier,
   walkInName,
   walkInPhone,
   setWalkInName,
@@ -2187,6 +2235,8 @@ function CustomerComboboxLight({
   customerId: string | null;
   customerLabel: string;
   customerNotes: string | null;
+  customerGroupLabel: string | null;
+  customerPricingTier: "regular" | "wholesale" | null;
   walkInName: string;
   walkInPhone: string;
   setWalkInName: (v: string) => void;
@@ -2240,8 +2290,19 @@ function CustomerComboboxLight({
             <div className="flex items-center gap-2">
               <UserIcon className="text-ink-4 size-4" />
               <div>
-                <p className="text-sm font-medium">{customerLabel}</p>
-                <p className="text-ink-4 text-xs">Cadastrado · vinculado à venda</p>
+                <p className="flex items-center gap-1.5 text-sm font-medium">
+                  {customerLabel}
+                  {/* Sprint 5.4 — badge "Atacado" quando grupo tier wholesale. */}
+                  {customerPricingTier === "wholesale" ? (
+                    <span className="bg-brand-wash text-brand rounded px-1.5 py-px text-[10px] font-bold uppercase tracking-wide">
+                      Atacado
+                    </span>
+                  ) : null}
+                </p>
+                <p className="text-ink-4 text-xs">
+                  Cadastrado · vinculado à venda
+                  {customerGroupLabel ? ` · ${customerGroupLabel}` : ""}
+                </p>
               </div>
             </div>
             <button
@@ -2611,6 +2672,10 @@ function FullCustomerCreateDialog({
         // cadastro rápido — sai sem anotação. Pode editar depois em
         // /admin/clientes.
         notes: notes.trim() || null,
+        // Sprint 5.4 — cadastro rápido sai sem grupo. Lojista que quer
+        // tier atacado linka via /admin/clientes depois.
+        groupPricingTier: null,
+        groupName: null,
       });
     });
   };

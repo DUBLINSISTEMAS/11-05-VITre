@@ -3,7 +3,12 @@
 import { and, eq, ilike, or, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 
-import { customerTable,type CustomerType } from "@/db/schema";
+import {
+  customerGroupTable,
+  customerTable,
+  type CustomerPricingTier,
+  type CustomerType,
+} from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { normalizeDocument } from "@/lib/document";
 import { getCurrentStore } from "@/lib/store-context";
@@ -24,6 +29,15 @@ export interface CustomerSearchHit {
    * já vem do DB CHECK).
    */
   notes: string | null;
+  /**
+   * Sprint 5.4: tier de pricing herdado do grupo do cliente. Quando
+   * 'wholesale', PDV aplica `product.wholesale_price_in_cents` ao
+   * adicionar itens (fallback no preço normal se NULL). NULL quando
+   * cliente não tem grupo ou grupo é 'regular'.
+   */
+  groupPricingTier: CustomerPricingTier | null;
+  /** Sprint 5.4 — nome do grupo do cliente (pra badge na UI). */
+  groupName: string | null;
 }
 
 /**
@@ -57,8 +71,15 @@ export async function searchCustomers(
           type: customerTable.type,
           document: customerTable.document,
           notes: customerTable.notes,
+          // Sprint 5.4 — JOIN com customer_group pra trazer tier.
+          groupPricingTier: customerGroupTable.defaultPricingTier,
+          groupName: customerGroupTable.name,
         })
         .from(customerTable)
+        .leftJoin(
+          customerGroupTable,
+          eq(customerGroupTable.id, customerTable.groupId),
+        )
         .where(eq(customerTable.storeId, store.id))
         .orderBy(sql`${customerTable.createdAt} DESC`)
         .limit(MAX_RESULTS);
@@ -92,8 +113,14 @@ export async function searchCustomers(
         type: customerTable.type,
         document: customerTable.document,
         notes: customerTable.notes,
+        groupPricingTier: customerGroupTable.defaultPricingTier,
+        groupName: customerGroupTable.name,
       })
       .from(customerTable)
+      .leftJoin(
+        customerGroupTable,
+        eq(customerGroupTable.id, customerTable.groupId),
+      )
       .where(where)
       .orderBy(customerTable.name)
       .limit(MAX_RESULTS);

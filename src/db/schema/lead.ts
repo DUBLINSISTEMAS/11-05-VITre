@@ -26,6 +26,10 @@ export const leadSourceEnum = pgEnum("lead_source", [
   "pdp_button", // botão WA do PDP
   "list_button", // botão WA inline na listagem
   "cart_button", // botão WA da sacola/checkout
+  // Sprint 5.2 (SQL 67) — formulário público /[storeSlug]/contato.
+  // Diferente dos outros: cliente preenche nome + telefone + mensagem,
+  // não intenção de compra de produto específico.
+  "contact_form",
   "other",
 ]);
 

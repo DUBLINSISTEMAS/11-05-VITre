@@ -19,6 +19,7 @@ import { notFound } from "next/navigation";
 
 import { BannerCarousel } from "@/components/storefront/banner-carousel";
 import { CategoryStrip } from "@/components/storefront/category-strip";
+import { CollectionStrip } from "@/components/storefront/collection-strip";
 import { ProductGrid } from "@/components/storefront/product-grid";
 import { PromoStrip } from "@/components/storefront/promo-strip";
 import { Button } from "@/components/ui/button";
@@ -48,7 +49,7 @@ export default async function StoreHomePage({
     getHomePageData(store.id, store.slug),
     getSessionOrNull(),
   ]);
-  const { banners, categoryTree, featured, recent } = homeData;
+  const { banners, categoryTree, collections, featured, recent } = homeData;
 
   const isOwner = session?.user?.id === store.ownerId;
   const hasBanner = banners.length > 0;
@@ -94,6 +95,20 @@ export default async function StoreHomePage({
           rotationSec={store.bannerRotationSec}
           heroVariant={store.heroStyle as HeroVariant}
         />
+      )}
+
+      {/* Sprint 5.3 — vitrines (coleções) entre banner e categorias.
+          Aparece SE o lojista criou coleção(s) com showInHome=true e
+          que tenham ao menos 1 produto. */}
+      {collections.length > 0 && (
+        <section className="space-y-2">
+          <header>
+            <h2 className="text-sm font-semibold tracking-[-0.3px] text-foreground">
+              Vitrines
+            </h2>
+          </header>
+          <CollectionStrip storeSlug={store.slug} collections={collections} />
+        </section>
       )}
 
       {categoryTree.length > 0 && (

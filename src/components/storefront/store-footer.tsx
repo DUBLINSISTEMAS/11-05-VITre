@@ -46,13 +46,23 @@ export function StoreFooter({ store }: StoreFooterProps) {
                 {store.description}
               </p>
             )}
-            <Link
-              href={`${baseHref}/sobre`}
-              prefetch={false}
-              className="text-primary hocus:underline inline-block text-sm font-medium underline-offset-2"
-            >
-              Sobre a loja
-            </Link>
+            <div className="flex flex-col gap-1.5">
+              <Link
+                href={`${baseHref}/sobre`}
+                prefetch={false}
+                className="text-primary hocus:underline inline-block text-sm font-medium underline-offset-2"
+              >
+                Sobre a loja
+              </Link>
+              {/* Sprint 5.2 — link pro formulário público de contato. */}
+              <Link
+                href={`${baseHref}/contato`}
+                prefetch={false}
+                className="text-primary hocus:underline inline-block text-sm font-medium underline-offset-2"
+              >
+                Fale conosco
+              </Link>
+            </div>
           </div>
 
           <div className="space-y-2 text-sm">

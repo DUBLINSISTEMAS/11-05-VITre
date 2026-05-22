@@ -24,6 +24,7 @@ import {
   pageNumberSchema,
   priceCentsSchema,
 } from "@/lib/page-search-params";
+import { loadActiveAttributesForStore } from "@/lib/storefront/attributes-loader";
 import { getCategoryBySlug } from "@/lib/storefront/categories-loader";
 import {
   listProducts,
@@ -51,6 +52,13 @@ const categoriaSearchSchema = z.object({
   priceMax: priceCentsSchema,
   sort: enumWithDefault(VALID_SORTS, "relevance"),
   promo: boolFlagSchema,
+  // Sprint 5.5 — filtro por attribute_value (single UUID).
+  attr: z
+    .string()
+    .uuid()
+    .optional()
+    .nullable()
+    .catch(null),
 });
 
 function formatPiecesCounter(total: number): string {
@@ -107,6 +115,7 @@ export default async function CategoryPage({
     priceMin: priceMinCents,
     priceMax: priceMaxCents,
     promo: promoOnly,
+    attr: attributeValueId,
   } = categoriaSearchSchema.parse(sp);
 
   const store = await getStoreBySlug(storeSlug);
@@ -115,17 +124,21 @@ export default async function CategoryPage({
   const category = await getCategoryBySlug(store.id, store.slug, categorySlug);
   if (!category) notFound();
 
-  const result = await listProducts({
-    storeId: store.id,
-    storeSlug: store.slug,
-    categorySlug,
-    page,
-    limit: PAGE_SIZE,
-    sort,
-    priceMinCents,
-    priceMaxCents,
-    promoOnly,
-  });
+  const [result, attributes] = await Promise.all([
+    listProducts({
+      storeId: store.id,
+      storeSlug: store.slug,
+      categorySlug,
+      page,
+      limit: PAGE_SIZE,
+      sort,
+      priceMinCents,
+      priceMaxCents,
+      promoOnly,
+      attributeValueId: attributeValueId ?? undefined,
+    }),
+    loadActiveAttributesForStore(store.id, store.slug),
+  ]);
   if (!result) notFound();
 
   const basePath = `/${store.slug}/categoria/${category.slug}`;
@@ -139,6 +152,7 @@ export default async function CategoryPage({
       usp.set("priceMax", String(priceMaxCents));
     if (sort !== "relevance") usp.set("sort", sort);
     if (promoOnly) usp.set("promo", "1");
+    if (attributeValueId) usp.set("attr", attributeValueId);
     if (p > 1) usp.set("page", String(p));
     const qs = usp.toString();
     return qs ? `?${qs}` : "?";
@@ -154,7 +168,7 @@ export default async function CategoryPage({
         counter={formatPiecesCounter(result.total)}
       />
 
-      <CategoryFilterChips basePath={basePath} />
+      <CategoryFilterChips basePath={basePath} attributes={attributes} />
 
       <div className="px-4 pb-24 pt-1 lg:pb-12">
         {result.items.length === 0 ? (

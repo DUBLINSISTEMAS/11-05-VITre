@@ -41,7 +41,12 @@ import { unstable_cache } from "next/cache";
 import { cache } from "react";
 
 import type { Product, ProductImage, ProductVariant } from "@/db/schema";
-import { productImageTable, productTable, productVariantTable } from "@/db/schema";
+import {
+  productAttributeValueTable,
+  productImageTable,
+  productTable,
+  productVariantTable,
+} from "@/db/schema";
 import {
   attachPrimaryImage,
   DEFAULT_PRODUCT_LIMIT,
@@ -78,6 +83,12 @@ export interface ListProductsParams {
    * Espelha `hasActivePromo` em pricing.ts.
    */
   promoOnly?: boolean;
+  /**
+   * Sprint 5.5 — filtra produtos linkados a este attribute_value via
+   * `product_attribute_value`. EXISTS subquery — INNER JOIN duplicaria
+   * linhas se o produto tivesse outros vínculos.
+   */
+  attributeValueId?: string;
   sort?: ProductSort;
   page?: number;
   limit?: number;
@@ -150,6 +161,19 @@ async function loadProductsFromDb(
     }
     if (params.priceMaxCents !== undefined) {
       conditions.push(lte(productTable.basePriceInCents, params.priceMaxCents));
+    }
+
+    // Sprint 5.5 — filtro por attribute_value via EXISTS. INNER JOIN
+    // duplicaria linhas se o produto tivesse outros vínculos.
+    if (params.attributeValueId) {
+      conditions.push(
+        sql`EXISTS (
+          SELECT 1 FROM ${productAttributeValueTable} pav
+          WHERE pav.product_id = ${productTable.id}
+            AND pav.store_id = ${storeId}
+            AND pav.attribute_value_id = ${params.attributeValueId}
+        )`,
+      );
     }
 
     if (params.promoOnly) {
@@ -232,6 +256,9 @@ export const listProducts = cache(
       String(params.priceMinCents ?? ""),
       String(params.priceMaxCents ?? ""),
       "all-promo",
+      // Sprint 5.5 — chave inclui attributeValueId pra separar caches
+      // por filtro de atributo.
+      params.attributeValueId ?? "no-attr",
       params.sort ?? "relevance",
       String(params.page ?? 1),
       String(params.limit ?? DEFAULT_PRODUCT_LIMIT),

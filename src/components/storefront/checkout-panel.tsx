@@ -9,7 +9,10 @@
  *   3. Form "Seus dados" (name + whatsapp + notes — Lote 2: NÃO existe no
  *      canvas mas é necessário pro createOrderFromCart preencher o WA;
  *      bloco mínimo, posicionado entre lista e totals).
- *   4. Cupom — ESCONDIDO (decisão Lote 2: sem couponTable).
+ *   4. Cupom — Sprint 5.1 (2026-05-22): ativado. Campo "Tem código de
+ *      desconto?" entre form de dados e totals. Valida via
+ *      validateCouponForPublic (anon-callable, rate-limited por IP).
+ *      Server revalida + aplica em createOrderFromCart no submit.
  *   5. Totals card (Subtotal/Frete/Total) bg-muted border rounded-12.
  *   6. Aviso dashed border ("Pedido finalizado pelo WhatsApp...").
  *   7. Sticky CTA WA height-48 rounded-12 shadow-colored.
@@ -37,6 +40,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { validateCouponForPublic } from "@/actions/coupon/public";
 import { createOrderFromCart } from "@/actions/order/create-from-cart";
 import {
   type CustomerInput,
@@ -82,6 +86,88 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
   const [storeLoaded, setStoreLoaded] = useState(false);
   useEffect(() => setStoreLoaded(true), []);
 
+  // Sprint 5.1 — estado do cupom. couponInput é o texto digitado;
+  // applied é o cupom validado (com discount). null = nada aplicado.
+  const [couponInput, setCouponInput] = useState("");
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string;
+    discountInCents: number;
+  } | null>(null);
+
+  // Quando o carrinho mudar, valida de novo o cupom aplicado (subtotal
+  // mudou — desconto% precisa ser recalculado, valor mínimo pode
+  // deixar de bater).
+  useEffect(() => {
+    if (!appliedCoupon || !isHydrated) return;
+    let canceled = false;
+    void (async () => {
+      const res = await validateCouponForPublic({
+        storeSlug: store.slug,
+        code: appliedCoupon.code,
+        subtotalInCents: subtotalCents,
+      });
+      if (canceled) return;
+      if (!res.ok) {
+        setAppliedCoupon(null);
+        setCouponError(res.error);
+        return;
+      }
+      if (res.discountInCents !== appliedCoupon.discountInCents) {
+        setAppliedCoupon({
+          code: res.code,
+          discountInCents: res.discountInCents,
+        });
+      }
+    })();
+    return () => {
+      canceled = true;
+    };
+    // appliedCoupon.code é a chave; discountInCents pode mudar por
+    // recálculo — não entra no array pra evitar loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedCoupon?.code, subtotalCents, isHydrated, store.slug]);
+
+  const applyCoupon = async () => {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    setApplyingCoupon(true);
+    setCouponError(null);
+    try {
+      const res = await validateCouponForPublic({
+        storeSlug: store.slug,
+        code,
+        subtotalInCents: subtotalCents,
+      });
+      if (!res.ok) {
+        setCouponError(res.error);
+        setAppliedCoupon(null);
+        return;
+      }
+      setAppliedCoupon({
+        code: res.code,
+        discountInCents: res.discountInCents,
+      });
+      setCouponInput("");
+      toast.success(
+        `Cupom ${res.code} aplicado · −${formatBRL(res.discountInCents)}`,
+      );
+    } finally {
+      setApplyingCoupon(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponError(null);
+    setCouponInput("");
+  };
+
+  // Total final descontando cupom — usado no rodapé e no envio.
+  const discountInCents = appliedCoupon?.discountInCents ?? 0;
+  const totalAfterCoupon = Math.max(0, subtotalCents - discountInCents);
+
   const isEmpty = isHydrated && count === 0;
   const storeFirstName = store.name.split(" ")[0] ?? store.name;
 
@@ -105,6 +191,9 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
         storeSlug: store.slug,
         idempotencyKey: idempotencyKeyRef.current!,
         items,
+        // Sprint 5.1 — server revalida e aplica o desconto; o
+        // appliedCoupon do client é só preview.
+        couponCode: appliedCoupon?.code ?? null,
         ...data,
       });
 
@@ -127,6 +216,19 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
       if (result.errorCode === "RATE_LIMIT") {
         toast.error("Muitas tentativas", {
           description: "Aguarde alguns instantes e tente novamente.",
+        });
+        return;
+      }
+      if (result.errorCode === "COUPON_INVALID") {
+        // Sprint 5.1 — cupom virou inválido entre preview e submit
+        // (foi pausado pelo lojista, atingiu limite, expirou no meio
+        // do checkout). Remove o preview e instrui cliente.
+        setAppliedCoupon(null);
+        setCouponError(
+          result.errorMessage ?? "Cupom não disponível mais — sacola atualizada.",
+        );
+        toast.error("Cupom não disponível mais.", {
+          description: "A sacola foi atualizada. Tente finalizar de novo.",
         });
         return;
       }
@@ -272,15 +374,96 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
           </div>
         </section>
 
+        {/* Sprint 5.1 — campo de cupom. Quando aplicado, mostra
+            badge com desconto + botão Remover. Quando vazio, mostra
+            input + Aplicar. Erros aparecem inline. */}
+        <section className="mt-5 space-y-2">
+          <h2 className="text-muted-foreground font-mono text-[9.5px] uppercase tracking-[0.5px]">
+            Código de desconto
+          </h2>
+          {appliedCoupon ? (
+            <div className="border-state-ok/30 bg-state-ok/10 flex items-center justify-between rounded-[10px] border p-2.5 text-[12.5px]">
+              <div>
+                <p className="text-state-ok font-semibold">
+                  ✓ Cupom {appliedCoupon.code}
+                </p>
+                <p className="text-muted-foreground font-mono text-[11px] tabular-nums">
+                  −{formatBRL(appliedCoupon.discountInCents)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={removeCoupon}
+                className="text-muted-foreground hover:text-foreground text-[11px] underline-offset-2 hover:underline"
+              >
+                Remover
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  value={couponInput}
+                  onChange={(e) => {
+                    setCouponInput(e.target.value);
+                    if (couponError) setCouponError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void applyCoupon();
+                    }
+                  }}
+                  placeholder="Ex: MAIO10"
+                  maxLength={40}
+                  className="h-10 flex-1 uppercase"
+                  aria-label="Código de desconto"
+                  disabled={applyingCoupon}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="default"
+                  onClick={() => void applyCoupon()}
+                  disabled={applyingCoupon || couponInput.trim().length === 0}
+                  className="h-10"
+                >
+                  {applyingCoupon ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    "Aplicar"
+                  )}
+                </Button>
+              </div>
+              {couponError ? (
+                <p
+                  role="alert"
+                  className="text-destructive text-[11px] font-medium"
+                >
+                  {couponError}
+                </p>
+              ) : null}
+            </>
+          )}
+        </section>
+
         {/* Totals card */}
         <div className="border-border bg-muted/40 mt-5 space-y-2 rounded-xl border p-3.5">
           <Row label="Subtotal" value={formatBRL(subtotalCents)} mono />
+          {appliedCoupon ? (
+            <Row
+              label={`Cupom ${appliedCoupon.code}`}
+              value={`−${formatBRL(discountInCents)}`}
+              mono
+            />
+          ) : null}
           <Row label="Frete" value="A combinar" />
           <hr className="border-border my-2" />
           <div className="flex items-baseline justify-between">
             <span className="text-[12.5px] font-semibold">Total</span>
             <span className="text-[18px] font-semibold tabular-nums tracking-tight">
-              {formatBRL(subtotalCents)}
+              {formatBRL(totalAfterCoupon)}
             </span>
           </div>
         </div>

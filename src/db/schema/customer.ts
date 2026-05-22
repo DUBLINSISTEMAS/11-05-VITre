@@ -38,6 +38,16 @@ import { storeTable } from "./store";
  * o discountBps de cada). `customer.group_id` FK ON DELETE SET NULL —
  * apagar grupo desvincula sem perder o cliente.
  */
+/**
+ * Sprint 5.4 — tier de pricing aplicado quando cliente do grupo é
+ * selecionado no PDV. 'regular' usa preço base/promo; 'wholesale' usa
+ * product.wholesale_price_in_cents (fallback no normal se NULL).
+ */
+export const customerPricingTierEnum = pgEnum("customer_pricing_tier", [
+  "regular",
+  "wholesale",
+]);
+
 export const customerGroupTable = pgTable(
   "customer_group",
   {
@@ -52,6 +62,15 @@ export const customerGroupTable = pgTable(
      * selecionado. NÃO aplica silenciosamente — UI mostra botão "aplicar".
      */
     discountBps: integer("discount_bps").notNull().default(0),
+    /**
+     * Sprint 5.4 (SQL 68) — Quando cliente desse grupo é linkado no PDV,
+     * 'wholesale' faz cada item adicionado começar com
+     * `product.wholesale_price_in_cents` (fallback no preço normal se
+     * NULL). Coexiste com discountBps — pode ter ambos.
+     */
+    defaultPricingTier: customerPricingTierEnum("default_pricing_tier")
+      .notNull()
+      .default("regular"),
     description: text("description"),
     position: integer("position").notNull().default(0),
     isActive: boolean("is_active").notNull().default(true),
@@ -176,3 +195,5 @@ export const customerRelations = relations(customerTable, ({ one }) => ({
 export type Customer = typeof customerTable.$inferSelect;
 export type NewCustomer = typeof customerTable.$inferInsert;
 export type CustomerType = (typeof customerTypeEnum.enumValues)[number];
+export type CustomerPricingTier =
+  (typeof customerPricingTierEnum.enumValues)[number];

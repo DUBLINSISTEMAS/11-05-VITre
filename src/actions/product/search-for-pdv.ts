@@ -29,6 +29,11 @@ export interface PdvProductHit {
   promoPriceInCents: number | null;
   promoStartsAt: Date | null;
   promoEndsAt: Date | null;
+  /**
+   * Sprint 5.4 — preço atacado. NULL = sem preço dedicado pra atacado
+   * (PDV usa o preço normal mesmo pra cliente com tier wholesale).
+   */
+  wholesalePriceInCents: number | null;
   trackStock: boolean;
   stockQuantity: number | null;
   isActive: boolean;
@@ -97,6 +102,7 @@ export async function searchProductsForPdv(
         promoPriceInCents: productTable.promoPriceInCents,
         promoStartsAt: productTable.promoStartsAt,
         promoEndsAt: productTable.promoEndsAt,
+        wholesalePriceInCents: productTable.wholesalePriceInCents,
         trackStock: productTable.trackStock,
         stockQuantity: productTable.stockQuantity,
         isActive: productTable.isActive,
