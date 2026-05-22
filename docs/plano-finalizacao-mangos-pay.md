@@ -61,11 +61,11 @@
 
 ## Bloco C — Costurar 5 fantasmas (regra meta-2 do CLAUDE.md)
 
-- [ ] **C1 Coleção (Vitrine)**: Storefront `[storeSlug]/page.tsx` lê coleções da loja e renderiza seção "Vitrines" entre banner e produtos. Cada vitrine vira link `/colecao/[slug]` (já existe)
-- [ ] **C2 Atributo (Filtro)**: `category-filter-chips.tsx:9-15` deixa de hardcodar Tudo/Promoção/Novidades. Lê `attribute` da loja, renderiza chips dinâmicos. Filtro aplica via query string
-- [ ] **C3 Cupom no checkout WhatsApp**: `storefront/checkout-panel.tsx:12` desativa o comentário "ESCONDIDO". Campo input "Tem código de desconto?" → valida server-side (já existe action) → aplica ao carrinho
-- [ ] **C4 Recado (Lead)**: Storefront ganha página `/contato` (ou seção no footer) com form chamando `recordLead`. Admin lista deixa de ser eternos zeros
-- [ ] **C5 Grupo de cliente com efeito real**: PDV consulta `groupId` do cliente vinculado. Se grupo == "Atacado", aplica `wholesalePrice` do produto automaticamente. Sem regra: feature deletada (não fica decorativa)
+- [x] **C1 Coleção (Vitrine)**: `home-loader` traz collections + thumbnails, `CollectionStrip` renderiza entre banner e categorias. (Sprint 5.3, commit `281d582`)
+- [x] **C2 Atributo (Filtro)**: `attributes-loader` + chips dinâmicos com swatch de cor + filtro via `?attr=<uuid>` em `products-loader`. (Sprint 5.5, commit `281d582`)
+- [x] **C3 Cupom no checkout WhatsApp**: `validateCouponForPublic` anon-callable + UI no `checkout-panel` + server revalida em `createOrderFromCart`. (Sprint 5.1, commit `281d582`)
+- [x] **C4 Recado (Lead)**: rota `/[storeSlug]/contato` + `submitContactMessage` + link no footer + SQL 67 (`lead_source += contact_form`). (Sprint 5.2, commit `281d582`)
+- [x] **C5 Grupo de cliente com efeito real**: SQL 68 (`customer_group.default_pricing_tier`) + PDV aplica `wholesalePriceInCents` quando cliente é tier 'wholesale'. (Sprint 5.4, commit `281d582`)
 
 ---
 
@@ -219,3 +219,4 @@ PÓS-#1                  I (refator) + G (CSV se necessário) + J (multi-tenant 
 | 2026-05-22 | **Sprint 2 fechado**: D1 (devolução parcial) + D2 (fiado guiado) + E2 (frete no DRE) + I5 (trigram). 2 SQLs novas aplicadas em prod (64, 65). 3 commits: `39a4807` SQL 64 trigram, `70c6be7` 2.1+2.2 devolução parcial + fluxo guiado, `5342cc8` 2.3 SQL 65 shipping no DRE. Auditoria: 513/513 unit + tsc 0 warnings + 39/39 integration + 66/66 SQLs aplicados. |
 | 2026-05-22 | **Sprint 3 fechado**: D3 (busca CPF/CNPJ) + D4 (notes no PDV) + D5 (histórico linka detalhe) + D6 (filtro fiado pendente) + D7 (setting requireOpenCashSession). 1 SQL nova aplicada em prod (66). 3 commits: `6b2c8a0` clientes 3.1-3.3, `56c93ff` filtro fiado, `6f79e98` setting caixa + SQL 66. Auditoria: 519/519 unit + tsc 0 warnings + 39/39 integration + 67/67 SQLs aplicados. |
 | 2026-05-22 | **Sprint 4 fechado**: E3+E4+E5+E6 (relatórios A4 contador-grade) + F1+F2+F3 (impressão recibo dual / Z A4 / rodapé universal). 2 commits: `81c0ad5` 4.1-4.5+4.8 (CNPJ + filtros + agrupamento + aging + custeio + operador), `60a8845` 4.6-4.7 (recibo fmt + Z A4). Nenhuma SQL nova exigida. Auditoria: 527/527 unit + tsc 0 warnings + 39/39 integration + 67/67 SQLs aplicados. |
+| 2026-05-22 | **Sprint 5 fechado**: Bloco C inteiro (5 fantasmas reais) — C3 cupom + C4 recado + C1 coleção + C5 grupo + C2 atributo. 2 SQLs novas aplicadas (67, 68). 1 commit grande: `281d582`. Auditoria: 534/534 unit + tsc 0 warnings + 39/39 integration + 69/69 SQLs aplicados. |

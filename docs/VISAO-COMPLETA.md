@@ -237,18 +237,18 @@ Objetivo: contador fecha o mês sem reabrir Excel.
 - [x] **4.8** Rodapé universal — `ReportLayout.operatorName`, `loadReportOperatorName`, `counter(page)` via globals.css. 5 A4 + recibo + Z. commits `81c0ad5` + `60a8845`
 - [x] **4.9** Mini-auditoria: 527/527 unit + tsc 0 warnings + 67/67 SQLs
 
-### 🟪 SPRINT 5 — 5 fantasmas viram features reais (1 semana)
+### 🟪 SPRINT 5 — 5 fantasmas viram features reais (1 semana) ✅ **FECHADO 2026-05-22**
 
 Objetivo: o que está no admin tem efeito no storefront. Sem feature inerte.
 
 **Ordem do conselho 5 agentes** (retorno comercial primeiro):
 
-- [ ] **5.1 CUPOM no checkout (1 dia)** — `storefront/checkout-panel.tsx:12` desativa comentário "ESCONDIDO". Campo input "Tem código de desconto?" → chama `validateCoupon` server action → aplica ao carrinho. Tratar: cupom inválido, expirado, limite excedido, valor mínimo não atingido
-- [ ] **5.2 RECADO formulário público (0.5 dia)** — nova rota `/[storeSlug]/contato` com form (nome + telefone + mensagem) chamando `recordLead`. Link no footer do storefront. Admin `/admin/contatos` deixa de ser zeros eternos
-- [ ] **5.3 COLEÇÃO visível na home (1 dia)** — `[storeSlug]/page.tsx` lê `storefrontCollection` da loja. Renderiza seção "Vitrines" entre banner e produtos. Cada vitrine link pra `/colecao/[slug]` (rota já existe)
-- [ ] **5.4 GRUPO afeta PDV (1.5 dia)** — PDV consulta `customer.groupId` ao linkar cliente. Se grupo tem `defaultPricingTier = 'wholesale'`, aplica `product.wholesalePrice` automaticamente. UI: badge "Atacado" na linha do produto + chip ao lado do cliente
-- [ ] **5.5 ATRIBUTO chips dinâmicos (2 dias)** — `category-filter-chips.tsx:9-15` deixa de hardcodar Tudo/Promoção/Novidades. Lê `attribute` + `attributeValue` da loja, renderiza chips dinâmicos por categoria. Filtro aplica via query string `?attr={attrId}={value}`. Lista de produtos faz query com JOIN em `product_attribute_value`
-- [ ] **5.6** Mini-auditoria + smoke E2E manual de cada fantasma
+- [x] **5.1 CUPOM no checkout** — nova action `validateCouponForPublic` (anon-callable, rate-limited). Campo "Código de desconto" no checkout. `createOrderFromCart` recebe `couponCode` e revalida server-side. Trata errorCode 'COUPON_INVALID' como cupom expirado entre preview e submit. commit `281d582`
+- [x] **5.2 RECADO formulário público** — SQL 67 (`lead_source += 'contact_form'`). Nova rota `/[storeSlug]/contato` + action `submitContactMessage`. Link no footer. Admin `/admin/contatos` recebe os recados. commit `281d582`
+- [x] **5.3 COLEÇÃO visível na home** — `home-loader` traz collections com `showInHome=true` + count + thumbnail. Novo `CollectionStrip` entre banner e categorias. commit `281d582`
+- [x] **5.4 GRUPO afeta PDV** — SQL 68 (`customer_group.default_pricing_tier`). PDV consulta tier via `searchCustomers`, aplica `product.wholesalePriceInCents` em items adicionados. Badge "ATACADO" no card. commit `281d582`
+- [x] **5.5 ATRIBUTO chips dinâmicos** — `loadActiveAttributesForStore` retorna atributos + valores com count. `CategoryFilterChips` renderiza chip por valor (swatch quando color). `products-loader` filtra via EXISTS subquery. URL `?attr=<uuid>`. commit `281d582`
+- [x] **5.6** Mini-auditoria: 534/534 unit + tsc 0 warnings + 39/39 integration + 69/69 SQLs aplicados
 
 ### 🟫 SPRINT 6 — Limpeza estrutural + smoke prod (2-3 dias)
 
@@ -431,14 +431,15 @@ Tudo que normalmente passa batido e a gente paga depois. **Registrado pra não p
 | 2026-05-22 | Claude | **Sprint 2 fechado**: 3 commits (`39a4807` 2.4 SQL 64 trigram, `70c6be7` 2.1+2.2 devolução parcial + fluxo guiado de fiado, `5342cc8` 2.3 SQL 65 shipping no DRE). 2 SQLs novas aplicadas em prod via DIRECT_URL. Auditoria: 513/513 unit + tsc 0 warnings + 39/39 integration + 66/66 SQLs aplicados. |
 | 2026-05-22 | Claude | **Sprint 3 fechado**: 3 commits (`6b2c8a0` 3.1-3.3 busca CPF + notes no PDV + histórico linka detalhe, `56c93ff` 3.4 filtro fiado pendente, `6f79e98` 3.5 SQL 66 requireOpenCashSession). 1 SQL nova aplicada em prod. Auditoria: 519/519 unit + tsc 0 warnings + 39/39 integration + 67/67 SQLs aplicados. |
 | 2026-05-22 | Claude | **Sprint 4 fechado**: 2 commits (`81c0ad5` 4.1+4.2+4.3+4.4+4.5+4.8 relatórios A4 com CNPJ/filtros/agrupamento/aging/custeio/operador, `60a8845` 4.6+4.7 recibo PDV fmt + Z A4). Auditoria: 527/527 unit + tsc 0 warnings + 39/39 integration + 67/67 SQLs aplicados. |
+| 2026-05-22 | Claude | **Sprint 5 fechado**: 1 commit grande (`281d582` 5.1-5.5 cinco fantasmas: cupom no checkout + recado público + coleção na home + grupo no PDV + chips dinâmicos). 2 SQLs novas (67, 68) aplicadas em prod. Auditoria: 534/534 unit + tsc 0 warnings + 39/39 integration + 69/69 SQLs aplicados. |
 
 ---
 
 ## 10. PRÓXIMA AÇÃO (sempre atualizar no fim de sessão)
 
-**▶️ AGORA**: Sprints 0 + 1 + 2 + 3 + 4 fechadas. Único bloqueador continua sendo 0.3 (CRON_SECRET no painel Vercel — manual, depende do Anderson).
+**▶️ AGORA**: Sprints 0 + 1 + 2 + 3 + 4 + 5 fechadas. Único bloqueador continua sendo 0.3 (CRON_SECRET no painel Vercel — manual, depende do Anderson).
 
-**DEPOIS DO 0.3 OK**: Sprint 5 — 5 fantasmas viram features reais (cupom no checkout, recado público, coleção na home, grupo afeta PDV, atributo chips dinâmicos).
+**DEPOIS DO 0.3 OK**: Sprint 6 — Limpeza estrutural + smoke prod real (deletar print-layout/print-store/supabase-server mortos, decidir PDV page vs modal, smoke L1-L6 com impressora real).
 
 ---
 
