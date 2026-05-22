@@ -212,16 +212,16 @@ Objetivo: devolução parcial existe. Frete sai de receita. DRE bate.
 - [x] **2.4** SQL 64: índice trigram em `product_variant.name` — aplicado em prod, sentinela estendida. commit `39a4807`
 - [x] **2.5** Mini-auditoria: 513/513 unit + tsc 0 warnings + 39/39 integration + 66/66 SQLs aplicados
 
-### 🟨 SPRINT 3 — Clientes + caixa (3-4 dias)
+### 🟨 SPRINT 3 — Clientes + caixa (3-4 dias) ✅ **FECHADO 2026-05-22**
 
 Objetivo: operadora não trava em fluxo comum de cliente.
 
-- [ ] **3.1** **Busca cliente por CPF/CNPJ** — `customer/search.ts` aceita `documentNumber` (digits-only). PDV `customer-picker.tsx` detecta input com 11+ dígitos e busca por documento
-- [ ] **3.2** `customer.notes` visível no PDV — ao linkar cliente, badge "📝 anotação" com collapse mostra notas. Operadora vê "deve há 3 meses" antes de liberar fiado
-- [ ] **3.3** Histórico do cliente linka pro detalhe da venda — `edit-customer-form.tsx:106-128` muda de `?q=` pra `?detail={orderId}` (padrão Onda 2.12)
-- [ ] **3.4** **Filtro "só vendas com fiado pendente"** — toolbar de `/admin/pedidos` ganha toggle `?fiado=pendente`. Query inclui apenas vendas com receivable status != 'paid'
-- [ ] **3.5** Caixa fechado configurável — setting opcional `requireOpenCashSession` em `/admin/configuracoes`. Default OFF (não quebra fluxo atual). Quando ON, PDV bloqueia venda
-- [ ] **3.6** Mini-auditoria
+- [x] **3.1** **Busca cliente por CPF/CNPJ** — `customer/search.ts` já tratava digits-only via `normalizeDocument`. UI atualizada: placeholder em PDV e customer-link-section indica "nome, telefone ou CPF/CNPJ". commit `6b2c8a0`
+- [x] **3.2** `customer.notes` visível no PDV — `CustomerSearchHit` ganha `notes`. PDV mantém `customerNotes` em state. Badge `<details>` "Anotação sobre este cliente" no card de cliente vinculado. commit `6b2c8a0`
+- [x] **3.3** Histórico do cliente linka pro detalhe — `edit-customer-form.tsx` muda de `?q={shortCode}` pra `?detail={orderId}` (padrão Onda 2.12). commit `6b2c8a0`
+- [x] **3.4** **Filtro "só vendas com fiado pendente"** — toolbar de `/admin/pedidos` ganha botão toggle. URL via `?fiado=pendente`. Filtro EXISTS subquery em `receivable` cujo `paid_at IS NULL`. commit `56c93ff`
+- [x] **3.5** Caixa fechado configurável — SQL 66 cria `store.require_open_cash_session BOOL DEFAULT false`. Novo `PdvPolicyCard` em `/admin/configuracoes` + `updatePdvPolicy` action. PDV bloqueia com `CASH_SESSION_REQUIRED` quando setting ativo + sem caixa + mode != 'quote'. commit `6f79e98`
+- [x] **3.6** Mini-auditoria: 519/519 unit + tsc 0 warnings + 39/39 integration + 67/67 SQLs aplicados
 
 ### 🟩 SPRINT 4 — Relatórios contador-grade + impressão (3-4 dias)
 
@@ -429,14 +429,15 @@ Tudo que normalmente passa batido e a gente paga depois. **Registrado pra não p
 | 2026-05-22 | Claude | **Sprint 0 fechado**: 4 commits temáticos (chore db, fix pedidos, feat compras, feat produtos). Auditoria final: 498/498 unit + tsc 0 warnings + 39/39 integration. Pendente só 0.3 (CRON_SECRET no painel Vercel — manual). |
 | 2026-05-22 | Claude | **Sprint 1 fechado**: 3 commits (`ffb7478` 1.1 quick form removido, `954ddb0` 1.2 allow_oversell honrado, `28a5d2c` 1.3+1.4 constants únicas + devolução desconta nos 4 relatórios). Auditoria: 505/505 unit + tsc 0 warnings + 39/39 integration. Nenhuma SQL nova exigida — schema já tinha tudo desde SQLs 55+62. |
 | 2026-05-22 | Claude | **Sprint 2 fechado**: 3 commits (`39a4807` 2.4 SQL 64 trigram, `70c6be7` 2.1+2.2 devolução parcial + fluxo guiado de fiado, `5342cc8` 2.3 SQL 65 shipping no DRE). 2 SQLs novas aplicadas em prod via DIRECT_URL. Auditoria: 513/513 unit + tsc 0 warnings + 39/39 integration + 66/66 SQLs aplicados. |
+| 2026-05-22 | Claude | **Sprint 3 fechado**: 3 commits (`6b2c8a0` 3.1-3.3 busca CPF + notes no PDV + histórico linka detalhe, `56c93ff` 3.4 filtro fiado pendente, `6f79e98` 3.5 SQL 66 requireOpenCashSession). 1 SQL nova aplicada em prod. Auditoria: 519/519 unit + tsc 0 warnings + 39/39 integration + 67/67 SQLs aplicados. |
 
 ---
 
 ## 10. PRÓXIMA AÇÃO (sempre atualizar no fim de sessão)
 
-**▶️ AGORA**: Sprints 0 + 1 + 2 fechadas. Único bloqueador continua sendo 0.3 (CRON_SECRET no painel Vercel — manual, depende do Anderson).
+**▶️ AGORA**: Sprints 0 + 1 + 2 + 3 fechadas. Único bloqueador continua sendo 0.3 (CRON_SECRET no painel Vercel — manual, depende do Anderson).
 
-**DEPOIS DO 0.3 OK**: Sprint 3 — Clientes + caixa (busca CPF, customer.notes no PDV, filtro fiado pendente, caixa fechado configurável).
+**DEPOIS DO 0.3 OK**: Sprint 4 — Relatórios contador-grade + impressão (CNPJ nos A4, filtro categoria/marca, agrupamento por dia, aging fiado, recibo PDV em A4/térmico, rodapé universal).
 
 ---
 

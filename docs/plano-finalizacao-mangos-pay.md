@@ -73,11 +73,11 @@
 
 - [x] **D1**: Devolução **parcial** item-a-item. `record-return.ts` aceita `returnType='partial'` + items array com quantidades. UI: dialog com checkbox por item + qty. (Sprint 2.1, commit `70c6be7`)
 - [x] **D2**: Devolução com fiado em aberto **guiada** — errorCode 'PENDING_RECEIVABLE' + link pra `/admin/financeiro/receber?receivable={id}`. (Sprint 2.2, commit `70c6be7`)
-- [ ] **D3**: Busca de cliente por CPF/CNPJ — `customer/search.ts` aceita `documentNumber` (digits-only) em paralelo a nome/telefone. PDV: input aceita CPF mascarado
-- [ ] **D4**: `customer.notes` visível no PDV — ao linkar cliente, mostra badge "anotações" se preenchido (collapse com texto). Operadora vê "deve há 3 meses" antes de liberar fiado
-- [ ] **D5**: Histórico do cliente linka pro detalhe — `edit-customer-form.tsx:106-128` muda link de `?q=` pra `?detail={orderId}` (mesmo padrão Onda 2.12)
-- [ ] **D6**: Filtro "só vendas com fiado pendente" — toolbar de `/admin/pedidos` ganha toggle `?fiado=pendente`. Query inclui apenas vendas com `receivable.status != 'paid'`
-- [ ] **D7**: Caixa fechado — banner amarelo continua (Onda 2.6) MAS adicionar setting opcional "Exigir caixa aberto pra registrar venda" no `/admin/configuracoes`. Default OFF (não quebra fluxo atual)
+- [x] **D3**: Busca de cliente por CPF/CNPJ — `customer/search.ts` já tratava digits via `normalizeDocument`. Placeholders atualizados pro lojista descobrir. (Sprint 3.1, commit `6b2c8a0`)
+- [x] **D4**: `customer.notes` visível no PDV — badge `<details>` "Anotação sobre este cliente" em fundo amarelo. (Sprint 3.2, commit `6b2c8a0`)
+- [x] **D5**: Histórico do cliente linka pro detalhe — `?q={shortCode}` → `?detail={orderId}`. (Sprint 3.3, commit `6b2c8a0`)
+- [x] **D6**: Filtro "só vendas com fiado pendente" — toggle URL `?fiado=pendente` + EXISTS subquery em receivable. (Sprint 3.4, commit `56c93ff`)
+- [x] **D7**: Caixa fechado configurável — SQL 66 + `PdvPolicyCard` em /admin/configuracoes + `CASH_SESSION_REQUIRED` errorCode no PDV. Default OFF. (Sprint 3.5, commit `6f79e98`)
 
 ---
 
@@ -217,3 +217,4 @@ PÓS-#1                  I (refator) + G (CSV se necessário) + J (multi-tenant 
 | 2026-05-22 | **Sprint 0 técnico fechado**: 4 commits temáticos finais (`9675990` chore db, `156dc40` fix pedidos, `65c4e19` feat compras 2.4, `673a1c8` feat produtos 2.1-2.3+2.10). Working tree limpa. Auditoria: 498/498 unit + tsc 0 warnings + 39/39 integration. Resta só A3 manual (CRON_SECRET). |
 | 2026-05-22 | **Sprint 1 fechado**: Bloco B (3 bugs ativos) + E1 (devolução desconta) + H4 (RETURNABLE extraído). 3 commits: `ffb7478` quick form removido, `954ddb0` allow_oversell honrado, `28a5d2c` constants únicas + 4 relatórios descontam devolução. Auditoria: 505/505 unit + tsc 0 warnings + 39/39 integration. Nenhuma SQL nova exigida — schema já tinha tudo desde SQLs 55 + 62. |
 | 2026-05-22 | **Sprint 2 fechado**: D1 (devolução parcial) + D2 (fiado guiado) + E2 (frete no DRE) + I5 (trigram). 2 SQLs novas aplicadas em prod (64, 65). 3 commits: `39a4807` SQL 64 trigram, `70c6be7` 2.1+2.2 devolução parcial + fluxo guiado, `5342cc8` 2.3 SQL 65 shipping no DRE. Auditoria: 513/513 unit + tsc 0 warnings + 39/39 integration + 66/66 SQLs aplicados. |
+| 2026-05-22 | **Sprint 3 fechado**: D3 (busca CPF/CNPJ) + D4 (notes no PDV) + D5 (histórico linka detalhe) + D6 (filtro fiado pendente) + D7 (setting requireOpenCashSession). 1 SQL nova aplicada em prod (66). 3 commits: `6b2c8a0` clientes 3.1-3.3, `56c93ff` filtro fiado, `6f79e98` setting caixa + SQL 66. Auditoria: 519/519 unit + tsc 0 warnings + 39/39 integration + 67/67 SQLs aplicados. |
