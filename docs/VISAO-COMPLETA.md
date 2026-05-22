@@ -192,15 +192,15 @@ Objetivo: zero trabalho perdido, base limpa pra começar.
 - [ ] **0.3** Confirmar `CRON_SECRET` no Vercel ▸ Settings idêntico ao `.env.local` *(MANUAL — depende do Anderson no painel Vercel)*
 - [x] **0.4** `npm test` + `tsc --noEmit` zero warnings (auditoria pré-Sprint 1) (2026-05-22 — 498/498 unit + tsc 0 warnings + 39/39 integration)
 
-### 🟥 SPRINT 1 — Bugs ativos + base de relatórios (3-4 dias)
+### 🟥 SPRINT 1 — Bugs ativos + base de relatórios (3-4 dias) ✅ **FECHADO 2026-05-22**
 
 Objetivo: nenhum bug bloqueante no dia 1 do lojista. Status de pedido como single source of truth.
 
-- [ ] **1.1** Deletar `src/components/admin/quick-product-form.tsx` + remover toggle Rápido/Completo em `new-product-form.tsx:83`. Completo já tem 3 abas + autosave = leve o bastante
-- [ ] **1.2** `allowOversell` honrado no PDV — `create-balcao-sale.ts:688` e `:986` consultam `product.allow_oversell` antes de lançar `OutOfStockError`
-- [ ] **1.3** Criar `src/actions/order/constants.ts` exportando `COUNTABLE_STATUSES` + `RETURNABLE_STATUSES` + `OPEN_STATUSES`. Importado por: `actions/reports/load.ts`, `load-sales.ts`, `load-top.ts`, `load-margin.ts`, `load-dre.ts`, `record-return.ts`, `order-status-actions.tsx`
-- [ ] **1.4** **Devolução desconta em todos os relatórios** — LEFT JOIN com `order_return_item`, subtrair quantidade × preço_snapshot do faturamento e CMV em: `load-sales.ts`, `load-top.ts`, `load-margin.ts`, `load-dre.ts`
-- [ ] **1.5** Mini-auditoria: testes verdes, tsc 0, integration 39/39
+- [x] **1.1** Deletar `src/components/admin/quick-product-form.tsx` + remover toggle Rápido/Completo em `new-product-form.tsx:83`. Completo já tem 3 abas + autosave = leve o bastante — commit `ffb7478`
+- [x] **1.2** `allowOversell` honrado no PDV — `create-balcao-sale.ts:688` e `:986` consultam `product.allow_oversell` antes de lançar `OutOfStockError` — commit `954ddb0`
+- [x] **1.3** Criar `src/actions/order/constants.ts` exportando `COUNTABLE_STATUSES` + `RETURNABLE_STATUSES` + `OPEN_STATUSES` + predicados isCountable/isReturnable/isOpen. Importado por: `actions/reports/load.ts`, `load-sales.ts`, `load-top.ts`, `load-margin.ts`, `load-dre.ts`, `record-return.ts`, `order-status-actions.tsx` — commit `28a5d2c`
+- [x] **1.4** **Devolução desconta em todos os relatórios** — LEFT JOIN com `order_return_item`, subtrair quantidade × preço_snapshot do faturamento e CMV em: `load-sales.ts`, `load-top.ts`, `load-margin.ts`, `load-dre.ts`. Tipos expandidos com returned* fields. UI dos 4 relatórios mostra "−R$X devolvido" abaixo dos brutos + rodapé líquido — commit `28a5d2c`
+- [x] **1.5** Mini-auditoria: 505/505 unit + tsc 0 warnings + 39/39 integration
 
 ### 🟧 SPRINT 2 — Vendas: fluxo de exceção (1 semana)
 
@@ -427,14 +427,15 @@ Tudo que normalmente passa batido e a gente paga depois. **Registrado pra não p
 | 2026-05-22 | Conselho 5 | C reordenado: C3 (cupom) → C4 (lead) → C1 (coleção) → C5 (grupo) → C2 (atributo) |
 | 2026-05-22 | Anderson | Pediu visão completa visual + arquivo de memória — este documento criado |
 | 2026-05-22 | Claude | **Sprint 0 fechado**: 4 commits temáticos (chore db, fix pedidos, feat compras, feat produtos). Auditoria final: 498/498 unit + tsc 0 warnings + 39/39 integration. Pendente só 0.3 (CRON_SECRET no painel Vercel — manual). |
+| 2026-05-22 | Claude | **Sprint 1 fechado**: 3 commits (`ffb7478` 1.1 quick form removido, `954ddb0` 1.2 allow_oversell honrado, `28a5d2c` 1.3+1.4 constants únicas + devolução desconta nos 4 relatórios). Auditoria: 505/505 unit + tsc 0 warnings + 39/39 integration. Nenhuma SQL nova exigida — schema já tinha tudo desde SQLs 55+62. |
 
 ---
 
 ## 10. PRÓXIMA AÇÃO (sempre atualizar no fim de sessão)
 
-**▶️ AGORA**: Sprint 0 fechado (técnico). Anderson precisa confirmar `CRON_SECRET` no painel Vercel ▸ Settings ▸ Environment Variables — único passo manual restante.
+**▶️ AGORA**: Sprint 0 + Sprint 1 fechados. Único bloqueador é 0.3 (CRON_SECRET no painel Vercel — manual, depende do Anderson).
 
-**DEPOIS DO 0.3 OK**: Sprint 1 (3 bugs ativos + base de relatórios) — começa por 1.1 (deletar `quick-product-form.tsx`).
+**DEPOIS DO 0.3 OK**: Sprint 2 — devolução parcial item-a-item + devolução com fiado guiada + frete fora de receita (1 semana, mais peso de UX).
 
 ---
 

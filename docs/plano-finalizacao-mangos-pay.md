@@ -51,11 +51,11 @@
 
 ---
 
-## Bloco B — 3 bugs ativos que sobreviveram às ondas
+## Bloco B — 3 bugs ativos que sobreviveram às ondas ✅ **FECHADO 2026-05-22**
 
-- [ ] **B1**: Deletar `quick-product-form.tsx` + remover toggle Rápido/Completo. O Completo já é leve o bastante (3 abas, autosave). Quick cria SKU sem estoque por hardcode → bug em produção
-- [ ] **B2**: `allowOversell` honrado no PDV — `create-balcao-sale.ts:688` e `:986` precisam consultar `product.allow_oversell` antes de bloquear. Switch já existe (SQL 62 aplicado), só falta lógica
-- [ ] **B3**: Unificar `COUNTABLE_STATUSES` em `src/actions/reports/range.ts`, importado por `load.ts`, `load-sales.ts`, `load-top.ts`, `load-margin.ts`, `load-dre.ts`. Hoje `load.ts` inclui `quote`/`awaiting_whatsapp` no faturamento — diverge dos relatórios oficiais
+- [x] **B1**: Deletar `quick-product-form.tsx` + remover toggle Rápido/Completo. (commit `ffb7478`)
+- [x] **B2**: `allowOversell` honrado no PDV. (commit `954ddb0`)
+- [x] **B3**: Constants únicas em `src/actions/order/constants.ts` (não em `reports/range.ts` — escopo do domínio é "order", não "reports") + isCountable/isReturnable/isOpen como predicados pra contornar literal-vs-union. (commit `28a5d2c`)
 
 ---
 
@@ -83,7 +83,7 @@
 
 ## Bloco E — Relatórios contador-grade
 
-- [ ] **E1**: Devoluções descontam em todos os relatórios — `load-sales.ts`, `load-top.ts`, `load-margin.ts`, `load-dre.ts` fazem LEFT JOIN com `order_return_item` e subtraem do total/CMV
+- [x] **E1**: Devoluções descontam em todos os relatórios — `load-sales.ts`, `load-top.ts`, `load-margin.ts`, `load-dre.ts` fazem LEFT JOIN com `order_return_item` e subtraem do total/CMV. Tipos `*ReportRow` ganharam `returned*` fields. UI mostra "−R$X devolvido" abaixo dos brutos + rodapé líquido. Vinculação por período da venda original (não da devolução). (commit `28a5d2c`)
 - [ ] **E2**: Frete sai de "Receita" no DRE — separar `shipping_in_cents` num bucket próprio "Repasses (frete)"; "Acréscimos" fica só pra taxa de cartão/PIX
 - [ ] **E3**: `<ReportLayout/>` consome `<PrintStoreHeader/>` — adiciona CNPJ aos 5 relatórios A4 (Onda 2.7 esqueceu este lugar)
 - [ ] **E4**: Filtro por categoria/marca em `/admin/relatorios/vendas` + agrupamento por dia (subheaders com soma)
@@ -113,7 +113,7 @@
 - [ ] **H1**: Deletar `lib/supabase/server.ts` + remover dep `@supabase/supabase-js` do `package.json` (zero callers, contradiz CLAUDE.md "Não usamos Supabase Auth")
 - [ ] **H2**: Deletar pasta `/logos` raiz (duplica `public/logos/`, não é servida)
 - [ ] **H3**: Limpar `.claude/worktrees/agent-*` + `.claude/tmp-build-head/` — cópias velhas de worktree
-- [ ] **H4**: `RETURNABLE_STATUSES` extraído pra `src/actions/order/constants.ts`, importado por `record-return.ts` + `order-status-actions.tsx`
+- [x] **H4**: `RETURNABLE_STATUSES` extraído pra `src/actions/order/constants.ts`, importado por `record-return.ts` + `order-status-actions.tsx` (Sprint 1.3, commit `28a5d2c`)
 - [ ] **H5**: **Decisão**: PDV full-page (`/admin/pdv`) vs modal `new-sale-modal.tsx` — qual fica? Recomendação: manter só o standalone (`/admin/pdv`), modal só pra "venda rápida 2 cliques" se justificar
 - [ ] **H6**: **Decisão**: `ReportView` vs `ReportLayout` — recomendação: matar `ReportView`, dashboard `/admin/relatorios` vira só atalhos pros 5 A4 + KPIs leves
 - [ ] **H7**: Resolver `drizzle/0033_order_item_discount.sql` + `supabase/sql/59` — drizzle cria coluna, supabase cria CHECKs. OK como está, mas documentar no MIGRATION.md (criar?) pra próximo dev entender
@@ -215,3 +215,4 @@ PÓS-#1                  I (refator) + G (CSV se necessário) + J (multi-tenant 
 | 2026-05-22 | Diagnóstico Fase 1 entregue. Decisões A+B+C fechadas (costurar fantasmas, commit chunked, P0+P1 completo). SQLs 58-63 aplicadas em prod. Plano blocos A-K formalizado. |
 | 2026-05-22 | Conselho 5 agentes definiu ordem: K → B+H4+E1 → resto E → D → F → C (reordenado) → H+L → lojista #1 → I/G/J pós. Bloco L (smoke prod) adicionado. |
 | 2026-05-22 | **Sprint 0 técnico fechado**: 4 commits temáticos finais (`9675990` chore db, `156dc40` fix pedidos, `65c4e19` feat compras 2.4, `673a1c8` feat produtos 2.1-2.3+2.10). Working tree limpa. Auditoria: 498/498 unit + tsc 0 warnings + 39/39 integration. Resta só A3 manual (CRON_SECRET). |
+| 2026-05-22 | **Sprint 1 fechado**: Bloco B (3 bugs ativos) + E1 (devolução desconta) + H4 (RETURNABLE extraído). 3 commits: `ffb7478` quick form removido, `954ddb0` allow_oversell honrado, `28a5d2c` constants únicas + 4 relatórios descontam devolução. Auditoria: 505/505 unit + tsc 0 warnings + 39/39 integration. Nenhuma SQL nova exigida — schema já tinha tudo desde SQLs 55 + 62. |
