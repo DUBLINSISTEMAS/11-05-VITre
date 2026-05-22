@@ -50,6 +50,10 @@ const pedidosSearchSchema = z.object({
   // Onda 2.12 — auto-abrir modal de detalhe vindo de link externo
   // (dashboard "Vendas recentes", lista de fiados, etc).
   detail: idOrNullSchema,
+  // Sprint 3.4 — toggle "só vendas com fiado pendente" no toolbar.
+  // 'pendente' = orders com receivable cuja `paid_at` é NULL.
+  // null = sem filtro de fiado (default).
+  fiado: enumOrNull(["pendente"] as const),
 });
 
 interface PedidosPageProps {
@@ -71,6 +75,7 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
     de: dateFrom,
     ate: dateTo,
     detail: detailOrderId,
+    fiado: fiadoFilter,
   } = pedidosSearchSchema.parse(await searchParams);
   const q = rawQ.trim();
 
@@ -126,6 +131,20 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
   }
   if (dateToEnd) {
     baseConditions.push(lte(orderTable.createdAt, dateToEnd));
+  }
+  // Sprint 3.4 — toggle "só fiado pendente". EXISTS subquery em
+  // receivable cujo paid_at IS NULL. `storeId` redundante (já vem
+  // do baseConditions via order), mas mantém RLS explícito caso o
+  // JOIN seja reescrito. Aplica em counts E listing.
+  if (fiadoFilter === "pendente") {
+    baseConditions.push(
+      sql`EXISTS (
+        SELECT 1 FROM ${receivableTable} r
+        WHERE r.order_id = ${orderTable.id}
+          AND r.store_id = ${orderTable.storeId}
+          AND r.paid_at IS NULL
+      )`,
+    );
   }
 
   // Listing aplica status filter por cima

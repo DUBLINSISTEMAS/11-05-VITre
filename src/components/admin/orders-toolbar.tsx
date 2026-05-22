@@ -93,6 +93,8 @@ export function OrdersToolbar({
 
   const initialQ = searchParams.get("q") ?? "";
   const canal = searchParams.get("canal") ?? "";
+  // Sprint 3.4 — toggle "só fiado pendente". 'pendente' | ''.
+  const fiado = searchParams.get("fiado") ?? "";
 
   const [q, setQ] = useState(initialQ);
 
@@ -116,6 +118,17 @@ export function OrdersToolbar({
     const usp = new URLSearchParams(window.location.search);
     if (!value) usp.delete("canal");
     else usp.set("canal", value);
+    usp.delete("page");
+    startTransition(() => {
+      router.replace(`?${usp.toString()}`, { scroll: false });
+    });
+  };
+
+  // Sprint 3.4 — toggle pendente↔off. Clica de novo quando ativo limpa.
+  const toggleFiadoPendente = () => {
+    const usp = new URLSearchParams(window.location.search);
+    if (fiado === "pendente") usp.delete("fiado");
+    else usp.set("fiado", "pendente");
     usp.delete("page");
     startTransition(() => {
       router.replace(`?${usp.toString()}`, { scroll: false });
@@ -294,6 +307,18 @@ export function OrdersToolbar({
         <option value="whatsapp">WhatsApp</option>
         <option value="balcao">Balcão (PDV)</option>
       </select>
+
+      {/* Sprint 3.4 — toggle só vendas com fiado pendente. Mostra
+          counter via re-render do server (total da listagem reflete). */}
+      <button
+        type="button"
+        className={`b3-btn b3-btn--sm ${fiado === "pendente" ? "b3-pill--brand" : ""}`}
+        onClick={toggleFiadoPendente}
+        aria-pressed={fiado === "pendente"}
+        title="Mostrar apenas vendas com saldo de fiado em aberto"
+      >
+        Só fiado pendente
+      </button>
 
       {/* Chip de filtro de data custom — só mostra quando preset não bate */}
       {hasDateFilter && activePreset === null ? (
