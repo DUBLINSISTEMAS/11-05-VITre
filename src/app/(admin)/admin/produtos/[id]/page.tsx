@@ -221,6 +221,7 @@ export default async function EditProdutoPage({ params }: EditProdutoPageProps) 
       <EditProductForm
         categories={categories}
         brands={brands}
+        storeNiche={store.niche}
         initialData={{
           productId: product.id,
           name: product.name,

@@ -235,17 +235,29 @@ export function TabEstoque({
         </SubCard>
       ) : null}
 
-      <SubCard
-        title="Identificação"
-        description="GTIN agiliza scanner no PDV. Código interno e unidade aparecem em relatórios e cupom."
+      {/* Onda 2.2 — progressive disclosure: identificação é dobrável.
+          Lojista comum não usa GTIN/código interno no dia-a-dia; só quem
+          tem scanner ou comissão por código precisa. Default fechado. */}
+      <details
+        className="b3-card group rounded-xl"
+        open={false}
       >
-        <div className="grid gap-3 sm:grid-cols-3">
+        <summary className="flex cursor-pointer items-center justify-between gap-2 p-4 text-[13.5px] font-semibold text-ink-1 list-none">
+          <span>
+            Mais detalhes de estoque
+            <span className="text-ink-4 ml-2 font-normal text-[12px]">
+              Código de barras, código interno, unidade
+            </span>
+          </span>
+          <span className="text-ink-4 group-open:rotate-180 transition-transform">▾</span>
+        </summary>
+        <div className="border-t border-line p-4 grid gap-3 sm:grid-cols-3">
           <div className="space-y-1.5">
-            <Label htmlFor="product-gtin">GTIN / código de barras</Label>
+            <Label htmlFor="product-gtin">Código de barras</Label>
             <Input
               id="product-gtin"
               {...register("gtin")}
-              placeholder="EAN-13"
+              placeholder="Ex: 7891234567890"
               disabled={isPending}
               maxLength={14}
               aria-invalid={!!errors.gtin}
@@ -253,7 +265,9 @@ export function TabEstoque({
             />
             {errors.gtin?.message ? (
               <p className="text-destructive text-xs">{errors.gtin.message}</p>
-            ) : null}
+            ) : (
+              <p className="text-ink-4 text-[11px]">EAN-8, 12, 13 ou 14 dígitos.</p>
+            )}
           </div>
 
           <div className="space-y-1.5">
@@ -302,7 +316,7 @@ export function TabEstoque({
             </p>
           </div>
         </div>
-      </SubCard>
+      </details>
     </div>
   );
 }

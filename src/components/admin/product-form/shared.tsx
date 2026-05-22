@@ -230,26 +230,23 @@ export function bumpSessionCounter(): number {
 // Mapping aba → campos do form (pra count de erros por aba).
 // ============================================================================
 
-export type TabKey =
-  | "identidade"
-  | "preco-custo"
-  | "estoque"
-  | "variantes"
-  | "loja-online";
+// Onda 2.1 (2026-05-22): 5 abas → 3 abas. O lojista pensa em 3 perguntas
+// mentais (o que é / quanto custa e quanto tem / raramente toco), não em
+// 5 categorias técnicas. Variantes virou dobrável dentro da Identidade
+// (só ~5% dos produtos têm variante — não merece aba dedicada).
+export type TabKey = "identidade" | "preco-estoque" | "avancado";
 
-// Lista de campos por aba. Usada pra contar erros do RHF por aba e
-// mostrar badge "n" na navegação. Manter sincronizado com os tabs.
 const TAB_FIELDS: Record<TabKey, Array<keyof ProductFormValues>> = {
-  identidade: ["name", "description", "categoryId", "brand"],
-  "preco-custo": [
+  // Identidade absorveu Variantes (que vive como dobrável aqui).
+  identidade: ["name", "description", "categoryId", "brand", "variants"],
+  // Preço + estoque essencial juntos — preço de venda e custo são
+  // decisão única "quanto pago × quanto vendo"; estoque controla na
+  // mesma tela porque é mesma operação mental.
+  "preco-estoque": [
     "basePriceInCents",
     "promoPriceInCents",
     "wholesalePriceInCents",
     "costPriceInCents",
-    "defaultCommissionBps",
-    "ncm",
-  ],
-  estoque: [
     "trackStock",
     "stockQuantity",
     "minStockQuantity",
@@ -258,11 +255,14 @@ const TAB_FIELDS: Record<TabKey, Array<keyof ProductFormValues>> = {
     "internalCode",
     "unit",
   ],
-  variantes: ["variants"],
-  "loja-online": [
+  // Tudo que é opcional/raro: publicação, overrides, comissão, NCM,
+  // detalhes editoriais.
+  avancado: [
     "isActive",
     "isPublishedToStorefront",
     "isFeatured",
+    "defaultCommissionBps",
+    "ncm",
     "installmentsOverride",
     "cashDiscountOverrideBps",
     "composition",

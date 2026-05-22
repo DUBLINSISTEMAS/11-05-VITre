@@ -50,6 +50,7 @@ export function EditProductForm({
       isDraft={false}
       categories={categories}
       brands={brands}
+      storeNiche={storeNiche}
       initialData={initialData}
       onAfterSave={() => {
         // Refresh em vez de push — lojista fica na página com toggle e

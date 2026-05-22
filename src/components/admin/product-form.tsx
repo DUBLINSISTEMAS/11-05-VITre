@@ -2,10 +2,9 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  ChevronDownIcon,
   DollarSignIcon,
-  Grid2X2Icon,
   Loader2Icon,
-  PackageIcon,
   PlusCircleIcon,
   SaveIcon,
   StoreIcon,
@@ -100,7 +99,9 @@ export interface ProductFormInitialData {
   brand: string | null;
   /** Sprint 2A: FK opcional pra brand.id. NULL quando texto livre. */
   brandId: string | null;
-  /** Espelha enum DB product_unit; default 'un' aplicado se NULL no banco. */
+  /** Espelha enum DB product_unit; default 'un' aplicado se NULL no banco.
+   *  par/duzia adicionados SQL 61 (Onda 2.10). pc/cm/m3 mantidos pra
+   *  produtos legados mas escondidos do select (ver tab-estoque.tsx). */
   unit:
     | "un"
     | "pc"
@@ -111,7 +112,9 @@ export interface ProductFormInitialData {
     | "ml"
     | "L"
     | "m2"
-    | "m3";
+    | "m3"
+    | "par"
+    | "duzia";
   internalCode: string | null;
   defaultCommissionBps: number | null;
   ncm: string | null;
@@ -154,18 +157,17 @@ interface ProductFormProps {
   ) => Promise<{ ok: true; productId: string } | { ok: false; error: string; fieldErrors?: Record<string, string> }>;
 }
 
-// Ícones nas tabs — match com painel admin mangos reference. MangoIcon
-// na Identidade reforça a identidade da marca; demais usam lucide.
+// Onda 2.1 — navegação reduzida a 3 perguntas mentais do lojista.
+// "Avançado" tem o copy de orientação "campos opcionais" pra atender
+// o princípio de progressive disclosure.
 const TAB_NAV: {
   key: TabKey;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
 }[] = [
   { key: "identidade", label: "Identidade", icon: MangoIcon },
-  { key: "preco-custo", label: "Preço & Custo", icon: DollarSignIcon },
-  { key: "estoque", label: "Estoque", icon: PackageIcon },
-  { key: "variantes", label: "Variantes", icon: Grid2X2Icon },
-  { key: "loja-online", label: "Loja online", icon: StoreIcon },
+  { key: "preco-estoque", label: "Preço & Estoque", icon: DollarSignIcon },
+  { key: "avancado", label: "Avançado", icon: StoreIcon },
 ];
 
 /**
@@ -460,8 +462,10 @@ export function ProductForm({
         })}
       </div>
 
-      {/* === Conteúdo das abas (hidden style preserva form state) === */}
-      <div hidden={activeTab !== "identidade"}>
+      {/* === Onda 2.1 — 3 abas. Variantes virou dobrável dentro de
+           Identidade. NCM/comissão saíram pra Avançado. === */}
+
+      <div hidden={activeTab !== "identidade"} className="space-y-4">
         <TabIdentidade
           control={control}
           register={register}
@@ -480,18 +484,39 @@ export function ProductForm({
             setLocalBrands((prev) => [...prev, b].sort((a, b) => a.name.localeCompare(b.name)))
           }
         />
+        {/* Variantes — dobrável (só ~5% dos produtos têm). Default
+            fechado pra produto novo; aberto se já houver variante. */}
+        <details
+          className="b3-card group rounded-xl"
+          open={(initialData.variants?.length ?? 0) > 0}
+        >
+          <summary className="flex cursor-pointer items-center justify-between gap-2 p-4 text-[13.5px] font-semibold text-ink-1 list-none">
+            <span>
+              Tem tamanho ou cor diferente?
+              <span className="text-ink-4 ml-2 font-normal text-[12px]">
+                Adicione variações deste produto
+              </span>
+            </span>
+            <ChevronDownIcon className="size-4 text-ink-4 transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="border-t border-line p-4 pt-3">
+            <TabVariantes
+              control={control}
+              isPending={isPending}
+              images={images}
+            />
+          </div>
+        </details>
       </div>
 
-      <div hidden={activeTab !== "preco-custo"}>
+      <div hidden={activeTab !== "preco-estoque"} className="space-y-4">
         <TabPrecoCusto
           control={control}
           register={register}
           errors={errors}
           isPending={isPending}
+          hideAdvanced
         />
-      </div>
-
-      <div hidden={activeTab !== "estoque"}>
         <TabEstoque
           control={control}
           register={register}
@@ -500,11 +525,12 @@ export function ProductForm({
         />
       </div>
 
-      <div hidden={activeTab !== "variantes"}>
-        <TabVariantes control={control} isPending={isPending} images={images} />
-      </div>
-
-      <div hidden={activeTab !== "loja-online"}>
+      <div hidden={activeTab !== "avancado"} className="space-y-4">
+        <div className="rounded-xl border border-dashed border-line bg-bg-app p-3 text-[12.5px] text-ink-4">
+          Esses campos são opcionais. Só preencha se sua operação precisar
+          (NCM pra contador, override de parcelas pra peça cara, comissão
+          pra vendedor com bônus, etc).
+        </div>
         <TabLojaOnline
           control={control}
           register={register}
@@ -512,6 +538,13 @@ export function ProductForm({
           isPending={isPending}
           isDraft={isDraft}
           showApparelMetaFields={showApparelMetaFields}
+        />
+        <TabPrecoCusto
+          control={control}
+          register={register}
+          errors={errors}
+          isPending={isPending}
+          onlyAdvanced
         />
       </div>
 
