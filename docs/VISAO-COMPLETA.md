@@ -250,24 +250,19 @@ Objetivo: o que está no admin tem efeito no storefront. Sem feature inerte.
 - [x] **5.5 ATRIBUTO chips dinâmicos** — `loadActiveAttributesForStore` retorna atributos + valores com count. `CategoryFilterChips` renderiza chip por valor (swatch quando color). `products-loader` filtra via EXISTS subquery. URL `?attr=<uuid>`. commit `281d582`
 - [x] **5.6** Mini-auditoria: 534/534 unit + tsc 0 warnings + 39/39 integration + 69/69 SQLs aplicados
 
-### 🟫 SPRINT 6 — Limpeza estrutural + smoke prod (2-3 dias)
+### 🟫 SPRINT 6 — Limpeza estrutural + smoke prod (2-3 dias) ✅ **TÉCNICO FECHADO 2026-05-22 (smoke prod depende do Anderson)**
 
 Objetivo: zero código morto, smoke real com impressora e mobile.
 
-- [ ] **6.1** Deletar `src/components/admin/print/print-layout.tsx` (317 linhas, zero callers)
-- [ ] **6.2** Deletar `src/components/admin/print/print-store.ts` (helper desatualizado)
-- [ ] **6.3** Deletar `src/lib/supabase/server.ts` + remover `@supabase/supabase-js` do `package.json` + `pnpm install`
-- [ ] **6.4** Deletar pasta `/logos` raiz (duplica `public/logos`)
-- [ ] **6.5** Limpar `.claude/worktrees/agent-*` + `.claude/tmp-build-head/`
-- [ ] **6.6** Decisão H5: PDV full-page (`/admin/pdv`) vs modal — recomendação: manter standalone, deletar `new-sale-modal.tsx`
-- [ ] **6.7** Decisão H6: `ReportView` vs `ReportLayout` — recomendação: matar `ReportView`, dashboard `/admin/relatorios` vira atalhos + KPIs leves
-- [ ] **6.8** Documentar drift drizzle vs supabase/sql (criar `docs/MIGRATION.md` curto)
-- [ ] **6.9** **Smoke prod L1**: venda balcão real → recibo impresso (jato/laser ou térmica do Anderson)
-- [ ] **6.10** **Smoke prod L2**: storefront aberto em 3G mobile rede do interior
-- [ ] **6.11** **Smoke prod L3**: cadastrar 20 produtos com fotos reais (validar upload sharp)
-- [ ] **6.12** **Smoke prod L4**: 1 venda fiada parcial + 1 estorno + 1 devolução parcial — fluxo de exceção
-- [ ] **6.13** **Smoke prod L5**: Z impresso A4 + envio pro contador via WhatsApp
-- [ ] **6.14** **Smoke prod L6**: Lighthouse mobile do storefront ≥ 90 com dados reais
+- [x] **6.1** Deletar `src/components/admin/print/print-layout.tsx` (317 linhas, 0 callers em runtime) — commit `8013290`
+- [x] **6.2** Deletar `src/components/admin/print/print-store.ts` (helper desatualizado, só importado por print-layout) — commit `8013290`
+- [x] **6.3** ~~Deletar `src/lib/supabase/server.ts`~~ **REVOGADO** — grep amplo achou import relativo `./server` em `storage.ts`. NÃO é código morto. Mantido.
+- [x] **6.4** Deletar pasta `/logos` raiz (duplicava `public/logos`) — commit `8013290`
+- [x] **6.5** Limpar `.claude/worktrees/*` + `.claude/tmp-build-head/` — feito (gitignored, sem impacto no repo)
+- [x] **6.6** ~~PDV `/page` vs `new-sale-modal`~~ **REVOGADO** — modal foi decisão CONSCIENTE do founder em 2026-05-21 ("consolidação UX"). Manter ambos por design.
+- [x] **6.7** ~~ReportView vs ReportLayout~~ **DEFERIDO** — `ReportView` (443 linhas) ainda mostra breakdown que `RelatoriosIndexCards` não cobre. Refactor fica pra Sprint pós-#1.
+- [x] **6.8** `docs/MIGRATION.md` curto — 2 fontes (drizzle vs supabase/sql), drift intencional, workflow, roles, sentinela, recuperação de falha — commit `8013290`
+- [ ] **6.9-6.14** Smoke prod L1-L6 (depende do Anderson, runbook em `docs/runbooks/smoke-prod-pre-lojista.md`) — **BLOQUEIA entrada do lojista #1**
 
 ### 🎉 LOJISTA #1 ENTRA (via seed/admin manual)
 
@@ -432,14 +427,17 @@ Tudo que normalmente passa batido e a gente paga depois. **Registrado pra não p
 | 2026-05-22 | Claude | **Sprint 3 fechado**: 3 commits (`6b2c8a0` 3.1-3.3 busca CPF + notes no PDV + histórico linka detalhe, `56c93ff` 3.4 filtro fiado pendente, `6f79e98` 3.5 SQL 66 requireOpenCashSession). 1 SQL nova aplicada em prod. Auditoria: 519/519 unit + tsc 0 warnings + 39/39 integration + 67/67 SQLs aplicados. |
 | 2026-05-22 | Claude | **Sprint 4 fechado**: 2 commits (`81c0ad5` 4.1+4.2+4.3+4.4+4.5+4.8 relatórios A4 com CNPJ/filtros/agrupamento/aging/custeio/operador, `60a8845` 4.6+4.7 recibo PDV fmt + Z A4). Auditoria: 527/527 unit + tsc 0 warnings + 39/39 integration + 67/67 SQLs aplicados. |
 | 2026-05-22 | Claude | **Sprint 5 fechado**: 1 commit grande (`281d582` 5.1-5.5 cinco fantasmas: cupom no checkout + recado público + coleção na home + grupo no PDV + chips dinâmicos). 2 SQLs novas (67, 68) aplicadas em prod. Auditoria: 534/534 unit + tsc 0 warnings + 39/39 integration + 69/69 SQLs aplicados. |
+| 2026-05-22 | Claude | **Sprint 6 técnico fechado**: 1 commit (`8013290` limpeza + MIGRATION.md + runbook smoke). 4 itens deletados (print-layout, print-store, /logos raiz, .claude/worktrees). 3 itens revogados/deferidos com motivo no commit (lib/supabase/server, new-sale-modal, ReportView). docs/MIGRATION.md criado. Smoke prod L1-L6 fica pendente do Anderson (runbook em docs/runbooks/smoke-prod-pre-lojista.md). Auditoria: 534/534 unit + tsc 0 warnings + 39/39 integration + 69/69 SQLs. |
 
 ---
 
 ## 10. PRÓXIMA AÇÃO (sempre atualizar no fim de sessão)
 
-**▶️ AGORA**: Sprints 0 + 1 + 2 + 3 + 4 + 5 fechadas. Único bloqueador continua sendo 0.3 (CRON_SECRET no painel Vercel — manual, depende do Anderson).
+**▶️ AGORA**: Sprints 0 → 6 (técnico) todas fechadas. **2 bloqueadores manuais antes do lojista #1**:
+1. **0.3 / A3** — `CRON_SECRET` no painel Vercel (1 min)
+2. **6.9-6.14** — Smoke prod L1-L6 (runbook em `docs/runbooks/smoke-prod-pre-lojista.md`) — exige hardware: impressora real, mobile Android, fotos reais. ~1-2h de execução guiada.
 
-**DEPOIS DO 0.3 OK**: Sprint 6 — Limpeza estrutural + smoke prod real (deletar print-layout/print-store/supabase-server mortos, decidir PDV page vs modal, smoke L1-L6 com impressora real).
+**DEPOIS DOS 2 OK**: lojista #1 entra (Sandra ou outro piloto). Sprints PÓS-#1 (refator pdv-shell + importer CSV + multi-tenant signup) ficam pra fila pós-feedback real.
 
 ---
 

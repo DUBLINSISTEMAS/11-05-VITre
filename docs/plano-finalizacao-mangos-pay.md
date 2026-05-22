@@ -110,13 +110,13 @@
 
 ## Bloco H — Limpeza estrutural
 
-- [ ] **H1**: Deletar `lib/supabase/server.ts` + remover dep `@supabase/supabase-js` do `package.json` (zero callers, contradiz CLAUDE.md "Não usamos Supabase Auth")
-- [ ] **H2**: Deletar pasta `/logos` raiz (duplica `public/logos/`, não é servida)
-- [ ] **H3**: Limpar `.claude/worktrees/agent-*` + `.claude/tmp-build-head/` — cópias velhas de worktree
+- [x] **H1**: ~~Deletar lib/supabase/server.ts~~ **REVOGADO** — storage.ts importa via `./server`. Mantido. (Sprint 6.3, commit `8013290`)
+- [x] **H2**: Pasta `/logos` raiz deletada. (Sprint 6.4, commit `8013290`)
+- [x] **H3**: `.claude/worktrees/*` + `.claude/tmp-build-head/` limpos. (Sprint 6.5, commit `8013290`)
 - [x] **H4**: `RETURNABLE_STATUSES` extraído pra `src/actions/order/constants.ts`, importado por `record-return.ts` + `order-status-actions.tsx` (Sprint 1.3, commit `28a5d2c`)
-- [ ] **H5**: **Decisão**: PDV full-page (`/admin/pdv`) vs modal `new-sale-modal.tsx` — qual fica? Recomendação: manter só o standalone (`/admin/pdv`), modal só pra "venda rápida 2 cliques" se justificar
-- [ ] **H6**: **Decisão**: `ReportView` vs `ReportLayout` — recomendação: matar `ReportView`, dashboard `/admin/relatorios` vira só atalhos pros 5 A4 + KPIs leves
-- [ ] **H7**: Resolver `drizzle/0033_order_item_discount.sql` + `supabase/sql/59` — drizzle cria coluna, supabase cria CHECKs. OK como está, mas documentar no MIGRATION.md (criar?) pra próximo dev entender
+- [x] **H5**: ~~PDV vs modal~~ **REVOGADO** — decisão consciente do founder em 2026-05-21. Manter ambos. (Sprint 6.6)
+- [x] **H6**: ~~ReportView~~ **DEFERIDO** — ainda mostra breakdown que RelatoriosIndexCards não cobre. Refactor pós-#1. (Sprint 6.7)
+- [x] **H7**: drift drizzle vs supabase/sql documentado em `docs/MIGRATION.md`. (Sprint 6.8, commit `8013290`)
 
 ---
 
@@ -199,12 +199,14 @@ PÓS-#1                  I (refator) + G (CSV se necessário) + J (multi-tenant 
 - **L novo** porque smoke prod real (impressora, 3G, latência Brasil) não está no plano e é bloqueante pro #1
 - **I + G + J adiados** porque (I) refator interno sem retorno direto pro lojista; (G) depende do perfil do #1 (≤50 SKUs migra mão); (J) signup público só após #1 validar
 
-## Bloco L — Smoke prod manual (NOVO, pré-lojista #1)
+## Bloco L — Smoke prod manual (depende do Anderson, pré-lojista #1)
 
-- [ ] **L1**: Venda balcão real → recibo impresso em impressora do lojista (jato/laser ou térmica)
-- [ ] **L2**: Storefront aberto em 3G mobile em rede do interior (latência real Brasil)
+> Runbook completo em `docs/runbooks/smoke-prod-pre-lojista.md`. Bloqueia entrada do lojista #1.
+
+- [ ] **L1**: Venda balcão real → recibo impresso (térmico 80mm + A4 dual via ?fmt)
+- [ ] **L2**: Storefront aberto em 3G mobile em rede do interior
 - [ ] **L3**: Cadastrar 20 produtos com fotos reais (validar upload sharp + cache)
-- [ ] **L4**: 1 venda fiada parcial + 1 estorno + 1 devolução parcial — fluxo de exceção completo
+- [ ] **L4**: Devolução parcial + fluxo guiado de fiado pendente
 - [ ] **L5**: Fechamento Z impresso A4 + envio pro contador via WhatsApp
 - [ ] **L6**: Lighthouse mobile do storefront ≥ 90 com dados reais
 
@@ -220,3 +222,4 @@ PÓS-#1                  I (refator) + G (CSV se necessário) + J (multi-tenant 
 | 2026-05-22 | **Sprint 3 fechado**: D3 (busca CPF/CNPJ) + D4 (notes no PDV) + D5 (histórico linka detalhe) + D6 (filtro fiado pendente) + D7 (setting requireOpenCashSession). 1 SQL nova aplicada em prod (66). 3 commits: `6b2c8a0` clientes 3.1-3.3, `56c93ff` filtro fiado, `6f79e98` setting caixa + SQL 66. Auditoria: 519/519 unit + tsc 0 warnings + 39/39 integration + 67/67 SQLs aplicados. |
 | 2026-05-22 | **Sprint 4 fechado**: E3+E4+E5+E6 (relatórios A4 contador-grade) + F1+F2+F3 (impressão recibo dual / Z A4 / rodapé universal). 2 commits: `81c0ad5` 4.1-4.5+4.8 (CNPJ + filtros + agrupamento + aging + custeio + operador), `60a8845` 4.6-4.7 (recibo fmt + Z A4). Nenhuma SQL nova exigida. Auditoria: 527/527 unit + tsc 0 warnings + 39/39 integration + 67/67 SQLs aplicados. |
 | 2026-05-22 | **Sprint 5 fechado**: Bloco C inteiro (5 fantasmas reais) — C3 cupom + C4 recado + C1 coleção + C5 grupo + C2 atributo. 2 SQLs novas aplicadas (67, 68). 1 commit grande: `281d582`. Auditoria: 534/534 unit + tsc 0 warnings + 39/39 integration + 69/69 SQLs aplicados. |
+| 2026-05-22 | **Sprint 6 técnico fechado**: H2+H3 (limpeza /logos + .claude/worktrees), H7 (MIGRATION.md), 6.1+6.2 (print-layout + print-store mortos). H1 revogado (storage.ts usa server.ts), H5 revogado (modal é UX consciente), H6 deferido (ReportView ainda tem breakdown). Bloco L (smoke prod L1-L6) tem runbook em `docs/runbooks/smoke-prod-pre-lojista.md` — Anderson executa antes do lojista #1. 1 commit: `8013290`. Auditoria: 534/534 unit + tsc 0 warnings + 39/39 integration + 69/69 SQLs. |
