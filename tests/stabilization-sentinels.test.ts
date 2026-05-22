@@ -343,6 +343,155 @@ test("Sprint 3.5: store.requireOpenCashSession + PDV bloqueia + UI card", () => 
   );
 });
 
+// ---------------------------------------------------------------------
+// Sprint 4 — relatórios contador-grade + impressão
+// ---------------------------------------------------------------------
+
+test("Sprint 4.1: ReportLayout expõe `document` no storeInfo e renderiza CNPJ/CPF", () => {
+  const layout = src("src/components/admin/report/report-layout.tsx");
+  assert.match(
+    layout,
+    /document\?:\s*string\s*\|\s*null/,
+    "ReportStoreInfo deve expor document?: string | null",
+  );
+  assert.match(
+    layout,
+    /CNPJ\/CPF:\s*\{storeInfo\.document\}/,
+    "ReportLayout deve renderizar 'CNPJ/CPF: {document}' quando preenchido",
+  );
+
+  // Helper canônico retorna doc formatado (CPF/CNPJ pontuado)
+  const info = src("src/actions/reports/store-info.ts");
+  assert.match(
+    info,
+    /document:\s*formatDocument\(store\.document\)/,
+    "loadStoreInfoForReport deve formatar e devolver document",
+  );
+});
+
+test("Sprint 4.2: load-sales aceita categoryIds/brandIds e gera EXISTS", () => {
+  const ls = src("src/actions/reports/load-sales.ts");
+  assert.match(
+    ls,
+    /parseUuidCsv/,
+    "load-sales deve ter helper parseUuidCsv (sanitização de IDs)",
+  );
+  assert.match(
+    ls,
+    /EXISTS\s*\(\s*SELECT 1 FROM \$\{orderItemTable\}/,
+    "load-sales deve filtrar via EXISTS quando há category/brand",
+  );
+
+  // Loader de opções existe
+  const fo = src("src/actions/reports/filter-options.ts");
+  assert.match(fo, /categories:\s*ReportFilterOption\[\]/);
+  assert.match(fo, /brands:\s*ReportFilterOption\[\]/);
+});
+
+test("Sprint 4.3: sales-report-client renderiza GroupedSalesReport quando groupBy=day", () => {
+  const c = src("src/components/admin/sales-report-client.tsx");
+  assert.match(
+    c,
+    /groupByDay\s*=\s*filters\.groupBy === "day"/,
+    "client deve derivar groupByDay de filters.groupBy",
+  );
+  assert.match(
+    c,
+    /function GroupedSalesReport/,
+    "client deve definir GroupedSalesReport pra view agrupada",
+  );
+});
+
+test("Sprint 4.4: receivables-report-client expõe buckets de aging + cards", () => {
+  const c = src("src/components/admin/receivables-report-client.tsx");
+  assert.match(
+    c,
+    /type AgingBucket\s*=\s*"current"\s*\|\s*"1-30"\s*\|\s*"31-60"\s*\|\s*"61\+"/,
+    "AgingBucket type deve cobrir current/1-30/31-60/61+",
+  );
+  assert.match(
+    c,
+    /bucketFromDays/,
+    "função bucketFromDays deve existir pra classificar por dias",
+  );
+  assert.match(
+    c,
+    /agingTotals\s*:\s*Record<AgingBucket, number>/,
+    "agingTotals deve agregar por bucket",
+  );
+});
+
+test("Sprint 4.5: critério de custeio aparece no rodapé margem", () => {
+  const c = src("src/components/admin/margin-report-client.tsx");
+  assert.match(
+    c,
+    /snapshot histórico, não FIFO ou custo médio/,
+    "rodapé do relatório de margem deve explicar critério de custeio",
+  );
+});
+
+test("Sprint 4.6: recibo PDV aceita ?fmt=a4|thermal", () => {
+  const r = src("src/app/(admin)/admin/pdv/recibo/[token]/page.tsx");
+  assert.match(
+    r,
+    /type ReceiptFmt\s*=\s*"thermal"\s*\|\s*"a4"/,
+    "página de recibo deve declarar union ReceiptFmt",
+  );
+  // Default thermal preserva fluxo atual
+  assert.match(
+    r,
+    /rawFmt === "a4"\s*\?\s*"a4"\s*:\s*"thermal"/,
+    "fmt deve fazer default em 'thermal' (preserva impressora térmica)",
+  );
+  assert.match(
+    r,
+    /\?fmt=thermal/,
+    "UI deve oferecer toggle pra thermal",
+  );
+  assert.match(
+    r,
+    /\?fmt=a4/,
+    "UI deve oferecer toggle pra a4",
+  );
+});
+
+test("Sprint 4.7: Z de caixa tem linha de assinatura + rodapé universal", () => {
+  const z = src("src/app/(admin)/admin/pdv/caixa/[id]/page.tsx");
+  assert.match(z, /Conferido por/);
+  assert.match(z, /Gerado em/);
+  // Rodapé só na impressão
+  assert.match(
+    z,
+    /report-page-marker/,
+    "Z deve incluir contador de página (CSS counter)",
+  );
+});
+
+test("Sprint 4.8: ReportLayout aceita operatorName + helper loadReportOperatorName", () => {
+  const layout = src("src/components/admin/report/report-layout.tsx");
+  assert.match(layout, /operatorName\?:\s*string\s*\|\s*null/);
+  assert.match(
+    layout,
+    /operatorName\s*\?\s*` por \$\{operatorName\}`/,
+    "rodapé deve concatenar 'por {operador}' quando preenchido",
+  );
+
+  const info = src("src/actions/reports/store-info.ts");
+  assert.match(
+    info,
+    /export async function loadReportOperatorName/,
+    "helper loadReportOperatorName deve existir",
+  );
+
+  // Marker CSS + globals.css
+  const css = src("src/app/globals.css");
+  assert.match(
+    css,
+    /\.report-page-marker::after\s*\{\s*content:\s*counter\(page\)/,
+    "globals.css deve ter regra ::after counter(page) pra contador de página",
+  );
+});
+
 test("Sprint 2.3: order.shippingInCents existe no schema e é populado pelo DRE", () => {
   const orderSchema = src("src/db/schema/order.ts");
   assert.match(

@@ -286,6 +286,47 @@ export default async function CashSessionDetailPage({
             Nenhuma venda balcão registrada nesta sessão.
           </p>
         )}
+
+        {/* Sprint 4.7 — área de assinatura "Conferido por". Só aparece em
+            impressão. Pareceria estranho na tela (lojista assina papel).
+            Z fechado: 2 linhas (operador que fechou + conferente). Z aberto:
+            1 linha (Z parcial não tem conferência formal ainda). */}
+        <section className="hidden space-y-6 pt-8 print:block">
+          <div className="grid grid-cols-2 gap-6 text-[11px]">
+            <div>
+              <div className="border-t border-black/60 pt-1 text-center">
+                Operador
+              </div>
+              <p className="text-center text-[10px] text-black/60">
+                {session.user.name ?? "—"}
+              </p>
+            </div>
+            <div>
+              <div className="border-t border-black/60 pt-1 text-center">
+                Conferido por
+              </div>
+              <p className="text-center text-[10px] text-black/60">
+                {isClosed ? "Assinatura" : "—"}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Sprint 4.8 — rodapé universal. Hidden na tela, visível no print. */}
+        <footer className="report-page-marker-container hidden border-t border-black/30 pt-2 text-center text-[10px] text-black/60 print:block">
+          <p>
+            Gerado em{" "}
+            {new Date().toLocaleString("pt-BR", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}{" "}
+            por {session.user.name ?? "operador"}
+            <span className="report-page-marker">{" · Página "}</span>
+          </p>
+        </footer>
       </div>
     </div>
   );

@@ -30,7 +30,12 @@ export const dynamic = "force-dynamic";
 
 interface ReciboPageProps {
   params: Promise<{ token: string }>;
+  /** Sprint 4.6 — `fmt` controla layout. Default 'thermal' (compatível
+   *  com impressora 80mm). A4 pra jato/laser doméstico. */
+  searchParams: Promise<{ fmt?: string }>;
 }
+
+type ReceiptFmt = "thermal" | "a4";
 
 const PAYMENT_LABELS: Record<string, string> = {
   cash: "Dinheiro",
@@ -40,8 +45,16 @@ const PAYMENT_LABELS: Record<string, string> = {
   other: "Outro",
 };
 
-export default async function ReciboBalcaoPage({ params }: ReciboPageProps) {
+export default async function ReciboBalcaoPage({
+  params,
+  searchParams,
+}: ReciboPageProps) {
   const { token } = await params;
+  const { fmt: rawFmt } = await searchParams;
+  // Sprint 4.6 — default 'thermal' preserva comportamento (impressora
+  // 80mm é o caso de uso original do balcão BR).
+  const fmt: ReceiptFmt = rawFmt === "a4" ? "a4" : "thermal";
+  const isA4 = fmt === "a4";
 
   const session = await requireSession();
   const store = await getCurrentStore(session.user.id);
@@ -156,26 +169,64 @@ export default async function ReciboBalcaoPage({ params }: ReciboPageProps) {
     <>
       <style>{`
         @media print {
-          @page { margin: 1cm; }
+          @page { size: ${isA4 ? "A4" : "80mm auto"}; margin: ${isA4 ? "1.5cm" : "4mm"}; }
           html, body { background: white !important; color: black !important; }
           [data-admin-chrome] { display: none !important; }
         }
       `}</style>
 
-      <div className="mx-auto max-w-[420px] px-4 py-6 print:px-0 print:py-0">
-        {/* Banner de sucesso — só em tela */}
-        <div className="mb-4 flex items-center gap-2 rounded-lg border border-ok/30 bg-ok-wash p-3 text-sm text-ok print:hidden">
-          <CheckCircle2Icon className="size-5 shrink-0 text-ok" />
-          <span className="font-medium">Venda registrada</span>
+      <div
+        className={`mx-auto px-4 py-6 print:px-0 print:py-0 ${
+          isA4 ? "max-w-[210mm]" : "max-w-[420px]"
+        }`}
+      >
+        {/* Banner de sucesso + toggle de formato — só em tela */}
+        <div className="mb-4 flex flex-wrap items-center gap-2 print:hidden">
+          <div className="flex items-center gap-2 rounded-lg border border-ok/30 bg-ok-wash p-3 text-sm text-ok">
+            <CheckCircle2Icon className="size-5 shrink-0 text-ok" />
+            <span className="font-medium">Venda registrada</span>
+          </div>
+          {/* Sprint 4.6 — toggle térmico/A4. Click muda só ?fmt= sem refresh
+              de dados; o caller usa Link pra preservar estado da página. */}
+          <div className="ml-auto flex overflow-hidden rounded-md border border-line text-[12px]">
+            <Link
+              href={`/admin/pdv/recibo/${token}?fmt=thermal`}
+              className={`px-3 py-1.5 ${
+                !isA4 ? "bg-brand text-white" : "bg-bg-card text-ink-2 hover:bg-bg-app"
+              }`}
+              aria-pressed={!isA4}
+              title="Layout 80mm para impressora térmica"
+            >
+              Térmico 80mm
+            </Link>
+            <Link
+              href={`/admin/pdv/recibo/${token}?fmt=a4`}
+              className={`border-l border-line px-3 py-1.5 ${
+                isA4 ? "bg-brand text-white" : "bg-bg-card text-ink-2 hover:bg-bg-app"
+              }`}
+              aria-pressed={isA4}
+              title="Layout A4 para impressora jato/laser"
+            >
+              A4
+            </Link>
+          </div>
         </div>
 
         <PrintTrigger />
 
-        <article className="bg-white px-4 py-5 text-black">
+        <article
+          className={`bg-white text-black ${
+            isA4 ? "px-10 py-8 text-[13px]" : "px-4 py-5"
+          }`}
+        >
           {/* Onda 2.7 — cabeçalho universal (logo, nome, CNPJ, endereço, tel). */}
           <div className="border-b border-black/20 pb-3">
-            <PrintStoreHeader store={store} variant="thermal" />
-            <p className="mt-2 font-mono text-[11px] uppercase tracking-wider text-black/70 text-center">
+            <PrintStoreHeader store={store} variant={isA4 ? "a4" : "thermal"} />
+            <p
+              className={`mt-2 font-mono uppercase tracking-wider text-black/70 text-center ${
+                isA4 ? "text-[12px]" : "text-[11px]"
+              }`}
+            >
               Venda balcão · #{order.shortCode}
             </p>
             <p className="text-[11px] text-black/60 text-center">
@@ -347,7 +398,19 @@ export default async function ReciboBalcaoPage({ params }: ReciboPageProps) {
           ) : null}
 
           <footer className="mt-5 border-t border-black/20 pt-2 text-center text-[10px] text-black/50">
-            Obrigada pela preferência!
+            <p>Obrigada pela preferência!</p>
+            {/* Sprint 4.8 — rodapé universal: gerado em / operador. */}
+            <p className="mt-1">
+              Gerado em{" "}
+              {new Date().toLocaleString("pt-BR", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}{" "}
+              por {session.user.name ?? "operador"}
+            </p>
           </footer>
         </article>
 
