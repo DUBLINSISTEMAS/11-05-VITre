@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { isReturnable } from "@/actions/order/constants";
 import { recordOrderReturn } from "@/actions/order/record-return";
 import {
   ORDER_STATUS_VALUES,
@@ -29,12 +30,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-
-/** Status que permitem devolução pela UI (recordOrderReturn — Pre-Sprint-6 C). */
-const RETURNABLE_STATUSES: ReadonlyArray<(typeof ORDER_STATUS_VALUES)[number]> = [
-  "confirmed",
-  "fulfilled",
-];
 
 interface OrderStatusActionsProps {
   orderId: string;
@@ -55,7 +50,7 @@ export function OrderStatusActions({
   const [returnSubmitting, setReturnSubmitting] = useState(false);
 
   const allowed = VALID_TRANSITIONS[status];
-  const canReturn = RETURNABLE_STATUSES.includes(status);
+  const canReturn = isReturnable(status);
 
   const transition = (
     next: (typeof ORDER_STATUS_VALUES)[number],

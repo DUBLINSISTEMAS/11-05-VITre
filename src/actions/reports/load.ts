@@ -1,9 +1,10 @@
 "use server";
 
-import { and, count, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { z } from "zod";
 
+import { COUNTABLE_STATUSES } from "@/actions/order/constants";
 import {
   customerTable,
   leadTable,
@@ -64,12 +65,17 @@ export async function loadFullReport(
   const range = resolveRange(rawFilters);
 
   return withTenant(store.id, session.user.id, async (tx) => {
+    // Sprint 1.3 (2026-05-22): KPI do dashboard usa o MESMO filtro de
+    // status dos relatórios oficiais (load-sales/top/margin/dre). Antes
+    // este loader filtrava só `<> canceled AND <> expired`, o que incluía
+    // quote + awaiting_whatsapp + returned no faturamento → dashboard
+    // mostrava R$X maior que o relatório. Drift agora fechado pela
+    // constante única em src/actions/order/constants.ts.
     const periodCond = and(
       eq(orderTable.storeId, store.id),
       gte(orderTable.createdAt, range.start),
       lte(orderTable.createdAt, range.end),
-      sql`${orderTable.status} <> 'canceled'`,
-      sql`${orderTable.status} <> 'expired'`,
+      inArray(orderTable.status, COUNTABLE_STATUSES),
     );
 
     // 1. Sales totals + by channel + by payment

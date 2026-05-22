@@ -1,15 +1,23 @@
 "use server";
 
 /**
- * loadDreSimple — Sprint 5D.
+ * loadDreSimple — Sprint 5D + Sprint 1.4 (2026-05-22).
  *
  * DRE simplificado:
  *   Receita bruta     = SUM(item.price * item.qty)  (preço antes do desconto)
  *   (-) Descontos     = SUM(order.discount)
  *   (+) Acréscimos    = SUM(order.surcharge)
- *   (=) Receita líquida (= SUM(order.total) — invariante de pricing)
- *   (-) CMV           = SUM(item.cost * item.qty) WHERE cost NOT NULL
+ *   (-) Devoluções    = SUM(order_return_item.quantity * item.price_snapshot)   [Sprint 1.4]
+ *   (=) Receita líquida (= SUM(order.total) - devoluções)
+ *   (-) CMV efetivo   = SUM(item.cost * item.qty) - SUM(devolvido.cost * qty)
+ *                       (CMV das vendidas menos CMV das devolvidas)
  *   (=) Lucro bruto
+ *
+ * Vinculação por período: devoluções descontam no período da VENDA
+ * original (não no período em que a devolução foi registrada). Mantém
+ * consistência histórica — relatório de janeiro mostra "vendi R$X,
+ * devolveram R$Y" mesmo se devolução foi em março. Trade-off: relatório
+ * de período passado pode mudar quando alguém devolve.
  *
  * Sem despesas operacionais (sem schema de expense). Aviso de
  * simplificação na UI. Sprint futura adiciona expense table.
@@ -20,17 +28,18 @@
 import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 
-import { type Order, orderItemTable, orderTable } from "@/db/schema";
+import { COUNTABLE_STATUSES } from "@/actions/order/constants";
+import {
+  orderItemTable,
+  orderReturnItemTable,
+  orderTable,
+} from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
 import { resolveReportRange } from "./range";
 import type { DreSimpleSummary } from "./types";
-
-type OrderStatus = Order["status"];
-
-const COUNTABLE_STATUSES: OrderStatus[] = ["confirmed", "fulfilled"];
 
 export interface LoadDreInput {
   filters: Record<string, string | undefined>;
@@ -82,11 +91,33 @@ export async function loadDreSimple(
       .innerJoin(orderTable, eq(orderTable.id, orderItemTable.orderId))
       .where(orderCond);
 
+    // 3) Sprint 1.4 — devoluções vinculadas a vendas DO PERÍODO. JOIN
+    //    em cascata: order_return_item → order_item → order → filtro.
+    //    revenue devolvida = qty_returned × price_snapshot do item original.
+    //    cogs devolvido   = qty_returned × cost_snapshot do item original.
+    const [returnAgg] = await tx
+      .select({
+        returnedRevenue: sql<number>`coalesce(sum(${orderReturnItemTable.quantityReturned} * ${orderItemTable.priceInCentsSnapshot}), 0)::int`,
+        returnedCogs: sql<number>`coalesce(sum(${orderReturnItemTable.quantityReturned} * ${orderItemTable.unitCostSnapshotInCents}) filter (where ${orderItemTable.unitCostSnapshotInCents} is not null), 0)::int`,
+      })
+      .from(orderReturnItemTable)
+      .innerJoin(
+        orderItemTable,
+        eq(orderItemTable.id, orderReturnItemTable.orderItemId),
+      )
+      .innerJoin(orderTable, eq(orderTable.id, orderItemTable.orderId))
+      .where(orderCond);
+
     const grossRevenue = itemAgg?.grossRevenue ?? 0;
     const discounts = orderAgg?.discounts ?? 0;
     const surcharges = orderAgg?.surcharges ?? 0;
-    const netRevenue = orderAgg?.netRevenue ?? 0;
-    const cogs = itemAgg?.cogs ?? 0;
+    const returnedRevenue = returnAgg?.returnedRevenue ?? 0;
+    const returnedCogs = returnAgg?.returnedCogs ?? 0;
+    // netRevenue agora é order.total das vendas do período MENOS devoluções.
+    // Manter `order.total` como base preserva a invariante de pricing
+    // (total = grossRevenue - discounts + surcharges).
+    const netRevenue = (orderAgg?.netRevenue ?? 0) - returnedRevenue;
+    const cogs = (itemAgg?.cogs ?? 0) - returnedCogs;
     const grossProfit = netRevenue - cogs;
     const totalItems = itemAgg?.totalItems ?? 0;
     const itemsWithCost = itemAgg?.itemsWithCost ?? 0;
@@ -99,8 +130,10 @@ export async function loadDreSimple(
         grossRevenueInCents: grossRevenue,
         discountsInCents: discounts,
         surchargesInCents: surcharges,
+        returnedRevenueInCents: returnedRevenue,
         netRevenueInCents: netRevenue,
         cogsInCents: cogs,
+        returnedCogsInCents: returnedCogs,
         grossProfitInCents: grossProfit,
         cogsCoveragePercent: coverage,
         totalOrderCount: orderAgg?.count ?? 0,

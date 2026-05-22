@@ -153,9 +153,19 @@ export function SalesReportClient({
       align: "right",
       width: "110px",
       render: (r) => (
-        <span className="tabular-nums">{formatBRL(r.totalInCents)}</span>
+        <div className="flex flex-col items-end gap-0.5 tabular-nums">
+          <span>{formatBRL(r.totalInCents)}</span>
+          {r.returnedInCents > 0 ? (
+            // Sprint 1.4 — indica devolução vinculada à venda. Não esconde
+            // o total bruto; mostra o desconto explícito embaixo.
+            <span className="text-destructive text-[10.5px]">
+              −{formatBRL(r.returnedInCents)} devolvido
+            </span>
+          ) : null}
+        </div>
       ),
-      exportValue: (r) => (r.totalInCents / 100).toFixed(2),
+      exportValue: (r) =>
+        ((r.totalInCents - r.returnedInCents) / 100).toFixed(2),
     },
   ];
 
@@ -169,10 +179,29 @@ export function SalesReportClient({
       value: formatBRL(summary.averageTicketInCents),
     },
     {
-      label: "Faturamento",
+      label: "Faturamento bruto",
       value: formatBRL(summary.totalRevenueInCents),
-      emphasis: true,
     },
+    // Sprint 1.4 — devoluções só aparecem quando > 0 (zero não polui).
+    ...(summary.totalReturnedInCents > 0
+      ? [
+          {
+            label: "Devoluções",
+            value: `−${formatBRL(summary.totalReturnedInCents)}`,
+          } satisfies ReportTotal,
+          {
+            label: "Faturamento líquido",
+            value: formatBRL(summary.netRevenueInCents),
+            emphasis: true,
+          } satisfies ReportTotal,
+        ]
+      : [
+          {
+            label: "Faturamento",
+            value: formatBRL(summary.totalRevenueInCents),
+            emphasis: true,
+          } satisfies ReportTotal,
+        ]),
   ];
 
   const currentPeriodo = filters.periodo ?? "30";

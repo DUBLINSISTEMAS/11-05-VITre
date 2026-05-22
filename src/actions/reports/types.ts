@@ -36,11 +36,24 @@ export interface SalesReportRow {
   paymentMethod: string | null;
   customerName: string;
   totalInCents: number;
+  /**
+   * Sprint 1.4: total devolvido vinculado a esta venda. 0 quando nada
+   * foi devolvido. UI pode mostrar "R$X devolvidos" como badge.
+   */
+  returnedInCents: number;
 }
 
 export interface SalesReportSummary {
   totalCount: number;
+  /** Receita bruta — soma de order.total sem desconto de devolução. */
   totalRevenueInCents: number;
+  /**
+   * Sprint 1.4: total devolvido das vendas do período. Subtraído de
+   * netRevenueInCents.
+   */
+  totalReturnedInCents: number;
+  /** Receita líquida = totalRevenue - totalReturned. */
+  netRevenueInCents: number;
   averageTicketInCents: number;
   byChannel: {
     channel: OrderChannel;
@@ -58,23 +71,53 @@ export interface SalesReportSummary {
 export interface TopProductRow {
   productId: string | null;
   productName: string;
-  /** Quantidade vendida total no período. */
+  /** Quantidade vendida total no período (sem subtrair devolução). */
   quantitySold: number;
   /** Receita gerada (soma price * qty dos itens). */
   revenueInCents: number;
+  /**
+   * Sprint 1.4: quantidade devolvida no período (vinculada às vendas
+   * deste período, não à data da devolução).
+   */
+  returnedQuantity: number;
+  /** Sprint 1.4: receita devolvida = qty_returned × price_snapshot. */
+  returnedRevenueInCents: number;
+  /** Sprint 1.4: quantidade líquida = vendido - devolvido. */
+  netQuantity: number;
+  /** Sprint 1.4: receita líquida = revenue - returnedRevenue. */
+  netRevenueInCents: number;
 }
 
 /** 1 linha do relatório /admin/relatorios/margem. */
 export interface MarginReportRow {
   productId: string | null;
   productName: string;
+  /** Quantidade vendida bruta no período. */
   quantitySold: number;
+  /** Receita BRUTA (sem subtrair devolução). */
   revenueInCents: number;
-  /** Custo total = SUM(unit_cost_snapshot * qty). NULL = sem custo cadastrado. */
+  /**
+   * Custo total das vendidas = SUM(unit_cost_snapshot * qty).
+   * NULL = sem custo cadastrado em ao menos um item.
+   */
   totalCostInCents: number | null;
-  /** Margem absoluta = revenue - cost. NULL se sem custo. */
+  /**
+   * Sprint 1.4: receita devolvida no período (qty_returned × price_snapshot).
+   */
+  returnedRevenueInCents: number;
+  /**
+   * Sprint 1.4: custo das devolvidas (qty_returned × cost_snapshot).
+   * NULL = sem custo cadastrado nas devolvidas (raro).
+   */
+  returnedCostInCents: number | null;
+  /**
+   * Margem absoluta efetiva = (revenue - returnedRevenue) - (cost - returnedCost).
+   * NULL se cobertura de custo < 100%.
+   */
   marginInCents: number | null;
-  /** Margem % = margin / revenue * 100. NULL se sem custo. */
+  /**
+   * Margem % efetiva = margin / netRevenue * 100. NULL se sem custo.
+   */
   marginPercent: number | null;
   /** Quantidade de itens vendidos COM custo cadastrado (pra aviso "X de Y produtos têm custo"). */
   itemsWithCost: number;
@@ -84,16 +127,26 @@ export interface MarginReportRow {
 
 /** Agregado pra DRE simplificado. */
 export interface DreSimpleSummary {
-  /** Receita bruta = SUM(order.total) das vendas confirmadas no período. */
+  /** Receita bruta = SUM(item.price_snapshot * qty) das vendas no período. */
   grossRevenueInCents: number;
   /** Descontos concedidos no período. */
   discountsInCents: number;
   /** Acréscimos cobrados (taxas cartão, frete). */
   surchargesInCents: number;
-  /** Receita líquida = bruta + acréscimos - descontos. */
+  /**
+   * Sprint 1.4: receita devolvida vinculada às vendas do período.
+   * = SUM(qty_returned * item.price_snapshot).
+   */
+  returnedRevenueInCents: number;
+  /** Receita líquida = order.total - devoluções. */
   netRevenueInCents: number;
-  /** CMV = soma de unit_cost_snapshot * qty pra todos os items vendidos. */
+  /** CMV efetivo = (custo dos vendidos) - (custo dos devolvidos). */
   cogsInCents: number;
+  /**
+   * Sprint 1.4: CMV das devoluções (já subtraído de cogsInCents).
+   * Reportado pra UI poder mostrar separadamente.
+   */
+  returnedCogsInCents: number;
   /** Lucro bruto = receita líquida - CMV. */
   grossProfitInCents: number;
   /** % itens com custo cadastrado — qualifica a precisão do CMV. */

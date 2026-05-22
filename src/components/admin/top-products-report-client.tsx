@@ -75,11 +75,18 @@ export function TopProductsReportClient({
       align: "right",
       width: "110px",
       render: (r) => (
-        <span className="tabular-nums">
-          {r.quantitySold.toLocaleString("pt-BR")}
-        </span>
+        <div className="flex flex-col items-end gap-0.5 tabular-nums">
+          <span>{r.quantitySold.toLocaleString("pt-BR")}</span>
+          {r.returnedQuantity > 0 ? (
+            <span className="text-destructive text-[10.5px]">
+              −{r.returnedQuantity} devolvido
+            </span>
+          ) : null}
+        </div>
       ),
-      exportValue: (r) => r.quantitySold,
+      // Export usa qty líquida (vendido - devolvido) — bate com o que
+      // o contador espera ver na coluna "qtd vendida" pro mês.
+      exportValue: (r) => r.netQuantity,
     },
     {
       key: "revenue",
@@ -87,9 +94,16 @@ export function TopProductsReportClient({
       align: "right",
       width: "130px",
       render: (r) => (
-        <span className="tabular-nums">{formatBRL(r.revenueInCents)}</span>
+        <div className="flex flex-col items-end gap-0.5 tabular-nums">
+          <span>{formatBRL(r.revenueInCents)}</span>
+          {r.returnedRevenueInCents > 0 ? (
+            <span className="text-destructive text-[10.5px]">
+              −{formatBRL(r.returnedRevenueInCents)}
+            </span>
+          ) : null}
+        </div>
       ),
-      exportValue: (r) => (r.revenueInCents / 100).toFixed(2),
+      exportValue: (r) => (r.netRevenueInCents / 100).toFixed(2),
     },
   ];
 

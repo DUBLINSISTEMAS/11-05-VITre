@@ -13,17 +13,18 @@
 import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 
-import { type Order, orderItemTable, orderTable } from "@/db/schema";
+import { COUNTABLE_STATUSES } from "@/actions/order/constants";
+import {
+  orderItemTable,
+  orderReturnItemTable,
+  orderTable,
+} from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
 import { resolveReportRange } from "./range";
 import type { TopProductRow } from "./types";
-
-type OrderStatus = Order["status"];
-
-const COUNTABLE_STATUSES: OrderStatus[] = ["confirmed", "fulfilled"];
 
 export interface LoadTopProductsInput {
   filters: Record<string, string | undefined>;
@@ -78,12 +79,57 @@ export async function loadTopProductsReport(
       )
       .limit(100);
 
-    const rows: TopProductRow[] = agg.map((r) => ({
-      productId: r.productId,
-      productName: r.productName,
-      quantitySold: r.quantitySold,
-      revenueInCents: r.revenueInCents,
-    }));
+    // Sprint 1.4 — devoluções agregadas por (productId, nameSnapshot)
+    // pra alinhar com o GROUP BY da query principal. Usar o
+    // priceInCentsSnapshot do order_item original (não o atual do produto)
+    // pra preservar precisão histórica.
+    const returnAgg = await tx
+      .select({
+        productId: orderItemTable.productId,
+        productName: orderItemTable.productNameSnapshot,
+        returnedQuantity: sql<number>`coalesce(sum(${orderReturnItemTable.quantityReturned}), 0)::int`,
+        returnedRevenueInCents: sql<number>`coalesce(sum(${orderReturnItemTable.quantityReturned} * ${orderItemTable.priceInCentsSnapshot}), 0)::int`,
+      })
+      .from(orderReturnItemTable)
+      .innerJoin(
+        orderItemTable,
+        eq(orderItemTable.id, orderReturnItemTable.orderItemId),
+      )
+      .innerJoin(orderTable, eq(orderTable.id, orderItemTable.orderId))
+      .where(baseCond)
+      .groupBy(orderItemTable.productId, orderItemTable.productNameSnapshot);
+
+    // Key por (productId ?? "null") + "|" + nameSnapshot — productId
+    // pode ser null (produto deletado), nesse caso o nome é a chave.
+    const keyOf = (p: string | null, n: string) => `${p ?? "null"}|${n}`;
+    const returnsByKey = new Map<
+      string,
+      { quantity: number; revenue: number }
+    >(
+      returnAgg.map((r) => [
+        keyOf(r.productId, r.productName),
+        {
+          quantity: r.returnedQuantity,
+          revenue: r.returnedRevenueInCents,
+        },
+      ]),
+    );
+
+    const rows: TopProductRow[] = agg.map((r) => {
+      const ret = returnsByKey.get(keyOf(r.productId, r.productName));
+      const returnedQuantity = ret?.quantity ?? 0;
+      const returnedRevenueInCents = ret?.revenue ?? 0;
+      return {
+        productId: r.productId,
+        productName: r.productName,
+        quantitySold: r.quantitySold,
+        revenueInCents: r.revenueInCents,
+        returnedQuantity,
+        returnedRevenueInCents,
+        netQuantity: r.quantitySold - returnedQuantity,
+        netRevenueInCents: r.revenueInCents - returnedRevenueInCents,
+      };
+    });
 
     const totals = {
       totalQuantitySold: rows.reduce((acc, r) => acc + r.quantitySold, 0),

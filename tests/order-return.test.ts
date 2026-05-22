@@ -39,9 +39,32 @@ test("recordOrderReturn adquire advisory lock por order", () => {
   assert.match(s, /pg_advisory_xact_lock.*order-return-/);
 });
 
-test("recordOrderReturn aceita só status confirmed/fulfilled", () => {
-  const s = loadActionSource();
-  assert.match(s, /RETURNABLE_STATUSES.*=.*\[.*"confirmed".*"fulfilled".*\]/s);
+test("recordOrderReturn aceita só status confirmed/fulfilled (via constants.ts)", () => {
+  // Sprint 1.3: RETURNABLE_STATUSES migrou pra src/actions/order/constants.ts.
+  // record-return importa daqui — então a sentinela checa 2 coisas:
+  //   1. O literal canônico continua sendo ["confirmed", "fulfilled"]
+  //   2. record-return importa de "./constants" e usa isReturnable()
+  const constants = readFileSync(
+    "src/actions/order/constants.ts",
+    "utf8",
+  );
+  assert.match(
+    constants,
+    /RETURNABLE_STATUSES\s*=\s*\[\s*"confirmed"\s*,\s*"fulfilled"\s*\]/s,
+    "Literal canônico em constants.ts deve permanecer [confirmed, fulfilled]",
+  );
+
+  const action = loadActionSource();
+  assert.match(
+    action,
+    /from\s+["']\.\/constants["']/,
+    "record-return.ts deve importar de ./constants",
+  );
+  assert.match(
+    action,
+    /isReturnable\s*\(/,
+    "record-return.ts deve usar o predicado isReturnable() em vez de .includes() manual",
+  );
 });
 
 test("recordOrderReturn rejeita re-devolução (idempotência via status)", () => {

@@ -48,6 +48,8 @@ import {
 import { getCurrentStore } from "@/lib/store-context";
 import { type Tx, withTenant } from "@/lib/tenant";
 
+import { isReturnable } from "./constants";
+
 const inputSchema = z.object({
   orderId: z.string().uuid(),
   reason: z
@@ -67,11 +69,6 @@ export type RecordOrderReturnResult =
       cashAdjustmentId: string | null;
     }
   | { ok: false; error: string; fieldErrors?: Record<string, string> };
-
-// Status que admitem devolução total. Quote (orçamento) e
-// canceled/expired não devolvem (nada foi vendido). 'returned' bloqueia
-// re-devolução (idempotência).
-const RETURNABLE_STATUSES = ["confirmed", "fulfilled"] as const;
 
 export async function recordOrderReturn(
   input: RecordOrderReturnInput,
@@ -133,7 +130,7 @@ export async function recordOrderReturn(
           .limit(1);
 
         if (!order) return { ok: false, error: "Venda não encontrada." };
-        if (!RETURNABLE_STATUSES.includes(order.status as "confirmed" | "fulfilled")) {
+        if (!isReturnable(order.status)) {
           if (order.status === "returned") {
             return {
               ok: false,

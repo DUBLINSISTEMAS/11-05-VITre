@@ -73,6 +73,14 @@ export function DreReportClient({
       label: "(+) Acréscimos (taxas, frete, embalagem)",
       value: summary.surchargesInCents,
     },
+    // Sprint 1.4 — devoluções no período (vinculadas às vendas, não à
+    // data da devolução). Linha exibida sempre, mesmo zerada, pra
+    // contador entender que o sistema considera devolução.
+    {
+      kind: "minus",
+      label: "(−) Devoluções (vendas que voltaram)",
+      value: summary.returnedRevenueInCents,
+    },
     {
       kind: "subtotal",
       label: "(=) Receita líquida",
@@ -80,7 +88,7 @@ export function DreReportClient({
     },
     {
       kind: "minus",
-      label: "(−) Custo da mercadoria vendida (CMV)",
+      label: "(−) Custo da mercadoria vendida (CMV líquido de devoluções)",
       value: summary.cogsInCents,
       isSimplification: summary.cogsCoveragePercent < 100,
     },

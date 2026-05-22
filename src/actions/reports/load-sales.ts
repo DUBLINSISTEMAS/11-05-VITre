@@ -13,9 +13,13 @@
 import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 
-import { customerTable, type Order, orderTable } from "@/db/schema";
-
-type OrderStatus = Order["status"];
+import { COUNTABLE_STATUSES } from "@/actions/order/constants";
+import {
+  customerTable,
+  orderItemTable,
+  orderReturnItemTable,
+  orderTable,
+} from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
@@ -26,8 +30,6 @@ import type {
   SalesReportRow,
   SalesReportSummary,
 } from "./types";
-
-const COUNTABLE_STATUSES: OrderStatus[] = ["confirmed", "fulfilled"];
 
 export interface LoadSalesReportInput {
   /** Filtros URL: periodo (7/30/90/custom), start, end, paymentMethod. */
@@ -81,6 +83,26 @@ export async function loadSalesReport(
       .orderBy(desc(orderTable.createdAt))
       .limit(5000); // hard cap defensivo: rel. de 5k linhas já é absurdo
 
+    // Sprint 1.4 — agregado de devolução por order. Subtrair do total
+    // pra mostrar "venda líquida" e popular badge "R$X devolvidos".
+    const returnAgg = await tx
+      .select({
+        orderId: orderItemTable.orderId,
+        returnedInCents: sql<number>`coalesce(sum(${orderReturnItemTable.quantityReturned} * ${orderItemTable.priceInCentsSnapshot}), 0)::int`,
+      })
+      .from(orderReturnItemTable)
+      .innerJoin(
+        orderItemTable,
+        eq(orderItemTable.id, orderReturnItemTable.orderItemId),
+      )
+      .innerJoin(orderTable, eq(orderTable.id, orderItemTable.orderId))
+      .where(baseCond)
+      .groupBy(orderItemTable.orderId);
+
+    const returnedByOrder = new Map<string, number>(
+      returnAgg.map((r) => [r.orderId, r.returnedInCents]),
+    );
+
     const rows: SalesReportRow[] = rawRows.map((r) => ({
       id: r.id,
       shortCode: r.shortCode,
@@ -89,6 +111,7 @@ export async function loadSalesReport(
       status: r.status,
       paymentMethod: r.paymentMethod,
       totalInCents: r.totalInCents,
+      returnedInCents: returnedByOrder.get(r.id) ?? 0,
       customerName:
         r.customerName ?? r.snapshotName ?? "Venda balcão (anônimo)",
     }));
@@ -125,6 +148,9 @@ export async function loadSalesReport(
 
     const totalCount = agg?.totalCount ?? 0;
     const totalRevenue = agg?.totalRevenue ?? 0;
+    // Sprint 1.4 — soma do que voltou em devolução nas vendas listadas.
+    const totalReturned = rows.reduce((acc, r) => acc + r.returnedInCents, 0);
+    const netRevenue = totalRevenue - totalReturned;
 
     return {
       range,
@@ -132,6 +158,11 @@ export async function loadSalesReport(
       summary: {
         totalCount,
         totalRevenueInCents: totalRevenue,
+        totalReturnedInCents: totalReturned,
+        netRevenueInCents: netRevenue,
+        // Ticket médio segue baseado em receita BRUTA — devolução não
+        // muda quanto entrou no caixa originalmente. Aliás, lojistas
+        // medem "quanto o cliente comprou", não "quanto ficou".
         averageTicketInCents:
           totalCount > 0 ? Math.round(totalRevenue / totalCount) : 0,
         byChannel: byChannel.map((b) => ({

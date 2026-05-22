@@ -95,9 +95,19 @@ export function MarginReportClient({
       align: "right",
       width: "110px",
       render: (r) => (
-        <span className="tabular-nums">{formatBRL(r.revenueInCents)}</span>
+        <div className="flex flex-col items-end gap-0.5 tabular-nums">
+          <span>{formatBRL(r.revenueInCents)}</span>
+          {r.returnedRevenueInCents > 0 ? (
+            <span className="text-destructive text-[10.5px]">
+              −{formatBRL(r.returnedRevenueInCents)}
+            </span>
+          ) : null}
+        </div>
       ),
-      exportValue: (r) => (r.revenueInCents / 100).toFixed(2),
+      // Sprint 1.4: export usa receita LÍQUIDA — contador subtrai
+      // devolução do faturamento na DRE também, então bate.
+      exportValue: (r) =>
+        ((r.revenueInCents - r.returnedRevenueInCents) / 100).toFixed(2),
     },
     {
       key: "cost",
@@ -105,14 +115,22 @@ export function MarginReportClient({
       align: "right",
       width: "110px",
       render: (r) => (
-        <span className="tabular-nums">
-          {r.totalCostInCents === null ? "—" : formatBRL(r.totalCostInCents)}
-        </span>
+        <div className="flex flex-col items-end gap-0.5 tabular-nums">
+          <span>
+            {r.totalCostInCents === null ? "—" : formatBRL(r.totalCostInCents)}
+          </span>
+          {r.returnedCostInCents !== null && r.returnedCostInCents > 0 ? (
+            <span className="text-destructive text-[10.5px]">
+              −{formatBRL(r.returnedCostInCents)}
+            </span>
+          ) : null}
+        </div>
       ),
-      exportValue: (r) =>
-        r.totalCostInCents === null
-          ? ""
-          : (r.totalCostInCents / 100).toFixed(2),
+      exportValue: (r) => {
+        if (r.totalCostInCents === null) return "";
+        const net = r.totalCostInCents - (r.returnedCostInCents ?? 0);
+        return (net / 100).toFixed(2);
+      },
     },
     {
       key: "margin",

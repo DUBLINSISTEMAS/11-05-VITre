@@ -99,3 +99,110 @@ test("pdv: venda concluída permanece no PDV e oferece impressão explícita", (
   assert.match(pdv, /Imprimir/);
   assert.match(pdv, /Nova venda/);
 });
+
+// ---------------------------------------------------------------------
+// Sprint 1.3 — KPI dashboard usa COUNTABLE_STATUSES (não <> canceled OR
+// <> expired). Sem essa sentinela, alguém pode "abrir" o filtro do
+// dashboard de novo e o drift KPI ≠ relatório volta sem aviso.
+// ---------------------------------------------------------------------
+
+test("reports/load.ts (KPI dashboard) usa COUNTABLE_STATUSES (não filtro inclusivo)", () => {
+  const load = src("src/actions/reports/load.ts");
+
+  // Importa da fonte única
+  assert.match(
+    load,
+    /from\s+["']@\/actions\/order\/constants["']/,
+    "load.ts deve importar de @/actions/order/constants",
+  );
+  assert.match(
+    load,
+    /inArray\(orderTable\.status,\s*COUNTABLE_STATUSES\)/,
+    "load.ts deve usar inArray(status, COUNTABLE_STATUSES) no periodCond",
+  );
+
+  // Filtro antigo inclusivo (que incluía quote/awaiting_whatsapp/returned
+  // no faturamento) NÃO pode ressurgir.
+  assert.doesNotMatch(
+    load,
+    /status\}\s*<>\s*['"]canceled['"]/,
+    "Drift KPI≠relatório: filtro `status <> canceled` foi removido pra usar COUNTABLE_STATUSES",
+  );
+  assert.doesNotMatch(
+    load,
+    /status\}\s*<>\s*['"]expired['"]/,
+    "Drift KPI≠relatório: filtro `status <> expired` foi removido pra usar COUNTABLE_STATUSES",
+  );
+});
+
+test("reports/load-sales|top|margin|dre importam COUNTABLE_STATUSES de constants", () => {
+  for (const file of [
+    "src/actions/reports/load-sales.ts",
+    "src/actions/reports/load-top.ts",
+    "src/actions/reports/load-margin.ts",
+    "src/actions/reports/load-dre.ts",
+  ]) {
+    const s = src(file);
+    assert.match(
+      s,
+      /import\s+\{[^}]*COUNTABLE_STATUSES[^}]*\}\s+from\s+["']@\/actions\/order\/constants["']/,
+      `${file} deve importar COUNTABLE_STATUSES de @/actions/order/constants`,
+    );
+    // E não declarar mais inline (que era o padrão pré-Sprint-1.3).
+    assert.doesNotMatch(
+      s,
+      /const\s+COUNTABLE_STATUSES\s*:/,
+      `${file} não pode redeclarar COUNTABLE_STATUSES local — usar import`,
+    );
+  }
+});
+
+// ---------------------------------------------------------------------
+// Sprint 1.4 — devolução desconta em todos os 4 loaders de relatório.
+// Sem essas sentinelas, alguém pode refatorar e regredir pro caso
+// "faturamento mente" (devolução não desconta).
+// ---------------------------------------------------------------------
+
+test("reports/load-sales|top|margin|dre fazem JOIN com orderReturnItemTable", () => {
+  for (const file of [
+    "src/actions/reports/load-sales.ts",
+    "src/actions/reports/load-top.ts",
+    "src/actions/reports/load-margin.ts",
+    "src/actions/reports/load-dre.ts",
+  ]) {
+    const s = src(file);
+    assert.match(
+      s,
+      /orderReturnItemTable/,
+      `${file} deve importar orderReturnItemTable pra subtrair devoluções`,
+    );
+    assert.match(
+      s,
+      /quantityReturned/,
+      `${file} deve agregar order_return_item.quantity_returned`,
+    );
+  }
+});
+
+test("DRE expõe returnedRevenueInCents + returnedCogsInCents", () => {
+  const types = src("src/actions/reports/types.ts");
+  assert.match(
+    types,
+    /returnedRevenueInCents:\s*number/,
+    "DreSimpleSummary deve incluir returnedRevenueInCents",
+  );
+  assert.match(
+    types,
+    /returnedCogsInCents:\s*number/,
+    "DreSimpleSummary deve incluir returnedCogsInCents",
+  );
+
+  // UI da DRE precisa exibir a linha de devoluções (regressão fácil de
+  // perder se alguém esconder a linha "se zero").
+  const dre = src("src/components/admin/dre-report-client.tsx");
+  assert.match(
+    dre,
+    /Devoluções \(vendas que voltaram\)/,
+    "dre-report-client deve renderizar linha de devoluções",
+  );
+});
