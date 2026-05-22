@@ -54,6 +54,11 @@ export interface ReportStoreInfo {
   logoUrl?: string | null;
   address?: string | null;
   whatsapp?: string | null;
+  /**
+   * Sprint 4.1 — CNPJ ou CPF formatado pra impressão (já com pontuação).
+   * `null` quando lojista ainda não cadastrou. Apenas exibido (não fiscal).
+   */
+  document?: string | null;
 }
 
 interface ReportLayoutProps<T> {
@@ -71,6 +76,11 @@ interface ReportLayoutProps<T> {
   csvFileName?: string;
   /** Mensagem mostrada quando rows vazio. */
   emptyMessage?: string;
+  /**
+   * Sprint 4.8 — operador que gerou o relatório. Aparece no rodapé
+   * universal "Gerado em ... por {operador}". `null` = anônimo.
+   */
+  operatorName?: string | null;
 }
 
 function alignToClass(align?: ColumnAlign): string {
@@ -118,6 +128,7 @@ export function ReportLayout<T>({
   notes,
   csvFileName,
   emptyMessage = "Nenhum dado pra exibir.",
+  operatorName,
 }: ReportLayoutProps<T>) {
   const handlePrint = useCallback(() => {
     window.print();
@@ -186,6 +197,11 @@ export function ReportLayout<T>({
               <h1 className="text-[14px] font-semibold tracking-tight">
                 {storeInfo.name}
               </h1>
+              {storeInfo.document ? (
+                <p className="font-mono text-[10.5px] leading-tight text-ink-3">
+                  CNPJ/CPF: {storeInfo.document}
+                </p>
+              ) : null}
               {storeInfo.address ? (
                 <p className="text-[10.5px] leading-tight text-ink-3">
                   {storeInfo.address}
@@ -279,7 +295,11 @@ export function ReportLayout<T>({
           )}
         </div>
 
-        {/* Rodapé */}
+        {/* Rodapé universal — Sprint 4.8. "Gerado em DD/MM/AAAA HH:MM
+            por {operador}". Contador de página renderizado APENAS na
+            impressão via CSS counter(page) (regra em globals.css
+            ".report-page-marker::after { content: counter(page); }").
+            Sem "de Y" porque counter(pages) tem suporte inconsistente. */}
         <footer className="border-t border-ink-5 px-6 py-3 text-[10px] text-ink-4 print:px-0">
           {notes ? <p>{notes}</p> : null}
           <p className="mt-1">
@@ -291,6 +311,10 @@ export function ReportLayout<T>({
               hour: "2-digit",
               minute: "2-digit",
             })}
+            {operatorName ? ` por ${operatorName}` : ""}
+            <span className="report-page-marker hidden print:inline">
+              {" · Página "}
+            </span>
           </p>
         </footer>
       </article>

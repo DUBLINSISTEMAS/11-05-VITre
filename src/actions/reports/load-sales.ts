@@ -19,6 +19,7 @@ import {
   orderItemTable,
   orderReturnItemTable,
   orderTable,
+  productTable,
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getCurrentStore } from "@/lib/store-context";
@@ -52,8 +53,27 @@ export async function loadSalesReport(
 
   const range = resolveReportRange(input.filters);
   const paymentFilter = parsePaymentFilter(input.filters.paymentMethod);
+  // Sprint 4.2 — filtros opcionais por categoria/marca. Multi-select via
+  // CSV na URL ("?categoryIds=a,b,c"). Filtro INCLUSIVO: venda aparece
+  // se TIVER ao menos um order_item de produto na categoria/marca
+  // selecionada (total exibido = total da venda inteira, preserva
+  // consistência com order.totalInCents).
+  const categoryIds = parseUuidCsv(input.filters.categoryIds);
+  const brandIds = parseUuidCsv(input.filters.brandIds);
 
   return withTenant(store.id, session.user.id, async (tx) => {
+    const productFilter =
+      categoryIds.length > 0 || brandIds.length > 0
+        ? sql`EXISTS (
+            SELECT 1 FROM ${orderItemTable} oi
+            INNER JOIN ${productTable} p ON p.id = oi.product_id
+            WHERE oi.order_id = ${orderTable.id}
+              AND p.store_id = ${orderTable.storeId}
+              ${categoryIds.length > 0 ? sql`AND p.category_id IN (${sql.join(categoryIds.map((id) => sql`${id}::uuid`), sql`, `)})` : sql``}
+              ${brandIds.length > 0 ? sql`AND p.brand_id IN (${sql.join(brandIds.map((id) => sql`${id}::uuid`), sql`, `)})` : sql``}
+          )`
+        : undefined;
+
     const baseCond = and(
       eq(orderTable.storeId, store.id),
       gte(orderTable.createdAt, range.start),
@@ -62,6 +82,7 @@ export async function loadSalesReport(
       paymentFilter && paymentFilter !== "all"
         ? eq(orderTable.paymentMethod, paymentFilter)
         : undefined,
+      productFilter,
     );
 
     const rawRows = await tx
@@ -189,4 +210,19 @@ function parsePaymentFilter(
     return raw as PaymentMethodFilter;
   }
   return null;
+}
+
+/**
+ * Sprint 4.2 — converte CSV de IDs da URL em array de UUIDs válidos.
+ * Filtra entradas vazias e UUIDs mal-formados (defesa em profundidade —
+ * Zod no caller deveria pegar, mas SQL.raw nunca recebe input não
+ * sanitizado).
+ */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function parseUuidCsv(raw: string | undefined): string[] {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => UUID_RE.test(s));
 }

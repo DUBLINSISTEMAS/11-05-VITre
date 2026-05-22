@@ -6,7 +6,10 @@
  * margem % global ser fiel à realidade.
  */
 import { loadMarginReport } from "@/actions/reports/load-margin";
-import { loadStoreInfoForReport } from "@/actions/reports/store-info";
+import {
+  loadReportOperatorName,
+  loadStoreInfoForReport,
+} from "@/actions/reports/store-info";
 import { MarginReportClient } from "@/components/admin/margin-report-client";
 import { requireSession } from "@/lib/auth-server";
 
@@ -32,9 +35,10 @@ export default async function MargemRelatorioPage({ searchParams }: SearchParams
   await requireSession();
   const flat = flatten(await searchParams);
 
-  const [storeInfo, data] = await Promise.all([
+  const [storeInfo, data, operatorName] = await Promise.all([
     loadStoreInfoForReport(),
     loadMarginReport({ filters: flat }),
+    loadReportOperatorName(),
   ]);
 
   if (!storeInfo || !data) {
@@ -53,6 +57,7 @@ export default async function MargemRelatorioPage({ searchParams }: SearchParams
         totals={data.totals}
         period={data.range.periodLabel}
         filters={flat}
+        operatorName={operatorName}
       />
     </div>
   );

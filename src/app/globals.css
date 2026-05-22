@@ -2277,4 +2277,12 @@
   tr {
     break-inside: avoid;
   }
+
+  /* Sprint 4.8 — contador de página no rodapé universal de ReportLayout.
+     `counter(page)` é amplamente suportado. `counter(pages)` não é
+     consistente (alguns browsers retornam 0 no momento do paint), então
+     mostramos só "Página X" — sem "de Y". */
+  .report-page-marker::after {
+    content: counter(page);
+  }
 }

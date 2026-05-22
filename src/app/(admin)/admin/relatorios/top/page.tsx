@@ -6,7 +6,10 @@
  * faturamento. Útil pra decisão de compra (o que sai mais).
  */
 import { loadTopProductsReport } from "@/actions/reports/load-top";
-import { loadStoreInfoForReport } from "@/actions/reports/store-info";
+import {
+  loadReportOperatorName,
+  loadStoreInfoForReport,
+} from "@/actions/reports/store-info";
 import { TopProductsReportClient } from "@/components/admin/top-products-report-client";
 import { requireSession } from "@/lib/auth-server";
 
@@ -35,9 +38,10 @@ export default async function TopProdutosRelatorioPage({ searchParams }: SearchP
   const orderBy: "quantity" | "revenue" =
     flat.orderBy === "quantity" ? "quantity" : "revenue";
 
-  const [storeInfo, data] = await Promise.all([
+  const [storeInfo, data, operatorName] = await Promise.all([
     loadStoreInfoForReport(),
     loadTopProductsReport({ filters: flat, orderBy }),
+    loadReportOperatorName(),
   ]);
 
   if (!storeInfo || !data) {
@@ -57,6 +61,7 @@ export default async function TopProdutosRelatorioPage({ searchParams }: SearchP
         period={data.range.periodLabel}
         filters={flat}
         orderBy={orderBy}
+        operatorName={operatorName}
       />
     </div>
   );

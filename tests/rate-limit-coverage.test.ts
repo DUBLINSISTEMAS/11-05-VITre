@@ -51,6 +51,7 @@ const READS_AND_HELPERS_ALLOWLIST: ReadonlyArray<string> = [
   "search-for-pdv.ts",
   "load-for-pdv.ts", // category/load-for-pdv.ts — read pro picker do PDV
   "global.ts", // search/global.ts — busca admin cmd+K
+  "filter-options.ts", // Sprint 4.2 — read pra dropdowns de categoria/marca
   // Tipos exportados (não são actions)
   "types.ts",
   // Helpers shared

@@ -33,6 +33,8 @@ interface TopProductsReportClientProps {
   period: string;
   filters: Record<string, string | undefined>;
   orderBy: "quantity" | "revenue";
+  /** Sprint 4.8 — operador no rodapé. */
+  operatorName?: string | null;
 }
 
 export function TopProductsReportClient({
@@ -42,6 +44,7 @@ export function TopProductsReportClient({
   period,
   filters,
   orderBy,
+  operatorName,
 }: TopProductsReportClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -204,6 +207,7 @@ export function TopProductsReportClient({
         totals={totalsFooter}
         csvFileName={`mangospay-top-${orderBy}`}
         emptyMessage="Nenhuma venda no período selecionado."
+        operatorName={operatorName}
       />
     </>
   );

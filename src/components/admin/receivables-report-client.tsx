@@ -34,6 +34,31 @@ interface ReceivablesReportClientProps {
     pendingCount: number;
   };
   statusFilter: "all" | "overdue";
+  /** Sprint 4.8 — operador no rodapé. */
+  operatorName?: string | null;
+}
+
+// Sprint 4.4 — aging buckets. Quando o fiado não tem `dueDate`, usamos
+// `createdAt` como proxy (regra comum em contabilidade: idade conta a
+// partir da criação se não houve vencimento pactuado).
+type AgingBucket = "current" | "1-30" | "31-60" | "61+";
+const AGING_LABELS: Record<AgingBucket, string> = {
+  current: "Em dia",
+  "1-30": "1-30 dias",
+  "31-60": "31-60 dias",
+  "61+": "61+ dias",
+};
+
+function bucketFromDays(days: number): AgingBucket {
+  if (days <= 0) return "current";
+  if (days <= 30) return "1-30";
+  if (days <= 60) return "31-60";
+  return "61+";
+}
+
+function daysSince(date: Date, now: Date): number {
+  const msPerDay = 24 * 60 * 60 * 1000;
+  return Math.floor((now.getTime() - date.getTime()) / msPerDay);
 }
 
 export function ReceivablesReportClient({
@@ -41,6 +66,7 @@ export function ReceivablesReportClient({
   rows,
   totals,
   statusFilter,
+  operatorName,
 }: ReceivablesReportClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -52,7 +78,28 @@ export function ReceivablesReportClient({
     router.replace(`?${usp.toString()}`);
   };
 
-  const columns: ReportColumn<PendingReceivableRow>[] = [
+  // Sprint 4.4 — enriquece rows com bucket de aging derivado de
+  // dueDate (ou createdAt como fallback). Computado uma vez por render.
+  const now = new Date();
+  const rowsWithAging = rows.map((r) => {
+    const referenceDate = r.dueDate ?? r.createdAt;
+    const days = daysSince(referenceDate, now);
+    return { ...r, daysOpen: Math.max(0, days), bucket: bucketFromDays(days) };
+  });
+
+  // Subtotais por bucket — soma de remainingInCents por categoria.
+  // Inclui buckets vazios (mostra "R$ 0,00") pra contador ver as 4 faixas.
+  const agingTotals: Record<AgingBucket, number> = {
+    current: 0,
+    "1-30": 0,
+    "31-60": 0,
+    "61+": 0,
+  };
+  for (const r of rowsWithAging) {
+    agingTotals[r.bucket] += r.remainingInCents;
+  }
+
+  const columns: ReportColumn<(typeof rowsWithAging)[number]>[] = [
     {
       key: "due",
       label: "Vencimento",
@@ -74,6 +121,24 @@ export function ReceivablesReportClient({
               year: "numeric",
             })
           : "",
+    },
+    {
+      // Sprint 4.4 — aging por linha. Coluna estreita, render compacto.
+      key: "aging",
+      label: "Em aberto há",
+      align: "right",
+      width: "100px",
+      render: (r) => (
+        <div className="flex flex-col items-end gap-0 leading-tight tabular-nums">
+          <span className="text-ink-1">
+            {r.daysOpen === 0 ? "—" : `${r.daysOpen} dia${r.daysOpen === 1 ? "" : "s"}`}
+          </span>
+          <span className="text-ink-4 text-[10px]">
+            {AGING_LABELS[r.bucket]}
+          </span>
+        </div>
+      ),
+      exportValue: (r) => `${r.daysOpen}`,
     },
     {
       key: "customer",
@@ -196,6 +261,37 @@ export function ReceivablesReportClient({
         </div>
       </div>
 
+      {/* Sprint 4.4 — quadro de aging acima do A4. 4 cards com totais
+          por bucket. Imprime junto com o relatório como bloco. */}
+      <div className="b3-card mb-4 grid grid-cols-2 gap-2 p-3 sm:grid-cols-4 sm:p-4">
+        {(Object.keys(AGING_LABELS) as AgingBucket[]).map((bucket) => {
+          const amount = agingTotals[bucket];
+          const danger = bucket === "61+" && amount > 0;
+          const warning = bucket === "31-60" && amount > 0;
+          return (
+            <div
+              key={bucket}
+              className="bg-bg-app rounded-md p-2.5 text-[12px]"
+            >
+              <p className="text-ink-4 mb-0.5 text-[11px] uppercase tracking-wide">
+                {AGING_LABELS[bucket]}
+              </p>
+              <p
+                className={`font-mono text-[14.5px] font-semibold tabular-nums ${
+                  danger
+                    ? "text-danger"
+                    : warning
+                      ? "text-warn"
+                      : "text-ink-1"
+                }`}
+              >
+                {formatBRL(amount)}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+
       <ReportLayout
         title={
           statusFilter === "overdue"
@@ -205,9 +301,10 @@ export function ReceivablesReportClient({
         period={`Snapshot em ${new Date().toLocaleDateString("pt-BR")}`}
         storeInfo={storeInfo}
         columns={columns}
-        rows={rows}
+        rows={rowsWithAging}
         totals={totalsFooter}
         csvFileName={`mangospay-fiados-${statusFilter}`}
+        operatorName={operatorName}
         emptyMessage={
           statusFilter === "overdue"
             ? "Nenhum fiado vencido. Bom trabalho."

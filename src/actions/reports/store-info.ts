@@ -16,6 +16,31 @@ import type { ReportStoreInfo } from "@/components/admin/report/report-layout";
 import { auth } from "@/lib/auth";
 import { getCurrentStore } from "@/lib/store-context";
 
+/**
+ * Sprint 4.1 — CPF (11) ou CNPJ (14) com pontuação canônica. Outros
+ * formatos passam direto (UI já mostra a string sem mexer).
+ */
+function formatDocument(raw: string | null): string | null {
+  if (!raw) return null;
+  if (raw.length === 11) {
+    return `${raw.slice(0, 3)}.${raw.slice(3, 6)}.${raw.slice(6, 9)}-${raw.slice(9)}`;
+  }
+  if (raw.length === 14) {
+    return `${raw.slice(0, 2)}.${raw.slice(2, 5)}.${raw.slice(5, 8)}/${raw.slice(8, 12)}-${raw.slice(12)}`;
+  }
+  return raw;
+}
+
+/**
+ * Sprint 4.8 — nome do operador que está gerando o relatório (rodapé
+ * universal "Gerado em ... por {operador}"). Retorna `null` se sessão
+ * expirou.
+ */
+export async function loadReportOperatorName(): Promise<string | null> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  return session?.user?.name ?? null;
+}
+
 export async function loadStoreInfoForReport(): Promise<ReportStoreInfo | null> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) return null;
@@ -39,5 +64,6 @@ export async function loadStoreInfoForReport(): Promise<ReportStoreInfo | null> 
     logoUrl: store.logoUrl,
     address: address || null,
     whatsapp: store.whatsappDisplay,
+    document: formatDocument(store.document),
   };
 }

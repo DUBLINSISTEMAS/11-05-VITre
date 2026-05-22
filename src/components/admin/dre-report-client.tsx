@@ -39,6 +39,8 @@ interface DreReportClientProps {
   summary: DreSimpleSummary;
   period: string;
   filters: Record<string, string | undefined>;
+  /** Sprint 4.8 — operador no rodapé. */
+  operatorName?: string | null;
 }
 
 export function DreReportClient({
@@ -46,6 +48,7 @@ export function DreReportClient({
   summary,
   period,
   filters,
+  operatorName,
 }: DreReportClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -216,6 +219,7 @@ export function DreReportClient({
         rows={lines}
         csvFileName="mangospay-dre"
         emptyMessage="Nenhuma venda no período selecionado."
+        operatorName={operatorName}
         notes={`Baseado em ${summary.totalOrderCount} ${
           summary.totalOrderCount === 1 ? "venda" : "vendas"
         } no período. CMV considera ${summary.cogsCoveragePercent}% dos itens (com custo cadastrado).`}

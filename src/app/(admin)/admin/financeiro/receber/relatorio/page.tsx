@@ -10,7 +10,10 @@
  *   ?status=overdue   — apenas vencidos
  */
 import { loadPendingReceivables } from "@/actions/receivable/load-pending";
-import { loadStoreInfoForReport } from "@/actions/reports/store-info";
+import {
+  loadReportOperatorName,
+  loadStoreInfoForReport,
+} from "@/actions/reports/store-info";
 import { ReceivablesReportClient } from "@/components/admin/receivables-report-client";
 import { requireSession } from "@/lib/auth-server";
 
@@ -39,9 +42,10 @@ export default async function ReceivablesRelatorioPage({
   const flat = flatten(await searchParams);
   const statusFilter = flat.status === "overdue" ? "overdue" : "all";
 
-  const [storeInfo, data] = await Promise.all([
+  const [storeInfo, data, operatorName] = await Promise.all([
     loadStoreInfoForReport(),
     loadPendingReceivables(),
+    loadReportOperatorName(),
   ]);
 
   if (!storeInfo) {
@@ -72,6 +76,7 @@ export default async function ReceivablesRelatorioPage({
           pendingCount: filteredRows.length,
         }}
         statusFilter={statusFilter}
+        operatorName={operatorName}
       />
     </div>
   );

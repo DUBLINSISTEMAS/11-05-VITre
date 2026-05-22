@@ -6,8 +6,12 @@
  *   ?start=YYYY-MM-DD&end=YYYY-MM-DD   (custom)
  *   ?paymentMethod=cash|pix|debit|credit|other|all
  */
+import { loadReportFilterOptions } from "@/actions/reports/filter-options";
 import { loadSalesReport } from "@/actions/reports/load-sales";
-import { loadStoreInfoForReport } from "@/actions/reports/store-info";
+import {
+  loadReportOperatorName,
+  loadStoreInfoForReport,
+} from "@/actions/reports/store-info";
 import { SalesReportClient } from "@/components/admin/sales-report-client";
 import { requireSession } from "@/lib/auth-server";
 
@@ -33,9 +37,11 @@ export default async function VendasRelatorioPage({ searchParams }: SearchParams
   await requireSession();
   const flat = flatten(await searchParams);
 
-  const [storeInfo, data] = await Promise.all([
+  const [storeInfo, data, operatorName, filterOptions] = await Promise.all([
     loadStoreInfoForReport(),
     loadSalesReport({ filters: flat }),
+    loadReportOperatorName(),
+    loadReportFilterOptions(),
   ]);
 
   if (!storeInfo || !data) {
@@ -54,6 +60,8 @@ export default async function VendasRelatorioPage({ searchParams }: SearchParams
         summary={data.summary}
         period={data.range.periodLabel}
         filters={flat}
+        operatorName={operatorName}
+        filterOptions={filterOptions}
       />
     </div>
   );

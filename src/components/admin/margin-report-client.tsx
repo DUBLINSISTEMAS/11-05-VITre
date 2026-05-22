@@ -41,6 +41,8 @@ interface MarginReportClientProps {
   };
   period: string;
   filters: Record<string, string | undefined>;
+  /** Sprint 4.8 — operador no rodapé. */
+  operatorName?: string | null;
 }
 
 export function MarginReportClient({
@@ -49,6 +51,7 @@ export function MarginReportClient({
   totals,
   period,
   filters,
+  operatorName,
 }: MarginReportClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -261,11 +264,16 @@ export function MarginReportClient({
         totals={totalsFooter}
         csvFileName="mangospay-margem"
         emptyMessage="Nenhuma venda no período selecionado."
-        notes={
+        operatorName={operatorName}
+        notes={[
+          // Sprint 4.5 — critério de custeio na cara do contador.
+          "Custo unitário fixado no momento da venda — snapshot histórico, não FIFO ou custo médio. Mudança de custo no cadastro do produto NÃO altera vendas passadas.",
           coverage < 100
             ? `Cobertura de custo: ${coverage}% — margem global considera apenas linhas com custo cadastrado.`
-            : undefined
-        }
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
       />
     </>
   );

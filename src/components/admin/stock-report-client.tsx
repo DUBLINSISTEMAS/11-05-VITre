@@ -30,6 +30,8 @@ interface StockRow {
 interface StockReportClientProps {
   rows: StockRow[];
   storeInfo: ReportStoreInfo;
+  /** Sprint 4.8 — operador no rodapé. */
+  operatorName?: string | null;
 }
 
 function formatBRL(cents: number): string {
@@ -44,7 +46,11 @@ function formatQty(qty: number | null, unit: string): string {
   return `${qty.toLocaleString("pt-BR")} ${unit}`;
 }
 
-export function StockReportClient({ rows, storeInfo }: StockReportClientProps) {
+export function StockReportClient({
+  rows,
+  storeInfo,
+  operatorName,
+}: StockReportClientProps) {
   const columns: ReportColumn<StockRow>[] = [
     {
       key: "ref",
@@ -161,6 +167,7 @@ export function StockReportClient({ rows, storeInfo }: StockReportClientProps) {
       totals={totals}
       csvFileName={`estoque-${new Date().toISOString().slice(0, 10)}`}
       emptyMessage="Nenhum produto em estoque pra exibir."
+      operatorName={operatorName}
       notes="Documento interno sem valor fiscal. Valores baseados em estoque atual e preços cadastrados."
     />
   );

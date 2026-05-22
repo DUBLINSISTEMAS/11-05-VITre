@@ -9,6 +9,10 @@
 
 import { and, asc, eq, isNotNull, sql } from "drizzle-orm";
 
+import {
+  loadReportOperatorName,
+  loadStoreInfoForReport,
+} from "@/actions/reports/store-info";
 import { StockReportClient } from "@/components/admin/stock-report-client";
 import { productTable } from "@/db/schema";
 import { requireSession } from "@/lib/auth-server";
@@ -82,17 +86,11 @@ export default async function EstoqueRelatorioPage({ searchParams }: SearchParam
   );
   const truncated = totalRows > rows.length;
 
-  const storeAddress = [
-    store.addressStreet
-      ? `${store.addressStreet}${store.addressNumber ? ", " + store.addressNumber : ""}`
-      : null,
-    store.addressNeighborhood,
-    store.addressCity && store.addressState
-      ? `${store.addressCity}/${store.addressState}`
-      : null,
-  ]
-    .filter(Boolean)
-    .join(" — ");
+  // Sprint 4.1 — usar helper canônico que já traz `document` formatado.
+  const [storeInfo, operatorName] = await Promise.all([
+    loadStoreInfoForReport(),
+    loadReportOperatorName(),
+  ]);
 
   return (
     <div className="mx-auto max-w-[1200px] space-y-3 p-4 sm:p-6">
@@ -105,12 +103,14 @@ export default async function EstoqueRelatorioPage({ searchParams }: SearchParam
       ) : null}
       <StockReportClient
         rows={rows}
-        storeInfo={{
-          name: store.name,
-          logoUrl: store.logoUrl,
-          address: storeAddress || null,
-          whatsapp: store.whatsappDisplay,
-        }}
+        storeInfo={
+          storeInfo ?? {
+            name: store.name,
+            logoUrl: store.logoUrl,
+            whatsapp: store.whatsappDisplay,
+          }
+        }
+        operatorName={operatorName}
       />
     </div>
   );

@@ -5,7 +5,10 @@
  * líquida − CMV = lucro bruto. Sem despesas operacionais (sem schema).
  */
 import { loadDreSimple } from "@/actions/reports/load-dre";
-import { loadStoreInfoForReport } from "@/actions/reports/store-info";
+import {
+  loadReportOperatorName,
+  loadStoreInfoForReport,
+} from "@/actions/reports/store-info";
 import { DreReportClient } from "@/components/admin/dre-report-client";
 import { requireSession } from "@/lib/auth-server";
 
@@ -31,9 +34,10 @@ export default async function DreRelatorioPage({ searchParams }: SearchParams) {
   await requireSession();
   const flat = flatten(await searchParams);
 
-  const [storeInfo, data] = await Promise.all([
+  const [storeInfo, data, operatorName] = await Promise.all([
     loadStoreInfoForReport(),
     loadDreSimple({ filters: flat }),
+    loadReportOperatorName(),
   ]);
 
   if (!storeInfo || !data) {
@@ -51,6 +55,7 @@ export default async function DreRelatorioPage({ searchParams }: SearchParams) {
         summary={data.summary}
         period={data.range.periodLabel}
         filters={flat}
+        operatorName={operatorName}
       />
     </div>
   );
