@@ -143,6 +143,7 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
     total,
     statusCounts,
     paymentCountsByOrderId,
+    creditOutstandingByOrderId,
     periodSummary,
   } = await withTenant(
     store.id,
