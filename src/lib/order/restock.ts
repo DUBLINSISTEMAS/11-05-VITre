@@ -54,6 +54,11 @@ interface RestockSummary {
   noopItems: number;
 }
 
+interface RestockPartialItem {
+  orderItemId: string;
+  quantity: number;
+}
+
 export async function restockOrderItems(
   tx: Tx,
   orderId: string,
@@ -152,4 +157,138 @@ export async function restockOrderItems(
   }
 
   return { itemsProcessed: items.length, noopItems };
+}
+
+/**
+ * Sprint 2.1 — variante do `restockOrderItems` pra devolução PARCIAL.
+ * Em vez de repor a qty original vendida, repõe a qty específica passada
+ * por item. Usado por `recordOrderReturn` com `returnType='partial'`.
+ *
+ * Diferenças vs `restockOrderItems`:
+ *   - Aceita lista `Array<{orderItemId, quantity}>` em vez de orderId.
+ *   - SELECT só dos items que o caller pediu (evita pagar JOIN).
+ *   - notes do stock_movement deixa claro que é parcial.
+ *
+ * Garantias preservadas:
+ *   - Append-only (INSERT em stock_movement; trigger atualiza cache).
+ *   - Variant-first com fallback produto.
+ *   - Sem optimistic lock — append-only não conflita consigo mesmo.
+ */
+export async function restockOrderItemsPartial(
+  tx: Tx,
+  orderId: string,
+  storeId: string,
+  partials: ReadonlyArray<RestockPartialItem>,
+): Promise<RestockSummary> {
+  if (partials.length === 0) {
+    return { itemsProcessed: 0, noopItems: 0 };
+  }
+
+  const orderItemIds = partials.map((p) => p.orderItemId);
+
+  const items = await tx
+    .select({
+      id: orderItemTable.id,
+      productId: orderItemTable.productId,
+      variantId: orderItemTable.variantId,
+    })
+    .from(orderItemTable)
+    .where(eq(orderItemTable.orderId, orderId));
+
+  // Mapa { orderItemId → meta } pra associar productId/variantId à qty
+  // pedida sem reordenar nem refazer SELECT.
+  const itemMeta = new Map(items.map((it) => [it.id, it]));
+  const requestedQtyById = new Map(
+    partials.map((p) => [p.orderItemId, p.quantity]),
+  );
+
+  // Carregar trackStock só dos products/variants relevantes.
+  const productIds = Array.from(
+    new Set(orderItemIds.map((id) => itemMeta.get(id)?.productId).filter((v): v is string => !!v)),
+  );
+  const variantIds = orderItemIds
+    .map((id) => itemMeta.get(id)?.variantId ?? null)
+    .filter((v): v is string => v !== null);
+  const variantIdsUnique = Array.from(new Set(variantIds));
+
+  const productRows = await tx
+    .select({
+      id: productTable.id,
+      trackStock: productTable.trackStock,
+    })
+    .from(productTable)
+    .where(
+      and(eq(productTable.storeId, storeId), inArray(productTable.id, productIds)),
+    );
+  const variantRows =
+    variantIdsUnique.length > 0
+      ? await tx
+          .select({
+            id: productVariantTable.id,
+            trackStock: productVariantTable.trackStock,
+          })
+          .from(productVariantTable)
+          .where(
+            and(
+              eq(productVariantTable.storeId, storeId),
+              inArray(productVariantTable.id, variantIdsUnique),
+            ),
+          )
+      : ([] as Array<{ id: string; trackStock: boolean }>);
+
+  const productById = new Map(productRows.map((p) => [p.id, p]));
+  const variantById = new Map(variantRows.map((v) => [v.id, v]));
+
+  let noopItems = 0;
+
+  for (const orderItemId of orderItemIds) {
+    const meta = itemMeta.get(orderItemId);
+    if (!meta) {
+      // Pediu pra repor item que não existe nesse order — ignora silencioso
+      // (validação já barrou no caller; aqui é defesa em profundidade).
+      noopItems += 1;
+      continue;
+    }
+    const qty = requestedQtyById.get(orderItemId) ?? 0;
+    if (qty <= 0) {
+      noopItems += 1;
+      continue;
+    }
+
+    const product = productById.get(meta.productId);
+    const variant = meta.variantId ? variantById.get(meta.variantId) : null;
+
+    const targetVariantId = variant?.trackStock ? variant.id : null;
+    const writeToProduct = !targetVariantId && product?.trackStock === true;
+
+    if (!targetVariantId && !writeToProduct) {
+      noopItems += 1;
+      continue;
+    }
+
+    try {
+      await tx.insert(stockMovementTable).values({
+        storeId,
+        productId: meta.productId,
+        variantId: targetVariantId,
+        movementType: "return",
+        quantityDelta: qty,
+        referenceType: "order",
+        referenceId: orderId,
+        notes: `Devolução parcial — ${qty} un.`,
+      });
+    } catch (e) {
+      logger.warn("restock_partial.movement_insert_failed", {
+        err: e,
+        orderId,
+        storeId,
+        orderItemId,
+        productId: meta.productId,
+        variantId: meta.variantId,
+        quantity: qty,
+      });
+    }
+  }
+
+  return { itemsProcessed: partials.length, noopItems };
 }

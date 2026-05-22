@@ -1,22 +1,34 @@
 "use server";
 
 /**
- * recordOrderReturn — Pre-Sprint-6 C.
+ * recordOrderReturn — Pre-Sprint-6 C + Sprint 2.1 + Sprint 2.2 (2026-05-22).
  *
- * Registra devolução de venda balcão. V1 só aceita devolução TOTAL
- * (`return_type='full'`) — cliente trouxe TUDO de volta. Parcial item-a-item
- * fica pra v2.
+ * Registra devolução de venda balcão. Suporta:
+ *   - `full`: cliente trouxe TUDO de volta. order.status vira 'returned'.
+ *   - `partial`: cliente trouxe alguns itens. order.status só vira
+ *     'returned' se a soma das partials acumuladas igualar a qty
+ *     vendida de TODOS os itens. Senão fica como estava (confirmed
+ *     ou fulfilled) e admite novas devoluções parciais.
+ *
+ * Regras de coexistência:
+ *   - `full` exclui qualquer devolução posterior (UNIQUE no DB).
+ *   - `partial` exclui `full` posterior (nada sobrou pra full devolver
+ *     no caso geral). Permite mais partials até esgotar.
  *
  * Fluxo:
- *   1. Validar order (existe, é da loja, status permite devolução,
- *      ainda não foi devolvida — UNIQUE parcial no DB também impede).
- *   2. Validar que NÃO há receivable pendente vinculado ao order — fiado
- *      em aberto é caso complexo (estornar o fiado é fluxo separado via
- *      reverseReceivablePayment). Lojista resolve fiado antes.
- *   3. Inserir order_return + 1 order_return_item por item da venda.
- *   4. INSERT stock_movements type='return' (reusa restockOrderItems).
- *   5. UPDATE order.status = 'returned'.
- *   6. INSERT cash_adjustment 'other_out' se houver caixa aberto.
+ *   1. Validar order (existe, é da loja, status permite devolução).
+ *   2. Validar que NÃO há receivable pendente vinculado ao order. Pra
+ *      Sprint 2.2: em vez de erro técnico, devolve errorCode
+ *      'PENDING_RECEIVABLE' + receivableId + remainingInCents, pra UI
+ *      guiar o lojista a estornar primeiro.
+ *   3. Pra partial: validar que cada (orderItemId, quantity) cabe no
+ *      saldo do item (qty vendida - qty já devolvida acumulada).
+ *   4. Inserir order_return + order_return_item por linha devolvida.
+ *   5. INSERT stock_movements type='return' (full = restockOrderItems,
+ *      partial = restockOrderItemsPartial).
+ *   6. UPDATE order.status = 'returned' se devolveu tudo, senão mantém.
+ *   7. INSERT cash_adjustment 'other_out' se houver caixa aberto
+ *      (valor proporcional à devolução).
  *
  * Tudo numa única withTenant transaction. Advisory lock por order pra
  * serializar contra duplo-clique.
@@ -33,13 +45,17 @@ import {
   orderReturnItemTable,
   orderReturnTable,
   orderTable,
+  receivablePaymentTable,
   receivableTable,
   storeTable,
 } from "@/db/schema";
 import { extractClientContext, recordAuditEvent } from "@/lib/audit";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
-import { restockOrderItems } from "@/lib/order/restock";
+import {
+  restockOrderItems,
+  restockOrderItemsPartial,
+} from "@/lib/order/restock";
 import {
   checkRateLimit,
   RateLimitError,
@@ -50,25 +66,56 @@ import { type Tx, withTenant } from "@/lib/tenant";
 
 import { isReturnable } from "./constants";
 
-const inputSchema = z.object({
-  orderId: z.string().uuid(),
-  reason: z
-    .preprocess(
+// Sprint 2.1 — schema aceita full ou partial. Full ignora items.
+// Partial exige items non-empty com qty positivo.
+const inputSchema = z
+  .object({
+    orderId: z.string().uuid(),
+    returnType: z.enum(["full", "partial"]).default("full"),
+    items: z
+      .array(
+        z.object({
+          orderItemId: z.string().uuid(),
+          quantity: z.number().int().positive(),
+        }),
+      )
+      .optional(),
+    reason: z.preprocess(
       (v) => (typeof v === "string" && v.trim() === "" ? null : v),
       z.string().trim().min(3, "Informe o motivo da devolução.").max(500),
     ),
-});
+  })
+  .refine(
+    (v) =>
+      v.returnType === "full" ||
+      (Array.isArray(v.items) && v.items.length > 0),
+    {
+      message: "Devolução parcial exige ao menos um item.",
+      path: ["items"],
+    },
+  );
 export type RecordOrderReturnInput = z.input<typeof inputSchema>;
 
 export type RecordOrderReturnResult =
   | {
       ok: true;
       returnId: string;
+      returnType: "full" | "partial";
       refundedInCents: number;
       itemsReturned: number;
       cashAdjustmentId: string | null;
+      /** true se a devolução fechou o saldo da venda → order.status='returned'. */
+      orderFullyReturned: boolean;
     }
-  | { ok: false; error: string; fieldErrors?: Record<string, string> };
+  | { ok: false; error: string; fieldErrors?: Record<string, string> }
+  // Sprint 2.2 — caso especial pra UI guiar o lojista a estornar fiado.
+  | {
+      ok: false;
+      errorCode: "PENDING_RECEIVABLE";
+      error: string;
+      receivableId: string;
+      remainingInCents: number;
+    };
 
 export async function recordOrderReturn(
   input: RecordOrderReturnInput,
@@ -143,13 +190,21 @@ export async function recordOrderReturn(
           };
         }
 
-        // 3) Bloquear se houver receivable pendente associado a esta order.
-        //    Devolução com fiado em aberto exigiria estorno separado do
-        //    receivable — v1 mantém fluxo simples e força lojista a
-        //    quitar/estornar o fiado antes.
+        // 3) Sprint 2.2 — receivable pendente vira fluxo guiado (não
+        //    erro técnico). Retorna errorCode + receivableId pra UI
+        //    chamar reverseReceivablePayment e voltar. `remainingInCents`
+        //    é calculado: amountInCents - sum(receivable_payment).
         const [pendingReceivable] = await tx
-          .select({ id: receivableTable.id })
+          .select({
+            id: receivableTable.id,
+            amountInCents: receivableTable.amountInCents,
+            paidInCents: sql<number>`coalesce(sum(${receivablePaymentTable.amountInCents}), 0)::int`,
+          })
           .from(receivableTable)
+          .leftJoin(
+            receivablePaymentTable,
+            eq(receivablePaymentTable.receivableId, receivableTable.id),
+          )
           .where(
             and(
               eq(receivableTable.orderId, data.orderId),
@@ -157,12 +212,20 @@ export async function recordOrderReturn(
               isNull(receivableTable.paidAt),
             ),
           )
+          .groupBy(receivableTable.id, receivableTable.amountInCents)
           .limit(1);
         if (pendingReceivable) {
+          const remainingInCents = Math.max(
+            0,
+            pendingReceivable.amountInCents - pendingReceivable.paidInCents,
+          );
           return {
             ok: false,
+            errorCode: "PENDING_RECEIVABLE" as const,
             error:
-              "Esta venda tem fiado em aberto. Quite ou estorne o fiado antes de devolver.",
+              "Esta venda tem fiado em aberto. Estorne o fiado antes de devolver.",
+            receivableId: pendingReceivable.id,
+            remainingInCents,
           };
         }
 
@@ -185,46 +248,167 @@ export async function recordOrderReturn(
           };
         }
 
-        // 5) INSERT order_return
+        // 5) Sprint 2.1 — saldo já devolvido por item (acumulado de
+        //    devoluções parciais anteriores). Inclui devoluções parciais
+        //    apenas (full não pode coexistir com partial — UNIQUE no DB).
+        const previousReturns = await tx
+          .select({
+            orderItemId: orderReturnItemTable.orderItemId,
+            quantityReturned: orderReturnItemTable.quantityReturned,
+          })
+          .from(orderReturnItemTable)
+          .innerJoin(
+            orderReturnTable,
+            eq(orderReturnTable.id, orderReturnItemTable.orderReturnId),
+          )
+          .where(eq(orderReturnTable.orderId, order.id));
+
+        const alreadyReturnedByItem = new Map<string, number>();
+        for (const r of previousReturns) {
+          alreadyReturnedByItem.set(
+            r.orderItemId,
+            (alreadyReturnedByItem.get(r.orderItemId) ?? 0) +
+              r.quantityReturned,
+          );
+        }
+        const hasPreviousPartial = previousReturns.length > 0;
+
+        // 6) Calcular o que vai ser devolvido nesta operação.
+        //    - full: todos os items com qty=quantity restante (mas se
+        //      hasPreviousPartial, full é proibido — usa partial).
+        //    - partial: items do input validados contra saldo.
+        const itemsById = new Map(items.map((it) => [it.id, it]));
+        let toReturn: Array<{
+          orderItemId: string;
+          quantity: number;
+          refundedInCents: number;
+        }> = [];
+
+        if (data.returnType === "full") {
+          if (hasPreviousPartial) {
+            return {
+              ok: false,
+              error:
+                "Esta venda já teve devolução parcial. Use devolução parcial pra continuar devolvendo.",
+            };
+          }
+          toReturn = items.map((it) => ({
+            orderItemId: it.id,
+            quantity: it.quantity,
+            refundedInCents: it.priceInCentsSnapshot * it.quantity,
+          }));
+        } else {
+          // partial
+          for (const reqItem of data.items ?? []) {
+            const orig = itemsById.get(reqItem.orderItemId);
+            if (!orig) {
+              return {
+                ok: false,
+                error: "Item solicitado não pertence a esta venda.",
+              };
+            }
+            const alreadyReturned =
+              alreadyReturnedByItem.get(reqItem.orderItemId) ?? 0;
+            const available = orig.quantity - alreadyReturned;
+            if (reqItem.quantity > available) {
+              return {
+                ok: false,
+                error: `Item "${orig.id.slice(0, 8)}…": tentando devolver ${reqItem.quantity}, saldo disponível ${available}.`,
+              };
+            }
+            toReturn.push({
+              orderItemId: reqItem.orderItemId,
+              quantity: reqItem.quantity,
+              refundedInCents: orig.priceInCentsSnapshot * reqItem.quantity,
+            });
+          }
+          if (toReturn.length === 0) {
+            return {
+              ok: false,
+              error: "Nenhum item válido pra devolver.",
+            };
+          }
+        }
+
+        const refundedInCents = toReturn.reduce(
+          (acc, t) => acc + t.refundedInCents,
+          0,
+        );
+
+        // 7) Verificar se a devolução fecha o saldo (todos items zerados).
+        const willBeReturnedByItem = new Map(alreadyReturnedByItem);
+        for (const t of toReturn) {
+          willBeReturnedByItem.set(
+            t.orderItemId,
+            (willBeReturnedByItem.get(t.orderItemId) ?? 0) + t.quantity,
+          );
+        }
+        const orderFullyReturned = items.every(
+          (it) => (willBeReturnedByItem.get(it.id) ?? 0) >= it.quantity,
+        );
+
+        // 8) INSERT order_return. Pra parciais, mantém returnType='partial'
+        //    mesmo se esta operação esgotar o saldo — preserva o histórico
+        //    de "como aconteceu" (3 devoluções parciais em sequência).
+        //    UNIQUE INDEX no DB garante: no máximo 1 full por order, e
+        //    full + partial são mutuamente excludentes pela regra acima.
         const [returnRow] = await tx
           .insert(orderReturnTable)
           .values({
             storeId: store.id,
             orderId: order.id,
-            returnType: "full",
-            refundedInCents: order.totalInCents,
+            returnType: data.returnType,
+            refundedInCents,
             reason: data.reason,
             createdByUserId: userId,
           })
           .returning({ id: orderReturnTable.id });
         if (!returnRow) throw new Error("Falha ao gravar devolução.");
 
-        // 6) INSERT order_return_item — 1 por order_item, qty original total.
-        //    Para v1 (full), o refundedInCents per item = price * quantity.
+        // 9) INSERT order_return_item — uma linha por item devolvido.
         await tx.insert(orderReturnItemTable).values(
-          items.map((it) => ({
+          toReturn.map((t) => ({
             orderReturnId: returnRow.id,
-            orderItemId: it.id,
-            quantityReturned: it.quantity,
-            refundedInCents: it.priceInCentsSnapshot * it.quantity,
+            orderItemId: t.orderItemId,
+            quantityReturned: t.quantity,
+            refundedInCents: t.refundedInCents,
           })),
         );
 
-        // 7) Restock — gera stock_movement type='return' por item
-        await restockOrderItems(tx as unknown as Tx, order.id, store.id);
-
-        // 8) UPDATE order.status = 'returned'
-        await tx
-          .update(orderTable)
-          .set({ status: "returned" })
-          .where(
-            and(
-              eq(orderTable.id, order.id),
-              eq(orderTable.storeId, store.id),
-            ),
+        // 10) Restock — full usa helper antigo (todos os items na qty
+        //     vendida original), partial usa o novo helper com qty
+        //     específica por item.
+        if (data.returnType === "full") {
+          await restockOrderItems(tx as unknown as Tx, order.id, store.id);
+        } else {
+          await restockOrderItemsPartial(
+            tx as unknown as Tx,
+            order.id,
+            store.id,
+            toReturn.map((t) => ({
+              orderItemId: t.orderItemId,
+              quantity: t.quantity,
+            })),
           );
+        }
 
-        // 9) Cash adjustment 'other_out' se há caixa aberto.
+        // 11) UPDATE order.status. Vira 'returned' apenas quando a venda
+        //     foi totalmente devolvida (full direto, OU partials que
+        //     esgotaram o saldo). Senão fica como estava — admite mais
+        //     devoluções parciais futuras.
+        if (orderFullyReturned) {
+          await tx
+            .update(orderTable)
+            .set({ status: "returned" })
+            .where(
+              and(
+                eq(orderTable.id, order.id),
+                eq(orderTable.storeId, store.id),
+              ),
+            );
+        }
+
+        // 12) Cash adjustment 'other_out' proporcional ao refundedInCents.
         const [activeCash] = await tx
           .select({ id: cashSessionTable.id })
           .from(cashSessionTable)
@@ -238,21 +422,25 @@ export async function recordOrderReturn(
 
         let cashAdjustmentId: string | null = null;
         if (activeCash) {
+          const adjReasonPrefix =
+            data.returnType === "full"
+              ? "Devolução"
+              : "Devolução parcial";
           const [adj] = await tx
             .insert(cashAdjustmentTable)
             .values({
               cashSessionId: activeCash.id,
               type: "other_out",
-              amountInCents: order.totalInCents,
-              reason: `Devolução venda #${order.id.slice(0, 8)} — ${data.reason}`.slice(
-                0,
-                500,
-              ),
+              amountInCents: refundedInCents,
+              reason:
+                `${adjReasonPrefix} venda #${order.id.slice(0, 8)} — ${data.reason}`.slice(
+                  0,
+                  500,
+                ),
               createdByUserId: userId,
             })
             .returning({ id: cashAdjustmentTable.id });
           cashAdjustmentId = adj?.id ?? null;
-          // Linka o adjustment ao return pra trilha de auditoria.
           if (cashAdjustmentId) {
             await tx
               .update(orderReturnTable)
@@ -261,7 +449,7 @@ export async function recordOrderReturn(
           }
         }
 
-        // 10) Revalidações
+        // 13) Revalidações
         const storeRow = await tx.query.storeTable.findFirst({
           where: eq(storeTable.id, store.id),
           columns: { slug: true },
@@ -281,8 +469,10 @@ export async function recordOrderReturn(
           storeId: store.id,
           orderId: order.id,
           returnId: returnRow.id,
-          refundedInCents: order.totalInCents,
-          itemsReturned: items.length,
+          returnType: data.returnType,
+          refundedInCents,
+          itemsReturned: toReturn.length,
+          orderFullyReturned,
           cashAdjustmentId,
         });
 
@@ -295,8 +485,10 @@ export async function recordOrderReturn(
           entityId: order.id,
           payload: {
             returnId: returnRow.id,
-            refundedInCents: order.totalInCents,
-            itemsReturned: items.length,
+            returnType: data.returnType,
+            refundedInCents,
+            itemsReturned: toReturn.length,
+            orderFullyReturned,
             reason: data.reason,
             cashAdjustmentId,
           },
@@ -307,9 +499,11 @@ export async function recordOrderReturn(
         return {
           ok: true,
           returnId: returnRow.id,
-          refundedInCents: order.totalInCents,
-          itemsReturned: items.length,
+          returnType: data.returnType,
+          refundedInCents,
+          itemsReturned: toReturn.length,
           cashAdjustmentId,
+          orderFullyReturned,
         };
       },
     );

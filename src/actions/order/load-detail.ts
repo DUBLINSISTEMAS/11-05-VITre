@@ -7,9 +7,11 @@ import {
   customerTable,
   orderItemTable,
   orderPaymentTable,
+  orderReturnItemTable,
   orderReturnTable,
   orderTable,
 } from "@/db/schema";
+import { sql } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
@@ -23,6 +25,12 @@ export type OrderDetailItem = {
   imageUrlSnapshot: string | null;
   priceInCentsSnapshot: number;
   quantity: number;
+  /**
+   * Sprint 2.1: quantidade já devolvida deste item (acumulado de
+   * devoluções parciais + full). Saldo disponível pra nova devolução
+   * = quantity - quantityReturned.
+   */
+  quantityReturned: number;
 };
 
 /**
@@ -140,6 +148,31 @@ export async function loadOrderDetail(
       .from(orderItemTable)
       .where(eq(orderItemTable.orderId, orderId));
 
+    // Sprint 2.1 — acumulado de quantidade já devolvida por order_item,
+    // somando devoluções parciais + full anteriores. UI usa pra calcular
+    // saldo disponível e bloquear inputs além do permitido.
+    const returnedQuantities = await tx
+      .select({
+        orderItemId: orderReturnItemTable.orderItemId,
+        totalReturned: sql<number>`coalesce(sum(${orderReturnItemTable.quantityReturned}), 0)::int`,
+      })
+      .from(orderReturnItemTable)
+      .innerJoin(
+        orderReturnTable,
+        eq(orderReturnTable.id, orderReturnItemTable.orderReturnId),
+      )
+      .where(
+        and(
+          eq(orderReturnTable.orderId, orderId),
+          eq(orderReturnTable.storeId, store.id),
+        ),
+      )
+      .groupBy(orderReturnItemTable.orderItemId);
+
+    const returnedByItem = new Map<string, number>(
+      returnedQuantities.map((r) => [r.orderItemId, r.totalReturned]),
+    );
+
     // Onda 1.3 — multi-pagamento real. Ordenado por createdAt ASC pra
     // preservar a ordem em que o lojista digitou (cash, depois pix etc.).
     const payments = await tx
@@ -189,7 +222,18 @@ export async function loadOrderDetail(
       )
       .orderBy(desc(orderReturnTable.createdAt));
 
-    return { order, items, payments, linkedCustomer, returns };
+    const itemsWithReturned: OrderDetailItem[] = items.map((it) => ({
+      ...it,
+      quantityReturned: returnedByItem.get(it.id) ?? 0,
+    }));
+
+    return {
+      order,
+      items: itemsWithReturned,
+      payments,
+      linkedCustomer,
+      returns,
+    };
   });
 
   if (!result) return { ok: false, error: "Pedido não encontrado." };

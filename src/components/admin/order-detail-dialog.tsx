@@ -320,7 +320,12 @@ function OrderDetailContent({
         {/* Ações */}
         <section className="b3-card space-y-3 p-4">
           <h3 className="text-[13.5px] font-semibold tracking-tight text-ink-1">Ações</h3>
-          <OrderStatusActions orderId={order.id} status={order.status} />
+          <OrderStatusActions
+            orderId={order.id}
+            status={order.status}
+            items={order.items}
+            totalInCents={order.totalInCents}
+          />
 
           {/* Sprint 1A Fase 4 — Transformar orçamento em venda.
               Visível só quando status='quote' E ainda dentro da validade.
