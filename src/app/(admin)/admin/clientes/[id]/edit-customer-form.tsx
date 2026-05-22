@@ -106,7 +106,11 @@ export function EditCustomerForm({
             {recentOrders.map((o) => (
               <li key={o.id}>
                 <Link
-                  href={`/admin/pedidos?q=${encodeURIComponent(o.shortCode)}`}
+                  // Sprint 3.3 — leva pro detalhe via ?detail={orderId}
+                  // (mesmo padrão da Onda 2.12). Antes mandava pra
+                  // /admin/pedidos?q= e o lojista ainda precisava clicar
+                  // no resultado pra ver a venda. Atalho direto.
+                  href={`/admin/pedidos?detail=${o.id}`}
                   prefetch={false}
                   className="hocus:bg-bg-app flex items-center gap-3 rounded-md px-2 py-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
                 >

@@ -17,6 +17,13 @@ export interface CustomerSearchHit {
   phone: string;
   type: CustomerType;
   document: string | null;
+  /**
+   * Sprint 3.2: notas internas do cliente. PDV usa pra mostrar badge
+   * "📝 anotação" antes da operadora liberar fiado (ex: "deve há 3 meses").
+   * Trim no app pra evitar enviar texto longo nas listas (cap 500 chars
+   * já vem do DB CHECK).
+   */
+  notes: string | null;
 }
 
 /**
@@ -49,6 +56,7 @@ export async function searchCustomers(
           phone: customerTable.phone,
           type: customerTable.type,
           document: customerTable.document,
+          notes: customerTable.notes,
         })
         .from(customerTable)
         .where(eq(customerTable.storeId, store.id))
@@ -83,6 +91,7 @@ export async function searchCustomers(
         phone: customerTable.phone,
         type: customerTable.type,
         document: customerTable.document,
+        notes: customerTable.notes,
       })
       .from(customerTable)
       .where(where)

@@ -235,7 +235,7 @@ function UnlinkedSection({
           <Input
             type="search"
             inputMode="search"
-            placeholder="Buscar cliente por nome ou telefone…"
+            placeholder="Buscar por nome, telefone ou CPF/CNPJ…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onFocus={() => setShowResults(true)}

@@ -267,6 +267,9 @@ export function PdvShell() {
   const [notes, setNotes] = useState("");
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [customerLabel, setCustomerLabel] = useState<string>("");
+  // Sprint 3.2 — notas internas do cliente vinculado. Renderiza badge
+  // "📝 anotação" no card. Set quando onPick recebe hit com notes.
+  const [customerNotes, setCustomerNotes] = useState<string | null>(null);
   // Venda rápida (Frente A.2): nome/tel direto no order, sem cadastro de
   // customer. Só usados quando customerId === null.
   const [walkInName, setWalkInName] = useState<string>("");
@@ -905,6 +908,7 @@ export function PdvShell() {
             <CustomerComboboxLight
               customerId={customerId}
               customerLabel={customerLabel}
+              customerNotes={customerNotes}
               walkInName={walkInName}
               walkInPhone={walkInPhone}
               setWalkInName={setWalkInName}
@@ -912,6 +916,7 @@ export function PdvShell() {
               onPick={(c) => {
                 setCustomerId(c?.id ?? null);
                 setCustomerLabel(c ? `${c.name} · ${c.phone}` : "");
+                setCustomerNotes(c?.notes ?? null);
                 if (c) {
                   setWalkInName("");
                   setWalkInPhone("");
@@ -2172,6 +2177,7 @@ function MoreOptionsDisclosure({
 function CustomerComboboxLight({
   customerId,
   customerLabel,
+  customerNotes,
   walkInName,
   walkInPhone,
   setWalkInName,
@@ -2180,6 +2186,7 @@ function CustomerComboboxLight({
 }: {
   customerId: string | null;
   customerLabel: string;
+  customerNotes: string | null;
   walkInName: string;
   walkInPhone: string;
   setWalkInName: (v: string) => void;
@@ -2228,21 +2235,41 @@ function CustomerComboboxLight({
         <div className="text-ink-4 mb-2 text-[11px] font-bold uppercase tracking-[0.06em]">
           Cliente
         </div>
-        <div className="bg-bg-app flex items-center justify-between rounded-[10px] p-3">
-          <div className="flex items-center gap-2">
-            <UserIcon className="text-ink-4 size-4" />
-            <div>
-              <p className="text-sm font-medium">{customerLabel}</p>
-              <p className="text-ink-4 text-xs">Cadastrado · vinculado à venda</p>
+        <div className="bg-bg-app rounded-[10px] p-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <UserIcon className="text-ink-4 size-4" />
+              <div>
+                <p className="text-sm font-medium">{customerLabel}</p>
+                <p className="text-ink-4 text-xs">Cadastrado · vinculado à venda</p>
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={() => onPick(null)}
+              className="text-ink-4 hover:text-ink-1 text-xs"
+            >
+              Trocar
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => onPick(null)}
-            className="text-ink-4 hover:text-ink-1 text-xs"
-          >
-            Trocar
-          </button>
+
+          {/* Sprint 3.2 — anotação do cliente visível antes de liberar
+              fiado. <details> nativo: badge clicável que expande o texto.
+              Operadora vê "deve há 3 meses" sem precisar abrir /admin/clientes. */}
+          {customerNotes && customerNotes.trim().length > 0 ? (
+            <details className="group mt-2 rounded-md border border-warn/40 bg-warn/10 p-2 text-[11.5px] leading-snug">
+              <summary className="text-warn flex cursor-pointer items-center gap-1.5 font-semibold list-none">
+                <span aria-hidden>📝</span>
+                <span>Anotação sobre este cliente</span>
+                <span className="text-ink-4 ml-auto text-[10px] group-open:hidden">
+                  toque pra ver
+                </span>
+              </summary>
+              <p className="text-ink-2 mt-1.5 whitespace-pre-wrap break-words">
+                {customerNotes}
+              </p>
+            </details>
+          ) : null}
         </div>
       </div>
     );
@@ -2303,7 +2330,7 @@ function CustomerComboboxLight({
               setShowResults(true);
             }}
             onFocus={() => setShowResults(true)}
-            placeholder="Buscar cliente cadastrado (F3) · opcional"
+            placeholder="Buscar por nome, telefone ou CPF/CNPJ (F3) · opcional"
             className="bg-bg-app border-line-2 placeholder:text-ink-3 focus:border-brand h-10 w-full rounded-[10px] border border-dashed pl-9 pr-3 text-[13px] outline-none transition"
           />
         </div>
@@ -2580,6 +2607,10 @@ function FullCustomerCreateDialog({
         phone: result.customer.phone,
         document: null,
         type,
+        // Cliente recém-criado pelo PDV não passa notes no form de
+        // cadastro rápido — sai sem anotação. Pode editar depois em
+        // /admin/clientes.
+        notes: notes.trim() || null,
       });
     });
   };
