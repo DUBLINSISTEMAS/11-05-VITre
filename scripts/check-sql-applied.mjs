@@ -91,6 +91,8 @@ const checks = [
   { id: "61",  desc: "product_unit enum aceita 'par' e 'duzia' (Onda 2.10)", q: "SELECT 1 FROM pg_enum WHERE enumtypid=(SELECT oid FROM pg_type WHERE typname='product_unit') AND enumlabel IN ('par','duzia') HAVING count(*) = 2" },
   { id: "62",  desc: "product.allow_oversell column (Onda 2.15)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='product' AND column_name='allow_oversell'" },
   { id: "63",  desc: "store.document column (Onda 2.7)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='store' AND column_name='document'" },
+  // Sprint 2 (2026-05-22)
+  { id: "64",  desc: "índice trigram em product_variant.name (Sprint 2.4)", q: "SELECT 1 FROM pg_indexes WHERE tablename='product_variant' AND indexname='product_variant_name_trgm_idx'" },
 ];
 
 const url = process.env.DIRECT_URL;
