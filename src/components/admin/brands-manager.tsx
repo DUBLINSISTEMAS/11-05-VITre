@@ -61,7 +61,6 @@ export function BrandsManager({ initialBrands }: BrandsManagerProps) {
       toast.success(edit.id ? "Marca atualizada." : "Marca criada.");
       // Refresh local state otimisticamente (server revalidatePath também invalida cache)
       setBrands((prev) => {
-        const next = { ...prev };
         if (edit.id) {
           return prev.map((b) =>
             b.id === result.id

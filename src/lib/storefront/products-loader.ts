@@ -377,26 +377,3 @@ export const getFeaturedProducts = cache(
     return cached();
   },
 );
-
-/**
- * @deprecated-until-wired Sprint 1A
- *
- * Loader cached preparado pra home pública. Sem callsite hoje
- * (auditoria 2026-05-21). Mantido intencionalmente — substitui o
- * carregamento inline atual quando home pública usar produtos
- * "Adicionados recentemente" em destaque.
- */
-export const getRecentProducts = cache(
-  async (
-    storeId: string,
-    storeSlug: string,
-    limit = 8,
-  ): Promise<ProductCardData[]> => {
-    const cached = unstable_cache(
-      async () => loadHomeProductsFromDb(storeId, false, limit),
-      ["storefront-recent", storeId, String(limit)],
-      { tags: [STORE_CACHE_TAG(storeSlug)], revalidate: 300 },
-    );
-    return cached();
-  },
-);

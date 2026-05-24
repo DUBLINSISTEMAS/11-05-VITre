@@ -19,7 +19,9 @@
  * Uso: `node --env-file=.env.local scripts/smoke-idor.mjs`
  */
 import "dotenv/config";
+
 import { randomUUID } from "node:crypto";
+
 import { Pool } from "pg";
 
 const ATTACKER_FAKE_STORE = randomUUID();

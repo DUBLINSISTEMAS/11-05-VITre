@@ -28,6 +28,7 @@ import { Loader2Icon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { markWhatsAppOpened } from "@/actions/order/mark-whatsapp-opened";
+import { logger } from "@/lib/logger";
 
 const DELAY_MS = 2500;
 const ACTION_TIMEOUT_MS = 800;
@@ -61,7 +62,13 @@ export function WhatsAppAutoHandoff({
       // Race entre action e timeout: garante marca mesmo se a navegação
       // cancelar fetches in-flight.
       await Promise.race([
-        markWhatsAppOpened({ publicToken }).catch(() => null),
+        markWhatsAppOpened({ publicToken }).catch((err) => {
+          logger.warn("storefront.whatsapp.auto_mark_opened_failed", {
+            err,
+            publicToken,
+          });
+          return null;
+        }),
         new Promise<null>((resolve) =>
           setTimeout(() => resolve(null), ACTION_TIMEOUT_MS),
         ),

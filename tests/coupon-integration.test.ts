@@ -24,7 +24,6 @@ import test from "node:test";
 import {
   createBalcaoSaleSchema,
 } from "../src/actions/order/balcao/schema";
-import { createOrderInputSchema } from "../src/actions/order/schema";
 
 function loadSrc(path: string): string {
   return readFileSync(path, "utf8");

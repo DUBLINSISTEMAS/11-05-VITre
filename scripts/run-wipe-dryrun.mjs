@@ -6,6 +6,7 @@ import { config } from "dotenv";
 config({ path: ".env.local" });
 
 import { readFile } from "node:fs/promises";
+
 import { Pool } from "pg";
 
 const pool = new Pool({ connectionString: process.env.DIRECT_URL });

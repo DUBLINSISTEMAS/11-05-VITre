@@ -21,7 +21,6 @@ import test from "node:test";
 import { createBalcaoSaleSchema } from "../src/actions/order/balcao/schema";
 
 const FIXTURE_PRODUCT_ID = "550e8400-e29b-41d4-a716-446655440000";
-const FIXTURE_CUSTOMER_ID = "6ba7b810-9dad-41d1-80b4-00c04fd430c8";
 
 function baseInput(overrides: Record<string, unknown> = {}) {
   return {

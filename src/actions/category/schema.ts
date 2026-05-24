@@ -66,6 +66,3 @@ export type RemoveCategoryImageInput = z.infer<
 export const uploadCategoryImageSchema = z.object({
   categoryId: z.string().uuid(),
 });
-type UploadCategoryImageInput = z.infer<
-  typeof uploadCategoryImageSchema
->;

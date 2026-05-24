@@ -20,6 +20,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { markWhatsAppOpened } from "@/actions/order/mark-whatsapp-opened";
+import { logger } from "@/lib/logger";
 
 const ACTION_TIMEOUT_MS = 800;
 
@@ -39,7 +40,13 @@ export function SuccessCtas({ publicToken, whatsappUrl, storeSlug }: SuccessCtas
     // Race entre action e timeout: garante que o "open" é registrado
     // mesmo quando window.location.href cancela fetches in-flight.
     await Promise.race([
-      markWhatsAppOpened({ publicToken }).catch(() => null),
+      markWhatsAppOpened({ publicToken }).catch((err) => {
+        logger.warn("storefront.whatsapp.mark_opened_failed", {
+          err,
+          publicToken,
+        });
+        return null;
+      }),
       new Promise<null>((resolve) => setTimeout(() => resolve(null), ACTION_TIMEOUT_MS)),
     ]);
 

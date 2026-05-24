@@ -49,8 +49,6 @@ export const balcaoItemSchema = z.object({
     .nullable()
     .optional(),
 });
-type BalcaoItemInput = z.infer<typeof balcaoItemSchema>;
-
 /** E.164 simplificado (mesmo da Fase 3 customer schema). */
 const E164 = /^\+[1-9][0-9]{6,14}$/;
 
@@ -110,9 +108,6 @@ export const paymentLineSchema = z
     }
   });
 
-type PaymentLineInput = z.input<typeof paymentLineSchema>;
-type PaymentLineParsed = z.output<typeof paymentLineSchema>;
-
 /**
  * Sprint 1A — modo da venda balcão.
  *   - 'sale'  (default): venda normal com payments[] e desconto de estoque
@@ -123,7 +118,6 @@ type PaymentLineParsed = z.output<typeof paymentLineSchema>;
  *     com due_date = now + dueDaysFromNow.
  */
 export const BALCAO_MODE_VALUES = ["sale", "quote", "fiado"] as const;
-type BalcaoMode = (typeof BALCAO_MODE_VALUES)[number];
 
 export const createBalcaoSaleSchema = z
   .object({
@@ -366,4 +360,3 @@ export const createBalcaoSaleSchema = z
   });
 
 export type CreateBalcaoSaleInput = z.input<typeof createBalcaoSaleSchema>;
-type CreateBalcaoSaleParsed = z.output<typeof createBalcaoSaleSchema>;

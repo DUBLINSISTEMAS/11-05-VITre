@@ -25,6 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { logger } from "@/lib/logger";
 import { formatBRL } from "@/lib/pricing";
 
 const PAYMENT_LABELS: Record<string, string> = {
@@ -70,12 +71,17 @@ export function OrderDetailDialog({
     setData(null);
     setError(null);
     startLoad(async () => {
-      const res = await loadOrderDetail(orderId);
-      if (!res.ok) {
-        setError(res.error);
-        return;
+      try {
+        const res = await loadOrderDetail(orderId);
+        if (!res.ok) {
+          setError(res.error);
+          return;
+        }
+        setData(res.order);
+      } catch (err) {
+        logger.error("admin.order.detail_load_failed", { err, orderId });
+        setError("Não foi possível carregar o pedido. Tente novamente.");
       }
-      setData(res.order);
     });
   }, [orderId, reloadKey]);
 

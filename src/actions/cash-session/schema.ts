@@ -15,7 +15,6 @@ export const openCashSessionSchema = z.object({
     .max(MAX_AMOUNT_IN_CENTS, "Valor acima do limite."),
 });
 export type OpenCashSessionInput = z.input<typeof openCashSessionSchema>;
-type OpenCashSessionData = z.output<typeof openCashSessionSchema>;
 
 export const closeCashSessionSchema = z
   .object({
@@ -58,7 +57,6 @@ export const closeCashSessionSchema = z
     }
   });
 export type CloseCashSessionInput = z.input<typeof closeCashSessionSchema>;
-type CloseCashSessionData = z.output<typeof closeCashSessionSchema>;
 
 export const recordAdjustmentSchema = z.object({
   sessionId: z.string().uuid("Identificador inválido."),
@@ -81,4 +79,3 @@ export const recordAdjustmentSchema = z.object({
     }),
 });
 export type RecordAdjustmentInput = z.input<typeof recordAdjustmentSchema>;
-type RecordAdjustmentData = z.output<typeof recordAdjustmentSchema>;

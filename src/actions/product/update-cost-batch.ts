@@ -128,7 +128,7 @@ export async function updateProductCostBatch(
       }
     });
   } catch (e) {
-    logger.error("updateProductCostBatch failed", { error: String(e) });
+    logger.error("product.cost_batch_update_failed", { err: e });
     return { ok: false, error: "Erro ao salvar. Tente novamente." };
   }
 

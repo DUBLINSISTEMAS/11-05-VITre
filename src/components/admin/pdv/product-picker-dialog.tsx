@@ -44,6 +44,7 @@ import {
   type PdvProductVariantHit,
   searchProductsForPdv,
 } from "@/actions/product/search-for-pdv";
+import { logger } from "@/lib/logger";
 import { formatBRL, resolveVariantPrice } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
@@ -102,6 +103,7 @@ export function ProductPickerDialog({
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [hits, setHits] = useState<PdvProductHit[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [categories, setCategories] = useState<PdvCategoryHit[]>([]);
   const [selected, setSelected] = useState<Map<string, PickerSelection>>(
     new Map(),
@@ -114,7 +116,12 @@ export function ProductPickerDialog({
   // Preload categorias quando dialog abre (uma única vez por abertura).
   useEffect(() => {
     if (!open) return;
-    void loadCategoriesForPdv().then(setCategories);
+    void loadCategoriesForPdv()
+      .then(setCategories)
+      .catch((err) => {
+        logger.error("admin.pdv.categories_load_failed", { err });
+        setLoadError("Não foi possível carregar as categorias.");
+      });
   }, [open]);
 
   // Reset ao fechar — próxima abertura começa limpo.
@@ -123,6 +130,7 @@ export function ProductPickerDialog({
     setQ("");
     setCategoryId(null);
     setHits([]);
+    setLoadError(null);
     setSelected(new Map());
     setExpandedVariants(new Set());
   }, [open]);
@@ -133,10 +141,19 @@ export function ProductPickerDialog({
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       setIsSearching(true);
-      void searchProductsForPdv(q, { categoryId }).then((results) => {
-        setHits(results);
-        setIsSearching(false);
-      });
+      setLoadError(null);
+      void searchProductsForPdv(q, { categoryId })
+        .then((results) => {
+          setHits(results);
+        })
+        .catch((err) => {
+          logger.error("admin.pdv.products_search_failed", { err });
+          setHits([]);
+          setLoadError("Não foi possível buscar produtos. Tente novamente.");
+        })
+        .finally(() => {
+          setIsSearching(false);
+        });
     }, 200);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -309,7 +326,9 @@ export function ProductPickerDialog({
 
         {/* Grid de produtos */}
         <div className="flex-1 overflow-y-auto px-4 py-3 sm:px-5">
-          {isSearching && hits.length === 0 ? (
+          {loadError ? (
+            <PickerError message={loadError} />
+          ) : isSearching && hits.length === 0 ? (
             <PickerSkeleton />
           ) : hits.length === 0 ? (
             <PickerEmpty hasQuery={q.trim() !== ""} />
@@ -621,6 +640,17 @@ function PickerSkeleton() {
           className="bg-bg-app h-[88px] animate-pulse rounded-lg"
         />
       ))}
+    </div>
+  );
+}
+
+function PickerError({ message }: { message: string }) {
+  return (
+    <div
+      role="alert"
+      className="text-danger flex flex-col items-center justify-center gap-2 py-12 text-center text-[12px]"
+    >
+      <span>{message}</span>
     </div>
   );
 }

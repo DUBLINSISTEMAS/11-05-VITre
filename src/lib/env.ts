@@ -16,6 +16,8 @@
  */
 import { z } from "zod";
 
+import { logger } from "@/lib/logger";
+
 const emptyToUndefined = (v: unknown) => (v === "" ? undefined : v);
 
 const optionalUrl = z.preprocess(emptyToUndefined, z.string().url().optional());
@@ -72,8 +74,9 @@ const envSchema = z.object({
 const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
-  console.error("Variáveis de ambiente inválidas:");
-  console.error(parsed.error.flatten().fieldErrors);
+  logger.error("env.validation_failed", {
+    fieldErrors: parsed.error.flatten().fieldErrors,
+  });
   throw new Error("Configuração de ambiente inválida. Veja .env.example.");
 }
 

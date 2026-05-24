@@ -32,6 +32,7 @@ import type { ProductCostBatchRow } from "@/actions/product/schema";
 import { updateProductCostBatch } from "@/actions/product/update-cost-batch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { logger } from "@/lib/logger";
 
 interface CostGridRow {
   id: string;
@@ -161,7 +162,22 @@ export function CostGridClient({ initialRows }: CostGridClientProps) {
       if (diffCost) row.costPriceInCents = state.costPriceInCents;
       if (diffCommission) row.defaultCommissionBps = state.defaultCommissionBps;
 
-      const result = await updateProductCostBatch({ rows: [row] });
+      let result: Awaited<ReturnType<typeof updateProductCostBatch>>;
+      try {
+        result = await updateProductCostBatch({ rows: [row] });
+      } catch (err) {
+        logger.error("admin.product_cost.autosave_failed", { err, productId });
+        setStates((prev) => {
+          const cur = prev[productId];
+          if (!cur) return prev;
+          return {
+            ...prev,
+            [productId]: { ...cur, status: "error" },
+          };
+        });
+        toast.error("Erro ao salvar custo. Tente novamente.");
+        return;
+      }
 
       setStates((prev) => {
         const cur = prev[productId];
@@ -262,13 +278,18 @@ export function CostGridClient({ initialRows }: CostGridClientProps) {
     let totalUpdated = 0;
     let firstError: string | null = null;
 
-    for (const chunk of chunks) {
-      const result = await updateProductCostBatch({ rows: chunk });
-      if (result.ok) {
-        totalUpdated += result.updatedCount;
-      } else if (firstError === null) {
-        firstError = result.error;
+    try {
+      for (const chunk of chunks) {
+        const result = await updateProductCostBatch({ rows: chunk });
+        if (result.ok) {
+          totalUpdated += result.updatedCount;
+        } else if (firstError === null) {
+          firstError = result.error;
+        }
       }
+    } catch (err) {
+      logger.error("admin.product_cost.save_all_failed", { err });
+      firstError = "Erro ao salvar. Tente novamente.";
     }
 
     setStates((prev) => {

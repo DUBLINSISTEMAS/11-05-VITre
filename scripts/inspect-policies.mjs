@@ -3,6 +3,7 @@
  * Uso: node --env-file=.env.local scripts/inspect-policies.mjs <tabela> [<tabela>...]
  */
 import "dotenv/config";
+
 import { Pool } from "pg";
 
 const tables = process.argv.slice(2);

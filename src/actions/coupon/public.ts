@@ -35,7 +35,7 @@ import {
   RateLimitError,
   rateLimits,
 } from "@/lib/rate-limit";
-import { ANON_USER_ID, withServiceRole } from "@/lib/tenant";
+import { withServiceRole } from "@/lib/tenant";
 
 const inputSchema = z.object({
   storeSlug: z

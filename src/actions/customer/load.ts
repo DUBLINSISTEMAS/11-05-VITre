@@ -1,6 +1,6 @@
 "use server";
 
-import { and, count, desc, eq, isNull, lt, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 
 import { customerTable, orderTable, receivableTable } from "@/db/schema";

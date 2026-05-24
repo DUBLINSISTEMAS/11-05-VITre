@@ -33,6 +33,30 @@ export function CashSessionStatus({
   active: CashSessionStatusActive | null;
 }) {
   const [openDialog, setOpenDialog] = useState(false);
+  const [durationLabel, setDurationLabel] = useState<string | null>(null);
+  const openedAt = active?.openedAt ?? null;
+
+  // Audit 2026-05-21 — `Date.now()` causava hydration mismatch (server
+  // renderiza em T1, client hidrata em T2, "X min" diferente). Solução
+  // sênior: state inicial null → useEffect calcula no client após
+  // mount → re-renderiza sem mismatch. Intervalo de 1min mantém a
+  // duração atualizada em tempo real (lojista vê o número crescer).
+  useEffect(() => {
+    if (!openedAt) {
+      setDurationLabel(null);
+      return;
+    }
+    const compute = () => {
+      const openedAtMs = new Date(openedAt).getTime();
+      const min = Math.floor((Date.now() - openedAtMs) / 60_000);
+      setDurationLabel(
+        min < 60 ? `${min} min` : `${Math.floor(min / 60)}h ${min % 60}m`,
+      );
+    };
+    compute();
+    const interval = setInterval(compute, 60_000);
+    return () => clearInterval(interval);
+  }, [openedAt]);
 
   if (!active) {
     // Onda 2.6 — banner amarelo proeminente (era cinza neutro). Sem
@@ -77,26 +101,6 @@ export function CashSessionStatus({
       </>
     );
   }
-
-  // Audit 2026-05-21 — `Date.now()` causava hydration mismatch (server
-  // renderiza em T1, client hidrata em T2, "X min" diferente). Solução
-  // sênior: state inicial null → useEffect calcula no client após
-  // mount → re-renderiza sem mismatch. Intervalo de 1min mantém a
-  // duração atualizada em tempo real (lojista vê o número crescer).
-  const openedAt = active.openedAt;
-  const [durationLabel, setDurationLabel] = useState<string | null>(null);
-  useEffect(() => {
-    const compute = () => {
-      const openedAtMs = new Date(openedAt).getTime();
-      const min = Math.floor((Date.now() - openedAtMs) / 60_000);
-      setDurationLabel(
-        min < 60 ? `${min} min` : `${Math.floor(min / 60)}h ${min % 60}m`,
-      );
-    };
-    compute();
-    const interval = setInterval(compute, 60_000);
-    return () => clearInterval(interval);
-  }, [openedAt]);
 
   return (
     <div className="border-brand-line bg-brand-wash flex flex-wrap items-center gap-3 rounded-[12px] border p-3 sm:p-4">

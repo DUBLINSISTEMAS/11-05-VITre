@@ -4,9 +4,8 @@
  * submitContactMessage — Sprint 5.2 (2026-05-22).
  *
  * Formulário público de contato no storefront (/[storeSlug]/contato).
- * Diferente de `recordLead` (intenção de compra disparada por clique
- * no botão WhatsApp), aqui o cliente preenche nome + telefone +
- * mensagem livre e o lojista vê em /admin/contatos.
+ * Aqui o cliente preenche nome + telefone + mensagem livre e o lojista
+ * vê em /admin/contatos.
  *
  * Anon-callable (anti-spoofing por storeSlug resolvido server-side
  * via getStoreBySlug, rate limit por IP).
@@ -22,9 +21,9 @@ import {
   RateLimitError,
   rateLimits,
 } from "@/lib/rate-limit";
-import { isValidWhatsAppBR, parseWhatsAppBR } from "@/lib/whatsapp-format";
 import { getStoreBySlug } from "@/lib/storefront/store-loader";
 import { withServiceRole } from "@/lib/tenant";
+import { isValidWhatsAppBR, parseWhatsAppBR } from "@/lib/whatsapp-format";
 
 const inputSchema = z.object({
   storeSlug: z.string().min(1).max(64),
@@ -77,7 +76,7 @@ export async function submitContactMessage(
   }
 
   // Rate limit por IP+store. Bucket separado pra não competir com
-  // recordLead/createOrder do mesmo cliente clicando no WhatsApp.
+  // createOrder do mesmo cliente clicando no WhatsApp.
   try {
     await checkRateLimit(
       rateLimits.createOrder,

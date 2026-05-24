@@ -5,8 +5,8 @@ import { headers } from "next/headers";
 
 import {
   customerGroupTable,
-  customerTable,
   type CustomerPricingTier,
+  customerTable,
   type CustomerType,
 } from "@/db/schema";
 import { auth } from "@/lib/auth";

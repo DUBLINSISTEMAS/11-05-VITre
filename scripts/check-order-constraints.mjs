@@ -3,6 +3,7 @@
  * que possa estar barrando INSERT de quote ou fiado silenciosamente.
  */
 import "dotenv/config";
+
 import { Pool } from "pg";
 
 const pool = new Pool({ connectionString: process.env.DIRECT_URL });

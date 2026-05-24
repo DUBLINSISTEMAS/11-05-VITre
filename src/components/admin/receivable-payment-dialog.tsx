@@ -36,6 +36,7 @@ import { recordReceivablePayment } from "@/actions/receivable/record-payment";
 import { reverseReceivablePayment } from "@/actions/receivable/reverse-payment";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { logger } from "@/lib/logger";
 import { formatBRL } from "@/lib/pricing";
 
 const PAYMENT_METHODS: {
@@ -101,10 +102,22 @@ export function ReceivablePaymentDialog({
 
   const refresh = async () => {
     setLoading(true);
-    const d = await loadReceivableDetail(receivableId);
-    setDetail(d);
-    if (d) setAmountInput(centsToBRLInput(d.remainingInCents));
-    setLoading(false);
+    try {
+      const d = await loadReceivableDetail(receivableId);
+      setDetail(d);
+      if (d) setAmountInput(centsToBRLInput(d.remainingInCents));
+    } catch (err) {
+      logger.error("admin.receivable.detail_load_failed", {
+        err,
+        receivableId,
+      });
+      setDetail(null);
+      toast.error("Não foi possível carregar o fiado.", {
+        description: "Verifique a conexão e tente novamente.",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -164,6 +177,12 @@ export function ReceivablePaymentDialog({
         // adicionado no histórico.
         await refresh();
       }
+    } catch (err) {
+      logger.error("admin.receivable.payment_submit_failed", {
+        err,
+        receivableId,
+      });
+      toast.error("Não foi possível registrar o pagamento.");
     } finally {
       setSubmitting(false);
     }
@@ -196,6 +215,12 @@ export function ReceivablePaymentDialog({
           : "Estorno registrado.",
       );
       await refresh();
+    } catch (err) {
+      logger.error("admin.receivable.payment_reverse_failed", {
+        err,
+        paymentId,
+      });
+      toast.error("Não foi possível registrar o estorno.");
     } finally {
       setReversingId(null);
     }

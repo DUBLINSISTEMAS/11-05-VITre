@@ -186,7 +186,7 @@ export function ReportLayout<T>({
         <header className="flex items-start justify-between gap-4 border-b border-ink-5 px-6 pb-3 pt-6 print:px-0">
           <div className="flex items-center gap-3">
             {storeInfo.logoUrl ? (
-              // biome-ignore lint/performance/noImgElement: img nativa pra print
+              // eslint-disable-next-line @next/next/no-img-element -- imagem nativa é suficiente no layout de impressão.
               <img
                 src={storeInfo.logoUrl}
                 alt={storeInfo.name}

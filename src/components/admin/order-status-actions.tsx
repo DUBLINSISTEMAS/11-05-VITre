@@ -17,6 +17,7 @@ import {
   VALID_TRANSITIONS,
 } from "@/actions/order/schema";
 import { updateOrderStatus } from "@/actions/order/update-status";
+import { OrderReturnDialog } from "@/components/admin/order-return-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,7 +30,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { OrderReturnDialog } from "@/components/admin/order-return-dialog";
 
 interface OrderStatusActionsProps {
   orderId: string;

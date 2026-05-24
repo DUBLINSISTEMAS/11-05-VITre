@@ -53,7 +53,7 @@ async function listAllInBucket(bucket, prefix = "") {
   while (queue.length) {
     const p = queue.shift();
     let offset = 0;
-    // eslint-disable-next-line no-constant-condition
+     
     while (true) {
       const { data, error } = await sb.storage
         .from(bucket)

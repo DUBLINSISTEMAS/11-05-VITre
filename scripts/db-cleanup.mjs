@@ -8,9 +8,10 @@
 import { config } from "dotenv";
 config({ path: ".env.local" });
 config();
-import pg from "pg";
-import { readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
+import { readFileSync, writeFileSync } from "node:fs";
+
+import pg from "pg";
 
 const directUrl = process.env.DIRECT_URL;
 if (!directUrl) {

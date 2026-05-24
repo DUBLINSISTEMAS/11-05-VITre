@@ -3,7 +3,7 @@
  * Pra cada export listado: faz search em src/ + tests/ excluindo o próprio arquivo.
  * Output: lista categorizada em docs/auditoria-2026-05-21/_dead-code-raw.json
  */
-import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const raw = readFileSync("ts-prune-raw.txt", "utf8");

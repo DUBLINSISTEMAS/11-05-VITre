@@ -54,6 +54,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Store } from "@/db/schema";
 import { useCart } from "@/hooks/use-cart";
+import { logger } from "@/lib/logger";
 import { formatBRL } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
@@ -103,22 +104,31 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
     if (!appliedCoupon || !isHydrated) return;
     let canceled = false;
     void (async () => {
-      const res = await validateCouponForPublic({
-        storeSlug: store.slug,
-        code: appliedCoupon.code,
-        subtotalInCents: subtotalCents,
-      });
-      if (canceled) return;
-      if (!res.ok) {
-        setAppliedCoupon(null);
-        setCouponError(res.error);
-        return;
-      }
-      if (res.discountInCents !== appliedCoupon.discountInCents) {
-        setAppliedCoupon({
-          code: res.code,
-          discountInCents: res.discountInCents,
+      try {
+        const res = await validateCouponForPublic({
+          storeSlug: store.slug,
+          code: appliedCoupon.code,
+          subtotalInCents: subtotalCents,
         });
+        if (canceled) return;
+        if (!res.ok) {
+          setAppliedCoupon(null);
+          setCouponError(res.error);
+          return;
+        }
+        if (res.discountInCents !== appliedCoupon.discountInCents) {
+          setAppliedCoupon({
+            code: res.code,
+            discountInCents: res.discountInCents,
+          });
+        }
+      } catch (err) {
+        logger.error("storefront.checkout.coupon_revalidate_failed", {
+          err,
+          storeSlug: store.slug,
+        });
+        if (canceled) return;
+        setCouponError("Não foi possível atualizar o cupom. Tente novamente.");
       }
     })();
     return () => {
@@ -153,6 +163,12 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
       toast.success(
         `Cupom ${res.code} aplicado · −${formatBRL(res.discountInCents)}`,
       );
+    } catch (err) {
+      logger.error("storefront.checkout.coupon_apply_failed", {
+        err,
+        storeSlug: store.slug,
+      });
+      setCouponError("Não foi possível validar o cupom. Tente novamente.");
     } finally {
       setApplyingCoupon(false);
     }
@@ -187,15 +203,27 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
     }
 
     startTransition(async () => {
-      const result = await createOrderFromCart({
-        storeSlug: store.slug,
-        idempotencyKey: idempotencyKeyRef.current!,
-        items,
-        // Sprint 5.1 — server revalida e aplica o desconto; o
-        // appliedCoupon do client é só preview.
-        couponCode: appliedCoupon?.code ?? null,
-        ...data,
-      });
+      let result: Awaited<ReturnType<typeof createOrderFromCart>>;
+      try {
+        result = await createOrderFromCart({
+          storeSlug: store.slug,
+          idempotencyKey: idempotencyKeyRef.current!,
+          items,
+          // Sprint 5.1 — server revalida e aplica o desconto; o
+          // appliedCoupon do client é só preview.
+          couponCode: appliedCoupon?.code ?? null,
+          ...data,
+        });
+      } catch (err) {
+        logger.error("storefront.checkout.create_order_failed", {
+          err,
+          storeSlug: store.slug,
+        });
+        toast.error("Não foi possível enviar o pedido.", {
+          description: "Verifique sua conexão e tente novamente.",
+        });
+        return;
+      }
 
       if (result.ok && result.publicToken) {
         // `auto=1` aciona o handoff automático na /sucesso — usuário

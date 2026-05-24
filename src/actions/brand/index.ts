@@ -16,7 +16,7 @@
  * - product.brand_id (uuid) é FK opcional pra brand.id
  * - update do produto que escolha brand do select preenche AMBOS
  */
-import { and, count, eq, ne, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { headers } from "next/headers";
 

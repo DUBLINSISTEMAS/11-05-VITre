@@ -229,7 +229,7 @@ export function OrderReturnDialog({
             <div className="rounded-md border border-warn/30 bg-warn/10 p-3 text-[12.5px] text-ink-2">
               <p>Como proceder:</p>
               <ol className="mt-2 list-decimal space-y-1 pl-5">
-                <li>Abra o fiado desta venda na tela de "A receber".</li>
+                <li>Abra o fiado desta venda na tela de &quot;A receber&quot;.</li>
                 <li>Estorne cada pagamento que recebeu (gera saída no caixa).</li>
                 <li>Volte aqui e tente devolver de novo.</li>
               </ol>

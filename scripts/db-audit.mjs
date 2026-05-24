@@ -5,9 +5,10 @@
 import { config } from "dotenv";
 config({ path: ".env.local" });
 config();
-import pg from "pg";
-import { readFileSync, readdirSync } from "node:fs";
+import { readdirSync,readFileSync } from "node:fs";
 import { join } from "node:path";
+
+import pg from "pg";
 
 const directUrl = process.env.DIRECT_URL;
 const client = new pg.Client({ connectionString: directUrl });

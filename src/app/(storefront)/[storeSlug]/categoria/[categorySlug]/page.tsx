@@ -18,6 +18,7 @@ import { CategoryFilterChips } from "@/components/storefront/category-filter-chi
 import { ProductGrid } from "@/components/storefront/product-grid";
 import { StoreHeader } from "@/components/storefront/store-header";
 import { env } from "@/lib/env";
+import { logger } from "@/lib/logger";
 import {
   boolFlagSchema,
   enumWithDefault,
@@ -137,7 +138,14 @@ export default async function CategoryPage({
       promoOnly,
       attributeValueId: attributeValueId ?? undefined,
     }),
-    loadActiveAttributesForStore(store.id, store.slug),
+    loadActiveAttributesForStore(store.id, store.slug).catch((err) => {
+      logger.error("storefront.category.attributes_load_failed", {
+        err,
+        storeId: store.id,
+        categorySlug,
+      });
+      return [];
+    }),
   ]);
   if (!result) notFound();
 

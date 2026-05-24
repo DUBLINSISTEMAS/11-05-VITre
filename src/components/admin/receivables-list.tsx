@@ -38,7 +38,7 @@ interface ReceivablesListProps {
   };
 }
 
-export function ReceivablesList({ rows: initial, totals }: ReceivablesListProps) {
+export function ReceivablesList({ rows: initial }: ReceivablesListProps) {
   const router = useRouter();
   const [openId, setOpenId] = useState<string | null>(null);
   const [, startTransition] = useTransition();

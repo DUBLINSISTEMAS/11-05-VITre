@@ -8,19 +8,13 @@ import { z } from "zod";
 export const uploadProductImageSchema = z.object({
   productId: z.string().uuid("ID de produto inválido."),
 });
-type UploadProductImageInput = z.infer<typeof uploadProductImageSchema>;
-
 export const deleteProductImageSchema = z.object({
   imageId: z.string().uuid("ID de imagem inválido."),
 });
-type DeleteProductImageInput = z.infer<typeof deleteProductImageSchema>;
-
 export const reorderProductImagesSchema = z.object({
   productId: z.string().uuid(),
   orderedImageIds: z.array(z.string().uuid()).min(1).max(5),
 });
-type ReorderProductImagesInput = z.infer<typeof reorderProductImagesSchema>;
-
 // ---------- Variante (input do form, antes de persistir) ----------
 
 /**
@@ -410,8 +404,6 @@ export const productFormSchema = productFormFieldsSchema
  * Mantemos os 2 tipos exportados pra cada lado importar o seu.
  */
 export type ProductFormValues = z.input<typeof productFormFieldsSchema>;
-type ProductFormOutput = z.output<typeof productFormFieldsSchema>;
-
 /** Schema da action — adiciona `productId` e reaplica refines (ver nota
  *  acima sobre duplicação intencional). */
 export const updateProductSchema = productFormFieldsSchema

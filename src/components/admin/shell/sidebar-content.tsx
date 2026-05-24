@@ -13,6 +13,7 @@
 // - Default aberto: a seção que contém a rota atual
 // - SupportFooterLink discreto acima do rodapé
 // - b3-side-foot: store identity + dropdown
+import type { LucideIcon } from "lucide-react";
 import {
   ChevronDownIcon,
   LogOutIcon,
@@ -24,7 +25,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import {

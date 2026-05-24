@@ -32,7 +32,7 @@ import { ArrowRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
-import type { ActiveBanner } from "@/lib/storefront/banners-loader";
+import type { Banner as ActiveBanner } from "@/db/schema";
 import type { HeroVariant } from "@/lib/storefront/themes";
 import { cn } from "@/lib/utils";
 

@@ -5,8 +5,6 @@ import { z } from "zod";
 
 import { loadActiveCashSession } from "@/actions/cash-session/load";
 import { ORDER_STATUS_VALUES } from "@/actions/order/schema";
-import { CashSessionStatus } from "@/components/admin/pdv/cash-session-status";
-import { NewSaleModalButton } from "@/components/admin/pdv/new-sale-modal";
 import {
   type OrdersStatusCounts,
   OrdersStatusTabs,
@@ -16,6 +14,8 @@ import {
   type OrdersPeriodSummary,
   OrdersToolbar,
 } from "@/components/admin/orders-toolbar";
+import { CashSessionStatus } from "@/components/admin/pdv/cash-session-status";
+import { NewSaleModalButton } from "@/components/admin/pdv/new-sale-modal";
 import { Pagination } from "@/components/common/pagination";
 import {
   orderPaymentTable,

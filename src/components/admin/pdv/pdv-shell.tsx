@@ -75,6 +75,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatDocument } from "@/lib/document";
+import { logger } from "@/lib/logger";
 import { formatBRL, getEffectivePrice } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
@@ -388,7 +389,7 @@ export function PdvShell() {
     setPaymentLines((prev) =>
       rebalancePaymentLines(totalInCents, creditAmountInCents, prev),
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [totalInCents, creditAmountInCents]);
 
   // Validação per-linha de cash com recebido < amount (bloqueia submit).
@@ -1274,25 +1275,34 @@ function CartToolbar({
     const trimmed = scanValue.trim();
     if (!trimmed) return;
     setScanning(true);
-    void searchProductsForPdv(trimmed).then((hits) => {
-      setScanning(false);
-      // Match exato GTIN + sem variantes → adiciona direto.
-      const exact = hits.find(
-        (h) => h.gtin === trimmed && h.variants.length === 0,
-      );
-      if (exact) {
-        onScanResult(exact);
-        setScanValue("");
-        return;
-      }
-      // Senão: abre picker com hint pra escolher manualmente.
-      toast.info(
-        hits.length === 0
-          ? "Nada encontrado. Use 'Adicionar produto' pra buscar."
-          : "Múltiplos resultados — abrindo busca completa.",
-      );
-      onOpenPicker();
-    });
+    void searchProductsForPdv(trimmed)
+      .then((hits) => {
+        // Match exato GTIN + sem variantes → adiciona direto.
+        const exact = hits.find(
+          (h) => h.gtin === trimmed && h.variants.length === 0,
+        );
+        if (exact) {
+          onScanResult(exact);
+          setScanValue("");
+          return;
+        }
+        // Senão: abre picker com hint pra escolher manualmente.
+        toast.info(
+          hits.length === 0
+            ? "Nada encontrado. Use 'Adicionar produto' pra buscar."
+            : "Múltiplos resultados — abrindo busca completa.",
+        );
+        onOpenPicker();
+      })
+      .catch((err) => {
+        logger.error("admin.pdv.scanner_search_failed", { err });
+        toast.error("Não foi possível buscar o código.", {
+          description: "Verifique a conexão e tente novamente.",
+        });
+      })
+      .finally(() => {
+        setScanning(false);
+      });
   };
 
   return (

@@ -17,6 +17,7 @@ import { useState } from "react";
 
 import { markWhatsAppOpened } from "@/actions/order/mark-whatsapp-opened";
 import { Button } from "@/components/ui/button";
+import { logger } from "@/lib/logger";
 import { cn } from "@/lib/utils";
 
 const ACTION_TIMEOUT_MS = 800;
@@ -47,7 +48,13 @@ export function WhatsAppOpenButton({
     // Race entre a action e o timeout. Action sobrevive a fetch
     // cancelado se concluir antes de 800ms (caso comum no Vercel).
     await Promise.race([
-      markWhatsAppOpened({ publicToken }).catch(() => null),
+      markWhatsAppOpened({ publicToken }).catch((err) => {
+        logger.warn("storefront.whatsapp.mark_opened_failed", {
+          err,
+          publicToken,
+        });
+        return null;
+      }),
       new Promise<null>((resolve) => setTimeout(() => resolve(null), ACTION_TIMEOUT_MS)),
     ]);
 

@@ -15,6 +15,7 @@
  * Uso: `node scripts/audit-security-definer.mjs`
  */
 import "dotenv/config";
+
 import { Pool } from "pg";
 
 async function main() {

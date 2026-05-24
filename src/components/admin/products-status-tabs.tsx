@@ -19,12 +19,6 @@ const TABS = [
   { kind: "status", value: "no-stock", label: "Sem estoque", countKey: "no-stock" },
 ] as const;
 
-type ProductStatusFilter =
-  | "active"
-  | "inactive"
-  | "draft"
-  | "no-stock";
-
 export interface ProductsStatusTabsCounts {
   all: number;
   active: number;

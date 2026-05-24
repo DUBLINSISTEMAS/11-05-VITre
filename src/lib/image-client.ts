@@ -32,6 +32,7 @@ import imageCompression, {
 } from "browser-image-compression";
 
 import { clientEnv } from "@/lib/env-client";
+import { logger } from "@/lib/logger";
 
 /**
  * Teto absoluto pro arquivo bruto entrando no pipeline client.
@@ -123,7 +124,7 @@ export async function compressImageClient(
   } catch (e) {
     // Falha graceful: caller aborta com toast claro, sem mandar original.
     if (clientEnv.isDev) {
-      console.warn("[image-client] compressão falhou, usando original", e);
+      logger.warn("image.client_compression_failed", { err: e });
     }
     return {
       file,

@@ -7,8 +7,9 @@
 import { config } from "dotenv";
 config({ path: ".env.local" });
 
-import { Pool } from "pg";
 import { readdirSync, readFileSync } from "node:fs";
+
+import { Pool } from "pg";
 
 const url = process.env.DIRECT_URL;
 const pool = new Pool({ connectionString: url });

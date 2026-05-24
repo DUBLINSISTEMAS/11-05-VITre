@@ -12,9 +12,8 @@ import { notFound } from "next/navigation";
 import { CategoryStrip } from "@/components/storefront/category-strip";
 import { HeroCard } from "@/components/storefront/hero-card";
 import { ProductCard } from "@/components/storefront/product-card";
-import type { Category } from "@/db/schema";
+import type { Banner as ActiveBanner, Category } from "@/db/schema";
 import type { ProductCardData } from "@/lib/storefront/_shared";
-import type { ActiveBanner } from "@/lib/storefront/banners-loader";
 import type { CategoryNode } from "@/lib/storefront/categories-loader";
 import {
   THEME_PRESETS,
