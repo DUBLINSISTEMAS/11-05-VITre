@@ -119,7 +119,10 @@ export async function validateCouponForPublic(
     return { ok: false, error: "Falha ao validar código." };
   }
 }
-
-// Re-export type for marker — mantém este arquivo identificável como read pelo
-// sentinela de rate-limit-coverage (a validação consulta DB mas é "preview").
-export type { ValidatedCoupon } from "@/actions/coupon/internal";
+// Re-export `type { ValidatedCoupon }` removido em 2026-05-24 (Onda 1.3).
+// Next 15 + Turbopack rejeita re-export de tipo em arquivo "use server"
+// ("Only async functions are allowed to be exported in a 'use server' file")
+// — trava o build de /sacola e quebra o checkout do storefront. Re-export
+// era marcador especulativo do sentinela rate-limit-coverage.test.ts, mas
+// o teste real (tests/rate-limit-coverage.test.ts) não depende dele.
+// Quem precisar do tipo importa direto de @/actions/coupon/internal.

@@ -522,6 +522,8 @@ export function ProductForm({
           register={register}
           errors={errors}
           isPending={isPending}
+          isCreating={isCreating}
+          originalStockQuantity={initialData.stockQuantity}
         />
       </div>
 

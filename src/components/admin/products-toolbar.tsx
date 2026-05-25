@@ -87,12 +87,11 @@ export function ProductsToolbar({ categories, rangeLabel }: ProductsToolbarProps
 
   return (
     <div className="b3-toolbar">
-      <input
-        type="checkbox"
-        disabled
-        aria-label="Selecionar todos (em breve)"
-        className="size-4 cursor-not-allowed opacity-40"
-      />
+      {/* Sprint flash 2026-05-24 — checkbox "selecionar tudo" removido
+          (estava disabled + "em breve"). Régua "funciona ou esconde":
+          controle visível que não faz nada quebra confiança. Quando bulk
+          actions (delete/export/categoria em massa) for implementado,
+          este checkbox volta junto com a barra de ações que ele controla. */}
 
       <div className="b3-toolbar-search">
         <SearchIcon size={14} aria-hidden />

@@ -18,6 +18,8 @@ import {
   ChevronDownIcon,
   LogOutIcon,
   MoreVerticalIcon,
+  PanelLeftCloseIcon,
+  PanelLeftOpenIcon,
   SettingsIcon,
   StoreIcon,
 } from "lucide-react";
@@ -59,6 +61,17 @@ export interface SidebarContentProps {
   logoUrl: string | null;
   /** Callback opcional pra fechar drawer mobile ao navegar. */
   onNavigate?: () => void;
+  /**
+   * Modo collapsed (desktop only, controlado pelo AdminSidebar). Quando
+   * true, o sidebar tem 72px e renderiza só ícones. Mobile (drawer Sheet)
+   * passa false / undefined.
+   */
+  collapsed?: boolean;
+  /**
+   * Handler do botão de toggle no `b3-side-top`. Se ausente, o botão
+   * não é renderizado (caso do mobile, que usa hamburger do header).
+   */
+  onToggleCollapsed?: () => void;
 }
 
 export function SidebarContent({
@@ -69,6 +82,8 @@ export function SidebarContent({
   primaryColor,
   logoUrl,
   onNavigate,
+  collapsed = false,
+  onToggleCollapsed,
 }: SidebarContentProps) {
   const pathname = usePathname();
 
@@ -93,27 +108,56 @@ export function SidebarContent({
     setOpenKey((prev) => (prev === sectionKey ? null : sectionKey));
   };
 
+  // Quando collapsed, o accordion fica achatado (todas as seções abertas
+  // simultaneamente) — o CSS força `grid-template-rows: 1fr` via
+  // `.b3-side[data-collapsed="true"] .b3-side-collapsible`. O React passa
+  // `isOpen=true` em todas pra alinhar o estado lógico com o visual
+  // (caso o usuário expanda o sidebar de volta, queremos lembrar o estado
+  // anterior — mas isso é refinamento futuro, hoje preservamos `openKey`).
   return (
     <>
       {/* b3-side-top: brand Mangos Pay (logo + wordmark) — link pra /admin.
           Imagem única do logo.svg (o arquivo já contém o ícone da manga +
           o nome "Mangos Pay" juntos). Usar <img> em vez de next/image
-          porque next/image exige `dangerouslyAllowSVG: true` no config. */}
-      <Link
-        href="/admin"
-        prefetch
-        className="b3-side-top outline-none focus-visible:ring-2 focus-visible:ring-mangos-yellow/40"
-        aria-label="Mangos Pay — ir para o início"
-        onClick={onNavigate}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/logos/logo.svg"
-          alt="Mangos Pay"
-          className="h-8 w-auto"
-          draggable={false}
-        />
-      </Link>
+          porque next/image exige `dangerouslyAllowSVG: true` no config.
+
+          Onda 2026-05-24: layout flex justify-between — logo à esquerda,
+          botão collapse à direita. No modo collapsed, a logo full some
+          (CSS), restando só o botão centralizado. Mobile não recebe
+          `onToggleCollapsed` (passa undefined) → botão não renderiza. */}
+      <div className="b3-side-top">
+        <Link
+          href="/admin"
+          prefetch
+          className="b3-side-label flex items-center outline-none focus-visible:ring-2 focus-visible:ring-mangos-yellow/40 rounded-md"
+          aria-label="Mangos Pay — ir para o início"
+          onClick={onNavigate}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logos/logo.svg"
+            alt="Mangos Pay"
+            className="h-8 w-auto"
+            draggable={false}
+          />
+        </Link>
+        {onToggleCollapsed ? (
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            className="b3-side-collapse-toggle"
+            aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
+            aria-expanded={!collapsed}
+            title={collapsed ? "Expandir menu" : "Recolher menu"}
+          >
+            {collapsed ? (
+              <PanelLeftOpenIcon size={16} aria-hidden />
+            ) : (
+              <PanelLeftCloseIcon size={16} aria-hidden />
+            )}
+          </button>
+        ) : null}
+      </div>
 
       <nav className="flex-1 overflow-y-auto py-2" aria-label="Navegação principal">
         {/* Início standalone — sempre visível, fora do accordion */}
@@ -122,10 +166,13 @@ export function SidebarContent({
             item={ADMIN_NAV_HOME}
             pathname={pathname}
             onNavigate={onNavigate}
+            collapsed={collapsed}
           />
         </div>
 
-        {/* 4 seções colapsáveis (accordion: uma aberta por vez) */}
+        {/* 4 seções colapsáveis (accordion: uma aberta por vez).
+            No modo collapsed, o CSS força collapsible aberto + esconde
+            o header de seção — então isOpen aqui não importa visualmente. */}
         {ADMIN_NAV_SECTIONS.map((section) => (
           <NavSection
             key={section.k}
@@ -134,11 +181,16 @@ export function SidebarContent({
             isOpen={openKey === section.k}
             onToggle={() => handleToggleSection(section.k)}
             onNavigate={onNavigate}
+            collapsed={collapsed}
           />
         ))}
       </nav>
 
-      <SupportFooterLink pathname={pathname} onNavigate={onNavigate} />
+      <SupportFooterLink
+        pathname={pathname}
+        onNavigate={onNavigate}
+        collapsed={collapsed}
+      />
 
       {/* b3-side-foot: identidade da loja do lojista + dropdown da conta */}
       <StoreFooter
@@ -148,6 +200,7 @@ export function SidebarContent({
         storeSlug={storeSlug}
         primaryColor={primaryColor}
         logoUrl={logoUrl}
+        collapsed={collapsed}
       />
     </>
   );
@@ -161,6 +214,7 @@ interface NavSectionProps {
   isOpen: boolean;
   onToggle: () => void;
   onNavigate?: () => void;
+  collapsed?: boolean;
 }
 
 function NavSection({
@@ -169,29 +223,36 @@ function NavSection({
   isOpen,
   onToggle,
   onNavigate,
+  collapsed = false,
 }: NavSectionProps) {
   const Icon = section.icon;
   const hasActive = section.items.some((item) => isItemActive(item, pathname));
+  // No modo collapsed o CSS abre todos os collapsibles + esconde o header
+  // — passamos `data-open=true` pra alinhar o estado lógico (aria-hidden
+  // do panel também precisa refletir isso pra leitor de tela).
+  const effectivelyOpen = collapsed ? true : isOpen;
 
   return (
     <div className="b3-side-section-wrap">
       <button
         type="button"
         onClick={onToggle}
-        aria-expanded={isOpen}
+        aria-expanded={effectivelyOpen}
         aria-controls={`b3-side-panel-${section.k}`}
+        aria-hidden={collapsed || undefined}
+        tabIndex={collapsed ? -1 : undefined}
         className="b3-side-section"
         data-active={hasActive ? "true" : undefined}
-        data-open={isOpen ? "true" : undefined}
+        data-open={effectivelyOpen ? "true" : undefined}
       >
-        <Icon size={17} aria-hidden />
-        <span className="flex-1 truncate">{section.label}</span>
+        <Icon aria-hidden />
+        <span className="b3-side-label flex-1 truncate">{section.label}</span>
         {/* Chevron maior + traço 2.2 — mais presente visualmente. Rotação
             animada de 180° controlada pelo CSS (.b3-side-section .chev). */}
         <ChevronDownIcon
-          size={18}
+          size={16}
           strokeWidth={2.2}
-          className="chev"
+          className="chev b3-side-label"
           aria-hidden
         />
       </button>
@@ -199,8 +260,8 @@ function NavSection({
       <div
         id={`b3-side-panel-${section.k}`}
         className="b3-side-collapsible"
-        data-open={isOpen ? "true" : undefined}
-        aria-hidden={!isOpen}
+        data-open={effectivelyOpen ? "true" : undefined}
+        aria-hidden={!effectivelyOpen}
       >
         <div className="b3-side-collapsible-inner">
           {section.items.map((item) => (
@@ -210,6 +271,7 @@ function NavSection({
               pathname={pathname}
               onNavigate={onNavigate}
               nested
+              collapsed={collapsed}
             />
           ))}
         </div>
@@ -263,9 +325,16 @@ interface NavItemRowProps {
   onNavigate?: () => void;
   /** True quando o item está dentro de uma seção do accordion (indent). */
   nested?: boolean;
+  collapsed?: boolean;
 }
 
-function NavItemRow({ item, pathname, onNavigate, nested }: NavItemRowProps) {
+function NavItemRow({
+  item,
+  pathname,
+  onNavigate,
+  nested,
+  collapsed = false,
+}: NavItemRowProps) {
   const Icon = item.icon;
   const hasSubs = Boolean(item.subs && item.subs.length > 0);
   const isActive = isItemActive(item, pathname);
@@ -273,6 +342,9 @@ function NavItemRow({ item, pathname, onNavigate, nested }: NavItemRowProps) {
   const [isOpen, setIsOpen] = useState(isActive && hasSubs);
 
   const itemClass = cn("b3-side-item", nested && "b3-side-item--nested");
+  // Tooltip nativa via `title` quando collapsed — sem dep extra (radix
+  // tooltip não está instalado). Limitação: delay ~700ms padrão do SO.
+  const tooltip = collapsed ? item.label : undefined;
 
   // ----- Item COM subs: clica no header pra toggle, não navega -----
   if (hasSubs) {
@@ -285,9 +357,10 @@ function NavItemRow({ item, pathname, onNavigate, nested }: NavItemRowProps) {
           className={cn(itemClass, "w-full text-left")}
           data-active={isActive ? "true" : undefined}
           data-open={isOpen ? "true" : undefined}
+          title={tooltip}
         >
           <AnimatedNavIcon Icon={Icon} isActive={isActive} />
-          <span className="flex-1 truncate">{item.label}</span>
+          <span className="b3-side-label flex-1 truncate">{item.label}</span>
           {item.dot ? <span className="dot" aria-hidden /> : null}
           {/* Mesmo padrão do header de seção — chevron maior + stroke 2.2. */}
           <ChevronDownIcon
@@ -320,11 +393,11 @@ function NavItemRow({ item, pathname, onNavigate, nested }: NavItemRowProps) {
       <div
         className={cn(itemClass, "cursor-not-allowed opacity-50")}
         aria-disabled="true"
-        title="Em breve"
+        title={tooltip ?? "Em breve"}
       >
         {/* Soon nunca é ativo — passa false (no-op). */}
         <AnimatedNavIcon Icon={Icon} isActive={false} />
-        <span className="flex-1 truncate">{item.label}</span>
+        <span className="b3-side-label flex-1 truncate">{item.label}</span>
         <SoonBadge />
       </div>
     );
@@ -339,9 +412,10 @@ function NavItemRow({ item, pathname, onNavigate, nested }: NavItemRowProps) {
         onClick={onNavigate}
         className={itemClass}
         data-active={isActive ? "true" : undefined}
+        title={tooltip}
       >
         <AnimatedNavIcon Icon={Icon} isActive={isActive} />
-        <span className="flex-1 truncate">{item.label}</span>
+        <span className="b3-side-label flex-1 truncate">{item.label}</span>
       </a>
     );
   }
@@ -354,9 +428,10 @@ function NavItemRow({ item, pathname, onNavigate, nested }: NavItemRowProps) {
       className={itemClass}
       data-active={isActive ? "true" : undefined}
       aria-current={isActive ? "page" : undefined}
+      title={tooltip}
     >
       <AnimatedNavIcon Icon={Icon} isActive={isActive} />
-      <span className="flex-1 truncate">{item.label}</span>
+      <span className="b3-side-label flex-1 truncate">{item.label}</span>
     </Link>
   );
 }
@@ -377,7 +452,7 @@ function SubItemRow({ sub, pathname, onNavigate }: SubItemRowProps) {
         aria-disabled="true"
         title="Em breve"
       >
-        <span className="flex-1 truncate">{sub.label}</span>
+        <span className="b3-side-label flex-1 truncate">{sub.label}</span>
         <SoonBadge />
       </div>
     );
@@ -393,7 +468,7 @@ function SubItemRow({ sub, pathname, onNavigate }: SubItemRowProps) {
       data-active={isActive ? "true" : undefined}
       aria-current={isActive ? "page" : undefined}
     >
-      <span className="flex-1 truncate">{sub.label}</span>
+      <span className="b3-side-label flex-1 truncate">{sub.label}</span>
     </Link>
   );
 }
@@ -403,9 +478,11 @@ function SubItemRow({ sub, pathname, onNavigate }: SubItemRowProps) {
 function SupportFooterLink({
   pathname,
   onNavigate,
+  collapsed = false,
 }: {
   pathname: string;
   onNavigate?: () => void;
+  collapsed?: boolean;
 }) {
   const Icon = ADMIN_NAV_SUPPORT.icon;
   const isActive = isItemActive(ADMIN_NAV_SUPPORT, pathname);
@@ -418,9 +495,12 @@ function SupportFooterLink({
         className="b3-side-item opacity-55 transition-opacity hover:opacity-100"
         data-active={isActive ? "true" : undefined}
         aria-current={isActive ? "page" : undefined}
+        title={collapsed ? ADMIN_NAV_SUPPORT.label : undefined}
       >
         <AnimatedNavIcon Icon={Icon} isActive={isActive} />
-        <span className="flex-1 truncate">{ADMIN_NAV_SUPPORT.label}</span>
+        <span className="b3-side-label flex-1 truncate">
+          {ADMIN_NAV_SUPPORT.label}
+        </span>
       </Link>
     </div>
   );
@@ -432,7 +512,7 @@ function SoonBadge() {
   return (
     <span
       aria-hidden
-      className="ml-auto rounded bg-bg-app px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide text-ink-4"
+      className="b3-side-label ml-auto rounded bg-bg-app px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide text-ink-4"
     >
       em breve
     </span>
@@ -448,6 +528,7 @@ interface StoreFooterProps {
   storeSlug: string;
   primaryColor: string;
   logoUrl: string | null;
+  collapsed?: boolean;
 }
 
 function getInitials(name: string): string {
@@ -464,6 +545,7 @@ function StoreFooter({
   storeSlug,
   primaryColor,
   logoUrl,
+  collapsed = false,
 }: StoreFooterProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -482,41 +564,106 @@ function StoreFooter({
     });
   };
 
+  // Avatar/logo da loja — extraído pra reusar nos dois modos (expandido
+  // mostra como ornamento à esquerda da meta + trigger separado; collapsed
+  // vira ele mesmo o trigger do dropdown).
+  const avatar = logoUrl ? (
+    <span
+      aria-hidden
+      className="relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-line bg-white"
+    >
+      <Image
+        src={logoUrl}
+        alt=""
+        fill
+        sizes="36px"
+        className="object-contain p-0.5"
+      />
+    </span>
+  ) : (
+    <span
+      aria-hidden
+      className="b3-side-foot-avatar"
+      style={
+        primaryColor && primaryColor !== "#F6B73C"
+          ? { background: primaryColor, color: "white" }
+          : undefined
+      }
+    >
+      {getInitials(storeName)}
+    </span>
+  );
+
+  // Conteúdo do dropdown — idêntico nos dois modos.
+  const dropdownContent = (
+    <DropdownMenuContent
+      align={collapsed ? "start" : "end"}
+      side={collapsed ? "right" : "top"}
+      sideOffset={collapsed ? 12 : 6}
+      className="min-w-52"
+    >
+      <DropdownMenuLabel className="space-y-0.5 py-2">
+        <p className="truncate text-sm font-medium text-ink-1">{ownerName}</p>
+        <p className="truncate text-xs font-normal text-ink-4">{ownerEmail}</p>
+      </DropdownMenuLabel>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem asChild>
+        <Link href={`/${storeSlug}`} target="_blank" rel="noopener noreferrer">
+          <StoreIcon className="size-4" /> Ver loja online
+        </Link>
+      </DropdownMenuItem>
+      <DropdownMenuItem asChild>
+        <Link href="/admin/configuracoes">
+          <SettingsIcon className="size-4" /> Configurações
+        </Link>
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem
+        onSelect={(e) => {
+          e.preventDefault();
+          handleSignOut();
+        }}
+        disabled={isPending}
+        variant="destructive"
+      >
+        <LogOutIcon className="size-4" /> Sair
+      </DropdownMenuItem>
+    </DropdownMenuContent>
+  );
+
+  // Modo collapsed: o avatar inteiro vira o trigger. Sem meta visível.
+  // Sem isso, o usuário perde acesso a "Sair" no modo recolhido.
+  if (collapsed) {
+    return (
+      <div className="b3-side-foot">
+        <div className="b3-side-foot-user">
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              aria-label="Opções da conta"
+              title="Conta"
+            >
+              {avatar}
+            </DropdownMenuTrigger>
+            {dropdownContent}
+          </DropdownMenu>
+        </div>
+      </div>
+    );
+  }
+
+  // Modo expandido: avatar + meta + trigger separado (MoreVerticalIcon).
   return (
     <div className="b3-side-foot">
       <div className="b3-side-foot-user">
-        {logoUrl ? (
-          <span
-            aria-hidden
-            className="relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-line bg-white"
-          >
-            <Image
-              src={logoUrl}
-              alt=""
-              fill
-              sizes="36px"
-              className="object-contain p-0.5"
-            />
-          </span>
-        ) : (
-          <span
-            aria-hidden
-            className="b3-side-foot-avatar"
-            style={
-              primaryColor && primaryColor !== "#F6B73C"
-                ? { background: primaryColor, color: "white" }
-                : undefined
-            }
-          >
-            {getInitials(storeName)}
-          </span>
-        )}
+        {avatar}
         <div className="b3-side-foot-user-meta">
           <b className="uppercase tracking-tight">{storeName}</b>
           <span>{ownerEmail}</span>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger
+            data-foot-menu
             className={cn(
               "rounded-md p-1 text-ink-4 outline-none transition-colors",
               "hocus:bg-bg-app hocus:text-ink-1 focus-visible:ring-2 focus-visible:ring-ring/50",
@@ -525,39 +672,7 @@ function StoreFooter({
           >
             <MoreVerticalIcon className="size-4" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            side="top"
-            sideOffset={6}
-            className="min-w-52"
-          >
-            <DropdownMenuLabel className="space-y-0.5 py-2">
-              <p className="truncate text-sm font-medium text-ink-1">{ownerName}</p>
-              <p className="truncate text-xs font-normal text-ink-4">{ownerEmail}</p>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href={`/${storeSlug}`} target="_blank" rel="noopener noreferrer">
-                <StoreIcon className="size-4" /> Ver loja online
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/admin/configuracoes">
-                <SettingsIcon className="size-4" /> Configurações
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={(e) => {
-                e.preventDefault();
-                handleSignOut();
-              }}
-              disabled={isPending}
-              variant="destructive"
-            >
-              <LogOutIcon className="size-4" /> Sair
-            </DropdownMenuItem>
-          </DropdownMenuContent>
+          {dropdownContent}
         </DropdownMenu>
       </div>
     </div>

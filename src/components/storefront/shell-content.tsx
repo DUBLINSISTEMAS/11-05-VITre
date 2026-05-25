@@ -39,11 +39,6 @@ export function ShellContent({
   // Detecta se está na página de busca
   const isSearchPage = pathname.endsWith("/buscar");
 
-  // Detecta se está na página de "Sobre" — é onde mostra o footer informativo
-  // da loja (substituiu /perfil, que violava ADR-0008 e linkava pra rotas
-  // inexistentes — auditoria 2026-05-10).
-  const isAboutPage = pathname.endsWith("/sobre");
-
   // Canvas-v1: sacola e sucesso são telas fullscreen com header próprio
   // (sticky-title) e SEM bottom-nav. Decisão team-memory 2026-05-09.
   const isSacolaPage = pathname.endsWith("/sacola");
@@ -67,6 +62,16 @@ export function ShellContent({
   // — canvas mantém, mas hoje shell já escondia), sacola (canvas omite),
   // sucesso (canvas omite — fullscreen com 2 CTAs no rodapé).
   const hideBottomNav = isProductPage || isSacolaPage || isSucessoPage;
+
+  // Footer informativo (nome loja + WhatsApp + Instagram + endereço + sobre +
+  // contato). Aparece em todas as páginas EXCETO:
+  //   - produto: PDP tem CTA sticky "Comprar pelo WhatsApp" + bloco "Tire
+  //     dúvidas no WhatsApp", footer seria ruído competindo com a conversão.
+  //   - sacola / sucesso: telas fullscreen focadas (canvas-v1).
+  // Resto (home, busca, categoria, coleção, destaques, favoritos, sobre,
+  // contato) ganha o footer pra fechar a navegação com identidade da loja
+  // e canal de contato sempre visível.
+  const hideFooter = isProductPage || isSacolaPage || isSucessoPage;
 
   // Padding do main: páginas com layout próprio (sacola/sucesso/categoria)
   // não precisam do padding genérico do shell — elas controlam o próprio.
@@ -93,8 +98,8 @@ export function ShellContent({
         {children}
       </main>
 
-      {/* Footer informativo da loja — só na página /sobre. */}
-      {isAboutPage && <StoreFooter store={store} />}
+      {/* Footer informativo da loja — global, ver hideFooter. */}
+      {!hideFooter && <StoreFooter store={store} />}
 
       {/* Bottom nav: lg:hidden (desktop usa ícones no DesktopHeader). */}
       {!hideBottomNav && (

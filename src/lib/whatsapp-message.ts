@@ -164,6 +164,10 @@ export interface RenderTemplateInput {
   storeName: string;
   customerName: string;
   items: WhatsAppItemInput[];
+  /**
+   * Total final que o cliente vai pagar (já com cupom aplicado, quando houver).
+   * É o valor que vai no placeholder `{total}` e na linha "💰 Total".
+   */
   totalInCents: number;
   shortCode: string;
   publicUrl: string;
@@ -176,6 +180,22 @@ export interface RenderTemplateInput {
    * Fase 2 — ADR-0013.
    */
   paymentMethodsNote?: string | null;
+  /**
+   * Subtotal ANTES do cupom (em centavos). Alimenta `{subtotal}`.
+   * Quando ausente ou == totalInCents, placeholder rende vazio.
+   * Sprint flash 2026-05-24 — corrige bug em que mensagem do
+   * WhatsApp mostrava total pré-cupom sem indicar desconto aplicado.
+   */
+  subtotalInCents?: number;
+  /**
+   * Desconto aplicado por cupom (em centavos). Alimenta `{desconto}`.
+   * Quando `> 0` E o template NÃO contém `{desconto}` em lugar nenhum,
+   * o builder AUTOINSERTA uma linha "💸 *Desconto:* -R$ X,XX" logo
+   * acima da linha que contém `{total}` — garante que a lojista
+   * VEJA o desconto aplicado mesmo em templates legados.
+   * Sprint flash 2026-05-24.
+   */
+  discountInCents?: number;
 }
 
 /**
@@ -200,10 +220,24 @@ export interface RenderTemplateInput {
 export function buildOrderMessageFromTemplate(
   input: RenderTemplateInput,
 ): string {
-  const tpl =
+  const baseTpl =
     input.template && input.template.trim().length > 0
       ? input.template
       : DEFAULT_WHATSAPP_TEMPLATE;
+
+  const hasDiscount =
+    typeof input.discountInCents === "number" && input.discountInCents > 0;
+  const hasSubtotal =
+    typeof input.subtotalInCents === "number" &&
+    input.subtotalInCents !== input.totalInCents;
+
+  // Auto-inserção da linha "💸 Desconto" pra templates legados que não
+  // têm placeholder {desconto}. Garante que a lojista veja o desconto
+  // aplicado, mesmo se nunca abriu o editor de template.
+  const tpl =
+    hasDiscount && !baseTpl.includes("{desconto}")
+      ? injectDiscountLineBeforeTotal(baseTpl)
+      : baseTpl;
 
   const safeStoreName = escapeWhatsAppFormatting(input.storeName);
   const safeCustomerName = escapeWhatsAppFormatting(input.customerName);
@@ -213,6 +247,12 @@ export function buildOrderMessageFromTemplate(
   const paymentNote = input.paymentMethodsNote?.trim()
     ? escapeWhatsAppFormatting(input.paymentMethodsNote.trim())
     : "";
+  const discountLine = hasDiscount
+    ? `💸 *Desconto:* -${formatBRL(input.discountInCents!)}`
+    : "";
+  const subtotalText = hasSubtotal
+    ? formatBRL(input.subtotalInCents!)
+    : "";
 
   const render = (itemsBlock: string) =>
     tpl
@@ -220,6 +260,8 @@ export function buildOrderMessageFromTemplate(
       .replaceAll("{loja}", safeStoreName)
       .replaceAll("{itens}", itemsBlock)
       .replaceAll("{total}", formatBRL(input.totalInCents))
+      .replaceAll("{subtotal}", subtotalText)
+      .replaceAll("{desconto}", discountLine)
       .replaceAll("{codigo}", input.shortCode)
       .replaceAll("{link}", input.publicUrl)
       .replaceAll("{observacoes}", notes)
@@ -255,6 +297,25 @@ export function buildOrderMessageFromTemplate(
       : lines.join("\n");
 
   return render(itemsBlock);
+}
+
+/**
+ * Insere "{desconto}" como linha autônoma logo acima da linha que contém
+ * "{total}". Usado em templates legados que não declararam o placeholder
+ * explicitamente. Se o template não tem linha com {total} (raro), prepend
+ * antes de tudo pra garantir que o desconto seja visto.
+ */
+function injectDiscountLineBeforeTotal(tpl: string): string {
+  const lines = tpl.split("\n");
+  const totalIdx = lines.findIndex((l) => l.includes("{total}"));
+  if (totalIdx === -1) {
+    return `{desconto}\n${tpl}`;
+  }
+  return [
+    ...lines.slice(0, totalIdx),
+    "{desconto}",
+    ...lines.slice(totalIdx),
+  ].join("\n");
 }
 
 /**

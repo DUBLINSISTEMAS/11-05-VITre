@@ -567,10 +567,16 @@ test("createBalcaoSale adquire advisory lock por entidade antes do INSERT moveme
   assert.ok(lockIdx > 0 && recordIdx > 0 && lockIdx < recordIdx);
 });
 
-test("createBalcaoSale INSERT order tem channel='balcao' E status='fulfilled'", () => {
+test("createBalcaoSale INSERT order tem channel='balcao' E status='confirmed'", () => {
+  // 2026-05-24 — status nasce 'confirmed' (não 'fulfilled' como antes).
+  // Motivo: lojista via venda direto na aba "Cumpridos" sem ter entregado,
+  // o que confundia o mental model (cumprida=entregue). Agora vai pra
+  // "Confirmados" e o lojista marca 'fulfilled' manualmente via botão
+  // "Marcar como cumprido" (transição já existente em VALID_TRANSITIONS).
+  // Ambos status contam em COUNTABLE_STATUSES → faturamento inalterado.
   const s = loadActionSource();
   assert.match(s, /channel:\s*["']balcao["']/);
-  assert.match(s, /status:\s*["']fulfilled["']/);
+  assert.match(s, /status:\s*["']confirmed["']/);
 });
 
 test("createBalcaoSale passa expiresAt=null (PDV não expira)", () => {

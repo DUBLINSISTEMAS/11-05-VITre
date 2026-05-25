@@ -42,6 +42,7 @@ import {
   cashAdjustmentTable,
   cashSessionTable,
   orderItemTable,
+  orderPaymentTable,
   orderReturnItemTable,
   orderReturnTable,
   orderTable,
@@ -52,6 +53,7 @@ import {
 import { extractClientContext, recordAuditEvent } from "@/lib/audit";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { formatBRL } from "@/lib/pricing";
 import {
   restockOrderItems,
   restockOrderItemsPartial,
@@ -102,6 +104,19 @@ export type RecordOrderReturnResult =
       returnId: string;
       returnType: "full" | "partial";
       refundedInCents: number;
+      /**
+       * Sprint flash 2026-05-24 — fração CASH do refund que saiu do
+       * caixa físico. Antes debitávamos refundedInCents inteiro mesmo
+       * em venda paga em PIX/cartão (quebrava caixa). Agora calculamos
+       * proporcionalmente à fração cash da venda ORIGINAL. UI usa pra
+       * informar lojista quando estorno PIX/cartão precisa ser feito
+       * fora do sistema.
+       *
+       * cashRefundInCents == refundedInCents → 100% cash (default antigo)
+       * cashRefundInCents == 0               → venda foi 100% pix/cartão/fiado
+       * 0 < cashRefundInCents < refundedInCents → venda mista
+       */
+      cashRefundInCents: number;
       itemsReturned: number;
       cashAdjustmentId: string | null;
       /** true se a devolução fechou o saldo da venda → order.status='returned'. */
@@ -237,6 +252,10 @@ export async function recordOrderReturn(
             variantId: orderItemTable.variantId,
             quantity: orderItemTable.quantity,
             priceInCentsSnapshot: orderItemTable.priceInCentsSnapshot,
+            // Sprint flash 2026-05-24 — mensagens de erro precisam
+            // referenciar produto pelo NOME (não UUID truncado).
+            productNameSnapshot: orderItemTable.productNameSnapshot,
+            variantNameSnapshot: orderItemTable.variantNameSnapshot,
           })
           .from(orderItemTable)
           .where(eq(orderItemTable.orderId, data.orderId));
@@ -311,9 +330,16 @@ export async function recordOrderReturn(
               alreadyReturnedByItem.get(reqItem.orderItemId) ?? 0;
             const available = orig.quantity - alreadyReturned;
             if (reqItem.quantity > available) {
+              // Sprint flash 2026-05-24 — usa nome legível em vez de
+              // UUID truncado (lojista não tem como mapear `a3f2b8e1`
+              // pra peça nenhuma; toda mensagem voltada pra UI deve
+              // referenciar produtos por nome snapshot).
+              const itemName = orig.variantNameSnapshot
+                ? `${orig.productNameSnapshot} (${orig.variantNameSnapshot})`
+                : orig.productNameSnapshot;
               return {
                 ok: false,
-                error: `Item "${orig.id.slice(0, 8)}…": tentando devolver ${reqItem.quantity}, saldo disponível ${available}.`,
+                error: `Item "${itemName}": tentando devolver ${reqItem.quantity}, saldo disponível ${available}.`,
               };
             }
             toReturn.push({
@@ -408,7 +434,47 @@ export async function recordOrderReturn(
             );
         }
 
-        // 12) Cash adjustment 'other_out' proporcional ao refundedInCents.
+        // 12) Cash adjustment 'other_out' PROPORCIONAL à fração CASH da
+        //     venda original.
+        //
+        // Sprint flash 2026-05-24 — bug crítico de caixa: antes
+        // debitávamos `refundedInCents` inteiro como saída de dinheiro,
+        // mesmo quando a venda foi paga em PIX/cartão/fiado. Cliente que
+        // pagou PIX e devolve produto → gaveta perdia R$X que nunca
+        // recebeu. Estorno de cartão zerava caixa no mesmo dia
+        // (operadora demora 30d). Agora: lê `order_payment` da venda
+        // original, calcula a fração cash, debita proporcional.
+        //
+        // Casos:
+        //   - venda 100% cash       → cashRefund = refundedInCents
+        //   - venda 100% pix/cartão → cashRefund = 0 (NÃO toca caixa)
+        //   - venda mista 60/40     → cashRefund = refunded * 0.6
+        //   - venda fiada           → cashRefund = 0 (não tem payment)
+        //
+        // Math.round arredonda half-up (centavo perdido vai pra "lucro
+        // de borda" da loja). Aceitável: devoluções são raras e o erro
+        // máximo é 1 centavo por linha.
+        const originalPayments = await tx
+          .select({
+            method: orderPaymentTable.method,
+            amountInCents: orderPaymentTable.amountInCents,
+          })
+          .from(orderPaymentTable)
+          .where(eq(orderPaymentTable.orderId, order.id));
+
+        const originalTotalPaidInCents = originalPayments.reduce(
+          (s, p) => s + p.amountInCents,
+          0,
+        );
+        const originalCashInCents = originalPayments
+          .filter((p) => p.method === "cash")
+          .reduce((s, p) => s + p.amountInCents, 0);
+        const cashFraction =
+          originalTotalPaidInCents > 0
+            ? originalCashInCents / originalTotalPaidInCents
+            : 0;
+        const cashRefundInCents = Math.round(refundedInCents * cashFraction);
+
         const [activeCash] = await tx
           .select({ id: cashSessionTable.id })
           .from(cashSessionTable)
@@ -421,22 +487,29 @@ export async function recordOrderReturn(
           .limit(1);
 
         let cashAdjustmentId: string | null = null;
-        if (activeCash) {
+        if (activeCash && cashRefundInCents > 0) {
           const adjReasonPrefix =
             data.returnType === "full"
               ? "Devolução"
               : "Devolução parcial";
+          // Se a venda foi mista, anota no motivo que parte saiu fora do
+          // caixa pra forensia ser fácil ("ué, esses R$30 que faltam?").
+          const fracionalSuffix =
+            cashRefundInCents < refundedInCents
+              ? ` (refund total ${formatBRL(refundedInCents)} — parte PIX/cartão fora do caixa)`
+              : "";
+          const reason =
+            `${adjReasonPrefix} venda #${order.id.slice(0, 8)} — ${data.reason}${fracionalSuffix}`.slice(
+              0,
+              500,
+            );
           const [adj] = await tx
             .insert(cashAdjustmentTable)
             .values({
               cashSessionId: activeCash.id,
               type: "other_out",
-              amountInCents: refundedInCents,
-              reason:
-                `${adjReasonPrefix} venda #${order.id.slice(0, 8)} — ${data.reason}`.slice(
-                  0,
-                  500,
-                ),
+              amountInCents: cashRefundInCents,
+              reason,
               createdByUserId: userId,
             })
             .returning({ id: cashAdjustmentTable.id });
@@ -471,6 +544,8 @@ export async function recordOrderReturn(
           returnId: returnRow.id,
           returnType: data.returnType,
           refundedInCents,
+          cashRefundInCents,
+          originalCashFraction: cashFraction,
           itemsReturned: toReturn.length,
           orderFullyReturned,
           cashAdjustmentId,
@@ -501,6 +576,7 @@ export async function recordOrderReturn(
           returnId: returnRow.id,
           returnType: data.returnType,
           refundedInCents,
+          cashRefundInCents,
           itemsReturned: toReturn.length,
           cashAdjustmentId,
           orderFullyReturned,

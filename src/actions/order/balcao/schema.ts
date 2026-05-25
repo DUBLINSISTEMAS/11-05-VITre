@@ -80,6 +80,17 @@ export const paymentLineSchema = z
       .min(0)
       .nullable()
       .default(null),
+    /**
+     * Parcelas do cartão de crédito (default 1 = à vista). Range 1..24.
+     * Só faz sentido > 1 quando method='credit'. CHECK no SQL 70 reforça.
+     * Mangos Pay NÃO calcula juros — apenas registra a escolha do lojista.
+     */
+    installments: z
+      .number()
+      .int()
+      .min(1, "Mínimo 1 parcela")
+      .max(24, "Máximo 24 parcelas")
+      .default(1),
     notes: z
       .preprocess(
         (v) => (typeof v === "string" && v.trim() === "" ? null : v),
@@ -104,6 +115,14 @@ export const paymentLineSchema = z
         code: z.ZodIssueCode.custom,
         path: ["cashReceivedInCents"],
         message: "Valor recebido menor que o valor da linha",
+      });
+    }
+    // Parcelas > 1 só em cartão de crédito. Outras formas são à vista.
+    if (line.installments > 1 && line.method !== "credit") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["installments"],
+        message: "Parcelamento só vale em cartão de crédito",
       });
     }
   });

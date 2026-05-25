@@ -18,6 +18,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
+import { brandTable } from "./brand";
 import { storeTable } from "./store";
 
 // =====================================================================
@@ -133,7 +134,7 @@ export const productTable = pgTable(
     promoPriceInCents: integer("promo_price_in_cents"),
     promoStartsAt: timestamp("promo_starts_at"),
     promoEndsAt: timestamp("promo_ends_at"),
-    trackStock: boolean("track_stock").notNull().default(false),
+    trackStock: boolean("track_stock").notNull().default(true),
     stockQuantity: integer("stock_quantity"),
     /**
      * Onda 2.15 (2026-05-22) — permite venda mesmo com saldo zerado.
@@ -177,8 +178,12 @@ export const productTable = pgTable(
      * Sprint 2A — FK opcional para tabela `brand`. NULL quando lojista digitou
      * texto livre em `brand` (sem escolher do select). ON DELETE SET NULL
      * mantém o snapshot em `brand` mesmo se a marca for deletada.
+     * FK real declarada pra alinhar Drizzle ↔ Postgres (SQL 51) e habilitar
+     * relations.brand em queries ORM.
      */
-    brandId: uuid("brand_id"),
+    brandId: uuid("brand_id").references(() => brandTable.id, {
+      onDelete: "set null",
+    }),
     /** Unidade de venda. Default 'un'. */
     unit: productUnitEnum("unit").notNull().default("un"),
     /**
@@ -255,6 +260,10 @@ export const productRelations = relations(productTable, ({ one, many }) => ({
   category: one(categoryTable, {
     fields: [productTable.categoryId],
     references: [categoryTable.id],
+  }),
+  brand: one(brandTable, {
+    fields: [productTable.brandId],
+    references: [brandTable.id],
   }),
   images: many(productImageTable),
   variants: many(productVariantTable),
@@ -334,7 +343,7 @@ export const productVariantTable = pgTable(
       .default(sql`'{}'::jsonb`), // { tamanho: "P", cor: "preto" }
     priceInCents: integer("price_in_cents"), // null = usa product.basePriceInCents
     promoPriceInCents: integer("promo_price_in_cents"),
-    trackStock: boolean("track_stock").notNull().default(false),
+    trackStock: boolean("track_stock").notNull().default(true),
     stockQuantity: integer("stock_quantity"),
     isActive: boolean("is_active").notNull().default(true),
     // Eixo canvas-v1 — define renderização no PDP (pill vs swatch).

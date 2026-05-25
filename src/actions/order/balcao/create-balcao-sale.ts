@@ -8,7 +8,13 @@
  *   - admin autenticado (cai em `withTenant(storeId, userId, ...)` — owner)
  *   - sem `customerName`/`customerPhone` obrigatórios (walk-in dominante)
  *   - `paymentMethod` obrigatório (CHECK constraint do SQL 26 garante)
- *   - nasce `status='fulfilled'` direto (venda já concluída no balcão)
+ *   - nasce `status='confirmed'` (venda fechada + paga + estoque baixado).
+ *     Antes (até 2026-05-24) nascia 'fulfilled' direto, pulando o passo
+ *     "entregar" — confundia o lojista, que via venda na aba "Cumpridos"
+ *     sem ter feito a entrega. Agora vai pra "Confirmados" e o lojista
+ *     marca 'fulfilled' manualmente quando o cliente leva (útil pra
+ *     retirada agendada / despacho posterior). Ambos contam em
+ *     COUNTABLE_STATUSES (faturamento/CMV/margem inalterados).
  *   - sem WhatsApp redirect, sem timer de expiração
  *   - idempotency key gerada pelo server (uma por chamada — protege
  *     contra duplo-clique do botão "Finalizar venda")
@@ -885,6 +891,8 @@ export async function createBalcaoSale(
           method: typeof PAYMENT_METHOD_VALUES[number];
           amountInCents: number;
           cashReceivedInCents: number | null;
+          /** Parcelas (1..24). Só > 1 quando method='credit'. */
+          installments: number;
           notes: string | null;
         };
 
@@ -907,6 +915,7 @@ export async function createBalcaoSale(
             method: p.method,
             amountInCents: p.amountInCents,
             cashReceivedInCents: p.cashReceivedInCents,
+            installments: p.installments,
             notes: p.notes,
           }));
         } else if (data.paymentMethod) {
@@ -922,6 +931,7 @@ export async function createBalcaoSale(
                 data.paymentMethod === "cash"
                   ? data.cashReceivedInCents ?? null
                   : null,
+              installments: 1,
               notes: null,
             },
           ];
@@ -1083,7 +1093,7 @@ export async function createBalcaoSale(
                   customerId: data.customerId,
                   customerNotes: data.notes,
                   totalInCents,
-                  status: "fulfilled",
+                  status: "confirmed",
                   channel: "balcao",
                   // Campo legado: Sprint 1B vai remover. Usa primeira linha
                   // de payments[] pra UI/queries antigas continuarem lendo.
@@ -1139,6 +1149,9 @@ export async function createBalcaoSale(
                     method: p.method,
                     amountInCents: p.amountInCents,
                     cashReceivedInCents: p.cashReceivedInCents,
+                    // Parcelas (default 1 quando não enviado). Zod já
+                    // validou range 1..24 + regra "só credit pode > 1".
+                    installments: p.installments,
                     notes: p.notes,
                   })),
                 );

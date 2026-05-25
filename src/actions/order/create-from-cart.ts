@@ -167,6 +167,7 @@ export async function createOrderFromCart(
           existing.totalInCents,
           data.customerNotes ?? undefined,
           store.paymentMethodsNote,
+          existing.discountInCents,
         );
         return {
           ok: true,
@@ -638,12 +639,20 @@ export async function createOrderFromCart(
         priceInCents: ci.priceInCents,
       }));
 
+      // Sprint flash 2026-05-24 — bug do cupom no WhatsApp:
+      // antes mandávamos `totalInCents` (subtotal SEM cupom) → cliente
+      // via R$ 90 na tela, mensagem chegava na lojista com R$ 100.
+      // Agora `totalAfterCoupon` é o valor final + `discountInCents`
+      // gera linha "💸 Desconto" auto-inserida no template (legados
+      // sem {desconto} também ganham a linha).
       const message = buildOrderMessageFromTemplate({
         template: store.whatsappTemplate,
         storeName: store.name,
         customerName: data.customerName,
         items: messageItems,
-        totalInCents,
+        totalInCents: totalAfterCoupon,
+        subtotalInCents: totalInCents,
+        discountInCents: validatedCoupon?.discountInCents,
         shortCode: createdShortCode,
         publicUrl,
         customerNotes: data.customerNotes || undefined,
@@ -722,6 +731,7 @@ async function rebuildMessageForExisting(
   totalInCents: number,
   notes: string | undefined,
   paymentMethodsNote: string | null,
+  discountInCents: number | null,
 ): Promise<string> {
   const items = await tx
     .select()
@@ -729,6 +739,8 @@ async function rebuildMessageForExisting(
     .where(eq(orderItemTable.orderId, orderId));
 
   const baseUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  const hasDiscount =
+    typeof discountInCents === "number" && discountInCents > 0;
   return buildOrderMessageFromTemplate({
     template: whatsappTemplate,
     storeName,
@@ -740,6 +752,11 @@ async function rebuildMessageForExisting(
       priceInCents: it.priceInCentsSnapshot,
     })),
     totalInCents,
+    // Sprint flash 2026-05-24 — reconstitui subtotal+desconto pra
+    // mensagem idempotente (idempotency hit): order.totalInCents é
+    // o pós-cupom, soma de volta o desconto pra mostrar subtotal.
+    subtotalInCents: hasDiscount ? totalInCents + discountInCents! : undefined,
+    discountInCents: hasDiscount ? discountInCents! : undefined,
     shortCode,
     publicUrl: `${baseUrl}/p/${publicToken}`,
     customerNotes: notes,

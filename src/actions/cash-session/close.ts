@@ -4,7 +4,12 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
-import { cashAdjustmentTable, cashSessionTable, orderTable } from "@/db/schema";
+import {
+  cashAdjustmentTable,
+  cashSessionTable,
+  orderPaymentTable,
+  orderTable,
+} from "@/db/schema";
 import { extractClientContext, recordAuditEvent } from "@/lib/audit";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
@@ -148,16 +153,24 @@ export async function closeCashSession(
       //
       // Onda 1.2 (2026-05-21): UMA query agregada cobre os 6 tipos de
       // adjustment (antes só 2 — bug "quebra de caixa fantasma").
+      //
+      // Sprint flash 2026-05-24: vendas em dinheiro agora somam
+      // `order_payment.amount_in_cents` ao invés do campo legado
+      // `order.totalInCents`+`paymentMethod='cash'`. Antes, venda
+      // multipayment (R$80 cash + R$70 pix) gravava `paymentMethod='cash'`
+      // (primeira linha venceu) e o total INTEIRO entrava no caixa,
+      // inflando o Z em R$70. Agora soma só as linhas cash de cada venda.
       const [salesAgg] = await tx
         .select({
-          total: sql<string | null>`SUM(${orderTable.totalInCents})`,
+          total: sql<string | null>`SUM(${orderPaymentTable.amountInCents})`,
         })
-        .from(orderTable)
+        .from(orderPaymentTable)
+        .innerJoin(orderTable, eq(orderPaymentTable.orderId, orderTable.id))
         .where(
           and(
             eq(orderTable.cashSessionId, target.id),
-            eq(orderTable.paymentMethod, "cash"),
             eq(orderTable.channel, "balcao"),
+            eq(orderPaymentTable.method, "cash"),
           ),
         );
       const cashSalesInCents = Number(salesAgg?.total ?? 0);

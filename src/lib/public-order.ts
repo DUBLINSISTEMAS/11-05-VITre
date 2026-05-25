@@ -32,6 +32,13 @@ export interface PublicOrderMessageInput {
    * Fase 2 — ADR-0013.
    */
   paymentMethodsNote?: string | null;
+  /**
+   * Subtotal pré-cupom + desconto aplicado (centavos). Sprint flash
+   * 2026-05-24 — quando passados, builder mostra linha "💸 Desconto"
+   * no WhatsApp da lojista mesmo em templates legados.
+   */
+  subtotalInCents?: number;
+  discountInCents?: number;
 }
 
 export function generatePublicOrderToken(): string {
@@ -51,6 +58,8 @@ export function buildPublicOrderWhatsAppMessage(
     customerName: input.customerName?.trim() || "cliente",
     items: input.items,
     totalInCents: input.totalInCents,
+    subtotalInCents: input.subtotalInCents,
+    discountInCents: input.discountInCents,
     shortCode: input.shortCode,
     publicUrl: input.publicUrl,
     customerNotes: input.customerNotes ?? undefined,

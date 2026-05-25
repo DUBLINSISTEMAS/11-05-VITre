@@ -884,21 +884,146 @@
     .b3-main-card {
       overflow-y: auto;
     }
+    /* Transição de largura — base pra colapsar/expandir suave (240ms).
+       Só aplicada em desktop (mobile usa drawer Sheet, não tem collapse). */
+    .b3-side {
+      transition: width 240ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
   }
 
+  /* ========================================================
+   * SIDEBAR COLLAPSED (desktop only — Onda 2026-05-24)
+   * --------------------------------------------------------
+   * Largura cai de 280px → 72px. Mostra só ícones, esconde labels +
+   * chevrons + headers de seção. Accordion vira flat (todos os items
+   * sempre visíveis). Estado persistido em localStorage pelo React;
+   * aqui só lidamos com o visual.
+   *
+   * Mobile (<1024px) ignora — `data-collapsed` no aside não tem efeito
+   * porque a media query abaixo só ativa em desktop.
+   * ======================================================== */
+  @media (min-width: 1024px) {
+    .b3-side[data-collapsed="true"] {
+      width: 72px;
+    }
+    /* Top: logo full (img dentro) some, fica o botão toggle centralizado.
+       O React troca o <img> pelo favicon — aqui só centralizamos. */
+    .b3-side[data-collapsed="true"] .b3-side-top {
+      padding: 14px 8px;
+      justify-content: center;
+      gap: 0;
+    }
+    /* Headers de seção viram invisíveis no collapsed — eles são labels
+       uppercase, sem sentido como ícone solto. O accordion vira flat. */
+    .b3-side[data-collapsed="true"] .b3-side-section {
+      display: none;
+    }
+    /* Forçar collapsible sempre aberto (ignora data-open) — todos os
+       items ficam visíveis em coluna única. */
+    .b3-side[data-collapsed="true"] .b3-side-collapsible {
+      grid-template-rows: 1fr;
+    }
+    /* Rail vertical do filho some — sem hierarquia visual quando flat. */
+    .b3-side[data-collapsed="true"] .b3-side-collapsible-inner::before {
+      display: none;
+    }
+    /* Stagger animation interfere com a transição de width — desliga. */
+    .b3-side[data-collapsed="true"] .b3-side-item--nested {
+      animation: none !important;
+    }
+    /* Separador 1px entre grupos no modo flat — substitui o header
+       removido, mantém a sensação de "esses 5 são da mesma família". */
+    .b3-side[data-collapsed="true"] .b3-side-section-wrap {
+      margin-top: 0;
+      border-top: 1px solid color-mix(in oklab, var(--mangos-border-strong) 35%, transparent);
+      padding-top: 4px;
+    }
+    .b3-side[data-collapsed="true"] .b3-side-section-wrap:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+    }
+    /* Item de nav vira ícone centralizado — labels somem, padding
+     compacta, indent do nested some. */
+    .b3-side[data-collapsed="true"] .b3-side-item,
+    .b3-side[data-collapsed="true"] .b3-side-item--nested {
+      padding: 9px 0;
+      justify-content: center;
+      gap: 0;
+      margin: 1px 12px;
+    }
+    .b3-side[data-collapsed="true"] .b3-side-label,
+    .b3-side[data-collapsed="true"] .b3-side-item .dot,
+    .b3-side[data-collapsed="true"] .b3-side-item .chev {
+      display: none !important;
+    }
+    /* Active bar — quando collapsed, a barra esquerda vira "pílula"
+       inteira atrás do ícone pra ficar mais visível no formato estreito.
+       Sem isso, a barrinha de 3px some dentro do margin lateral de 12px. */
+    .b3-side[data-collapsed="true"] .b3-side-item[data-active="true"]::before {
+      left: -2px;
+    }
+    /* Footer: avatar centralizado, esconde nome/email/dropdown. */
+    .b3-side[data-collapsed="true"] .b3-side-foot {
+      padding: 8px 4px 12px;
+    }
+    .b3-side[data-collapsed="true"] .b3-side-foot-user {
+      padding: 6px;
+      justify-content: center;
+      gap: 0;
+    }
+    .b3-side[data-collapsed="true"] .b3-side-foot-user-meta,
+    .b3-side[data-collapsed="true"] .b3-side-foot-user [data-foot-menu] {
+      display: none;
+    }
+    /* Watermark da manga decorativa some no collapsed — espaço apertado,
+       fica visualmente poluído competindo com os ícones. */
+    .b3-side[data-collapsed="true"]::before {
+      display: none;
+    }
+  }
+
+  /* Botão toggle desktop — visível só ≥1024px (mobile usa hamburger). */
+  .b3-side-collapse-toggle {
+    display: none;
+  }
+  @media (min-width: 1024px) {
+    .b3-side-collapse-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: 0;
+      background: transparent;
+      color: var(--ink-3);
+      cursor: pointer;
+      outline: none;
+      transition: background-color 150ms, color 150ms;
+      flex-shrink: 0;
+    }
+    .b3-side-collapse-toggle:hover {
+      background: var(--mangos-cream-soft);
+      color: var(--mangos-green-800);
+    }
+    .b3-side-collapse-toggle:focus-visible {
+      box-shadow: 0 0 0 2px color-mix(in oklab, var(--mangos-yellow) 40%, transparent);
+    }
+  }
+
+  /* b3-side-top: wrapper do header da sidebar. Antes era um <Link>
+     clicável inteiro; após onda 2026-05-24 virou container flex com
+     Link da logo (esq) + botão collapse-toggle (dir). O hover/cursor
+     ficou nos elementos internos, não no wrapper. */
   .b3-side-top {
-    padding: 18px 20px 14px;
+    padding: 14px 16px 10px;
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 10px;
-    cursor: pointer;
     min-height: 64px;
-    outline: none;
-    border-radius: 12px;
     margin: 4px 8px 0;
-    transition: background-color 150ms;
   }
-  .b3-side-top:hover { background: color-mix(in oklab, var(--mangos-cream-soft) 60%, transparent); }
   .b3-logo-mark {
     width: 36px;
     height: 36px;
@@ -927,25 +1052,31 @@
     text-transform: uppercase;
     color: var(--ink-4);
   }
-  /* ----- Accordion section header (Fase 2 redesign 2026-05-21) ----- */
+  /* ----- Accordion section header (Fase 2 redesign 2026-05-21) -----
+     Onda 2026-05-24: pai vira "label de grupo" (caps 12/700 ink-3,
+     letter-spacing alto) — não compete visualmente com os filhos. Padrão
+     Linear/Notion: o header NÃO é um item de navegação, é um separador
+     interativo. Filho fica claramente maior/destacado abaixo. */
   .b3-side-section-wrap {
-    margin-top: 2px;
+    margin-top: 10px;
   }
   .b3-side-section {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     width: calc(100% - 24px);
     margin: 1px 12px;
-    padding: 9px 12px;
-    font-size: 13.5px;
-    font-weight: 600;
-    color: var(--ink-1);
+    padding: 7px 12px;
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-3);
     text-align: left;
     cursor: pointer;
     border: 0;
     background: transparent;
-    border-radius: 10px;
+    border-radius: 8px;
     outline: none;
     transition: background-color 150ms, color 150ms;
   }
@@ -957,19 +1088,21 @@
     box-shadow: 0 0 0 2px color-mix(in oklab, var(--mangos-yellow) 40%, transparent);
   }
   .b3-side-section svg {
-    color: var(--ink-3);
+    width: 14px;
+    height: 14px;
+    color: var(--ink-4);
     flex-shrink: 0;
     transition: color 150ms;
   }
   .b3-side-section:hover svg { color: var(--mangos-green-800); }
-  /* Quando alguma rota da seção está ativa, o header fica destacado em cinza
-     claro pra dar contexto — mas o highlight forte de seleção continua no
-     item (amarelo soft). */
+  /* Quando alguma rota da seção está ativa, o pai recebe acento amarelo
+     no ícone — sinaliza "tem seleção lá dentro" sem competir com o
+     highlight forte (barra esquerda + wash) do item ativo. */
   .b3-side-section[data-active="true"] {
     color: var(--mangos-green-900);
   }
   .b3-side-section[data-active="true"] svg {
-    color: var(--mangos-orange);
+    color: var(--mangos-yellow-hover);
   }
   .b3-side-section .chev {
     color: var(--ink-4);
@@ -1002,6 +1135,23 @@
   .b3-side-collapsible[data-open="true"] .b3-side-collapsible-inner {
     /* Pequeno respiro entre o último item da seção e a próxima seção. */
     padding-bottom: 4px;
+  }
+  /* Rail vertical sutil dentro do collapsible — dá hierarquia visual
+     "filho-dentro-de-pai" estilo Linear/Notion. Sem isso, indent sozinho
+     não comunica a relação. Border-left no inner pra não interferir nas
+     animações de stagger dos items. */
+  .b3-side-collapsible-inner {
+    position: relative;
+  }
+  .b3-side-collapsible-inner::before {
+    content: "";
+    position: absolute;
+    left: 30px;
+    top: 4px;
+    bottom: 8px;
+    width: 1px;
+    background: color-mix(in oklab, var(--mangos-border-strong) 50%, transparent);
+    pointer-events: none;
   }
   /* Stagger sutil dos itens quando o accordion abre — efeito fintech sênior:
      cada item aparece levemente atrasado em relação ao anterior. */
@@ -1046,11 +1196,17 @@
       animation: none;
     }
   }
-  /* Item nested (dentro de uma seção do accordion) — indent leve pra dar
-     hierarquia visual sem virar sub-item de outro nível. */
+  /* Item nested (dentro de uma seção do accordion) — onda 2026-05-24:
+     filho ganha tamanho maior que o pai-label (que é caps 11.5px) e
+     peso mais leve (500 vs 700) pra inverter a "gravidade visual" —
+     o item de navegação fica claramente mais saliente que o header de
+     grupo, padrão Linear/Notion/Vercel. Indent 26px alinha o ícone do
+     filho à direita do rail vertical (linha em 30px). */
   .b3-side-item--nested {
-    padding-left: 18px;
-    font-size: 13px;
+    padding-left: 26px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--ink-2);
   }
   .b3-side-item--nested svg {
     width: 16px;
@@ -1073,11 +1229,27 @@
   .b3-side-item:hover { background: var(--mangos-cream-soft); color: var(--mangos-green-900); }
   .b3-side-item svg { color: var(--ink-3); flex-shrink: 0; transition: color 150ms; }
   .b3-side-item:hover svg { color: var(--mangos-green-800); }
+  /* Active state — "selo" inequívoco: barra vertical 3px amarelo sólido
+     à esquerda + wash amarelo no fundo + ícone amarelo. Padrão GitHub /
+     Linear / Notion. Substitui o ícone-laranja anterior, que competia
+     com o amarelo do wash (vira "amarelo+laranja" em vez de "amarelo").
+     A barra é feita via ::before pra não roubar padding interno do item. */
   .b3-side-item[data-active="true"] {
     background: var(--mangos-yellow-soft);
     color: var(--mangos-green-900);
+    font-weight: 600;
   }
-  .b3-side-item[data-active="true"] svg { color: var(--mangos-orange); }
+  .b3-side-item[data-active="true"]::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--mangos-yellow);
+  }
+  .b3-side-item[data-active="true"] svg { color: var(--mangos-yellow-hover); }
   .b3-side-item .chev {
     margin-left: auto;
     color: var(--ink-4);
@@ -1123,7 +1295,7 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--mangos-orange);
+    background: var(--mangos-yellow);
   }
   .b3-side-foot {
     margin-top: auto;

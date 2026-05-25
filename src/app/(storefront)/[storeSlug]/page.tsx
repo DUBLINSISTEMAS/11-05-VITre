@@ -45,15 +45,21 @@ export default async function StoreHomePage({
   // Home consolida 4 queries (banners + categorias + featured + recent)
   // numa única transação `withTenant` — antes eram 4 transações paralelas
   // brigando por conexões do pool max=3.
-  const [homeData, session] = await Promise.all([
-    getHomePageData(store.id, store.slug),
-    getSessionOrNull(),
-  ]);
+  //
+  // Sprint flash 2026-05-24 — gate de LCP: antes fazíamos `getSessionOrNull()`
+  // em PARALELO com a home pra todo cliente anônimo (round-trip extra
+  // serverless só pra decidir se mostra empty-state pro dono). No 4G
+  // fraco isso atrasava LCP do storefront que veio do WhatsApp. Agora
+  // só consultamos sessão quando o catálogo está REALMENTE vazio (raro,
+  // só nos primeiros minutos da loja). Catálogo cheio → zero overhead.
+  const homeData = await getHomePageData(store.id, store.slug);
   const { banners, categoryTree, collections, featured, recent } = homeData;
 
-  const isOwner = session?.user?.id === store.ownerId;
   const hasBanner = banners.length > 0;
   const isCatalogEmpty = featured.length === 0 && recent.length === 0;
+
+  const session = isCatalogEmpty ? await getSessionOrNull() : null;
+  const isOwner = session?.user?.id === store.ownerId;
 
   // Bloco 1 (header "Em destaque"): primeiros 4 destaques
   const featuredBlock = featured.slice(0, 4);

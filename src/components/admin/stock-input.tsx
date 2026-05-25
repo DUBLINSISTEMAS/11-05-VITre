@@ -21,10 +21,16 @@ interface StockInputProps {
 /**
  * Toggle "Controlar estoque" + input numérico condicional.
  *
- * - Off (default): estoque ilimitado. `stockQuantity = null`.
- * - On: input revelado. `stockQuantity` é integer ≥ 0.
+ * - On (default em produtos novos desde Onda 1.4): contagem real ativa.
+ *   `stockQuantity` é integer ≥ 0; PDV bloqueia venda em zero (salvo
+ *   `allowOversell`), storefront mostra "esgotado".
+ * - Off: SEM CONTROLE de saldo. Próprio do uso pra serviço, encomenda,
+ *   produto sob demanda. `stockQuantity = null`. Relatórios e KPIs de
+ *   estoque IGNORAM esse produto. Decisão consciente do lojista.
  *
- * UX: explica em texto pequeno o que cada estado significa pro lojista.
+ * UX: copy explícita do trade-off em cada estado pra evitar o bug
+ * histórico (auditoria 2026-05-24 — Onda 1.4) de produto entrar sem
+ * tracking por omissão e ficar invisível nos relatórios de estoque.
  */
 export function StockInput({ value, onChange, disabled }: StockInputProps) {
   const switchId = useId();
@@ -39,8 +45,8 @@ export function StockInput({ value, onChange, disabled }: StockInputProps) {
           </Label>
           <p className="text-ink-4 text-xs">
             {value.trackStock
-              ? "Cliente vê 'esgotado' quando chegar a 0."
-              : "Estoque ilimitado — sempre disponível."}
+              ? "Sistema soma entradas/saídas e mostra 'esgotado' em zero."
+              : "Sem controle — use só pra serviço, encomenda ou produto sob demanda. Não aparece em relatórios de estoque."}
           </p>
         </div>
         <Switch

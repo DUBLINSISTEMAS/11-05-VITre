@@ -75,12 +75,8 @@ export function CustomersToolbar({ rangeLabel }: CustomersToolbarProps) {
 
   return (
     <div className="b3-toolbar">
-      <input
-        type="checkbox"
-        disabled
-        aria-label="Selecionar todos (em breve)"
-        className="size-4 cursor-not-allowed opacity-40"
-      />
+      {/* Sprint flash 2026-05-24 — checkbox "selecionar tudo" removido
+          (estava disabled + "em breve"). Régua "funciona ou esconde". */}
 
       <div className="b3-toolbar-search">
         <SearchIcon size={14} aria-hidden />

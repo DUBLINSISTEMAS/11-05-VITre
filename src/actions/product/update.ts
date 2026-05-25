@@ -74,6 +74,7 @@ export async function updateProduct(
       const path = issue.path.join(".");
       if (!fieldErrors[path]) fieldErrors[path] = issue.message;
     }
+    logger.warn("product.update.zod_failed", { fieldErrors });
     return {
       ok: false,
       error: "Confira os campos destacados.",
@@ -166,9 +167,25 @@ export async function updateProduct(
       //   false→true: tudo digitado vira saldo inicial (movement 'initial')
       //   continua true: ajuste = novo - atual (movement 'adjustment')
       //   true→false ou continua false: nada
+      //
+      // Onda 1.4 Passo 2 (2026-05-24): a condição era `variants.length === 0`
+      // — ignorava o stockQuantity do produto-base sempre que houvesse
+      // QUALQUER variante (mesmo não rastreada). Isso criava limbo perfeito:
+      // produto com 1 variante `track=false` → nem produto-base, nem variante
+      // controlava saldo, o número digitado pelo lojista desaparecia
+      // silenciosamente. Bug confirmado via logs (Aliança de Ouro 2026-05-24).
+      //
+      // Critério novo (alinha com loadStockSnapshot:527-534): produto-base
+      // controla saldo SE não existir nenhuma variante rastreada (i.e.,
+      // nenhuma com stockQuantity !== null). Se ≥1 variante rastreada, o
+      // saldo vive nas variantes e o stockQuantity do produto-base é
+      // ignorado — o form deve esconder o campo nesse caso (tab-estoque.tsx).
+      const hasTrackedVariants = data.variants.some(
+        (v) => v.stockQuantity !== null,
+      );
       let productStockDelta = 0;
       let productStockMovementType: "initial" | "adjustment" = "adjustment";
-      if (data.variants.length === 0 && data.trackStock) {
+      if (!hasTrackedVariants && data.trackStock) {
         if (!existing.trackStock) {
           productStockDelta = data.stockQuantity ?? 0;
           productStockMovementType = "initial";
@@ -226,13 +243,20 @@ export async function updateProduct(
         );
 
       if (productStockDelta !== 0) {
+        // Onda 1.4 Passo 2 (2026-05-24): referenceType/referenceId omitidos
+        // = ambos NULL (default da coluna), satisfaz CHECK
+        // `stock_movement_reference_consistency` (SQL 22): "(ambos NULL) OR
+        // (ambos NOT NULL com type IN ('order','manual','purchase'))". Antes
+        // passávamos `referenceType: "manual"` sem id, violava CHECK e a tx
+        // abortava silenciosa — movement nunca era inserido, cache não
+        // atualizava, lojista via "Falha ao salvar" no toast e estoque
+        // continuava zero. Padrão alinhado com record-movement.ts:139-142.
         await tx.insert(stockMovementTable).values({
           storeId: store.id,
           productId: data.productId,
           variantId: null,
           movementType: productStockMovementType,
           quantityDelta: productStockDelta,
-          referenceType: "manual",
           notes:
             productStockMovementType === "initial"
               ? "Saldo inicial cadastrado no produto (controle ativado)."
@@ -328,13 +352,14 @@ export async function updateProduct(
           );
 
         if (variantDelta !== 0) {
+          // Mesma decisão de cima: omitir reference_type/id pra satisfazer
+          // CHECK stock_movement_reference_consistency.
           await tx.insert(stockMovementTable).values({
             storeId: store.id,
             productId: data.productId,
             variantId: v.id!,
             movementType: variantMovementType,
             quantityDelta: variantDelta,
-            referenceType: "manual",
             notes:
               variantMovementType === "initial"
                 ? "Saldo inicial cadastrado na variante (controle ativado)."
@@ -371,7 +396,6 @@ export async function updateProduct(
             variantId: variant.id,
             movementType: "initial" as const,
             quantityDelta: initial,
-            referenceType: "manual",
             notes: "Saldo inicial cadastrado na variante.",
             createdBy: userId,
           }];
@@ -407,8 +431,15 @@ export async function updateProduct(
 
   if (!stepResult.ok) return stepResult;
 
-  // 9. Invalida caches: admin (lista) + storefront público
+  // 9. Invalida caches: admin (lista + página do próprio produto + estoque)
+  //    + storefront público.
+  // Onda 1.4 (2026-05-24): adicionado revalidatePath do próprio /[id] —
+  // sem isso, após salvar o lojista voltava pra mesma tela do produto com
+  // dados antigos cacheados (incluindo o stockQuantity zerado que ele
+  // acabou de mudar). Sintoma reportado pelo founder: "edito estoque, volta
+  // zerado".
   revalidatePath("/admin/produtos");
+  revalidatePath(`/admin/produtos/${data.productId}`);
   revalidatePath("/admin/estoque");
   revalidateTag(`store-${store.slug}`);
 

@@ -12,7 +12,7 @@
 //
 // Selection state pra <BulkActionsToolbar> preservado. Stop propagation
 // no checkbox pra não disparar navegação.
-import { PackageIcon } from "lucide-react";
+import { PackageIcon, PlusIcon } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -22,6 +22,7 @@ import { formatBRL, hasActivePromo } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
 import { BulkActionsToolbar } from "./bulk-actions-toolbar";
+import { StockMovementDialog } from "./stock-movement-dialog";
 
 export interface ProductTableRow {
   id: string;
@@ -38,6 +39,13 @@ export interface ProductTableRow {
   cover: string | null;
   /** Nome da categoria (server-resolved via map). null se sem categoria. */
   categoryName: string | null;
+  /**
+   * Onda 1.4 (2026-05-24) — quantas variantes o produto tem.
+   * Usado pelo botão "+" inline na coluna ESTOQUE: produto com variantes
+   * NÃO permite movimentação rápida (precisa abrir a tela do produto pra
+   * escolher qual variante). Botão fica desabilitado com tooltip.
+   */
+  variantCount: number;
 }
 
 export interface ProductsTableProps {
@@ -171,8 +179,14 @@ export function ProductsTable({ products }: ProductsTableProps) {
                     <span className="text-ink-4">—</span>
                   )}
                 </td>
-                <td className="mono" style={{ textAlign: "right" }}>
-                  <StockCell trackStock={p.trackStock} quantity={p.stockQuantity} />
+                <td className="mono" style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
+                  <StockCell
+                    productId={p.id}
+                    productName={p.name}
+                    trackStock={p.trackStock}
+                    quantity={p.stockQuantity}
+                    variantCount={p.variantCount}
+                  />
                 </td>
                 <td className="mono" style={{ textAlign: "right", fontWeight: 600 }}>
                   {onPromoNow ? (
@@ -212,18 +226,72 @@ export function ProductsTable({ products }: ProductsTableProps) {
 }
 
 function StockCell({
+  productId,
+  productName,
   trackStock,
   quantity,
+  variantCount,
 }: {
+  productId: string;
+  productName: string;
   trackStock: boolean;
   quantity: number | null;
+  variantCount: number;
 }) {
   if (!trackStock) {
-    return <span className="text-ink-4">—</span>;
+    // Onda 1.4 (2026-05-24): substituído "—" silencioso por badge explícito.
+    // Antes lojista olhava a tabela e via "—" sem entender que esse produto
+    // está FORA do controle de estoque. Badge gera atrito visual proposital
+    // (cinza neutro, sem cor de alerta) e tooltip explica o significado.
+    return (
+      <span
+        className="b3-pill"
+        title="Sem controle de estoque — produto não entra em relatórios. Ative em 'Editar produto' se for venda física."
+      >
+        Sem controle
+      </span>
+    );
   }
   const q = quantity ?? 0;
+  // Onda 1.4 — botão "+" inline pra movimentação rápida sem abrir o produto.
+  // Produto COM variantes não suporta movimentação rápida (precisa escolher
+  // qual variante movimentar) — botão fica desabilitado com tooltip apontando
+  // o caminho. Caso comum (sem variantes) = 2 cliques: tabela → "+" → dialog.
+  const hasVariants = variantCount > 0;
   return (
-    <span className={cn("tabular-nums", q === 0 && "text-danger")}>{q}</span>
+    <span className="inline-flex items-center justify-end gap-2">
+      <span className={cn("tabular-nums", q === 0 && "text-danger")}>{q}</span>
+      {hasVariants ? (
+        <button
+          type="button"
+          disabled
+          className="b3-btn b3-btn--sm size-6 p-0 opacity-40"
+          style={{ minWidth: 24 }}
+          title="Produto com variantes — abra o produto para movimentar a variante específica."
+          aria-label="Movimentar estoque (variantes — abra o produto)"
+        >
+          <PlusIcon size={12} aria-hidden />
+        </button>
+      ) : (
+        <StockMovementDialog
+          productId={productId}
+          productName={productName}
+          variants={[]}
+          trigger={
+            <button
+              type="button"
+              className="b3-btn b3-btn--sm size-6 p-0"
+              style={{ minWidth: 24 }}
+              title="Lançar movimentação rápida (entrada, saída ou ajuste)"
+              aria-label="Movimentar estoque"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <PlusIcon size={12} aria-hidden />
+            </button>
+          }
+        />
+      )}
+    </span>
   );
 }
 

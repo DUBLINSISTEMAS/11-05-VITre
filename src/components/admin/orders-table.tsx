@@ -5,8 +5,9 @@
 // Mobile responsivo: CSS @media (max-width: 640px) em globals.css faz
 // thead esconder e tbody tr virar block stack (já no globals).
 //
-// Cada row continua clicável (abre OrderDetailDialog ao clicar). Checkbox
-// master + per-row é placeholder visual (bulk actions ficam pra onda futura).
+// Cada row continua clicável (abre OrderDetailDialog ao clicar).
+// (Checkbox/bulk actions ainda não implementados — quando entrarem,
+// virão acompanhados de uma toolbar de ações em massa.)
 
 import { MessageCircleIcon } from "lucide-react";
 import { useState } from "react";

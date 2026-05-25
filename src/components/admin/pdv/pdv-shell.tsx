@@ -67,6 +67,16 @@ import {
   ProductPickerDialog,
 } from "@/components/admin/pdv/product-picker-dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -96,6 +106,15 @@ interface CartItem {
    * `order_item.discount_in_cents`.
    */
   discountInCents: number | null;
+  /**
+   * Snapshot dos preços do produto pra recalcular quando lojista
+   * vincula cliente atacado COM carrinho já montado (sprint flash
+   * 2026-05-24). basePriceInCents = preço varejo (sem promo);
+   * wholesalePriceInCents = preço atacado quando produto tem (null
+   * quando produto não tem preço atacado cadastrado).
+   */
+  basePriceInCents: number;
+  wholesalePriceInCents: number | null;
 }
 
 interface PaymentMethodOption {
@@ -129,8 +148,19 @@ interface PaymentLineState {
   method: PaymentMethod;
   amountInput: string;
   cashReceivedInput: string;
+  /**
+   * Parcelas do cartão de crédito (1..12 no PDV — limite prático BR).
+   * Só faz sentido > 1 quando method='credit'. Resetado pra 1 ao trocar
+   * de método. Persistido em `order_payment.installments` (SQL 70).
+   * Mangos Pay NÃO calcula juros — só registra a escolha. A maquininha
+   * cobra a taxa do lojista fora do sistema.
+   */
+  installments: number;
   notes: string;
 }
+
+/** Limite de parcelas oferecido no PDV — padrão varejo BR. */
+const MAX_PDV_INSTALLMENTS = 12;
 
 function nextPaymentLineId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -145,6 +175,7 @@ function makeDefaultPaymentLine(): PaymentLineState {
     method: "cash",
     amountInput: "",
     cashReceivedInput: "",
+    installments: 1,
     notes: "",
   };
 }
@@ -251,6 +282,10 @@ export function PdvShell() {
   // inline da coluna esquerda. Lojista clica "+ Adicionar produto" no
   // carrinho, escolhe N itens com checkbox, confirma → vão pro cart.
   const [pickerOpen, setPickerOpen] = useState(false);
+  // Confirma "Salvar como orçamento" via AlertDialog (substitui window.confirm
+  // antigo — UX consistente com o resto do admin, sem dependência do popup
+  // nativo do browser).
+  const [quoteConfirmOpen, setQuoteConfirmOpen] = useState(false);
   // ADR-0020 — desconto e acréscimo duais (R$ ou %). R$ é canônico no DB; %
   // é UX. `lastEdit` evita stomp quando o subtotal muda: se usuário digitou
   // em %, manter % e recomputar R$; se digitou em R$, manter R$ e recomputar %.
@@ -516,12 +551,52 @@ export function PdvShell() {
             trackStock,
             stockQuantity,
             discountInCents: null,
+            basePriceInCents: product.basePriceInCents,
+            wholesalePriceInCents: product.wholesalePriceInCents,
           },
         ];
       });
     },
     [applyPricingTier],
   );
+
+  // Sprint flash 2026-05-24 — bug do cliente atacado: antes o lojista
+  // montava carrinho de 10 anéis no varejo, lembrava de vincular cliente
+  // atacado no fim, e o sistema deixava todos os itens no preço cheio
+  // com toast facilmente ignorável. Agora abre AlertDialog obrigatório
+  // perguntando se quer recalcular os itens que TÊM preço atacado.
+  const [wholesaleConfirmOpen, setWholesaleConfirmOpen] = useState(false);
+
+  // Quantos itens do carrinho seriam afetados pelo recálculo. Usado
+  // pra (a) decidir se ABRE o dialog (zero = só toast info) e (b)
+  // mostrar a contagem na pergunta do dialog.
+  const wholesaleRecalcCount = useMemo(
+    () =>
+      cart.filter(
+        (it) =>
+          it.wholesalePriceInCents !== null &&
+          it.wholesalePriceInCents > 0 &&
+          it.priceInCents !== it.wholesalePriceInCents,
+      ).length,
+    [cart],
+  );
+
+  const recalculateCartForWholesale = useCallback(() => {
+    setCart((prev) =>
+      prev.map((it) => {
+        if (
+          it.wholesalePriceInCents !== null &&
+          it.wholesalePriceInCents > 0 &&
+          it.priceInCents !== it.wholesalePriceInCents
+        ) {
+          return { ...it, priceInCents: it.wholesalePriceInCents };
+        }
+        return it;
+      }),
+    );
+    setWholesaleConfirmOpen(false);
+    toast.success("Itens recalculados com preço atacado.");
+  }, []);
 
   // Redesign — adapter do ProductPickerDialog. Cada item selecionado
   // entra como qty=1; ajuste fino no carrinho. Reusa addToCart pra
@@ -661,6 +736,9 @@ export function PdvShell() {
           amountInCents: inputToCents(line.amountInput) ?? 0,
           cashReceivedInCents:
             line.method === "cash" ? inputToCents(line.cashReceivedInput) : null,
+          // Só envia installments quando faz sentido (cartão crédito).
+          // Outras formas: server ignora (Zod default 1) — DB CHECK garante.
+          installments: line.method === "credit" ? line.installments : 1,
           notes: line.method === "other" ? line.notes.trim() || null : null,
         }));
 
@@ -759,21 +837,18 @@ export function PdvShell() {
   };
 
   // Sprint 1A Fase 4 — Salvar como orçamento.
-  // Não exige payments[] válido. Confirma antes via window.confirm
-  // (substituível por Dialog dedicado quando UX pedir).
+  // 2026-05-24: trocado `window.confirm` por AlertDialog (UX consistente
+  // com o resto do admin). Botão "Orçamento" só valida cart e abre o
+  // dialog; a confirmação dispara `performSubmitQuote` que faz o submit.
   const handleSubmitQuote = () => {
     if (cart.length === 0) {
       toast.error("Adicione pelo menos um item.");
       return;
     }
-    if (
-      !window.confirm(
-        "Salvar como orçamento? Validade 7 dias. Não desconta estoque.",
-      )
-    ) {
-      return;
-    }
+    setQuoteConfirmOpen(true);
+  };
 
+  const performSubmitQuote = () => {
     const payload: CreateBalcaoSaleInput = {
       mode: "quote",
       quoteValidityDays: 7,
@@ -952,16 +1027,23 @@ export function PdvShell() {
                 setCustomerId(c?.id ?? null);
                 setCustomerLabel(c ? `${c.name} · ${c.phone}` : "");
                 setCustomerNotes(c?.notes ?? null);
-                // Sprint 5.4 — pricing tier do grupo. Quando cliente é
-                // de grupo 'wholesale' E carrinho já tem itens, avisa
-                // que itens novos virão em preço atacado (existentes
-                // ficam como estão; lojista reposiciona se quiser).
+                // Sprint 5.4 — pricing tier do grupo. Sprint flash 2026-05-24:
+                // se tier='wholesale' E carrinho tem itens recalculáveis
+                // (têm wholesalePriceInCents > 0 diferente do atual), abre
+                // AlertDialog obrigatório perguntando se recalcula. Antes
+                // o sistema só mostrava toast info — lojista ignorava em
+                // loja cheia e perdia dinheiro toda venda atacado.
                 const tier = c?.groupPricingTier ?? null;
                 setCustomerPricingTier(tier);
                 setCustomerGroupLabel(c?.groupName ?? null);
-                if (tier === "wholesale" && cart.length > 0) {
+                if (tier === "wholesale" && wholesaleRecalcCount > 0) {
+                  setWholesaleConfirmOpen(true);
+                } else if (tier === "wholesale" && cart.length > 0) {
+                  // Carrinho tem itens mas nenhum tem preço atacado
+                  // cadastrado — só avisa que novos vão pelo varejo
+                  // mesmo (limite real do cadastro do produto).
                   toast.info(
-                    "Cliente atacado vinculado — novos itens virão em preço de atacado. Os itens atuais ficam no preço original.",
+                    "Cliente atacado vinculado. Os itens deste carrinho não têm preço atacado cadastrado, ficam no preço normal.",
                   );
                 }
                 if (c) {
@@ -1210,6 +1292,68 @@ export function PdvShell() {
         onOpenChange={setPickerOpen}
         onAdd={addItemsFromPicker}
       />
+
+      {/* Confirmação de recálculo pra preço atacado (sprint flash
+          2026-05-24). Antes era toast info ignorável; agora pergunta
+          explícita pra lojista que vinculou cliente atacado COM carrinho
+          já montado decidir conscientemente. */}
+      <AlertDialog
+        open={wholesaleConfirmOpen}
+        onOpenChange={setWholesaleConfirmOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Recalcular com preço atacado?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esse cliente é de atacado. {wholesaleRecalcCount}{" "}
+              {wholesaleRecalcCount === 1 ? "item já" : "itens já"} no carrinho
+              {wholesaleRecalcCount === 1 ? " tem" : " têm"} preço atacado
+              cadastrado. Quer aplicar o preço atacado agora ou manter como
+              está?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setWholesaleConfirmOpen(false);
+                toast.info(
+                  "Itens mantidos no preço atual. Novos itens vão entrar em preço atacado.",
+                );
+              }}
+            >
+              Manter preços atuais
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={recalculateCartForWholesale}>
+              Recalcular para atacado
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirmação de "Salvar como orçamento" (era window.confirm) */}
+      <AlertDialog open={quoteConfirmOpen} onOpenChange={setQuoteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Salvar como orçamento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O orçamento fica válido por 7 dias. Estoque não é descontado e
+              nenhum pagamento é registrado. Você pode converter em venda
+              depois pela aba <strong>Orçamentos</strong>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setQuoteConfirmOpen(false);
+                performSubmitQuote();
+              }}
+            >
+              Salvar orçamento
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* FKeys discreta no rodapé */}
       <div className="shrink-0">
@@ -1846,6 +1990,10 @@ function PaymentSection({
                           ? line.cashReceivedInput
                           : "",
                       notes: e.target.value === "other" ? line.notes : "",
+                      // Reseta parcelas pra 1 quando sai do cartão de crédito
+                      // (outras formas são à vista por natureza — CHECK no SQL 70)
+                      installments:
+                        e.target.value === "credit" ? line.installments : 1,
                     })
                   }
                 >
@@ -1880,6 +2028,46 @@ function PaymentSection({
                   <XIcon className="size-3.5" />
                 </button>
               </div>
+
+              {line.method === "credit" ? (
+                <div className="mt-1.5 grid grid-cols-[120px_1fr_auto] items-center gap-1.5">
+                  <label
+                    htmlFor={`installments-${line.id}`}
+                    className="text-ink-4 text-[10.5px]"
+                  >
+                    Parcelas
+                  </label>
+                  <select
+                    id={`installments-${line.id}`}
+                    aria-label="Número de parcelas no cartão"
+                    className="b3-select h-8 text-[12px]"
+                    value={line.installments}
+                    onChange={(e) =>
+                      updateLine(line.id, {
+                        installments: Number(e.target.value),
+                      })
+                    }
+                  >
+                    {Array.from(
+                      { length: MAX_PDV_INSTALLMENTS },
+                      (_, i) => i + 1,
+                    ).map((n) => (
+                      <option key={n} value={n}>
+                        {n}x{n > 1 && amt > 0
+                          ? ` de ${formatBRL(Math.floor(amt / n))}`
+                          : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {line.installments > 1 ? (
+                    <span className="text-ink-4 text-[10.5px] tabular-nums">
+                      sem juros
+                    </span>
+                  ) : (
+                    <span />
+                  )}
+                </div>
+              ) : null}
 
               {line.method === "cash" ? (
                 <div className="mt-1.5 grid grid-cols-[120px_1fr] items-center gap-1.5">

@@ -2,24 +2,35 @@ import {
   BoxesIcon,
   ClipboardListIcon,
   InfoIcon,
-  PackageIcon,
   SearchXIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import { loadCategoriesForPdv } from "@/actions/category/load-for-pdv";
 import {
   listStockMovements,
   loadStockKpis,
+  loadStockSnapshot,
+  loadStockSnapshotCounts,
 } from "@/actions/stock/load";
-import type { StockMovement } from "@/actions/stock/types";
+import type {
+  StockMovement,
+  StockSnapshotSort,
+  StockSnapshotStatus,
+} from "@/actions/stock/types";
+import { EstoqueViewTabs } from "@/components/admin/estoque-view-tabs";
 import { StockKpiCards } from "@/components/admin/stock-kpis";
 import { StockMovementsTable } from "@/components/admin/stock-movements-table";
+import { StockSnapshotStatusChips } from "@/components/admin/stock-snapshot-status-chips";
+import { StockSnapshotTable } from "@/components/admin/stock-snapshot-table";
+import { StockSnapshotToolbar } from "@/components/admin/stock-snapshot-toolbar";
 import { StockToolbar } from "@/components/admin/stock-toolbar";
 import { Pagination } from "@/components/common/pagination";
 import {
   enumOrNull,
+  idOrNullSchema,
   pageNumberSchema,
   searchTextSchema,
 } from "@/lib/page-search-params";
@@ -35,9 +46,31 @@ const MOVEMENT_TYPES = [
   "adjustment",
 ] as const satisfies ReadonlyArray<StockMovement["movementType"]>;
 
+const SNAPSHOT_STATUS_VALUES = [
+  "with-stock",
+  "zero",
+  "low",
+  "no-tracking",
+] as const satisfies ReadonlyArray<Exclude<StockSnapshotStatus, "all">>;
+
+const SNAPSHOT_SORT_VALUES = [
+  "name-asc",
+  "name-desc",
+  "stock-asc",
+  "stock-desc",
+  "min-asc",
+  "min-desc",
+] as const satisfies ReadonlyArray<StockSnapshotSort>;
+
+const VIEW_VALUES = ["saldo", "historico"] as const;
+
 const estoqueSearchSchema = z.object({
+  view: z.enum(VIEW_VALUES).catch("saldo"),
   q: searchTextSchema,
   type: enumOrNull(MOVEMENT_TYPES),
+  status: enumOrNull(SNAPSHOT_STATUS_VALUES),
+  categoryId: idOrNullSchema,
+  sort: enumOrNull(SNAPSHOT_SORT_VALUES),
   page: pageNumberSchema,
 });
 
@@ -46,68 +79,50 @@ interface EstoquePageProps {
 }
 
 /**
- * Listagem de movimentações de estoque — port Dublin v3 (ADR-0019, Onda A.10).
- * Continua URL-driven (CLAUDE.md #11). Filtros: q (nome de produto), type
- * (enum), page. Ordenação fixa por createdAt desc.
+ * `/admin/estoque` — Onda 1.4 (2026-05-24).
  *
- * Decisões pixel-perfect vs handoff (B3EstoqueScreen):
- * - H1 inline 24px font-bold tracking -0.025em (substitui AdminPageHeader)
- * - CTA "Nova movimentação" → Link pra /admin/produtos com hint (movimentação
- *   nasce per-produto via dialog em /admin/produtos/[id])
- * - KPI cards (StockKpiCards) PRESERVADOS acima da tabela (snapshot Mangos Pay)
- * - `b3-card` wrapping helpbar + toolbar + tabela + pager
- * - Handoff mostra SNAPSHOT por produto (saldo+min+status), Mangos Pay mostra
- *   FEED de movimentações (event-sourced). Mantemos semântica + visual Dublin
- *   (memory `handoff-vs-schema-respect-data-model`).
+ * Duas views, URL-driven via `?view=saldo|historico`:
  *
- * Read-only. Movimentações nascem de:
+ *   - "saldo" (default): SNAPSHOT por produto (saldo + min + status).
+ *     Mental model do lojista — planilha-tipo-contador. Antes era escondido
+ *     em /admin/estoque/relatorio; agora vira a porta de entrada.
+ *
+ *   - "historico": FEED event-sourced de movimentações (era a única view
+ *     anterior). Útil pra auditoria forense: "quem moveu o quê quando?".
+ *
+ * Filtros são por view (snapshot tem chips de status, feed tem chips de
+ * type). Trocar de view limpa o param do outro pra não confundir.
+ *
+ * KPIs em cima são compartilhados (sempre carregados) — saldo atual,
+ * entradas/saídas/ajustes do mês.
+ *
+ * Read-only — movimentações nascem de:
  *   - Backfill SQL 25 (saldo inicial)
  *   - Checkout WhatsApp / PDV (sale)
  *   - Cancelamento/expiração de pedido (return)
- *   - Action `recordStockMovement` via dialog no editor de produto
+ *   - Action `recordStockMovement` via dialog (no editor de produto OU
+ *     no botão "+" inline da tabela snapshot)
  */
 export default async function EstoquePage({ searchParams }: EstoquePageProps) {
-  const {
-    q: rawQ,
-    type: typeFilter,
-    page,
-  } = estoqueSearchSchema.parse(await searchParams);
+  const params = estoqueSearchSchema.parse(await searchParams);
+  const isFeed = params.view === "historico";
 
-  const [{ items, total }, kpis] = await Promise.all([
-    listStockMovements({
-      q: rawQ.trim() || undefined,
-      movementType: typeFilter,
-      page,
-      pageSize: PAGE_SIZE,
-    }),
-    loadStockKpis(),
-  ]);
-
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const hasFilters = rawQ.trim() !== "" || typeFilter !== null;
-  const offset = (page - 1) * PAGE_SIZE;
-  const rangeStart = total === 0 ? 0 : offset + 1;
-  const rangeEnd = Math.min(offset + PAGE_SIZE, total);
-  const rangeLabel =
-    total === 0 ? "0 de 0" : `${rangeStart} – ${rangeEnd} de ${total}`;
-
-  const buildHref = (nextPage: number) => {
-    const usp = new URLSearchParams();
-    if (rawQ.trim()) usp.set("q", rawQ.trim());
-    if (typeFilter) usp.set("type", typeFilter);
-    if (nextPage > 1) usp.set("page", String(nextPage));
-    const qs = usp.toString();
-    return qs ? `?${qs}` : "?";
-  };
+  // KPIs sempre — visão geral fica em cima das duas views.
+  const kpis = await loadStockKpis();
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* H1 + CTAs Dublin v3 (substitui AdminPageHeader) */}
-      <div className="flex items-end justify-between gap-4">
+      {/* H1 + CTAs */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <h1 className="text-[22px] font-bold tracking-[-0.025em] text-ink-1">
           Estoque
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Onda 1.4 (2026-05-24): CTA "Nova entrada (compra)" REMOVIDO
+              da tela de estoque. Founder reportou que confundia ("por que
+              compra na tela de estoque?"). Pra movimentação rápida, agora
+              tem botão "+" inline em cada linha de produto. Compra de
+              fornecedor continua disponível no menu (Gestão → Compras). */}
           <Link
             href="/admin/estoque/contagem"
             className="b3-btn"
@@ -124,74 +139,236 @@ export default async function EstoquePage({ searchParams }: EstoquePageProps) {
             prefetch
             title="Gera relatório A4 imprimível com logo e dados da loja"
           >
-            <span className="hidden sm:inline">Gerar relatório</span>
-            <span className="sm:hidden">Relatório</span>
-          </Link>
-          {/* Onda 2.4 (2026-05-22) — entrada de mercadoria em batch via
-              fluxo de Compras (já existente em /admin/compras/novo). Antes
-              o CTA mandava lojista pra /admin/produtos pra abrir 30 vezes
-              o dialog "Lançar movimentação". Agora 1 compra = N entradas
-              de uma vez, com snapshot de custo unitário. */}
-          <Link
-            href="/admin/compras/novo"
-            className="b3-btn b3-btn--cta"
-            prefetch
-            title="Registra entrada em lote (compra de fornecedor) — N produtos numa única operação"
-          >
-            <PackageIcon size={14} aria-hidden />
-            <span className="hidden sm:inline">Nova entrada (compra)</span>
-            <span className="sm:hidden">Nova entrada</span>
+            <span className="hidden sm:inline">Imprimir / Exportar</span>
+            <span className="sm:hidden">Imprimir</span>
           </Link>
         </div>
       </div>
 
-      {/* KPI cards Mangos Pay — preservados sobre layout BAGY */}
+      {/* KPIs sempre visíveis */}
       <StockKpiCards kpis={kpis} />
 
-      {items.length === 0 && !hasFilters ? (
-        <EmptyState />
+      {/* Tabs primárias — Saldo (default) | Histórico */}
+      <Suspense fallback={<div className="b3-tabs h-12" />}>
+        <EstoqueViewTabs />
+      </Suspense>
+
+      {isFeed ? (
+        <FeedView page={params.page} q={params.q} typeFilter={params.type} />
       ) : (
-        <div className="b3-card overflow-hidden">
-          {/* Helpbar topo */}
-          <div className="b3-helpbar" style={{ borderRadius: "12px 12px 0 0" }}>
-            <span className="b3-helpbar-ico">
-              <InfoIcon className="size-3.5" aria-hidden />
-            </span>
-            <span className="b3-helpbar-text">
-              Cada venda, devolução ou ajuste vira uma linha aqui — histórico
-              completo e auditável.
-            </span>
-          </div>
-
-          {/* Toolbar: busca + tipo + counter */}
-          <Suspense
-            fallback={<div className="bg-bg-app h-14 animate-pulse" />}
-          >
-            <StockToolbar rangeLabel={rangeLabel} />
-          </Suspense>
-
-          {items.length === 0 ? (
-            <NoResults />
-          ) : (
-            <StockMovementsTable movements={items} />
-          )}
-
-          {items.length > 0 ? (
-            <div className="border-t border-line p-3">
-              <Pagination
-                currentPage={page}
-                totalPages={totalPages}
-                buildHref={buildHref}
-              />
-            </div>
-          ) : null}
-        </div>
+        <SnapshotView
+          page={params.page}
+          q={params.q}
+          status={params.status}
+          categoryId={params.categoryId}
+          sort={params.sort ?? "name-asc"}
+        />
       )}
     </div>
   );
 }
 
-function EmptyState() {
+// ============================================================
+// View: SNAPSHOT (default — saldo por produto)
+// ============================================================
+async function SnapshotView({
+  page,
+  q,
+  status,
+  categoryId,
+  sort,
+}: {
+  page: number;
+  q: string;
+  status: StockSnapshotStatus | null;
+  categoryId: string | null;
+  sort: StockSnapshotSort;
+}) {
+  const effectiveStatus: StockSnapshotStatus =
+    status === null ? "all" : status;
+
+  const [{ items, total }, counts, categories] = await Promise.all([
+    loadStockSnapshot({
+      q: q.trim() || undefined,
+      status: effectiveStatus,
+      categoryId,
+      sort,
+      page,
+      pageSize: PAGE_SIZE,
+    }),
+    loadStockSnapshotCounts(),
+    // Sprint flash 2026-05-24 (Bloco 4) — categorias pro Select do toolbar.
+    // Reusa loadCategoriesForPdv (mesmo retorno; o count de produtos a
+    // gente ignora aqui pra não estressar a UI).
+    loadCategoriesForPdv(),
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const hasFilters =
+    q.trim() !== "" || status !== null || categoryId !== null;
+  const offset = (page - 1) * PAGE_SIZE;
+  const rangeStart = total === 0 ? 0 : offset + 1;
+  const rangeEnd = Math.min(offset + PAGE_SIZE, total);
+  const rangeLabel =
+    total === 0
+      ? "0 de 0"
+      : `${rangeStart} – ${rangeEnd} de ${total}`;
+
+  const buildHref = (nextPage: number) => {
+    const usp = new URLSearchParams();
+    if (q.trim()) usp.set("q", q.trim());
+    if (status !== null) usp.set("status", status);
+    if (categoryId) usp.set("categoryId", categoryId);
+    if (sort !== "name-asc") usp.set("sort", sort);
+    if (nextPage > 1) usp.set("page", String(nextPage));
+    const qs = usp.toString();
+    return qs ? `?${qs}` : "?";
+  };
+
+  // Empty state quando loja ainda não tem produto.
+  if (items.length === 0 && !hasFilters) {
+    return <EmptySnapshot />;
+  }
+
+  return (
+    <div className="b3-card overflow-hidden">
+      <div className="b3-helpbar" style={{ borderRadius: "12px 12px 0 0" }}>
+        <span className="b3-helpbar-ico">
+          <InfoIcon className="size-3.5" aria-hidden />
+        </span>
+        <span className="b3-helpbar-text">
+          Saldo atualizado a cada venda, devolução ou ajuste. Use &ldquo;+&rdquo;
+          pra lançar entrada/saída rápida sem sair desta tela.
+        </span>
+      </div>
+      <Suspense fallback={<div className="b3-tabs h-12" />}>
+        <StockSnapshotStatusChips counts={counts} />
+      </Suspense>
+      <Suspense fallback={<div className="b3-toolbar h-14" />}>
+        <StockSnapshotToolbar
+          categories={categories.map((c) => ({ id: c.id, name: c.name }))}
+        />
+      </Suspense>
+      <div className="border-t border-line px-4 py-2 text-[12px] text-ink-4">
+        {rangeLabel}
+      </div>
+      {items.length === 0 ? (
+        <NoResults />
+      ) : (
+        <StockSnapshotTable rows={items} currentSort={sort} />
+      )}
+      {totalPages > 1 ? (
+        <div className="border-t border-line p-3">
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            buildHref={buildHref}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// ============================================================
+// View: FEED (histórico de movimentações — comportamento anterior)
+// ============================================================
+async function FeedView({
+  page,
+  q,
+  typeFilter,
+}: {
+  page: number;
+  q: string;
+  typeFilter: StockMovement["movementType"] | null;
+}) {
+  const { items, total } = await listStockMovements({
+    q: q.trim() || undefined,
+    movementType: typeFilter,
+    page,
+    pageSize: PAGE_SIZE,
+  });
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const hasFilters = q.trim() !== "" || typeFilter !== null;
+  const offset = (page - 1) * PAGE_SIZE;
+  const rangeStart = total === 0 ? 0 : offset + 1;
+  const rangeEnd = Math.min(offset + PAGE_SIZE, total);
+  const rangeLabel =
+    total === 0
+      ? "0 de 0"
+      : `${rangeStart} – ${rangeEnd} de ${total}`;
+
+  const buildHref = (nextPage: number) => {
+    const usp = new URLSearchParams();
+    usp.set("view", "historico");
+    if (q.trim()) usp.set("q", q.trim());
+    if (typeFilter) usp.set("type", typeFilter);
+    if (nextPage > 1) usp.set("page", String(nextPage));
+    return `?${usp.toString()}`;
+  };
+
+  if (items.length === 0 && !hasFilters) {
+    return <EmptyFeed />;
+  }
+
+  return (
+    <div className="b3-card overflow-hidden">
+      <div className="b3-helpbar" style={{ borderRadius: "12px 12px 0 0" }}>
+        <span className="b3-helpbar-ico">
+          <InfoIcon className="size-3.5" aria-hidden />
+        </span>
+        <span className="b3-helpbar-text">
+          Cada venda, devolução ou ajuste vira uma linha aqui — histórico
+          completo e auditável.
+        </span>
+      </div>
+      <Suspense fallback={<div className="bg-bg-app h-14 animate-pulse" />}>
+        <StockToolbar rangeLabel={rangeLabel} />
+      </Suspense>
+      {items.length === 0 ? (
+        <NoResults />
+      ) : (
+        <StockMovementsTable movements={items} />
+      )}
+      {items.length > 0 ? (
+        <div className="border-t border-line p-3">
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            buildHref={buildHref}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function EmptySnapshot() {
+  return (
+    <div className="border-line flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-12">
+      <div className="bg-brand-wash text-brand flex size-12 items-center justify-center rounded-full">
+        <BoxesIcon className="size-6" />
+      </div>
+      <h2 className="text-lg font-semibold text-ink-1">
+        Sem produtos cadastrados ainda
+      </h2>
+      <p className="text-ink-4 max-w-sm text-sm">
+        Cadastre seu primeiro produto pra ver o saldo aqui. Cada venda,
+        compra ou ajuste mantém a contagem atualizada automaticamente.
+      </p>
+      <Link
+        href="/admin/produtos/novo"
+        className="b3-btn b3-btn--cta mt-2"
+        prefetch
+      >
+        Cadastrar produto
+      </Link>
+    </div>
+  );
+}
+
+function EmptyFeed() {
   return (
     <div className="border-line flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-12">
       <div className="bg-brand-wash text-brand flex size-12 items-center justify-center rounded-full">
@@ -213,7 +390,7 @@ function NoResults() {
       <div className="bg-bg-app text-ink-4 flex size-12 items-center justify-center rounded-full">
         <SearchXIcon className="size-6" />
       </div>
-      <h2 className="text-lg font-semibold text-ink-1">Nenhuma movimentação encontrada</h2>
+      <h2 className="text-lg font-semibold text-ink-1">Nada encontrado</h2>
       <p className="text-ink-4 max-w-sm text-sm">
         Confira o filtro ou limpe a busca.
       </p>

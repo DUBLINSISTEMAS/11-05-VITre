@@ -2,6 +2,10 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { loadActiveCashSession } from "@/actions/cash-session/load";
+import {
+  type ChecklistStep,
+  OnboardingChecklist,
+} from "@/components/admin/dashboard/onboarding-checklist";
 import { OpCard } from "@/components/admin/dashboard/op-card";
 import {
   type RecentOrderRow,
@@ -11,7 +15,9 @@ import {
   type SalesSummary,
   SalesSummaryCard,
 } from "@/components/admin/dashboard/sales-summary-card";
+import { StoreLinkCard } from "@/components/admin/dashboard/store-link-card";
 import {
+  bannerTable,
   orderTable,
   productTable,
   receivableTable,
@@ -78,6 +84,9 @@ export default async function AdminHomePage({
     receivableStats,
     lowStockCount,
     yesterdaySales,
+    productCount,
+    bannerCount,
+    totalOrderCount,
   } = await withTenant(store.id, session.user.id, async (tx) => {
     // 5 buckets de status × (count + sum) em 1 SELECT via FILTER
     const salesStats = await tx
@@ -162,6 +171,32 @@ export default async function AdminHomePage({
         sql`${orderTable.storeId} = ${store.id} and ${orderTable.status} in ('confirmed','fulfilled') and date(${orderTable.createdAt}) = current_date - 1`,
       );
 
+    // ---- Sinais de onboarding (3 counts baratos pra detectar loja "fresh") ----
+    // Cada query é um count(*) com filtro indexado em store_id — custo
+    // desprezível mesmo em loja madura.
+    const productCountRow = await tx
+      .select({ value: sql<number>`count(*)::int` })
+      .from(productTable)
+      .where(eq(productTable.storeId, store.id));
+    const productCount = productCountRow[0]?.value ?? 0;
+
+    const bannerCountRow = await tx
+      .select({ value: sql<number>`count(*)::int` })
+      .from(bannerTable)
+      .where(eq(bannerTable.storeId, store.id));
+    const bannerCount = bannerCountRow[0]?.value ?? 0;
+
+    // Considera qualquer venda confirmada/cumprida (storefront ou balcão)
+    // como "loja já vendeu pelo menos uma vez". Orçamento, aguardando
+    // WhatsApp, cancelado e expirado NÃO contam — não são compromisso fechado.
+    const totalOrderCountRow = await tx
+      .select({ value: sql<number>`count(*)::int` })
+      .from(orderTable)
+      .where(
+        sql`${orderTable.storeId} = ${store.id} and ${orderTable.status} in ('confirmed','fulfilled','returned')`,
+      );
+    const totalOrderCount = totalOrderCountRow[0]?.value ?? 0;
+
     return {
       salesStats,
       revenueSeriesRows,
@@ -169,6 +204,9 @@ export default async function AdminHomePage({
       receivableStats,
       lowStockCount,
       yesterdaySales,
+      productCount,
+      bannerCount,
+      totalOrderCount,
     };
   });
 
@@ -208,79 +246,152 @@ export default async function AdminHomePage({
   const overdueSum = rStat?.overdueSum ?? 0;
   const overdueCount = rStat?.overdueCount ?? 0;
 
+  // ---- Onboarding state ----
+  // Lojista é "fresh" quando ainda não cadastrou produto NEM registrou venda
+  // confirmada. Nesses dois casos o checklist substitui os OpCards vazios:
+  // mostrar "Caixa fechado / Sem vendas / Tudo dentro do mínimo" pra quem
+  // acabou de chegar é desencorajador e não orienta. Quando a loja já tem
+  // produto e já vendeu (ou já está rodando), volta o dashboard cheio.
+  const isFreshStore = productCount === 0 || totalOrderCount === 0;
+
+  const onboardingSteps: ChecklistStep[] = [
+    {
+      number: "01",
+      title: "Cadastre seu primeiro produto",
+      description:
+        "Adicione foto, preço e estoque. Com 5+ produtos a vitrine começa a vender.",
+      ctaLabel: "Cadastrar",
+      href: "/admin/produtos/novo",
+      done: productCount > 0,
+    },
+    {
+      number: "02",
+      title: "Suba o logo da sua loja",
+      description:
+        "Aparece no topo da vitrine, no recibo do PDV e no QR code que clientes escaneiam.",
+      ctaLabel: "Subir logo",
+      href: "/admin/aparencia",
+      done: Boolean(store.logoUrl),
+    },
+    {
+      number: "03",
+      title: "Informe endereço e horário",
+      description:
+        "Cliente precisa saber onde e quando você atende — sai no rodapé e na página Sobre.",
+      ctaLabel: "Preencher",
+      href: "/admin/configuracoes",
+      done: Boolean(store.addressCity && store.businessHours),
+    },
+    {
+      number: "04",
+      title: "Suba um banner de destaque",
+      description:
+        "Banner no topo da vitrine chama atenção pra coleção, promoção ou produto novo.",
+      ctaLabel: "Subir banner",
+      href: "/admin/banners",
+      done: bannerCount > 0,
+    },
+    {
+      number: "05",
+      title: "Registre sua primeira venda",
+      description:
+        "Use o PDV pra venda no balcão ou aguarde o cliente fechar pelo WhatsApp.",
+      ctaLabel: "Abrir PDV",
+      href: "/admin/pdv",
+      done: totalOrderCount > 0,
+    },
+  ];
+
   return (
     <div className="b3-page">
       <h1 className="mb-6 text-[22px] font-bold tracking-[-0.025em] text-ink-1">
         Hoje
       </h1>
 
-      {/* 4 cards de operação do dia */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <OpCard
-          label="Caixa"
-          value={
-            cashSession
-              ? formatBRL(cashSession.expectedInCents)
-              : "Caixa fechado"
-          }
-          subInfo={
-            cashSession
-              ? `Abertura ${formatBRL(cashSession.session.openingAmountInCents)} · ${formatDuration(cashSession.session.openedAt)}`
-              : undefined
-          }
-          cta={{
-            label: cashSession ? "Ver caixa" : "Abrir caixa",
-            href: "/admin/pdv/caixa",
-          }}
-        />
-
-        <OpCard
-          label="A receber"
-          value={formatBRL(pendingSum)}
-          subInfo={pendingSum === 0 ? "Nenhum fiado em aberto" : "Total pendente"}
-          subInfoEmphasis={
-            overdueSum > 0
-              ? {
-                  text: `${formatBRL(overdueSum)} vencido${overdueCount > 1 ? "s" : ""}`,
-                  tone: "danger",
-                }
-              : undefined
-          }
-          cta={{
-            label: "Ver fiados",
-            href: "/admin/financeiro/receber",
-          }}
-        />
-
-        <OpCard
-          label="Estoque baixo"
-          value={String(lowStockCount)}
-          subInfo={
-            lowStockCount === 0
-              ? "Tudo dentro do mínimo"
-              : `produto${lowStockCount > 1 ? "s" : ""} no/abaixo do mínimo`
-          }
-          cta={{ label: "Ver lista", href: "/admin/estoque/relatorio" }}
-        />
-
-        <OpCard
-          label="Venda ontem"
-          value={formatBRL(yesterdaySum)}
-          subInfo={
-            yesterdayCount === 0
-              ? "Sem vendas confirmadas"
-              : `${yesterdayCount} venda${yesterdayCount > 1 ? "s" : ""}`
-          }
-        />
+      {/* Link público da loja — sempre no topo, copy + QR + abrir loja a 1 clique. */}
+      <div className="mb-4">
+        <StoreLinkCard storeSlug={store.slug} storeName={store.name} />
       </div>
 
-      <div className="mt-6">
-        <SalesSummaryCard periodo={periodo} series={series} summary={summary} />
-      </div>
+      {isFreshStore ? (
+        <OnboardingChecklist storeName={store.name} steps={onboardingSteps} />
+      ) : (
+        <>
+          {/* 4 cards de operação do dia */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <OpCard
+              label="Caixa"
+              value={
+                cashSession
+                  ? formatBRL(cashSession.expectedInCents)
+                  : "Caixa fechado"
+              }
+              subInfo={
+                cashSession
+                  ? `Abertura ${formatBRL(cashSession.session.openingAmountInCents)} · ${formatDuration(cashSession.session.openedAt)}`
+                  : undefined
+              }
+              cta={{
+                label: cashSession ? "Ver caixa" : "Abrir caixa",
+                href: "/admin/pdv/caixa",
+              }}
+            />
 
-      <div className="mt-4">
-        <RecentOrdersTable orders={recentOrders} />
-      </div>
+            <OpCard
+              label="A receber"
+              value={formatBRL(pendingSum)}
+              subInfo={
+                pendingSum === 0 ? "Nenhum fiado em aberto" : "Total pendente"
+              }
+              subInfoEmphasis={
+                overdueSum > 0
+                  ? {
+                      text: `${formatBRL(overdueSum)} vencido${overdueCount > 1 ? "s" : ""}`,
+                      tone: "danger",
+                    }
+                  : undefined
+              }
+              cta={{
+                label: "Ver fiados",
+                href: "/admin/financeiro/receber",
+              }}
+            />
+
+            <OpCard
+              label="Estoque baixo"
+              value={String(lowStockCount)}
+              subInfo={
+                lowStockCount === 0
+                  ? "Tudo dentro do mínimo"
+                  : `produto${lowStockCount > 1 ? "s" : ""} no/abaixo do mínimo`
+              }
+              cta={{ label: "Ver lista", href: "/admin/estoque/relatorio" }}
+            />
+
+            <OpCard
+              label="Venda ontem"
+              value={formatBRL(yesterdaySum)}
+              subInfo={
+                yesterdayCount === 0
+                  ? "Sem vendas confirmadas"
+                  : `${yesterdayCount} venda${yesterdayCount > 1 ? "s" : ""}`
+              }
+            />
+          </div>
+
+          <div className="mt-6">
+            <SalesSummaryCard
+              periodo={periodo}
+              series={series}
+              summary={summary}
+            />
+          </div>
+
+          <div className="mt-4">
+            <RecentOrdersTable orders={recentOrders} />
+          </div>
+        </>
+      )}
     </div>
   );
 }

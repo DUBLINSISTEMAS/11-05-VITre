@@ -181,11 +181,26 @@ export function OrderReturnDialog({
 
       const tipo = result.returnType === "full" ? "" : "parcial ";
       const fechou = result.orderFullyReturned ? " A venda foi totalmente devolvida." : "";
-      toast.success(
-        result.cashAdjustmentId
-          ? `Devolução ${tipo}registrada. Saída de ${formatBRL(result.refundedInCents)} no caixa.${fechou}`
-          : `Devolução ${tipo}registrada.${fechou}`,
-      );
+      // Sprint flash 2026-05-24 — mensagem honesta sobre fração cash.
+      // Antes mostrava "Saída de R$X no caixa" mesmo quando o sistema
+      // só debitava parte (ou nada) por venda em PIX/cartão. Agora:
+      //   - 100% cash → "Saída de R$X no caixa"
+      //   - parte cash → "Saída de R$Y no caixa. R$Z restante deve ser
+      //                   estornado direto pelo PIX/cartão/maquininha."
+      //   - 0 cash → "Devolução registrada. Estorne PIX/cartão fora."
+      let toastMsg: string;
+      if (result.cashRefundInCents === 0) {
+        toastMsg =
+          result.refundedInCents > 0
+            ? `Devolução ${tipo}registrada. Estorne ${formatBRL(result.refundedInCents)} pelo PIX/cartão fora do sistema.${fechou}`
+            : `Devolução ${tipo}registrada.${fechou}`;
+      } else if (result.cashRefundInCents === result.refundedInCents) {
+        toastMsg = `Devolução ${tipo}registrada. Saída de ${formatBRL(result.cashRefundInCents)} no caixa.${fechou}`;
+      } else {
+        const nonCash = result.refundedInCents - result.cashRefundInCents;
+        toastMsg = `Devolução ${tipo}registrada. Saída de ${formatBRL(result.cashRefundInCents)} no caixa. ${formatBRL(nonCash)} restante deve ser estornado pelo PIX/cartão fora do sistema.${fechou}`;
+      }
+      toast.success(toastMsg);
       reset();
       setOpen(false);
       router.refresh();

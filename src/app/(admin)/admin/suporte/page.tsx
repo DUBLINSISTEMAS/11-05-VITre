@@ -2,7 +2,6 @@ import {
   BookOpenIcon,
   HelpCircleIcon,
   MailIcon,
-  MessageCircleIcon,
   PlayCircleIcon,
 } from "lucide-react";
 
@@ -10,19 +9,25 @@ import { requireSession } from "@/lib/auth-server";
 
 export const dynamic = "force-dynamic";
 
-const SUPPORT_WA = "5599981757512"; // founder WhatsApp
-const SUPPORT_EMAIL = "felipe@mangospay.app";
+const SUPPORT_EMAIL = "suporte@mangospay.app";
 
 /**
- * Suporte — placeholder UI (B.6). Sem backend de ticket. Canais externos:
- * WhatsApp do founder, email, link FAQ futuro.
+ * Suporte — canal de ajuda do lojista.
+ *
+ * Sprint flash 2026-05-24 — régua "funciona ou esconde":
+ * (1) telefone PESSOAL do founder (`5599981757512`) que estava hardcoded
+ *     foi REMOVIDO. Com 50 lojistas, founder vira call-center 24h —
+ *     escalabilidade comercial zero. Trocado por email genérico
+ *     `suporte@mangospay.app`.
+ * (2) Email genérico precisa estar plugado em uma caixa que alguém lê.
+ *     Configurar forward → Anderson hoje, equipe depois.
+ * (3) Card "WhatsApp" foi removido até existir um número Business
+ *     dedicado (não-pessoal). Quando esse canal entrar, descomenta
+ *     o ChannelCard de WhatsApp.
  */
 export default async function SuportePage() {
   await requireSession();
 
-  const waUrl = `https://wa.me/${SUPPORT_WA}?text=${encodeURIComponent(
-    "Olá, sou usuário do Mangos Pay e preciso de ajuda com:",
-  )}`;
   const emailUrl = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Suporte Mangos Pay")}`;
 
   return (
@@ -36,17 +41,8 @@ export default async function SuportePage() {
         </p>
       </div>
 
-      {/* Canais primários */}
+      {/* Canais primários. WhatsApp Business em ativação — só email por agora. */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <ChannelCard
-          icon={MessageCircleIcon}
-          title="WhatsApp"
-          subtitle="Resposta em até 1 dia útil"
-          ctaLabel="Abrir conversa"
-          href={waUrl}
-          target="_blank"
-          tone="ok"
-        />
         <ChannelCard
           icon={MailIcon}
           title="Email"
@@ -54,6 +50,26 @@ export default async function SuportePage() {
           ctaLabel="Enviar email"
           href={emailUrl}
         />
+        <div className="b3-card b3-card-pad flex items-start gap-3 opacity-70">
+          <div
+            className="grid h-10 w-10 place-items-center rounded-full"
+            style={{
+              background: "var(--bg-app)",
+              color: "var(--ink-4)",
+            }}
+          >
+            <MailIcon size={18} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-ink-1 text-[14px] font-semibold">
+              WhatsApp do suporte
+            </div>
+            <div className="text-ink-3 mt-0.5 text-[12.5px]">
+              Em ativação. Por enquanto use email — respondemos em até 1 dia
+              útil.
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Quick tour */}
@@ -165,7 +181,7 @@ function ChannelCard({
   target,
   tone,
 }: {
-  icon: typeof MessageCircleIcon;
+  icon: typeof MailIcon;
   title: string;
   subtitle: string;
   ctaLabel: string;

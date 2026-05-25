@@ -97,6 +97,11 @@ const checks = [
   { id: "66",  desc: "store.require_open_cash_session column (Sprint 3.5)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='store' AND column_name='require_open_cash_session'" },
   { id: "67",  desc: "lead_source enum aceita 'contact_form' (Sprint 5.2)", q: "SELECT 1 FROM pg_enum WHERE enumtypid=(SELECT oid FROM pg_type WHERE typname='lead_source') AND enumlabel='contact_form'" },
   { id: "68",  desc: "customer_group.default_pricing_tier + enum customer_pricing_tier (Sprint 5.4)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='customer_group' AND column_name='default_pricing_tier'" },
+  // Sprint flash 2026-05-24 — SQLs 69-70 (correção de defaults + parcelamento)
+  { id: "69a", desc: "product.track_stock default true (sprint flash 2026-05-24)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='product' AND column_name='track_stock' AND column_default='true'" },
+  { id: "69b", desc: "product_variant.track_stock default true (sprint flash 2026-05-24)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='product_variant' AND column_name='track_stock' AND column_default='true'" },
+  { id: "70a", desc: "order_payment.installments column (sprint flash 2026-05-24)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='order_payment' AND column_name='installments'" },
+  { id: "70b", desc: "order_payment installments range + credit_only CHECKs", q: "SELECT 1 FROM pg_constraint WHERE conname IN ('order_payment_installments_range','order_payment_installments_credit_only') HAVING count(*) = 2" },
 ];
 
 const url = process.env.DIRECT_URL;

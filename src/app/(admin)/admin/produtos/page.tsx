@@ -31,6 +31,7 @@ import {
   categoryTable,
   productImageTable,
   productTable,
+  productVariantTable,
 } from "@/db/schema";
 import { requireSession } from "@/lib/auth-server";
 import {
@@ -45,7 +46,12 @@ import { withTenant } from "@/lib/tenant";
 
 const PAGE_SIZE = 20;
 
-const STATUS_VALUES = ["active", "inactive", "draft", "no-stock"] as const;
+// Onda 1.4 (2026-05-24): adicionado bucket "no-tracking" pra produtos
+// cadastrados sem `trackStock`. Antes, esses produtos ficavam invisíveis
+// nas duas pontas (não aparecem em "Sem estoque" porque o filtro exigia
+// trackStock=true, e não tinham aba dedicada). Lojista que cadastrou 50
+// SKUs sem ligar o switch perdia controle silenciosamente.
+const STATUS_VALUES = ["active", "inactive", "draft", "no-stock", "no-tracking"] as const;
 type StatusFilter = (typeof STATUS_VALUES)[number];
 
 const produtosSearchSchema = z.object({
@@ -128,6 +134,13 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
         ...NOT_DRAFT,
       ];
     }
+    if (s === "no-tracking") {
+      // Onda 1.4 — produtos sem controle de estoque (trackStock=false).
+      // Visibilidade explícita: lojista precisa saber quais produtos NÃO
+      // entram em relatório de estoque pra decidir se foi consciente
+      // (serviço/encomenda) ou esquecimento de cadastro.
+      return [eq(productTable.trackStock, false), ...NOT_DRAFT];
+    }
     return NOT_DRAFT;
   };
 
@@ -162,6 +175,7 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
     total,
     categories,
     coversByProduct,
+    variantCountByProduct,
     tabCounts,
   } = await withTenant(store.id, session.user.id, async (tx) => {
     // SÉRIE dentro do tx — `pg` deprecou queries paralelas no mesmo client.
@@ -197,6 +211,9 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
         inactive: sql<number>`count(*) filter (where ${productTable.isActive} = false and ${notDraftCond})::int`,
         draft: sql<number>`count(*) filter (where ${draftCond})::int`,
         noStock: sql<number>`count(*) filter (where ${productTable.trackStock} = true and ${productTable.stockQuantity} = 0 and ${notDraftCond})::int`,
+        // Onda 1.4 — bucket "Sem controle" (trackStock=false). Ortogonal
+        // a "no-stock" (que exige trackStock=true). Ambos podem coexistir.
+        noTracking: sql<number>`count(*) filter (where ${productTable.trackStock} = false and ${notDraftCond})::int`,
         promo: sql<number>`count(*) filter (where ${promoActiveCond} and ${notDraftCond})::int`,
       })
       .from(productTable)
@@ -208,6 +225,7 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
       inactive: 0,
       draft: 0,
       noStock: 0,
+      noTracking: 0,
       promo: 0,
     };
 
@@ -223,7 +241,9 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
             ? agg.draft
             : statusFilter === "no-stock"
               ? agg.noStock
-              : agg.all;
+              : statusFilter === "no-tracking"
+                ? agg.noTracking
+                : agg.all;
 
     const categories = await tx.query.categoryTable.findMany({
       where: eq(categoryTable.storeId, store.id),
@@ -237,10 +257,17 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
       inactive: agg.inactive,
       draft: agg.draft,
       "no-stock": agg.noStock,
+      "no-tracking": agg.noTracking,
       promo: agg.promo,
     };
 
     let coversByProduct = new Map<string, string>();
+    // Onda 1.4 (2026-05-24) — count de variantes por produto pra o botão
+    // "+" inline na coluna ESTOQUE. Botão é desabilitado quando o produto
+    // tem variantes (lojista precisa abrir produto pra escolher qual
+    // variante movimentar). Query separada (uma só, agrupada) em vez de
+    // payload pesado com todas as variantes.
+    let variantCountByProduct = new Map<string, number>();
     if (products.length > 0) {
       const productIds = products.map((p) => p.id);
       const covers = await tx
@@ -257,6 +284,23 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
           ),
         );
       coversByProduct = new Map(covers.map((c) => [c.productId, c.url]));
+
+      const variantCounts = await tx
+        .select({
+          productId: productVariantTable.productId,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(productVariantTable)
+        .where(
+          and(
+            eq(productVariantTable.storeId, store.id),
+            inArray(productVariantTable.productId, productIds),
+          ),
+        )
+        .groupBy(productVariantTable.productId);
+      variantCountByProduct = new Map(
+        variantCounts.map((v) => [v.productId, v.count]),
+      );
     }
 
     return {
@@ -264,6 +308,7 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
       total,
       categories,
       coversByProduct,
+      variantCountByProduct,
       tabCounts,
     };
   });
@@ -306,6 +351,7 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
     stockQuantity: p.stockQuantity,
     cover: coversByProduct.get(p.id) ?? null,
     categoryName: p.categoryId ? categoriesById.get(p.categoryId) ?? null : null,
+    variantCount: variantCountByProduct.get(p.id) ?? 0,
   }));
 
   const rangeStart = total === 0 ? 0 : offset + 1;

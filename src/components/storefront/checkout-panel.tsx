@@ -629,14 +629,18 @@ function CartItemRow({
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="text-muted-foreground font-mono text-[9.5px] uppercase tracking-[0.5px]">
-              {item.productId.slice(0, 8)}
-            </p>
+            {/* Sprint flash 2026-05-24 — removido kicker UUID truncado
+                (`productId.slice(0,8)`) que aparecia como "5fa3b8c1"
+                acima do nome do produto. Cliente final via aquilo
+                como código aleatório de golpe. Quando houver variante,
+                mostramos cor/tamanho como kicker. */}
+            {item.variantName ? (
+              <p className="text-muted-foreground text-[10.5px] uppercase tracking-[0.5px]">
+                {item.variantName}
+              </p>
+            ) : null}
             <p className="text-foreground mt-0.5 line-clamp-2 text-[12.5px] font-medium leading-[1.25]">
               {item.productName}
-            </p>
-            <p className="text-muted-foreground mt-0.5 text-[10.5px]">
-              Entrega, retirada e pagamento são combinados pelo WhatsApp.
             </p>
           </div>
           <button

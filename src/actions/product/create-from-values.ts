@@ -67,8 +67,15 @@ export async function createProductFromValues(
         client: tx,
       });
 
+      // Onda 1.4 Passo 2 (2026-05-24): condição alinhada com update.ts e
+      // loadStockSnapshot. Produto-base controla saldo SE não há variante
+      // rastreada. Antes era `variants.length === 0` — produto com variante
+      // não rastreada caía em limbo (ver comentário extenso em update.ts).
+      const hasTrackedVariants = data.variants.some(
+        (v) => v.stockQuantity !== null,
+      );
       const productInitialStock =
-        data.variants.length === 0 && data.trackStock
+        !hasTrackedVariants && data.trackStock
           ? (data.stockQuantity ?? 0)
           : 0;
 
@@ -118,13 +125,15 @@ export async function createProductFromValues(
       if (!created) return null;
 
       if (productInitialStock > 0) {
+        // Onda 1.4 Passo 2 (2026-05-24): reference_type/id omitidos =
+        // ambos NULL. Satisfaz CHECK stock_movement_reference_consistency
+        // (SQL 22). Antes passávamos "manual" sem id e a tx abortava.
         await tx.insert(stockMovementTable).values({
           storeId: store.id,
           productId: created.id,
           variantId: null,
           movementType: "initial",
           quantityDelta: productInitialStock,
-          referenceType: "manual",
           notes: "Saldo inicial cadastrado no produto.",
           createdBy: userId,
         });
@@ -160,7 +169,6 @@ export async function createProductFromValues(
             variantId: variant.id,
             movementType: "initial" as const,
             quantityDelta: initial,
-            referenceType: "manual",
             notes: "Saldo inicial cadastrado na variante.",
             createdBy: userId,
           }];

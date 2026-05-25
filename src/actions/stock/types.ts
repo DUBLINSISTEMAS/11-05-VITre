@@ -54,3 +54,75 @@ export interface CountableInventoryRow {
   internalCode: string | null;
   gtin: string | null;
 }
+
+/**
+ * Onda 1.4 (2026-05-24) — snapshot de saldo por produto pra aba primária
+ * em /admin/estoque. Read-only. Diferente de `CountableInventoryRow` (que é
+ * uma linha por entidade rastreada incluindo variantes), aqui cada produto
+ * vira UMA linha — variantes ficam num `variantBreakdown` resumido. O
+ * lojista quer ver a foto-do-dia da loja, não 480 linhas de variação.
+ */
+export interface StockSnapshotRow {
+  productId: string;
+  productName: string;
+  productSlug: string;
+  cover: string | null;
+  categoryName: string | null;
+  trackStock: boolean;
+  /**
+   * Saldo do produto-base ou soma das variantes rastreadas. Null quando
+   * `trackStock=false` (sem controle) — UI mostra badge "Sem controle".
+   */
+  stockQuantity: number | null;
+  minStockQuantity: number | null;
+  unit: string;
+  variantCount: number;
+  /** Mostrado em accordion no row quando expandido. Vazio quando sem variantes. */
+  variantBreakdown: Array<{
+    id: string;
+    name: string;
+    stockQuantity: number | null;
+    trackStock: boolean;
+  }>;
+  basePriceInCents: number;
+  costPriceInCents: number | null;
+  isActive: boolean;
+}
+
+export type StockSnapshotStatus =
+  | "all"
+  | "with-stock"
+  | "zero"
+  | "low"
+  | "no-tracking";
+
+/**
+ * Chave de ordenação clicável nos cabeçalhos da snapshot.
+ * Sprint flash 2026-05-24 — Bloco 4 da master list de correção:
+ * antes era hardcoded `productName ASC` em load.ts. Lojista vinha pra
+ * tela de estoque querendo "produtos com menor saldo primeiro" e tinha
+ * que ir pro Excel — bug típico de tabela de gestão sem sort.
+ */
+export type StockSnapshotSort =
+  | "name-asc"
+  | "name-desc"
+  | "stock-asc"
+  | "stock-desc"
+  | "min-asc"
+  | "min-desc";
+
+export interface LoadStockSnapshotParams {
+  q?: string;
+  status?: StockSnapshotStatus;
+  /** Filtra produtos por categoria. Null/omitido = todas. Sprint flash 2026-05-24. */
+  categoryId?: string | null;
+  /** Ordenação. Default `name-asc`. Sprint flash 2026-05-24. */
+  sort?: StockSnapshotSort;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface LoadStockSnapshotResult {
+  items: StockSnapshotRow[];
+  total: number;
+}

@@ -66,8 +66,17 @@ export function NewProductForm({
         basePriceInCents: 0,
         promoPriceInCents: null,
         categoryId: null,
-        trackStock: false,
-        stockQuantity: null,
+        // Onda 1.4 (2026-05-24): default LIGADO. ICP é varejo físico
+        // (joia, semijoia, roupa, perfumaria) — controlar estoque é o
+        // caso comum. Lojista de serviço/encomenda desmarca conscientemente.
+        // Antes o default OFF gerava "vendedora cadastra 50 SKUs, todos
+        // sem controle de estoque" (bug histórico documentado neste
+        // próprio arquivo) — agora corrigido na raiz.
+        trackStock: true,
+        // stockQuantity:0 satisfaz STOCK_REQUIRED_WHEN_TRACKED do Zod
+        // (productFormSchema refine) — lojista digita a quantidade real
+        // na hora do cadastro.
+        stockQuantity: 0,
         allowOversell: false,
         installmentsOverride: null,
         cashDiscountOverrideBps: null,

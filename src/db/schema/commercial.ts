@@ -23,6 +23,7 @@ import {
   index,
   integer,
   pgTable,
+  smallint,
   text,
   timestamp,
   unique,
@@ -77,6 +78,13 @@ export const orderPaymentTable = pgTable(
      * cash_received deve ser NULL.
      */
     cashReceivedInCents: integer("cash_received_in_cents"),
+    /**
+     * Número de parcelas (cartão de crédito). Default 1 = à vista.
+     * Só > 1 quando method='credit'. Range 1..24 (CHECK no SQL 70).
+     * Mangos Pay NÃO calcula juros — apenas registra a escolha do lojista.
+     * A maquininha do lojista que cobra a taxa do cartão.
+     */
+    installments: smallint("installments").notNull().default(1),
     /** Notas livres — ex: "últimos 4 dígitos cartão 1234", "comprovante PIX E2E xyz". */
     notes: text("notes"),
 

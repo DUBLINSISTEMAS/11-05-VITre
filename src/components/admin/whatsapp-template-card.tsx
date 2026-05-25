@@ -33,7 +33,9 @@ const PLACEHOLDERS: Array<{ token: string; label: string }> = [
   { token: "{cliente}", label: "nome do cliente" },
   { token: "{loja}", label: "nome da loja" },
   { token: "{itens}", label: "lista de produtos" },
-  { token: "{total}", label: "total em R$" },
+  { token: "{subtotal}", label: "subtotal antes do cupom" },
+  { token: "{desconto}", label: "linha do desconto (cupom)" },
+  { token: "{total}", label: "total final em R$" },
   { token: "{codigo}", label: "código do pedido" },
   { token: "{link}", label: "link do pedido" },
   { token: "{observacoes}", label: "obs do cliente" },
@@ -78,7 +80,12 @@ export function WhatsAppTemplateCard({
         priceInCents: 7990,
       },
     ],
-    totalInCents: 34970,
+    // Total final (pós-cupom MAIO10 de 10% no exemplo) + subtotal/desconto
+    // pra preview mostrar como fica o fluxo com cupom. Linha "💸 Desconto"
+    // é auto-inserida acima do total em templates legados.
+    totalInCents: 31473,
+    subtotalInCents: 34970,
+    discountInCents: 3497,
     shortCode: "A7K2",
     publicUrl: "https://mangospay.app/p/exemplo",
     customerNotes: "Retirar no fim da tarde.",

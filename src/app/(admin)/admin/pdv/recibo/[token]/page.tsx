@@ -45,6 +45,22 @@ const PAYMENT_LABELS: Record<string, string> = {
   other: "Outro",
 };
 
+/**
+ * Monta label exibido no recibo. Cartão crédito com parcelas vira
+ * "Crédito 3x"; demais formas (sem parcelas significativas) mostram
+ * só o nome.
+ */
+function formatPaymentLabel(p: {
+  method: string;
+  installments: number;
+}): string {
+  const base = PAYMENT_LABELS[p.method] ?? p.method;
+  if (p.method === "credit" && p.installments > 1) {
+    return `${base} ${p.installments}x`;
+  }
+  return base;
+}
+
 export default async function ReciboBalcaoPage({
   params,
   searchParams,
@@ -86,6 +102,7 @@ export default async function ReciboBalcaoPage({
         method: orderPaymentTable.method,
         amountInCents: orderPaymentTable.amountInCents,
         cashReceivedInCents: orderPaymentTable.cashReceivedInCents,
+        installments: orderPaymentTable.installments,
       })
       .from(orderPaymentTable)
       .where(
@@ -137,6 +154,7 @@ export default async function ReciboBalcaoPage({
     method: string;
     amountInCents: number;
     cashReceivedInCents: number | null;
+    installments: number;
   };
   const paymentLines: ReceiptPaymentLine[] =
     payments.length > 0
@@ -148,6 +166,7 @@ export default async function ReciboBalcaoPage({
               method: order.paymentMethod,
               amountInCents: order.totalInCents,
               cashReceivedInCents: order.cashReceivedInCents,
+              installments: 1,
             },
           ]
         : [];
@@ -348,8 +367,7 @@ export default async function ReciboBalcaoPage({
                 </span>
                 {!hasMultiplePayments ? (
                   <span className="font-medium">
-                    {PAYMENT_LABELS[paymentLines[0]!.method] ??
-                      paymentLines[0]!.method}
+                    {formatPaymentLabel(paymentLines[0]!)}
                   </span>
                 ) : null}
               </div>
@@ -357,7 +375,7 @@ export default async function ReciboBalcaoPage({
                 ? paymentLines.map((p) => (
                     <div key={p.id} className="flex justify-between">
                       <span className="text-black/70 pl-2">
-                        · {PAYMENT_LABELS[p.method] ?? p.method}
+                        · {formatPaymentLabel(p)}
                       </span>
                       <span className="font-mono tabular-nums">
                         {formatBRL(p.amountInCents)}

@@ -17,6 +17,11 @@ const TABS = [
   { kind: "status", value: "draft", label: "Rascunhos", countKey: "draft" },
   { kind: "status", value: "inactive", label: "Despublicados", countKey: "inactive" },
   { kind: "status", value: "no-stock", label: "Sem estoque", countKey: "no-stock" },
+  // Onda 1.4 (2026-05-24): aba "Sem controle" — produtos com trackStock=false.
+  // Diferente de "Sem estoque" (que exige trackStock=true + qty=0). Lojista
+  // vê aqui o que NÃO entra em relatório de estoque pra revisar decisão
+  // consciente (serviço/encomenda) vs esquecimento de cadastro.
+  { kind: "status", value: "no-tracking", label: "Sem controle", countKey: "no-tracking" },
 ] as const;
 
 export interface ProductsStatusTabsCounts {
@@ -25,6 +30,7 @@ export interface ProductsStatusTabsCounts {
   inactive: number;
   draft: number;
   "no-stock": number;
+  "no-tracking": number;
   promo: number;
 }
 

@@ -8,6 +8,7 @@ import {
   cashAdjustmentTable,
   type CashSession,
   cashSessionTable,
+  orderPaymentTable,
   orderTable,
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
@@ -169,16 +170,33 @@ type AnyTx = Parameters<
  * 4 dos 6 tipos do enum). Defesa contra "quebra de caixa fantasma":
  * `other_in` de recebimento de fiado em dinheiro agora soma; PIX não
  * entra (corrigido em receivable/record-payment.ts).
+ *
+ * Sprint flash 2026-05-24: cashSales agora vem de SUM(order_payment.amount_in_cents)
+ * com JOIN, em vez do campo legado `order.totalInCents`+`paymentMethod='cash'`.
+ * Antes, venda multipayment (cash+pix) tinha `paymentMethod='cash'` (primeira
+ * linha venceu) e o total INTEIRO entrava como dinheiro — Z inflado.
+ * Agora soma só as linhas de pagamento com `method='cash'` de cada venda.
+ * Count de vendas vai numa query separada porque é COUNT DISTINCT order.
  */
 async function computeSummary(
   tx: AnyTx,
   s: CashSession,
 ): Promise<CashSessionSummary> {
-  const [salesAgg] = await tx
+  const [cashAgg] = await tx
     .select({
-      totalCash: sql<string | null>`SUM(CASE WHEN ${orderTable.paymentMethod} = 'cash' THEN ${orderTable.totalInCents} ELSE 0 END)`,
-      count: sql<string>`COUNT(*)`,
+      totalCash: sql<string | null>`SUM(${orderPaymentTable.amountInCents})`,
     })
+    .from(orderPaymentTable)
+    .innerJoin(orderTable, eq(orderPaymentTable.orderId, orderTable.id))
+    .where(
+      and(
+        eq(orderTable.cashSessionId, s.id),
+        eq(orderTable.channel, "balcao"),
+        eq(orderPaymentTable.method, "cash"),
+      ),
+    );
+  const [countAgg] = await tx
+    .select({ count: sql<string>`COUNT(*)` })
     .from(orderTable)
     .where(
       and(
@@ -186,8 +204,8 @@ async function computeSummary(
         eq(orderTable.channel, "balcao"),
       ),
     );
-  const cashSalesInCents = Number(salesAgg?.totalCash ?? 0);
-  const saleCount = Number(salesAgg?.count ?? 0);
+  const cashSalesInCents = Number(cashAgg?.totalCash ?? 0);
+  const saleCount = Number(countAgg?.count ?? 0);
 
   const [adjAgg] = await tx
     .select({

@@ -40,13 +40,28 @@ export async function generateMetadata({
 
   const ogImage = product.images[0]?.url;
 
+  // Sprint flash 2026-05-24 — adiciona width/height/type/alt no OG image
+  // pra WhatsApp/Facebook conseguirem renderizar preview rico (antes
+  // mandávamos só url, e o scraper do WhatsApp ficava sem preview ou
+  // cortava a foto). Imagens do storefront já são processadas pra 800×800
+  // WebP (sharp em upload — convenção #5 do CLAUDE.md).
   return {
     title: product.name,
     description,
     openGraph: {
       title: product.name,
       description,
-      images: ogImage ? [{ url: ogImage }] : undefined,
+      images: ogImage
+        ? [
+            {
+              url: ogImage,
+              width: 800,
+              height: 800,
+              type: "image/webp",
+              alt: product.name,
+            },
+          ]
+        : undefined,
       type: "website",
     },
   };

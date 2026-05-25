@@ -52,6 +52,12 @@ export async function generateMetadata({
     icons: {
       icon: { url: "/logos/favicon.svg", type: "image/svg+xml" },
     },
+    // Sprint flash 2026-05-24 — manifest dinâmico por loja (route handler
+    // em manifest.webmanifest/route.ts). Antes o storefront herdava o
+    // manifest estático do admin, então "Adicionar à tela inicial" no
+    // celular do cliente abria o LOGIN do admin. Agora abre a HOME da
+    // loja com ícone e cor da loja.
+    manifest: `/${storeSlug}/manifest.webmanifest`,
   };
 }
 

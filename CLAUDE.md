@@ -167,7 +167,7 @@ Princípio do sistema, não feature isolada. Toda tela do Grupo 3 (Gestão) tem 
 
 **Contexto da decisão**: Fase 1.7 (deploy técnico) encerrada em 2026-05-21 com deploy Vercel feito mas smoke real descartado — Anderson decidiu terminar o sistema antes de expor a lojista real, evitando que o primeiro cliente entre via seed que viraria dívida de produto. Detalhes em `docs/sessoes/2026-05-21-encerramento-fase-1.7.md`.
 
-Estado de partida: 58/58 SQLs em prod, 491/491 testes verdes, `tsc` limpo, anon bloqueado em 10/10 tabelas, deploy Vercel em produção (sem tráfego real ainda).
+Estado de partida (atualizado 2026-05-24): 70 SQLs em prod, 533/533 testes verdes (+ 39 skipped que rodam só com `RUN_INTEGRATION=1`), `tsc` limpo, anon bloqueado em 10/10 tabelas, deploy Vercel em produção (sem tráfego real ainda).
 
 ### Critério de "pronto" (5 blocos — ordem importa, não pular pra frente)
 
@@ -185,7 +185,7 @@ Estado de partida: 58/58 SQLs em prod, 491/491 testes verdes, `tsc` limpo, anon 
 - [x] Cenários **INSERT cross-tenant** (WITH CHECK ou FK rejeita) em 5 tabelas (product, customer, supplier, cash_session, lead) — descobriu e fechou buraco em `lead_anon_insert` (SQL 58)
 - [x] Cenários **UPDATE cross-tenant** (USING bloqueia, rowCount=0) nas mesmas 5 tabelas
 - [x] Gate pré-merge documentado (ver "Convenção #10" abaixo). Job CI dedicado com DB ephemeral defer pra Fase 5 (custo: ~meio dia + manutenção do schema do test DB)
-- [x] Auditoria curta: `npm test` 491/491 + `tsc --noEmit` zero warning + `RUN_INTEGRATION=1 npm run test:integration` 39/39
+- [x] Auditoria curta: `npm test` 533/533 + `tsc --noEmit` zero warning + `RUN_INTEGRATION=1 npm run test:integration` 39/39
 
 **Bloco 3 — Signup self-service (substitui seed manual)**
 - [ ] Tela `/cadastro` cria usuário Better Auth + loja em transação atômica
@@ -213,10 +213,23 @@ Estado de partida: 58/58 SQLs em prod, 491/491 testes verdes, `tsc` limpo, anon 
 - Bloco 1 e 2 são bloqueantes — sem eles, não tem multi-tenant. Não começar Bloco 3 antes
 - Sem ADR novo dentro da Fase (regra meta-1). Decisão pontual = commit com mensagem clara
 - Pendências carregadas da Fase 1.7 (rever antes do primeiro lojista real entrar):
-  - `vercel.json` não tem `regions: ["gru1"]` declarado — confirmar se foi setado no painel Vercel
-  - HMAC sigs dos crons em `vercel.json` ainda são placeholders — rodar `scripts/sign-cron-urls.ts` e substituir
+  - ~~`vercel.json` não tem `regions: ["gru1"]` declarado~~ — verificado 2026-05-24: já está em `vercel.json:3`
+  - ~~HMAC sigs dos crons em `vercel.json` ainda são placeholders~~ — verificado 2026-05-24: sigs reais (256-bit hex) já estão lá
   - Smoke test prod (storefront / WhatsApp / câmera / PDV) deferido pro setup do primeiro lojista real
   - Lighthouse mobile ≥ 90 deferido pelo mesmo motivo
+
+### Sprint flash 2026-05-24 (auditoria pós-conselho-5-agentes)
+
+Anderson fez dogfooding e atribuiu nota 4/10. 5 agentes Explore varreram o admin; conselho identificou: motor sólido, casca quebrava régua "funciona-ou-esconde" em 3 pontos visíveis, parcelamento de cartão (P0 BR) faltando, bug status confundindo. Executados em ~3h:
+
+- [x] Esconder do menu: `/admin/assinatura` (Stripe Fase 3), `/admin/atributos` (schema produto sem vínculo), "Estoque baixo" em Gestão (duplicava `/admin/estoque`) — `nav-items.ts`
+- [x] Bug status: venda balcão nascia `'fulfilled'`, foi pra `'confirmed'` — lojista marca cumprida quando entrega via botão existente. `create-balcao-sale.ts:1086` + sentinela atualizada
+- [x] `window.confirm()` do orçamento → AlertDialog shadcn — UX consistente com resto do admin
+- [x] `trackStock` default `true` (era `false`) + migration SQL 69 retroativa — bug do "produto somindo de /admin/estoque" eliminado
+- [x] **Parcelamento de cartão ponta-a-ponta**: coluna `order_payment.installments` (SQL 70) + Zod validação ("só credit pode >1") + dropdown 1-12x no PDV + persist + display "Crédito 3x" no recibo. Mangos Pay registra escolha, NÃO calcula juros (maquininha do lojista cobra a taxa)
+- [x] Sync deste documento
+
+Régua aplicada: **feature na UI tem que entregar fluxo comum, senão esconde**. Equipe, Atributos, Assinatura e Estoque-baixo escondidos por isso. Rotas seguem vivas por URL pra reativação futura sem refator.
 
 ---
 

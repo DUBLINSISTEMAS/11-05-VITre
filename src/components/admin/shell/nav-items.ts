@@ -1,7 +1,6 @@
 // Estrutura de navegação do admin — Início + 4 grupos colapsáveis (accordion).
 // soon:true → renderizado como disabled com badge "em breve" pelo sidebar-content.
 import {
-  AlertTriangleIcon,
   ArrowLeftRightIcon,
   BarChart2Icon,
   BookOpenIcon,
@@ -15,19 +14,16 @@ import {
   LayoutDashboardIcon,
   LayoutGridIcon,
   LifeBuoyIcon,
-  ListFilterIcon,
   type LucideIcon,
   PackageIcon,
   PaletteIcon,
   ReceiptIcon,
-  ReceiptTextIcon,
   ShoppingCartIcon,
   StoreIcon,
   TagIcon,
   TicketPercentIcon,
   TrendingUpIcon,
   TruckIcon,
-  UserCogIcon,
   UsersIcon,
   UsersRoundIcon,
   WalletIcon,
@@ -83,7 +79,11 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
     items: [
       { k: "vendas",   label: "Vendas",                  icon: ReceiptIcon,        href: "/admin/pedidos"               },
       { k: "caixa",    label: "Caixa do dia",            icon: WalletIcon,         href: "/admin/pdv/caixa"             },
-      { k: "estoque",  label: "Movimentação de estoque", icon: ArrowLeftRightIcon, href: "/admin/estoque",   exact: true },
+      // Onda 1.4 (2026-05-24) — label simplificado de "Movimentação de
+      // estoque" pra "Estoque" só. Lojista procura "estoque", não
+      // "movimentação". A tela /admin/estoque agora tem 2 views (saldo +
+      // histórico de movimentações) então o label antigo não cabe.
+      { k: "estoque",  label: "Estoque",                 icon: ArrowLeftRightIcon, href: "/admin/estoque",   exact: true },
       { k: "receber",  label: "A receber",               icon: ClockIcon,          href: "/admin/financeiro/receber"    },
       { k: "contatos", label: "Recados do site",         icon: InboxIcon,          href: "/admin/contatos"              },
     ],
@@ -107,7 +107,11 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
     icon: TrendingUpIcon,
     items: [
       { k: "relatorios",    label: "Relatórios",     icon: BarChart2Icon,     href: "/admin/relatorios"        },
-      { k: "estoque-baixo", label: "Estoque baixo",  icon: AlertTriangleIcon, href: "/admin/estoque/relatorio" },
+      // "Estoque baixo" removido do menu em 2026-05-24 — duplicava /admin/estoque.
+      // Acesso à lista de "para repor" segue por: (a) card do dashboard, (b) chip
+      // "Para repor" dentro de /admin/estoque. Consolidação completa em 4 abas
+      // (Saldo / Movimentações / Alertas / Relatório) entra na Onda 1.4.
+      // { k: "estoque-baixo", label: "Estoque baixo",  icon: AlertTriangleIcon, href: "/admin/estoque/relatorio" },
       { k: "compras",       label: "Compras",        icon: ShoppingCartIcon,  href: "/admin/compras"           },
       { k: "custos",        label: "Custo & margem", icon: CalculatorIcon,    href: "/admin/produtos/custos"   },
     ],
@@ -120,12 +124,31 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
       { k: "aparencia",  label: "Aparência",           icon: PaletteIcon,       href: "/admin/aparencia"        },
       { k: "banners",    label: "Banners",             icon: ImageIcon,         href: "/admin/banners"          },
       { k: "vitrines",   label: "Vitrines",            icon: LayoutGridIcon,    href: "/admin/colecoes"         },
-      { k: "filtros",    label: "Filtros da loja",     icon: ListFilterIcon,    href: "/admin/atributos"        },
+      // "Filtros da loja" escondido do menu em 2026-05-24 — feature GHOST:
+      // CRUD de atributo funciona no admin mas o produto NÃO tem campo
+      // `attributes` no schema (comentário em tab-loja-online.tsx:6-8 confirma
+      // "trabalho futuro") + storefront não tem join product↔attribute. Lojista
+      // cria filtro que nunca aparece na loja online → quebra "funciona-ou-esconde".
+      // Rota /admin/atributos segue viva por URL. Volta ao menu quando o
+      // schema do produto + integração storefront estiverem prontos (Onda 2.3+).
+      // { k: "filtros",    label: "Filtros da loja",     icon: ListFilterIcon,    href: "/admin/atributos"        },
       { k: "cupons",     label: "Códigos de desconto", icon: TicketPercentIcon, href: "/admin/promocoes/cupons" },
       { k: "pagamento",  label: "Formas de pagamento", icon: CreditCardIcon,    href: "/admin/pagamento"        },
-      { k: "equipe",     label: "Equipe",              icon: UserCogIcon,       href: "/admin/equipe"           },
+      // "Equipe" escondida do menu em 2026-05-24 (Onda 1.2 do plano 4 ondas).
+      // Motivo: storeMembership existe no schema mas getCurrentStore filtra
+      // ownerId=userId em store-context.ts:26 — membros não-owner não entram
+      // no admin. Feature visível na UI tem que entregar ponta-a-ponta no
+      // fluxo comum (régua "funciona-ou-esconde"). Rota /admin/equipe segue
+      // viva por URL direto (owner consegue acessar pra futuro CRUD), mas
+      // não promete na navegação. Volta ao menu na Onda 5+ quando RBAC real.
+      // { k: "equipe",     label: "Equipe",              icon: UserCogIcon,       href: "/admin/equipe"           },
       { k: "dados-loja", label: "Dados da loja",       icon: Building2Icon,     href: "/admin/configuracoes"    },
-      { k: "assinatura", label: "Plano e assinatura",  icon: ReceiptTextIcon,   href: "/admin/assinatura"       },
+      // "Plano e assinatura" escondido do menu em 2026-05-24 — Fase 3 ainda
+      // não chegou (Stripe não integrado). UI atual mostra 3 cards de plano
+      // com CTA disabled → lojista clica e nada acontece → "funciona-ou-esconde".
+      // Rota /admin/assinatura segue viva por URL. Volta quando Stripe + planos
+      // pagos forem ligados (Fase 3 — Monetização).
+      // { k: "assinatura", label: "Plano e assinatura",  icon: ReceiptTextIcon,   href: "/admin/assinatura"       },
     ],
   },
 ] as const;

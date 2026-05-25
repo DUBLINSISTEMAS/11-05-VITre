@@ -1,13 +1,16 @@
 "use client";
 
-// Aba "Estoque" do ProductForm — controle, quantidades, identificação.
-// Sub-cards: Como controlar, Quantidades (só se controle=ON), Identificação.
+// Aba "Estoque" do ProductForm — controle, limites de alerta, identificação.
 //
-// Débito Sprint 0/Prompt 6: o CLAUDE.md especifica "estoque atual readonly
-// com link Ver movimentações". Mantido editável aqui para preservar o fluxo
-// de criação (lojista precisa setar estoque inicial em algum lugar).
-// Migração para readonly + lançamento de movimento na criação fica como
-// trabalho futuro quando a Sprint adicionar UX de "lançamento inicial".
+// Onda 1.4 (2026-05-24) — Passo 2: eliminada a duplicação do "Estoque atual"
+// (antes existia um input editável + um campo readonly num sub-card diferente,
+// confundindo onde digitar). Agora:
+//   - 1 único input "Estoque atual" no sub-card "Controle de estoque"
+//   - Em modo EDIT, hint visual compara o digitado com o saldo no banco
+//     ("vai gerar ajuste +5") + link "Ver movimentações deste produto"
+//   - Sub-card "Quantidades" virou "Limites e alertas" com só mín/máx
+//     (Atual readonly removido — era a fonte da confusão)
+import Link from "next/link";
 import type {
   Control,
   FieldErrors,
@@ -49,6 +52,14 @@ interface TabEstoqueProps {
   register: UseFormRegister<ProductFormValues>;
   errors: FieldErrors<ProductFormValues>;
   isPending: boolean;
+  /** True em /admin/produtos/novo, false em /admin/produtos/[id]. */
+  isCreating: boolean;
+  /**
+   * Saldo no banco quando o form carregou (somente edit). NULL em criação.
+   * Usado pra mostrar o delta visual entre o digitado e o saldo real
+   * — clareza pro lojista entender "quando salvar, vai gerar +5 / -3".
+   */
+  originalStockQuantity: number | null;
 }
 
 export function TabEstoque({
@@ -56,43 +67,100 @@ export function TabEstoque({
   register,
   errors,
   isPending,
+  isCreating,
+  originalStockQuantity,
 }: TabEstoqueProps) {
   const trackStock = useWatch({ control, name: "trackStock" });
+  const stockQuantity = useWatch({ control, name: "stockQuantity" });
+  const productName = useWatch({ control, name: "name" });
+  const variants = useWatch({ control, name: "variants" });
+
+  // Onda 1.4 Passo 2 (2026-05-24): se HÁ pelo menos uma variante rastreada,
+  // o saldo do produto-base não vale — quem controla são as variantes (mesma
+  // regra do server: update.ts e loadStockSnapshot). Esconde input de saldo
+  // pra evitar o bug "digitei 100 e nada mudou" (Aliança de Ouro, 2026-05-24).
+  const hasTrackedVariants = (variants ?? []).some(
+    (v) => v.stockQuantity !== null,
+  );
+
+  const showDeltaHint =
+    !isCreating &&
+    trackStock &&
+    !hasTrackedVariants &&
+    originalStockQuantity !== null;
+  const typedNow = stockQuantity ?? 0;
+  const inDb = originalStockQuantity ?? 0;
+  const delta = typedNow - inDb;
+
+  // Link pro histórico filtrado pelo nome do produto. Nome pode ter
+  // mudado e não estar salvo ainda — usamos o que está no form (queryString
+  // suporta caracteres especiais via encodeURIComponent dentro do Link).
+  const histHref = productName?.trim()
+    ? `/admin/estoque?view=historico&q=${encodeURIComponent(productName.trim())}`
+    : "/admin/estoque?view=historico";
 
   return (
     <div className="flex flex-col gap-4">
       <SubCard
-        title="Como controlar"
-        description="Deixe ligado se você conta as peças. Desligue para serviços ou produtos sob encomenda."
+        title="Controle de estoque"
+        description={
+          hasTrackedVariants
+            ? "Este produto tem variantes com estoque próprio. O saldo é a soma das variantes."
+            : "Deixe ligado se você conta as peças. Desligue para serviços ou produtos sob encomenda."
+        }
       >
-        <Controller
-          name="trackStock"
-          control={control}
-          render={({ field: trackField }) => (
+        {hasTrackedVariants ? (
+          <VariantsControlSaldoNotice
+            isCreating={isCreating}
+            variants={variants ?? []}
+            histHref={histHref}
+          />
+        ) : (
+          <>
             <Controller
-              name="stockQuantity"
+              name="trackStock"
               control={control}
-              render={({ field: qtyField }) => (
-                <StockInput
-                  value={{
-                    trackStock: trackField.value,
-                    stockQuantity: qtyField.value,
-                  }}
-                  onChange={(next) => {
-                    trackField.onChange(next.trackStock);
-                    qtyField.onChange(next.stockQuantity);
-                  }}
-                  disabled={isPending}
+              render={({ field: trackField }) => (
+                <Controller
+                  name="stockQuantity"
+                  control={control}
+                  render={({ field: qtyField }) => (
+                    <StockInput
+                      value={{
+                        trackStock: trackField.value,
+                        stockQuantity: qtyField.value,
+                      }}
+                      onChange={(next) => {
+                        trackField.onChange(next.trackStock);
+                        qtyField.onChange(next.stockQuantity);
+                      }}
+                      disabled={isPending}
+                    />
+                  )}
                 />
               )}
             />
-          )}
-        />
-        {errors.stockQuantity?.message ? (
-          <p className="text-destructive text-xs">
-            {errors.stockQuantity.message}
-          </p>
-        ) : null}
+            {errors.stockQuantity?.message ? (
+              <p className="text-destructive text-xs">
+                {errors.stockQuantity.message}
+              </p>
+            ) : null}
+
+            {showDeltaHint ? (
+              <DeltaHint inDb={inDb} typedNow={typedNow} delta={delta} />
+            ) : null}
+
+            {!isCreating && trackStock ? (
+              <Link
+                href={histHref}
+                className="text-brand mt-1 inline-flex text-xs hover:underline"
+                prefetch={false}
+              >
+                Ver movimentações deste produto →
+              </Link>
+            ) : null}
+          </>
+        )}
       </SubCard>
 
       {/* Onda 2.15 — permite vender mesmo zerado. Só relevante quando
@@ -135,10 +203,10 @@ export function TabEstoque({
 
       {trackStock ? (
         <SubCard
-          title="Quantidades"
-          description="Mínimo dispara alerta de reposição. Máximo ajuda relatório de estoque parado."
+          title="Limites e alertas"
+          description="Mínimo dispara alerta de reposição. Máximo ajuda a identificar capital parado."
         >
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="product-min-stock">Estoque mínimo</Label>
               <Controller
@@ -178,7 +246,7 @@ export function TabEstoque({
                 </p>
               ) : null}
               <p className="text-ink-4 text-[11px]">
-                Avisa quando atingir esse número.
+                Aparece em &ldquo;Estoque baixo&rdquo; quando o saldo cair até esse valor.
               </p>
             </div>
 
@@ -221,15 +289,8 @@ export function TabEstoque({
                 </p>
               ) : null}
               <p className="text-ink-4 text-[11px]">
-                Limite acima do qual conta como estoque parado.
+                Acima desse valor conta como estoque parado.
               </p>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Atual</Label>
-              <div className="rounded-md border border-line bg-bg-app px-3 py-2 text-sm text-ink-3">
-                Editável acima · histórico em /admin/estoque
-              </div>
             </div>
           </div>
         </SubCard>
@@ -317,6 +378,106 @@ export function TabEstoque({
           </div>
         </div>
       </details>
+    </div>
+  );
+}
+
+/**
+ * Compara saldo digitado vs saldo no banco (modo edit). Verde quando
+ * iguais ("sem alteração"), âmbar quando diferentes ("vai gerar ajuste +N").
+ * Pinta a operação esperada — lojista vê antes de salvar o que vai acontecer.
+ */
+function DeltaHint({
+  inDb,
+  typedNow,
+  delta,
+}: {
+  inDb: number;
+  typedNow: number;
+  delta: number;
+}) {
+  if (delta === 0) {
+    return (
+      <p className="text-xs text-emerald-700 dark:text-emerald-400">
+        Saldo no banco: <strong>{inDb}</strong>. Sem alteração ao salvar.
+      </p>
+    );
+  }
+  const sign = delta > 0 ? "+" : "";
+  return (
+    <p className="text-xs text-amber-700 dark:text-amber-400">
+      Saldo no banco: <strong>{inDb}</strong>. Você digitou{" "}
+      <strong>{typedNow}</strong>. Ao salvar, vai gerar ajuste de{" "}
+      <strong>
+        {sign}
+        {delta}
+      </strong>{" "}
+      no histórico.
+    </p>
+  );
+}
+
+/**
+ * Onda 1.4 Passo 2 (2026-05-24) — quando o produto tem variantes
+ * rastreadas, o saldo do produto-base é IGNORADO pelo server (mesma regra
+ * de update.ts e loadStockSnapshot). Em vez de mostrar um input que vai
+ * ser jogado fora, mostramos a foto consolidada: soma das variantes +
+ * breakdown + link pro histórico. Lojista entende imediatamente onde
+ * editar e por que.
+ */
+function VariantsControlSaldoNotice({
+  isCreating,
+  variants,
+  histHref,
+}: {
+  isCreating: boolean;
+  variants: Array<{ name: string; stockQuantity: number | null }>;
+  histHref: string;
+}) {
+  const tracked = variants.filter((v) => v.stockQuantity !== null);
+  const total = tracked.reduce((sum, v) => sum + (v.stockQuantity ?? 0), 0);
+
+  return (
+    <div className="bg-bg-app space-y-3 rounded-xl border border-line p-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <div>
+          <p className="text-ink-1 text-sm font-semibold">
+            Saldo total: <span className="tabular-nums">{total}</span>{" "}
+            <span className="text-ink-4 text-xs font-normal">
+              (soma das {tracked.length}{" "}
+              {tracked.length === 1 ? "variante" : "variantes"})
+            </span>
+          </p>
+          <p className="text-ink-4 mt-0.5 text-xs">
+            Para ajustar saldo, abra a aba <strong>Identidade</strong> e
+            edite cada variante em &ldquo;Tem tamanho ou cor diferente?&rdquo;.
+          </p>
+        </div>
+      </div>
+
+      {tracked.length > 0 ? (
+        <ul className="border-line divide-line divide-y border-t text-xs">
+          {tracked.map((v, i) => (
+            <li
+              key={`${v.name}-${i}`}
+              className="flex items-center justify-between py-1.5"
+            >
+              <span className="text-ink-1">{v.name}</span>
+              <span className="text-ink-1 tabular-nums">{v.stockQuantity}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {!isCreating ? (
+        <Link
+          href={histHref}
+          className="text-brand inline-flex text-xs hover:underline"
+          prefetch={false}
+        >
+          Ver movimentações deste produto →
+        </Link>
+      ) : null}
     </div>
   );
 }

@@ -123,9 +123,15 @@ const nextConfig: NextConfig = {
 /**
  * Sentry wrap:
  *   - Plugin Webpack/Turbopack do Sentry tenta upload de source maps no build.
- *   - Sem SENTRY_AUTH_TOKEN, o upload falha silently (warning, build OK).
- *   - Pra ativar upload: gerar token no Dashboard Sentry > Settings > Auth Tokens,
- *     adicionar SENTRY_AUTH_TOKEN às envs Vercel + GitHub Actions secrets.
+ *   - Sem SENTRY_AUTH_TOKEN configurado, o upload falha com warning e build
+ *     segue (não quebra deploy). Stacks de prod virão minificadas até o
+ *     token estar setado na Vercel.
+ *   - Pra ativar upload (Onda 1.1 — 2026-05-24):
+ *       1. Dashboard Sentry > Settings > Auth Tokens > Create New Token
+ *       2. Scope mínimo: project:releases (sourcemaps) + org:read
+ *       3. Adicionar em Vercel > Project Settings > Environment Variables:
+ *          SENTRY_AUTH_TOKEN=<token gerado>
+ *       4. Redeploy — próximo build sobe sourcemaps automaticamente.
  *   - `silent: !CI` esconde logs verbosos em dev local; CI/Vercel mostram.
  */
 export default withSentryConfig(nextConfig, {
@@ -133,9 +139,5 @@ export default withSentryConfig(nextConfig, {
   project: process.env.SENTRY_PROJECT,
   silent: !process.env.CI,
   widenClientFileUpload: true,
-  // sourcemaps.disable=true pula upload (não temos SENTRY_AUTH_TOKEN ainda).
-  // Quando founder gerar token, remover esta linha e source maps sobem
-  // pra Sentry desofuscar stacks de prod.
-  sourcemaps: { disable: true },
   // tunnelRoute: "/monitoring", // descomentar se ad-blockers travarem o ingest.
 });
