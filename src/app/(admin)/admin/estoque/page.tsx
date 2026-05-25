@@ -62,7 +62,9 @@ const SNAPSHOT_SORT_VALUES = [
   "min-desc",
 ] as const satisfies ReadonlyArray<StockSnapshotSort>;
 
-const VIEW_VALUES = ["saldo", "historico"] as const;
+// PP9 (handoff 2026-05-25) — "alertas" volta como tab dedicada (handoff
+// tem 3 tabs: Saldo / Movimentações / Alertas).
+const VIEW_VALUES = ["saldo", "historico", "alertas"] as const;
 
 const estoqueSearchSchema = z.object({
   view: z.enum(VIEW_VALUES).catch("saldo"),
@@ -106,9 +108,17 @@ interface EstoquePageProps {
 export default async function EstoquePage({ searchParams }: EstoquePageProps) {
   const params = estoqueSearchSchema.parse(await searchParams);
   const isFeed = params.view === "historico";
+  const isAlerts = params.view === "alertas";
 
-  // KPIs sempre — visão geral fica em cima das duas views.
+  // KPIs sempre — visão geral fica em cima das três views.
   const kpis = await loadStockKpis();
+
+  // PP9 — count de alertas (zerados + abaixo do min) pra pill na tab.
+  // Usa loadStockSnapshotCounts (já existente — retorna { all, zero, low,
+  // ... }) — sem query nova.
+  const snapshotCounts = await loadStockSnapshotCounts();
+  const alertCount =
+    (snapshotCounts.zero ?? 0) + (snapshotCounts.low ?? 0);
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -148,13 +158,20 @@ export default async function EstoquePage({ searchParams }: EstoquePageProps) {
       {/* KPIs sempre visíveis */}
       <StockKpiCards kpis={kpis} />
 
-      {/* Tabs primárias — Saldo (default) | Histórico */}
+      {/* Tabs primárias — Saldo (default) | Movimentações | Alertas (PP9) */}
       <Suspense fallback={<div className="b3-tabs h-12" />}>
-        <EstoqueViewTabs />
+        <EstoqueViewTabs alertCount={alertCount} />
       </Suspense>
 
       {isFeed ? (
         <FeedView page={params.page} q={params.q} typeFilter={params.type} />
+      ) : isAlerts ? (
+        <AlertsView
+          page={params.page}
+          q={params.q}
+          categoryId={params.categoryId}
+          sort={params.sort ?? "stock-asc"}
+        />
       ) : (
         <SnapshotView
           page={params.page}
@@ -266,6 +283,113 @@ async function SnapshotView({
           />
         </div>
       ) : null}
+    </div>
+  );
+}
+
+// ============================================================
+// View: ALERTAS (PP9 — handoff 2026-05-25)
+// Atalho dedicado pros produtos zerados ou abaixo do min. Reusa o
+// snapshot loader forçando status="low" (que inclui "zero" no agrupador).
+// Helpbar amarelo-soft com call-to-action "Criar pedido de compra".
+// ============================================================
+async function AlertsView({
+  page,
+  q,
+  categoryId,
+  sort,
+}: {
+  page: number;
+  q: string;
+  categoryId: string | null;
+  sort: StockSnapshotSort;
+}) {
+  // Carrega 2 buckets em paralelo: zerados + abaixo do min. Não usa
+  // status="low" sozinho porque a lib trata "low" como SÓ low (sem
+  // zerados). Carregamos os dois e mesclamos pra view de alertas.
+  const [zeroResult, lowResult] = await Promise.all([
+    loadStockSnapshot({
+      q: q.trim() || undefined,
+      status: "zero",
+      categoryId,
+      sort,
+      page,
+      pageSize: PAGE_SIZE,
+    }),
+    loadStockSnapshot({
+      q: q.trim() || undefined,
+      status: "low",
+      categoryId,
+      sort,
+      page,
+      pageSize: PAGE_SIZE,
+    }),
+  ]);
+
+  // Merge: zerados primeiro (mais urgentes), depois low. Dedup por id.
+  const seen = new Set<string>();
+  const items = [...zeroResult.items, ...lowResult.items].filter((r) => {
+    if (seen.has(r.productId)) return false;
+    seen.add(r.productId);
+    return true;
+  });
+  const total = items.length;
+
+  if (total === 0) {
+    return (
+      <div className="b3-card overflow-hidden">
+        <div className="flex flex-col items-center gap-3 p-8 text-center sm:p-12">
+          <div className="bg-ok/10 text-ok flex size-12 items-center justify-center rounded-full">
+            <BoxesIcon className="size-6" />
+          </div>
+          <h2 className="text-lg font-semibold text-ink-1">
+            Sem alertas de estoque
+          </h2>
+          <p className="text-ink-4 max-w-sm text-sm">
+            Todos os produtos com controle ativo estão acima do mínimo
+            cadastrado. Lojista relax 🌱
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="b3-card overflow-hidden">
+      <div
+        className="flex items-center gap-3 px-4 py-3"
+        style={{
+          background: "var(--mangos-yellow-soft)",
+          borderBottom: "1px solid var(--brand-line)",
+        }}
+      >
+        <span
+          className="grid size-7 shrink-0 place-items-center rounded-full"
+          style={{
+            background: "var(--mangos-yellow)",
+            color: "var(--mangos-green-950)",
+          }}
+        >
+          <InfoIcon className="size-3.5" aria-hidden />
+        </span>
+        <p
+          className="flex-1 text-[13.5px] leading-snug"
+          style={{ color: "var(--mangos-yellow-deep)" }}
+        >
+          <strong>{total}</strong>{" "}
+          {total === 1 ? "produto" : "produtos"} no ou abaixo do estoque
+          mínimo. Bora{" "}
+          <Link
+            href="/admin/compras"
+            className="font-semibold underline"
+            style={{ color: "var(--mangos-green-800)" }}
+          >
+            criar pedido de compra
+          </Link>
+          ?
+        </p>
+      </div>
+      <StockSnapshotTable rows={items} currentSort={sort} />
     </div>
   );
 }
