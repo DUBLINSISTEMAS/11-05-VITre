@@ -53,11 +53,11 @@ import {
 import { extractClientContext, recordAuditEvent } from "@/lib/audit";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
-import { formatBRL } from "@/lib/pricing";
 import {
   restockOrderItems,
   restockOrderItemsPartial,
 } from "@/lib/order/restock";
+import { formatBRL } from "@/lib/pricing";
 import {
   checkRateLimit,
   RateLimitError,
