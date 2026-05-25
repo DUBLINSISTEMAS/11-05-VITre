@@ -258,11 +258,13 @@ test("Sprint 3.2: PDV renderiza badge de anotação do cliente vinculado", () =>
 });
 
 test("Sprint 3.3: histórico do cliente linka pro detalhe via ?detail={orderId}", () => {
-  const f = src("src/app/(admin)/admin/clientes/[id]/edit-customer-form.tsx");
+  // PP2 (2026-05-25): EditCustomerForm migrou pra CustomerFormDrawer.
+  // O bloco "Últimas vendas vinculadas" agora vive dentro do drawer.
+  const f = src("src/components/admin/customer-form-drawer.tsx");
   assert.match(
     f,
     /href=\{`\/admin\/pedidos\?detail=\$\{o\.id\}`\}/,
-    "edit-customer-form deve linkar pra /admin/pedidos?detail={orderId}",
+    "customer-form-drawer deve linkar pra /admin/pedidos?detail={orderId}",
   );
   // Não pode ressuscitar o link antigo via ?q=
   assert.doesNotMatch(

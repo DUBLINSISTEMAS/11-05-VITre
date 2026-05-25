@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { CustomerFormDrawerListener } from "@/components/admin/customer-form-drawer-listener";
 import { FeedbackWidget } from "@/components/admin/feedback-widget";
 import { OrderDetailDrawerListener } from "@/components/admin/order-detail-drawer-listener";
 import { NewSaleModalListener } from "@/components/admin/pdv/new-sale-modal";
@@ -77,6 +78,10 @@ export function AdminShell({ children, ...userProps }: AdminShellProps) {
           do header, Cmd+K) ou deep-link `?edit=<id|new>`. PP1 Fase B
           (handoff pixel-perfect 2026-05-25). */}
       <ProductFormDrawerListener storeSlug={userProps.storeSlug} />
+      {/* Host global do drawer de cliente — abre via evento
+          OPEN_CUSTOMER_FORM_EVENT (row da CustomersTable, CTA "Adicionar
+          cliente") ou deep-link `?customer=<id|new>`. PP2 (handoff). */}
+      <CustomerFormDrawerListener />
       {/* Widget flutuante de feedback — botão amarelo bottom-right + Sheet
           com 4 tipos · mensagem · contexto auto-preenchido. Resend manda
           pra suporte@mangospay.app com reply-to do lojista. Handoff Passo 14. */}

@@ -60,9 +60,26 @@ interface CustomerFormProps {
   mode: CustomerFormMode;
   initialData: CustomerInitialData;
   onAfterSave: (opts: { customerId?: string }) => void;
+  /**
+   * PP2 (handoff 2026-05-25) — quando true, esconde os 2 save buttons
+   * (desktop + mobile sticky) porque o drawer host renderiza próprio footer.
+   * Default false (legacy pages /admin/clientes/[id] e /novo seguem com save).
+   */
+  embedded?: boolean;
+  /**
+   * Quando embedded, drawer footer dispara o submit via ref.click() — esse
+   * ref aponta pra um botão type="submit" invisível dentro do form.
+   */
+  submitRef?: React.RefObject<HTMLButtonElement | null>;
 }
 
-export function CustomerForm({ mode, initialData, onAfterSave }: CustomerFormProps) {
+export function CustomerForm({
+  mode,
+  initialData,
+  onAfterSave,
+  embedded = false,
+  submitRef,
+}: CustomerFormProps) {
   const [isPending, startTransition] = useTransition();
   const submittingRef = useRef(false);
 
@@ -485,40 +502,57 @@ export function CustomerForm({ mode, initialData, onAfterSave }: CustomerFormPro
         />
       </FormCard>
 
-      {/* Save desktop */}
-      <div className="hidden justify-end pt-4 lg:flex">
-        <Button type="submit" disabled={isPending} className="min-w-32">
-          {isPending ? (
-            <>
-              <Loader2Icon className="animate-spin" /> Salvando…
-            </>
-          ) : (
-            <>
-              <SaveIcon /> {mode === "edit" ? "Salvar" : "Cadastrar"}
-            </>
-          )}
-        </Button>
-      </div>
+      {/* PP2 — quando embedded, drawer footer chama submit via submitRef. */}
+      {embedded ? (
+        <button
+          ref={submitRef}
+          type="submit"
+          className="sr-only"
+          aria-hidden
+          tabIndex={-1}
+        >
+          Salvar (dispatched by drawer footer)
+        </button>
+      ) : null}
 
-      {/* Save mobile sticky */}
-      <div
-        className={cn("surface-elevated fixed inset-x-0 z-50 px-4 py-3 lg:hidden")}
-        style={{
-          bottom: "calc(env(safe-area-inset-bottom) + 3.5rem + 0.25rem)",
-        }}
-      >
-        <Button type="submit" disabled={isPending} className="w-full" size="lg">
-          {isPending ? (
-            <>
-              <Loader2Icon className="animate-spin" /> Salvando…
-            </>
-          ) : (
-            <>
-              <SaveIcon /> {mode === "edit" ? "Salvar" : "Cadastrar"}
-            </>
-          )}
-        </Button>
-      </div>
+      {/* Save desktop — escondido em modo embedded. */}
+      {!embedded ? (
+        <div className="hidden justify-end pt-4 lg:flex">
+          <Button type="submit" disabled={isPending} className="min-w-32">
+            {isPending ? (
+              <>
+                <Loader2Icon className="animate-spin" /> Salvando…
+              </>
+            ) : (
+              <>
+                <SaveIcon /> {mode === "edit" ? "Salvar" : "Cadastrar"}
+              </>
+            )}
+          </Button>
+        </div>
+      ) : null}
+
+      {/* Save mobile sticky — escondido em modo embedded. */}
+      {!embedded ? (
+        <div
+          className={cn("surface-elevated fixed inset-x-0 z-50 px-4 py-3 lg:hidden")}
+          style={{
+            bottom: "calc(env(safe-area-inset-bottom) + 3.5rem + 0.25rem)",
+          }}
+        >
+          <Button type="submit" disabled={isPending} className="w-full" size="lg">
+            {isPending ? (
+              <>
+                <Loader2Icon className="animate-spin" /> Salvando…
+              </>
+            ) : (
+              <>
+                <SaveIcon /> {mode === "edit" ? "Salvar" : "Cadastrar"}
+              </>
+            )}
+          </Button>
+        </div>
+      ) : null}
 
       {/* isDirty é só usado pra silenciar o lint quando o componente for
           mais conservador. Atualmente o botão é habilitado sempre (cliente

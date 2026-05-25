@@ -1,8 +1,9 @@
 import { and, asc, count, desc, eq, gte, ilike, isNull, or, sql, type SQL } from "drizzle-orm";
 import { PlusIcon, SearchXIcon, UsersIcon } from "lucide-react";
-import Link from "next/link";
 import { Suspense } from "react";
 import { z } from "zod";
+
+import { CustomerCreateButton } from "@/components/admin/customer-create-button";
 
 import {
   CustomersKpiStrip,
@@ -232,11 +233,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
               : ""}
           </p>
         </div>
-        <Link href="/admin/clientes/novo" className="b3-btn b3-btn--cta" prefetch>
-          <PlusIcon size={14} aria-hidden />
-          <span className="hidden sm:inline">Adicionar cliente</span>
-          <span className="sm:hidden">Novo</span>
-        </Link>
+        <CustomerCreateButton />
       </div>
 
       {/* KPI strip — 4 cards horizontais sempre visíveis (também na busca
@@ -289,13 +286,7 @@ function EmptyState() {
         Telefone é a chave. Vai ser útil pra venda balcão, follow-up no
         WhatsApp e histórico de compras.
       </p>
-      <Link
-        href="/admin/clientes/novo"
-        className="b3-btn b3-btn--cta"
-        prefetch
-      >
-        <PlusIcon size={14} aria-hidden /> Adicionar cliente
-      </Link>
+      <CustomerCreateButton />
     </div>
   );
 }

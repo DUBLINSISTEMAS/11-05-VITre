@@ -21,11 +21,23 @@
 //   contato pronto.
 
 import { MessageCircleIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 import type { CustomerType } from "@/db/schema";
 import { formatDocument } from "@/lib/document";
 import { formatRelativeDate } from "@/lib/format";
+
+import {
+  OPEN_CUSTOMER_FORM_EVENT,
+  type OpenCustomerFormEventDetail,
+} from "./customer-form-events";
+
+function openCustomerDrawer(customerId: string) {
+  window.dispatchEvent(
+    new CustomEvent<OpenCustomerFormEventDetail>(OPEN_CUSTOMER_FORM_EVENT, {
+      detail: { customerId },
+    }),
+  );
+}
 
 export interface CustomerTableRow {
   id: string;
@@ -64,8 +76,6 @@ function whatsappHref(phoneE164: string): string {
 }
 
 export function CustomersTable({ customers }: CustomersTableProps) {
-  const router = useRouter();
-
   return (
     <table className="b3-tbl">
       <thead>
@@ -88,11 +98,11 @@ export function CustomersTable({ customers }: CustomersTableProps) {
           return (
             <tr
               key={c.id}
-              onClick={() => router.push(`/admin/clientes/${c.id}`)}
+              onClick={() => openCustomerDrawer(c.id)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  router.push(`/admin/clientes/${c.id}`);
+                  openCustomerDrawer(c.id);
                 }
               }}
               tabIndex={0}
