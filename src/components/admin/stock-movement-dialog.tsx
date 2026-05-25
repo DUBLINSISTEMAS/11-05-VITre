@@ -163,25 +163,42 @@ export function StockMovementDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Tipo: 3 chips */}
+          {/* Tipo: 3 chips coloridos (handoff Passo 8 — Entrada=ok,
+              Saída=danger, Ajuste=warn). Cor ajuda o lojista identificar
+              direção do movimento antes de ler o label. Ativo mantém
+              cor + cream-soft de fundo (consistente com o picker do
+              protótipo). */}
           <div className="space-y-2">
             <Label>Tipo</Label>
             <div className="grid grid-cols-3 gap-2">
-              {(["manual_in", "manual_out", "adjustment"] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setMovementType(t)}
-                  className={cn(
-                    "rounded-md border px-3 py-2 text-sm font-medium transition",
-                    movementType === t
-                      ? "border-brand bg-brand-wash text-brand"
-                      : "border-line bg-surface text-ink-1 hocus:bg-bg-app",
-                  )}
-                >
-                  {TYPE_LABEL[t]}
-                </button>
-              ))}
+              {(["manual_in", "manual_out", "adjustment"] as const).map((t) => {
+                const isActive = movementType === t;
+                const accent =
+                  t === "manual_in"
+                    ? "ok"
+                    : t === "manual_out"
+                      ? "danger"
+                      : "warn";
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setMovementType(t)}
+                    className={cn(
+                      "rounded-md border px-3 py-2 text-sm font-medium transition",
+                      isActive
+                        ? accent === "ok"
+                          ? "border-ok text-ok bg-ok-wash"
+                          : accent === "danger"
+                            ? "border-danger text-danger bg-danger-wash"
+                            : "border-warn text-warn bg-warn-wash"
+                        : "border-line bg-surface text-ink-1 hocus:bg-bg-app",
+                    )}
+                  >
+                    {TYPE_LABEL[t]}
+                  </button>
+                );
+              })}
             </div>
             <p className="text-ink-4 text-xs">
               {TYPE_HINT[movementType]}

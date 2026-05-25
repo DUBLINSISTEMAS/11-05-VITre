@@ -163,6 +163,7 @@ export function StockSnapshotTable({
             currentSort={currentSort}
             align="right"
           />
+          <th style={{ textAlign: "right", paddingRight: 12 }}>DIF</th>
           <th style={{ paddingLeft: 12 }}>STATUS</th>
           <th style={{ width: 80, textAlign: "center" }}>AÇÃO</th>
         </tr>
@@ -248,6 +249,12 @@ export function StockSnapshotTable({
                   <span className="text-ink-4">—</span>
                 )}
               </td>
+              <td
+                className="mono"
+                style={{ textAlign: "right", paddingRight: 12 }}
+              >
+                <DiffCell row={r} />
+              </td>
               <td>
                 <StatusPill row={r} />
               </td>
@@ -284,6 +291,31 @@ function SaldoCell({
       {unit !== "un" ? (
         <span className="text-ink-4 ml-1 text-[11px]">{unit}</span>
       ) : null}
+    </span>
+  );
+}
+
+/**
+ * Coluna "Diferença" — saldo atual menos mínimo. Positivo verde, zero/
+ * negativo amarelo/vermelho. "—" pra produtos sem tracking ou sem mínimo
+ * cadastrado. Handoff Passo 8.
+ */
+function DiffCell({ row }: { row: StockSnapshotRow }) {
+  if (!row.trackStock || row.minStockQuantity === null) {
+    return <span className="text-ink-4">—</span>;
+  }
+  const stock = row.stockQuantity ?? 0;
+  const diff = stock - row.minStockQuantity;
+  const color =
+    diff < 0
+      ? "var(--danger)"
+      : diff === 0
+        ? "var(--warn)"
+        : "var(--ok)";
+  return (
+    <span className="tabular-nums font-medium" style={{ color }}>
+      {diff > 0 ? "+" : ""}
+      {diff}
     </span>
   );
 }
