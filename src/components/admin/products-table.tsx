@@ -22,7 +22,19 @@ import { formatBRL, hasActivePromo } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
 import { BulkActionsToolbar } from "./bulk-actions-toolbar";
+import {
+  OPEN_PRODUCT_FORM_EVENT,
+  type OpenProductFormEventDetail,
+} from "./product-form-events";
 import { StockMovementDialog } from "./stock-movement-dialog";
+
+function openProductDrawer(productId: string) {
+  window.dispatchEvent(
+    new CustomEvent<OpenProductFormEventDetail>(OPEN_PRODUCT_FORM_EVENT, {
+      detail: { productId },
+    }),
+  );
+}
 
 export interface ProductTableRow {
   id: string;
@@ -116,15 +128,14 @@ export function ProductsTable({ products }: ProductsTableProps) {
             const isDraft = !p.name.trim() || p.slug.startsWith("draft-");
             const onPromoNow = hasActivePromo(p);
             const isSelected = selectedIds.has(p.id);
-            const editHref = `/admin/produtos/${p.id}`;
             return (
               <tr
                 key={p.id}
-                onClick={() => router.push(editHref)}
+                onClick={() => openProductDrawer(p.id)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    router.push(editHref);
+                    openProductDrawer(p.id);
                   }
                 }}
                 tabIndex={0}

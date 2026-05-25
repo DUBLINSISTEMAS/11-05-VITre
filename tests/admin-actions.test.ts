@@ -74,31 +74,51 @@ test("store creation inserts store and initial categories in one transaction", (
 
 test("new product page opens without creating a draft on open", () => {
   // Migrado 2026-05-12: modal → página dedicada /admin/produtos/novo.
-  // Invariante crítica preservada: produto só persiste no submit
-  // explícito (createProductFromValues), nunca por prefetch ou mount.
+  // Migrado PP1 Fase B (2026-05-25): página → drawer global aberto via
+  // evento OPEN_PRODUCT_FORM_EVENT. `/admin/produtos/novo` virou redirect
+  // pra `/admin/produtos?edit=new` (preserva bookmarks legacy).
+  //
+  // Invariante crítica PRESERVADA: produto só persiste no submit
+  // explícito (createProductFromValues), nunca por prefetch, mount,
+  // ou abertura do drawer.
   const novoPage = readFileSync("src/app/(admin)/admin/produtos/novo/page.tsx", "utf8");
-  const novoForm = readFileSync(
-    "src/app/(admin)/admin/produtos/novo/new-product-form.tsx",
-    "utf8",
-  );
   const createButton = readFileSync(
     "src/components/admin/product-create-button.tsx",
     "utf8",
   );
-  const productsPage = readFileSync("src/app/(admin)/admin/produtos/page.tsx", "utf8");
+  const drawer = readFileSync(
+    "src/components/admin/product-form-drawer.tsx",
+    "utf8",
+  );
+  const loadFormData = readFileSync(
+    "src/actions/product/load-form-data.ts",
+    "utf8",
+  );
   const form = readFileSync("src/components/admin/product-form.tsx", "utf8");
   const uploader = readFileSync("src/components/admin/image-uploader.tsx", "utf8");
 
-  // Botão "+ Novo produto" usa <Link prefetch>, sem state local nem
-  // setDialog. Sem efeito colateral de criação no mount.
-  assert.match(createButton, /href="\/admin\/produtos\/novo"/);
+  // /admin/produtos/novo é redirect server-side — não monta form nem
+  // dispara mutation.
+  assert.match(novoPage, /redirect\(["']\/admin\/produtos\?edit=new["']\)/);
+
+  // Botão "+ Novo produto" dispara evento OPEN_PRODUCT_FORM_EVENT com
+  // productId=null (modo "new"). Sem navegação, sem state local que
+  // crie nada no mount.
+  assert.match(createButton, /OPEN_PRODUCT_FORM_EVENT/);
+  assert.match(createButton, /productId:\s*null/);
   assert.doesNotMatch(createButton, /setDialog/);
 
-  // Página /admin/produtos/novo monta NewProductForm que passa
-  // createProductFromValues — usado apenas no submit do form.
-  assert.match(novoPage, /NewProductForm/);
-  assert.match(novoForm, /createProductFromValues/);
-  assert.match(novoForm, /onCreateProduct=\{createProductFromValues\}/);
+  // ProductFormDrawer carrega via loadProductFormData. Modo "new" não
+  // chama nenhum INSERT no DB — só faz reads (brands + categories).
+  assert.match(drawer, /loadProductFormData/);
+  assert.match(drawer, /onCreateProduct=\{[\s\S]*?createProductFromValues[\s\S]*?\}/);
+
+  // loadFormData modo "new" só SELECT (categories + brands). Sem insert.
+  assert.match(loadFormData, /if \(productId === null\)/);
+  assert.doesNotMatch(
+    loadFormData,
+    /productId === null[\s\S]*?\.insert\(productTable\)/,
+  );
 
   // Fluxo "Salvar e adicionar outro" continua client-only (sem novo fetch).
   assert.match(form, /onAfterSave\(\{ continueCreating: true \}\)/);
@@ -110,6 +130,10 @@ test("new product page opens without creating a draft on open", () => {
   assert.doesNotMatch(uploader, /createDraftProduct/);
 
   // Página /admin/produtos não tem mais o gate ?novo=1 nem ProductCreateGate.
+  const productsPage = readFileSync(
+    "src/app/(admin)/admin/produtos/page.tsx",
+    "utf8",
+  );
   assert.doesNotMatch(productsPage, /href="\/admin\/produtos\?novo=1"/);
   assert.doesNotMatch(productsPage, /ProductCreateGate|ProductDialogGate/);
 });

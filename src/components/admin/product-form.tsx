@@ -157,6 +157,19 @@ interface ProductFormProps {
   onCreateProduct?: (
     values: ProductFormValues,
   ) => Promise<{ ok: true; productId: string } | { ok: false; error: string; fieldErrors?: Record<string, string> }>;
+  /**
+   * PP1 Fase B (handoff 2026-05-25) — quando true, esconde as sticky
+   * save bars (mobile + desktop) porque o drawer host renderiza o
+   * próprio footer com Excluir/Cancelar/Salvar. Default false (legacy
+   * pages /admin/produtos/[id] e /novo seguem usando sticky bar).
+   */
+  embedded?: boolean;
+  /**
+   * Quando embedded, o pai precisa expor o botão Save. Esta ref permite
+   * que o footer do drawer dispare o submit do form sem ter que aninhar
+   * o footer dentro do form.
+   */
+  submitRef?: React.RefObject<HTMLButtonElement | null>;
 }
 
 // PP1 (handoff pixel-perfect 2026-05-25): 6 abas com sidebar 180px à
@@ -206,6 +219,8 @@ export function ProductForm({
   onAfterSave,
   onCreateProduct,
   storeNiche,
+  embedded = false,
+  submitRef,
 }: ProductFormProps) {
   // Onda 2.3 — campos "Composição/Modelagem/Forro/Lavagem" só fazem
   // sentido pra roupa. Pra joia, semijoia, perfumaria, outro: escondemos.
@@ -597,10 +612,27 @@ export function ProductForm({
         </div>
       </div>
 
+      {/* PP1 Fase B — quando embedded, o footer do drawer chama submit
+          via submitRef. Renderiza só o trigger invisível. */}
+      {embedded ? (
+        <button
+          ref={submitRef}
+          type="submit"
+          onClick={() => setSubmitMode("save")}
+          className="sr-only"
+          aria-hidden
+          tabIndex={-1}
+        >
+          Salvar (dispatched by drawer footer)
+        </button>
+      ) : null}
+
       {/* === Bottom action bar desktop (sticky no rodapé, ≥lg) ===
            Cobre o main full-width; em desktop a sidebar (280px) fica
            descoberta visualmente. Cancelar volta pra lista; Salvar
-           preserva fluxo de "Salvar e adicionar outro" em rascunho. */}
+           preserva fluxo de "Salvar e adicionar outro" em rascunho.
+           Esconde quando embedded (drawer renderiza próprio footer). */}
+      {!embedded ? (
       <div
         className={cn(
           "fixed inset-x-0 bottom-0 z-40 hidden lg:flex",
@@ -658,7 +690,10 @@ export function ProductForm({
         </div>
       </div>
 
+      ) : null}
+
       {/* === Save mobile sticky (acima do bottom nav) === */}
+      {!embedded ? (
       <div
         className="surface-elevated fixed inset-x-0 z-50 flex flex-col gap-2 px-4 py-3 lg:hidden"
         style={{
@@ -703,6 +738,7 @@ export function ProductForm({
           )}
         </Button>
       </div>
+      ) : null}
     </form>
   );
 }

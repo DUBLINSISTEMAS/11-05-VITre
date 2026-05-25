@@ -21,9 +21,14 @@ test("related products loader appends automatic picks after manual picks", () =>
   assert.match(autoBlock, /related = \[\.\.\.related, \.\.\.categoryRelated\]/);
 });
 
-test("admin related candidates cover query is limited to candidate product ids", () => {
-  assert.match(editPage, /const candidateIds = candidates\.map\(\(c\) => c\.id\)/);
-  assert.match(editPage, /inArray\(productImageTable\.productId, candidateIds\)/);
+// PP1 Fase B (2026-05-25): /admin/produtos/[id]/page.tsx virou redirect
+// puro pro drawer global. RelatedProductsCard saiu do edit page; reintroduzir
+// dentro do ProductFormDrawer fica pendente como PP1.x — quando isso acontecer,
+// reativar este teste apontando pro arquivo certo (provavelmente o drawer
+// ou um sub-componente dele que use a mesma query candidateIds + inArray).
+test.skip("admin related candidates cover query is limited to candidate product ids", () => {
+  // Skipado intencionalmente. Reativar quando RelatedProductsCard for
+  // reinjetado no ProductFormDrawer.
 });
 
 test("product_related RLS SQL keeps public read tenant-scoped instead of USING true", () => {

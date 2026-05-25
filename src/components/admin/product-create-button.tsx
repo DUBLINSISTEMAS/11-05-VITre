@@ -1,18 +1,26 @@
+"use client";
+
 /**
  * Botão "+ Adicionar produto" do header e do empty state.
  *
- * Port Dublin v3 (ADR-0019, Onda A.7): migrado pra classe `b3-btn b3-btn--cta`
- * direto. Mantém <Link prefetch> pra /admin/produtos/novo — Next 15 baixa o
- * JS antes do click. Substituído o gate `?novo=1` + ProductDialog em
- * 2026-05-12 (auditoria sênior).
+ * PP1 Fase B (2026-05-25): em vez de navegar pra /admin/produtos/novo
+ * (página dedicada), agora dispara `OPEN_PRODUCT_FORM_EVENT` com
+ * productId=null, e o ProductFormDrawerListener global abre o drawer
+ * inline (modo "new") sem perder contexto da tabela.
  *
- * Renderiza como Link sempre — `asChild` do shadcn Button removido em favor
- * de class direta porque agora é primitivo `b3-btn` não shadcn Button.
+ * Rotas legacy `/admin/produtos/novo` foram convertidas em redirect
+ * pra `/admin/produtos?edit=new` (preserva bookmarks). Ctrl+click no
+ * botão segue funcionando pra abrir em nova aba (usa `<a>` com href
+ * legacy como fallback).
  */
 import { PlusIcon } from "lucide-react";
-import Link from "next/link";
 
 import { cn } from "@/lib/utils";
+
+import {
+  OPEN_PRODUCT_FORM_EVENT,
+  type OpenProductFormEventDetail,
+} from "./product-form-events";
 
 interface ProductCreateButtonProps {
   children?: React.ReactNode;
@@ -21,15 +29,35 @@ interface ProductCreateButtonProps {
   size?: "default" | "lg";
 }
 
+function handleClick(e: React.MouseEvent<HTMLAnchorElement>) {
+  // Modifier keys → deixa o browser abrir o href em nova aba/janela.
+  if (
+    e.defaultPrevented ||
+    e.button !== 0 ||
+    e.metaKey ||
+    e.ctrlKey ||
+    e.shiftKey ||
+    e.altKey
+  ) {
+    return;
+  }
+  e.preventDefault();
+  window.dispatchEvent(
+    new CustomEvent<OpenProductFormEventDetail>(OPEN_PRODUCT_FORM_EVENT, {
+      detail: { productId: null },
+    }),
+  );
+}
+
 export function ProductCreateButton({
   children,
   className,
   size = "default",
 }: ProductCreateButtonProps) {
   return (
-    <Link
+    <a
       href="/admin/produtos/novo"
-      prefetch
+      onClick={handleClick}
       className={cn(
         "b3-btn b3-btn--cta",
         size === "lg" && "h-11 px-5 text-[14px]",
@@ -43,6 +71,6 @@ export function ProductCreateButton({
           <span className="sm:hidden">Adicionar</span>
         </>
       )}
-    </Link>
+    </a>
   );
 }

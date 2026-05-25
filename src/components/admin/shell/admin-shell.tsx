@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { FeedbackWidget } from "@/components/admin/feedback-widget";
 import { OrderDetailDrawerListener } from "@/components/admin/order-detail-drawer-listener";
 import { NewSaleModalListener } from "@/components/admin/pdv/new-sale-modal";
+import { ProductFormDrawerListener } from "@/components/admin/product-form-drawer-listener";
 
 import { AdminSidebar, type AdminSidebarProps } from "./admin-sidebar";
 import { CommandPalette } from "./command-palette";
@@ -71,6 +72,11 @@ export function AdminShell({ children, ...userProps }: AdminShellProps) {
           OPEN_ORDER_DETAIL_EVENT (row da OrdersTable, "Vendas recentes" do
           dashboard, etc) ou via deep-link `?detail=<id>`. Handoff 2026-05-25. */}
       <OrderDetailDrawerListener />
+      {/* Host global do drawer de produto — abre via evento
+          OPEN_PRODUCT_FORM_EVENT (row da ProductsTable, CTA "Novo produto"
+          do header, Cmd+K) ou deep-link `?edit=<id|new>`. PP1 Fase B
+          (handoff pixel-perfect 2026-05-25). */}
+      <ProductFormDrawerListener storeSlug={userProps.storeSlug} />
       {/* Widget flutuante de feedback — botão amarelo bottom-right + Sheet
           com 4 tipos · mensagem · contexto auto-preenchido. Resend manda
           pra suporte@mangospay.app com reply-to do lojista. Handoff Passo 14. */}
