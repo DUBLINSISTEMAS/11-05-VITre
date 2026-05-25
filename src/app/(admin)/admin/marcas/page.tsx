@@ -10,11 +10,13 @@ export default async function MarcasPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* S11 (handoff pixel-perfect 2026-05-25): vira `.b3-page-title` +
+          `.b3-page-sub` (handoff stub-pages.jsx:162 "Marcas"). Subtítulo
+          mais informativo que o mock — explica o behavior de snapshot
+          histórico que o handoff não conhecia. */}
       <div>
-        <h1 className="text-ink-1 text-[22px] font-bold tracking-[-0.025em]">
-          Marcas
-        </h1>
-        <p className="text-ink-4 mt-1 text-[13px]">
+        <h1 className="b3-page-title">Marcas</h1>
+        <p className="b3-page-sub">
           Cadastro reutilizável de marcas pra filtrar produtos e padronizar
           relatórios. Produtos antigos com marca em texto livre continuam
           funcionando (snapshot histórico preservado).

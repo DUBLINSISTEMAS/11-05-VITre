@@ -10,13 +10,17 @@ export default async function AtributosPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* S12 (handoff pixel-perfect 2026-05-25): vira `.b3-page-title` +
+          `.b3-page-sub`. Mantemos "Filtros da loja" como label (handoff
+          chama "Atributos" mas CLAUDE.md vocab canônico diz "Atributo →
+          Filtro da loja", e norte vivo > handoff em conflitos). Sub vira
+          o texto do handoff atributos.jsx:77 (mais informativo que o
+          mock — explica WHERE os atributos aparecem). */}
       <div>
-        <h1 className="text-ink-1 text-[22px] font-bold tracking-[-0.025em]">
-          Filtros da loja
-        </h1>
-        <p className="text-ink-4 mt-1 text-[13px]">
-          Catálogo de cores, tamanhos e características reutilizáveis entre
-          produtos.
+        <h1 className="b3-page-title">Filtros da loja</h1>
+        <p className="b3-page-sub">
+          Características que seus produtos têm (tamanho, cor, material…).
+          Usadas em variantes, filtros da loja e ficha do produto.
         </p>
       </div>
 

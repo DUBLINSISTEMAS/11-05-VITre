@@ -10,11 +10,13 @@ export default async function FornecedoresPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* S14 (handoff pixel-perfect 2026-05-25): vira `.b3-page-title` +
+          `.b3-page-sub`. Título "Fornecedores" bate handoff stub-pages.jsx:164.
+          Subtítulo é mais informativo que o mock — explica integração com
+          compras + custo médio móvel. */}
       <div>
-        <h1 className="text-ink-1 text-[22px] font-bold tracking-[-0.025em]">
-          Fornecedores
-        </h1>
-        <p className="text-ink-4 mt-1 text-[13px]">
+        <h1 className="b3-page-title">Fornecedores</h1>
+        <p className="b3-page-sub">
           Cadastro de fornecedores pra usar em compras (entrada de mercadoria)
           e rastrear custo médio móvel. Documento opcional (CPF/CNPJ sem máscara).
         </p>

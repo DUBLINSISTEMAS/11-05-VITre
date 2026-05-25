@@ -13,6 +13,10 @@ export default async function CustomerGroupsPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* S13 (handoff pixel-perfect 2026-05-25): vira `.b3-page-title` +
+          `.b3-page-sub`. Título "Grupos de cliente" (singular) — bate
+          handoff stub-pages.jsx:163 + nav-items.ts "Grupos de cliente".
+          Antes era "Grupos de clientes" (plural). */}
       <div className="flex flex-wrap items-start gap-3">
         <Link
           href="/admin/clientes"
@@ -23,10 +27,8 @@ export default async function CustomerGroupsPage() {
           <ArrowLeftIcon size={14} />
         </Link>
         <div className="min-w-0 flex-1">
-          <h1 className="text-ink-1 text-[22px] font-bold tracking-[-0.025em]">
-            Grupos de clientes
-          </h1>
-          <p className="text-ink-4 mt-1 text-[13px]">
+          <h1 className="b3-page-title">Grupos de cliente</h1>
+          <p className="b3-page-sub">
             VIP, Atacado, Comum — cada grupo tem desconto sugerido aplicado
             no PDV quando o cliente é selecionado.
           </p>

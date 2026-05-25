@@ -17,24 +17,22 @@ export default async function RelatoriosPage({
   if (!report) {
     return (
       <div className="space-y-4">
-        <h1 className="text-ink-1 text-[22px] font-bold tracking-[-0.025em]">
-          Relatórios
-        </h1>
-        <p className="text-ink-3 text-[13px]">Loja não encontrada.</p>
+        <h1 className="b3-page-title">Relatórios</h1>
+        <p className="b3-page-sub">Loja não encontrada.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* H1 + subtítulo bate o handoff. RelatoriosIndexCards renderiza
-          a galeria de cards abaixo; ReportView é o dashboard agregado
-          que mantemos pra visão geral rápida. Passo 12. */}
+      {/* S15 (handoff pixel-perfect 2026-05-25): h1 + sub viram
+          `.b3-page-title` + `.b3-page-sub` (handoff relatorios.jsx pattern).
+          RelatoriosIndexCards renderiza a galeria de 8 cards abaixo;
+          ReportView é o dashboard agregado que mantemos pra visão geral
+          rápida. Passo 12. */}
       <div>
-        <h1 className="text-ink-1 text-[22px] font-bold tracking-[-0.025em]">
-          Relatórios
-        </h1>
-        <p className="text-ink-4 mt-1 text-[13px]">
+        <h1 className="b3-page-title">Relatórios</h1>
+        <p className="b3-page-sub">
           Imprima A4 com logo da loja ou exporte CSV pra mandar pro contador.
         </p>
       </div>
