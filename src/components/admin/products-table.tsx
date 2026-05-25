@@ -58,6 +58,17 @@ export interface ProductTableRow {
    * escolher qual variante). Botão fica desabilitado com tooltip.
    */
   variantCount: number;
+  /**
+   * PP7 (handoff pixel-perfect 2026-05-25) — código interno do produto
+   * exibido na coluna SKU. NULL quando lojista não cadastrou.
+   */
+  sku?: string | null;
+  /**
+   * PP7 — custo unitário em centavos pra coluna Custo + cálculo da
+   * coluna Margem inline ((base − cost) / base * 100). NULL quando não
+   * cadastrado — exibe "—" + margem fica "—".
+   */
+  costPriceInCents?: number | null;
 }
 
 export interface ProductsTableProps {
@@ -117,9 +128,12 @@ export function ProductsTable({ products }: ProductsTableProps) {
             </th>
             <th style={{ width: 64 }}>FOTO</th>
             <th>NOME</th>
+            <th>SKU</th>
             <th>CATEGORIA</th>
             <th style={{ textAlign: "right" }}>ESTOQUE</th>
+            <th style={{ textAlign: "right" }}>CUSTO</th>
             <th style={{ textAlign: "right" }}>PREÇO</th>
+            <th style={{ textAlign: "right" }}>MARGEM</th>
             <th>STATUS</th>
           </tr>
         </thead>
@@ -183,6 +197,13 @@ export function ProductsTable({ products }: ProductsTableProps) {
                     p.name
                   )}
                 </td>
+                <td className="mono text-ink-3" style={{ fontSize: 12 }}>
+                  {p.sku?.trim() ? (
+                    p.sku
+                  ) : (
+                    <span className="text-ink-4">—</span>
+                  )}
+                </td>
                 <td>
                   {p.categoryName ? (
                     <span className="b3-pill">{p.categoryName}</span>
@@ -199,6 +220,13 @@ export function ProductsTable({ products }: ProductsTableProps) {
                     variantCount={p.variantCount}
                   />
                 </td>
+                <td className="mono text-ink-4" style={{ textAlign: "right", fontSize: 12.5 }}>
+                  {typeof p.costPriceInCents === "number" ? (
+                    formatBRL(p.costPriceInCents)
+                  ) : (
+                    <span>—</span>
+                  )}
+                </td>
                 <td className="mono" style={{ textAlign: "right", fontWeight: 600 }}>
                   {onPromoNow ? (
                     <>
@@ -211,6 +239,13 @@ export function ProductsTable({ products }: ProductsTableProps) {
                   ) : (
                     formatBRL(p.basePriceInCents)
                   )}
+                </td>
+                <td className="mono" style={{ textAlign: "right", fontWeight: 600 }}>
+                  <MarginCell
+                    basePriceInCents={p.basePriceInCents}
+                    promoPriceInCents={onPromoNow ? p.promoPriceInCents : null}
+                    costPriceInCents={p.costPriceInCents}
+                  />
                 </td>
                 <td>
                   <StatusPill
@@ -303,6 +338,44 @@ function StockCell({
           }
         />
       )}
+    </span>
+  );
+}
+
+/**
+ * Coluna MARGEM — calcula margem bruta ((preço − custo) / preço * 100).
+ * Quando há promo ativa, usa o preço promocional (lojista quer ver
+ * margem REAL praticada no momento). Cor semafórica: >40% verde, >20%
+ * amarelo, ≤20% vermelho, <0 vermelho. Sem custo cadastrado ou preço
+ * zero → "—". Handoff PP7.
+ */
+function MarginCell({
+  basePriceInCents,
+  promoPriceInCents,
+  costPriceInCents,
+}: {
+  basePriceInCents: number;
+  promoPriceInCents: number | null;
+  costPriceInCents?: number | null;
+}) {
+  if (typeof costPriceInCents !== "number" || costPriceInCents < 0) {
+    return <span className="text-ink-4">—</span>;
+  }
+  const price = promoPriceInCents ?? basePriceInCents;
+  if (price <= 0) {
+    return <span className="text-ink-4">—</span>;
+  }
+  const profit = price - costPriceInCents;
+  const marginPct = (profit / price) * 100;
+  const color =
+    marginPct > 40
+      ? "var(--ok)"
+      : marginPct > 20
+        ? "var(--warn)"
+        : "var(--danger)";
+  return (
+    <span className="tabular-nums" style={{ color }}>
+      {marginPct.toFixed(0)}%
     </span>
   );
 }

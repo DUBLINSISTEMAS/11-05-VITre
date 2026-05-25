@@ -204,6 +204,11 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
         trackStock: true,
         stockQuantity: true,
         categoryId: true,
+        // PP7 (handoff pixel-perfect 2026-05-25) — colunas SKU + Custo + Margem
+        // na tabela. `internalCode` é o SKU display; `costPriceInCents` permite
+        // calcular margem inline ((base − cost) / base * 100).
+        internalCode: true,
+        costPriceInCents: true,
       },
     });
 
@@ -359,6 +364,9 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
     cover: coversByProduct.get(p.id) ?? null,
     categoryName: p.categoryId ? categoriesById.get(p.categoryId) ?? null : null,
     variantCount: variantCountByProduct.get(p.id) ?? 0,
+    // PP7 (handoff 2026-05-25) — SKU + custo pra colunas novas.
+    sku: p.internalCode,
+    costPriceInCents: p.costPriceInCents,
   }));
 
   const rangeStart = total === 0 ? 0 : offset + 1;
