@@ -25,6 +25,7 @@ import { DownloadIcon, PrinterIcon } from "lucide-react";
 import { useCallback } from "react";
 
 import { Button } from "@/components/ui/button";
+import { downloadCsv, escapeCsvCell } from "@/lib/csv";
 
 export type ColumnAlign = "left" | "right" | "center";
 
@@ -92,30 +93,6 @@ function alignToClass(align?: ColumnAlign): string {
     default:
       return "text-left";
   }
-}
-
-function escapeCsvCell(value: string | number | null | undefined): string {
-  if (value === null || value === undefined) return "";
-  const str = String(value);
-  if (/[",\n;]/.test(str)) {
-    return `"${str.replace(/"/g, '""')}"`;
-  }
-  return str;
-}
-
-function downloadCsv(filename: string, content: string) {
-  // BOM UTF-8 garante que Excel BR abre acentos corretamente.
-  const blob = new Blob(["﻿" + content], {
-    type: "text/csv;charset=utf-8",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${filename}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
 }
 
 export function ReportLayout<T>({

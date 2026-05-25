@@ -14,8 +14,8 @@ import {
   type OrdersPeriodSummary,
   OrdersToolbar,
 } from "@/components/admin/orders-toolbar";
+import { OrdersExportCsvButton } from "@/components/admin/orders-export-csv-button";
 import { CashSessionStatus } from "@/components/admin/pdv/cash-session-status";
-import { NewSaleModalButton } from "@/components/admin/pdv/new-sale-modal";
 import { Pagination } from "@/components/common/pagination";
 import {
   orderPaymentTable,
@@ -358,13 +358,19 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* H1 + CTA. "Nova venda" abre PDV num modal (consolidação UX
-          2026-05-21) — não navega mais pra /admin/pdv. */}
-      <div className="flex items-end justify-between gap-4">
-        <h1 className="text-[22px] font-bold tracking-[-0.025em] text-ink-1">
-          Vendas
-        </h1>
-        <NewSaleModalButton />
+      {/* H1 + subtítulo + Exportar CSV. "Nova venda" SAIU daqui — vive
+          global no topbar (CTA verde) e F2 em qualquer rota (handoff
+          Passo 4). Aqui só o que é específico de /admin/pedidos. */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-[22px] font-bold tracking-[-0.025em] text-ink-1">
+            Vendas
+          </h1>
+          <p className="text-ink-4 mt-1 text-[13px]">
+            Pedidos de balcão (PDV) e online (loja + WhatsApp)
+          </p>
+        </div>
+        <OrdersExportCsvButton orders={orderRows} storeSlug={store.slug} />
       </div>
 
       {/* Banner de caixa — fora do modal (audit 2026-05-21). Lojista
