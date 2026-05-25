@@ -1719,6 +1719,15 @@
     margin: 0 0 18px 0;
     line-height: 1.4;
   }
+  /* S4 (handoff pixel-perfect 2026-05-25): quando b3-page-title +
+     b3-page-sub aparecem DENTRO de b3-page-hd wrapper (que já provê
+     flex layout h1+sub à esquerda / actions à direita), o `.b3-page-hd h1`
+     já zera margin (specificity 0,1,1 vence) — só precisamos neutralizar
+     o -14 negativo do sub pra não sobrepor o h1, e o 18 bottom (parent
+     já tem seu próprio margin-bottom 18). */
+  .b3-page-hd .b3-page-title + .b3-page-sub {
+    margin: 4px 0 0 0;
+  }
 
   /* ========================================================
    * BUTTONS — base + cta (brand) + ghost + sm

@@ -379,15 +379,18 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
 
   return (
     <div className="b3-page">
+      {/* S4 (handoff pixel-perfect 2026-05-25): h1 vira `.b3-page-title`
+          + p vira `.b3-page-sub` (handoff produtos.jsx:26-27). Wrapper
+          b3-page-hd dá o flex layout pro h1+sub à esquerda + actions à
+          direita. ProductsStatusTabs mantém "Todos" (masculine concorda
+          com "produtos") em vez de "Todas" (que seria pra "vendas"). */}
       <div className="b3-page-hd">
         <div>
-          <h1 className="text-[22px] font-bold tracking-[-0.025em] text-ink-1">
-            Produtos
-          </h1>
-          {/* Subtítulo dinâmico — bate o handoff. Conta total inclui
-              rascunhos pra refletir o universo real do CRUD; "sem estoque"
-              só conta produtos com controle ativo (não conta no-tracking). */}
-          <p className="text-ink-4 mt-1 text-[13px]">
+          <h1 className="b3-page-title">Produtos</h1>
+          {/* Subtítulo dinâmico — conta total inclui rascunhos pra refletir
+              o universo real do CRUD; "sem estoque" só conta produtos com
+              controle ativo (não conta no-tracking). */}
+          <p className="b3-page-sub">
             {tabCounts.all + tabCounts.draft}{" "}
             {tabCounts.all + tabCounts.draft === 1
               ? "produto cadastrado"
