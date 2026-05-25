@@ -1,13 +1,22 @@
-import { and, asc, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, isNull, or, sql, type SQL } from "drizzle-orm";
 import { PlusIcon, SearchXIcon, UsersIcon } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import {
+  CustomersKpiStrip,
+  type CustomersKpis,
+} from "@/components/admin/customers-kpi-strip";
 import { CustomersTable } from "@/components/admin/customers-table";
 import { CustomersToolbar } from "@/components/admin/customers-toolbar";
 import { Pagination } from "@/components/common/pagination";
-import { customerTable } from "@/db/schema";
+import {
+  customerTable,
+  orderTable,
+  receivablePaymentTable,
+  receivableTable,
+} from "@/db/schema";
 import { requireSession } from "@/lib/auth-server";
 import { normalizeDocument } from "@/lib/document";
 import { pageNumberSchema, searchTextSchema } from "@/lib/page-search-params";
@@ -75,7 +84,11 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
   const whereClause = and(...conditions);
 
   const offset = (page - 1) * PAGE_SIZE;
-  const { customers, total } = await withTenant(
+  // Janela de 30 dias pra "Novos esse mês" + "Ticket médio do mês" — alinhado
+  // com a forma como o lojista pensa ("últimos 30 dias" > "mês civil arbitrário").
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
+
+  const { customers, total, kpis } = await withTenant(
     store.id,
     session.user.id,
     async (tx) => {
@@ -103,7 +116,85 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
         .from(customerTable)
         .where(whereClause);
 
-      return { customers, total: totalRows[0]?.value ?? 0 };
+      // ---- KPIs — handoff Passo 11 ----
+      // Total de clientes SEM filtros (universo da loja, não do filtro
+      // corrente — KPI deve refletir o universo do lojista).
+      const [totalCustomersRow] = await tx
+        .select({ value: count() })
+        .from(customerTable)
+        .where(eq(customerTable.storeId, store.id));
+
+      // Fiado em aberto: SUM(amount - SUM(payment.amount)) WHERE paid_at NULL.
+      // LEFT JOIN porque receivable pode ter 0 payments (saldo total devido)
+      // OU N payments parciais (saldo = amount - SUM payments).
+      const [creditAgg] = await tx
+        .select({
+          outstanding: sql<string>`
+            COALESCE(SUM(${receivableTable.amountInCents}), 0)
+            - COALESCE(SUM(
+                CASE WHEN ${receivablePaymentTable.id} IS NULL THEN 0
+                     ELSE ${receivablePaymentTable.amountInCents}
+                END
+              ), 0)
+          `,
+          debtors: sql<number>`
+            COUNT(DISTINCT ${receivableTable.customerId}) FILTER (
+              WHERE ${receivableTable.customerId} IS NOT NULL
+            )::int
+          `,
+        })
+        .from(receivableTable)
+        .leftJoin(
+          receivablePaymentTable,
+          eq(receivablePaymentTable.receivableId, receivableTable.id),
+        )
+        .where(
+          and(
+            eq(receivableTable.storeId, store.id),
+            isNull(receivableTable.paidAt),
+          ),
+        );
+
+      // Ticket médio últimos 30 dias — venda não cancelada/expirada.
+      const [ticketAgg] = await tx
+        .select({
+          avg: sql<string | null>`
+            CASE WHEN COUNT(*) = 0 THEN NULL
+                 ELSE AVG(${orderTable.totalInCents})::bigint
+            END
+          `,
+        })
+        .from(orderTable)
+        .where(
+          and(
+            eq(orderTable.storeId, store.id),
+            gte(orderTable.createdAt, thirtyDaysAgo),
+            sql`${orderTable.status} NOT IN ('canceled','expired')`,
+          ),
+        );
+
+      // Novos clientes nos últimos 30 dias.
+      const [newAgg] = await tx
+        .select({ value: count() })
+        .from(customerTable)
+        .where(
+          and(
+            eq(customerTable.storeId, store.id),
+            gte(customerTable.createdAt, thirtyDaysAgo),
+          ),
+        );
+
+      const kpis: CustomersKpis = {
+        totalCustomers: Number(totalCustomersRow?.value ?? 0),
+        creditOutstandingInCents: Math.max(0, Number(creditAgg?.outstanding ?? 0)),
+        customersWithDebt: Number(creditAgg?.debtors ?? 0),
+        ticketAverageInCents: ticketAgg?.avg !== null && ticketAgg?.avg !== undefined
+          ? Number(ticketAgg.avg)
+          : null,
+        newThisMonth: Number(newAgg?.value ?? 0),
+      };
+
+      return { customers, total: totalRows[0]?.value ?? 0, kpis };
     },
   );
 
@@ -125,17 +216,32 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* H1 + CTA Dublin v3 (substitui AdminPageHeader) */}
-      <div className="flex items-end justify-between gap-4">
-        <h1 className="text-[22px] font-bold tracking-[-0.025em] text-ink-1">
-          Meus clientes
-        </h1>
+      {/* H1 + subtítulo dinâmico + CTA Dublin v3. Handoff Passo 11. */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-[22px] font-bold tracking-[-0.025em] text-ink-1">
+            Clientes
+          </h1>
+          <p className="text-ink-4 mt-1 text-[13px]">
+            {kpis.totalCustomers}{" "}
+            {kpis.totalCustomers === 1
+              ? "cliente cadastrado"
+              : "clientes cadastrados"}
+            {kpis.customersWithDebt > 0
+              ? ` · ${kpis.customersWithDebt} com fiado em aberto`
+              : ""}
+          </p>
+        </div>
         <Link href="/admin/clientes/novo" className="b3-btn b3-btn--cta" prefetch>
           <PlusIcon size={14} aria-hidden />
           <span className="hidden sm:inline">Adicionar cliente</span>
           <span className="sm:hidden">Novo</span>
         </Link>
       </div>
+
+      {/* KPI strip — 4 cards horizontais sempre visíveis (também na busca
+          vazia pra dar contexto). */}
+      <CustomersKpiStrip kpis={kpis} />
 
       {customers.length === 0 && !hasFilters ? (
         <EmptyState />
