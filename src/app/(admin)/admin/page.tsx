@@ -304,9 +304,10 @@ export default async function AdminHomePage({
 
   return (
     <div className="b3-page">
-      <h1 className="mb-6 text-[22px] font-bold tracking-[-0.025em] text-ink-1">
-        Hoje
-      </h1>
+      {/* S2 (handoff pixel-perfect 2026-05-25): usa classe `.b3-page-title`
+          (utility compartilhada com pedidos/produtos/clientes/etc) em vez de
+          tailwind inline. Bate dashboard.jsx:202 do bundle. */}
+      <h1 className="b3-page-title">Hoje</h1>
 
       {/* Link público da loja — sempre no topo, copy + QR + abrir loja a 1 clique. */}
       <div className="mb-4">
@@ -317,8 +318,12 @@ export default async function AdminHomePage({
         <OnboardingChecklist storeName={store.name} steps={onboardingSteps} />
       ) : (
         <>
-          {/* 4 cards de operação do dia */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {/* 4 cards de operação do dia.
+              S2 (handoff): grid auto-fit minmax(220px, 1fr) — flow natural
+              que mostra 1/2/3/4 cards conforme largura disponível, em vez de
+              snap em breakpoints sm/xl que pula 3-col entre 768-1280px.
+              Bate dashboard.jsx:209 do bundle. */}
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
             <OpCard
               label="Caixa"
               value={

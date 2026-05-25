@@ -1693,6 +1693,18 @@
     color: var(--ink-4);
     margin-top: 4px;
   }
+  /* S2 (handoff pixel-perfect 2026-05-25): título de página standalone (sem
+     o wrapper b3-page-hd com sub e CTAs). Usado em 11 telas do bundle:
+     dashboard, pedidos, produtos, clientes, estoque, caixa, vitrines,
+     atributos, relatórios, aparencia, stub-pages. Mesma tipografia do
+     `.b3-page-hd h1` — mas como classe utilitária pra aplicar em h1 solto. */
+  .b3-page-title {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    margin: 0 0 18px 0;
+    color: var(--ink-1);
+  }
 
   /* ========================================================
    * BUTTONS — base + cta (brand) + ghost + sm

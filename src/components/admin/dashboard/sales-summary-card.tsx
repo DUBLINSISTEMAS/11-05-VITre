@@ -107,7 +107,11 @@ function SalesSummaryInner({ periodo, series, summary }: SalesSummaryCardProps) 
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-[1fr_260px]">
+      {/* S2 (handoff pixel-perfect 2026-05-25): grid 1fr_280px — bate
+          dashboard.jsx:139 do bundle. Coluna da direita 280px dá
+          respiro pros 5 stat circles (era 260px, ficava apertado pro
+          rótulo "TOTAL DE PEDIDOS"). */}
+      <div className="grid lg:grid-cols-[1fr_280px]">
         <div className="p-5">
           <Sparkline data={series} />
         </div>

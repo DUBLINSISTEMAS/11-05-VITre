@@ -83,7 +83,9 @@ export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
           prefetch
           className="text-ink-4 hocus:text-brand text-[11.5px] font-medium transition-colors"
         >
-          Ver todos →
+          {/* S2 (handoff pixel-perfect 2026-05-25): "Ver todas" — gênero
+              feminino concorda com "vendas". Bate dashboard.jsx:168 do bundle. */}
+          Ver todas →
         </Link>
       </div>
 
