@@ -1,4 +1,6 @@
 import { and, count, eq } from "drizzle-orm";
+import { ExternalLinkIcon } from "lucide-react";
+import Link from "next/link";
 
 import { AparenciaEditor } from "@/components/admin/aparencia-editor";
 import { bannerTable, categoryTable, productTable } from "@/db/schema";
@@ -58,14 +60,32 @@ export default async function AparenciaPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div>
-        <h1 className="text-ink-1 text-[22px] font-bold tracking-[-0.025em]">
-          Aparência
-        </h1>
-        <p className="text-ink-4 mt-1 text-[13px]">
-          Edite à esquerda, veja na hora abaixo —{" "}
-          <span className="text-ink-2 font-mono">mangospay.app/{store.slug}</span>
-        </p>
+      {/* S19 (handoff pixel-perfect 2026-05-25): h1+sub viram b3-page-title +
+          b3-page-sub. Título "Aparência da loja" (handoff aparencia.jsx:25)
+          em vez de só "Aparência". CTA "Abrir loja" no canto direito —
+          handoff tem também "Restaurar" + "Publicar" mas arquitetura atual
+          é auto-save por seção, então só o "Abrir loja" faz sentido (dirty
+          tracking + publish drawer seriam refactor maior, fora do escopo
+          desta slice). */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="b3-page-title">Aparência da loja</h1>
+          <p className="b3-page-sub">
+            Edite à esquerda, veja na hora abaixo —{" "}
+            <span className="text-ink-2 font-mono">mangospay.app/{store.slug}</span>
+          </p>
+        </div>
+        <Link
+          href={`/${store.slug}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          prefetch={false}
+          className="b3-btn b3-btn--sm"
+          title="Abrir loja em nova aba"
+        >
+          <ExternalLinkIcon size={13} aria-hidden />
+          Abrir loja
+        </Link>
       </div>
 
       <AparenciaEditor
