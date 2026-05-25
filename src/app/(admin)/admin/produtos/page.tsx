@@ -20,12 +20,14 @@ import { z } from "zod";
 import type { CategoryOption } from "@/components/admin/category-dialog";
 import { ProductCreateButton } from "@/components/admin/product-create-button";
 import { ProductsErrorToast } from "@/components/admin/products-error-toast";
+import { ProductsGrid } from "@/components/admin/products-grid";
 import { ProductsStatusTabs } from "@/components/admin/products-status-tabs";
 import {
   ProductsTable,
   type ProductTableRow,
 } from "@/components/admin/products-table";
 import { ProductsToolbar } from "@/components/admin/products-toolbar";
+import { ProductsViewToggle } from "@/components/admin/products-view-toggle";
 import { Pagination } from "@/components/common/pagination";
 import {
   categoryTable,
@@ -54,12 +56,16 @@ const PAGE_SIZE = 20;
 const STATUS_VALUES = ["active", "inactive", "draft", "no-stock", "no-tracking"] as const;
 type StatusFilter = (typeof STATUS_VALUES)[number];
 
+const VIEW_VALUES = ["table", "grid"] as const;
+
 const produtosSearchSchema = z.object({
   q: searchTextSchema,
   categoryId: idOrNullSchema,
   status: enumOrNull(STATUS_VALUES),
   promo: boolFlagSchema,
   page: pageNumberSchema,
+  // Passo 9 — toggle table↔grid (default omite param).
+  view: z.enum(VIEW_VALUES).catch("table"),
 });
 
 interface ProdutosPageProps {
@@ -79,6 +85,7 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
     status: statusFilter,
     promo: onlyPromo,
     page,
+    view,
   } = produtosSearchSchema.parse(await searchParams);
 
   // ---- WHERE base (storeId + busca + categoria) — SEM promo nem status ----
@@ -366,8 +373,20 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
       <div className="b3-page-hd">
         <div>
           <h1 className="text-[22px] font-bold tracking-[-0.025em] text-ink-1">
-            Meus produtos
+            Produtos
           </h1>
+          {/* Subtítulo dinâmico — bate o handoff. Conta total inclui
+              rascunhos pra refletir o universo real do CRUD; "sem estoque"
+              só conta produtos com controle ativo (não conta no-tracking). */}
+          <p className="text-ink-4 mt-1 text-[13px]">
+            {tabCounts.all + tabCounts.draft}{" "}
+            {tabCounts.all + tabCounts.draft === 1
+              ? "produto cadastrado"
+              : "produtos cadastrados"}
+            {tabCounts["no-stock"] > 0
+              ? ` · ${tabCounts["no-stock"]} sem estoque`
+              : ""}
+          </p>
         </div>
         <ProductCreateButton />
       </div>
@@ -395,8 +414,19 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
             />
           </Suspense>
 
+          {/* Toggle table/grid — bate o handoff (lojista visual de
+              joia/roupa/perfumaria prefere grid). Posicionado entre o
+              toolbar e o conteúdo, alinhado à direita. */}
+          <div className="flex items-center justify-end border-t border-line px-4 py-2">
+            <Suspense fallback={<div className="h-8" />}>
+              <ProductsViewToggle current={view} />
+            </Suspense>
+          </div>
+
           {products.length === 0 ? (
             <NoResults onlyPromo={onlyPromo} />
+          ) : view === "grid" ? (
+            <ProductsGrid products={tableRows} />
           ) : (
             <ProductsTable products={tableRows} />
           )}
