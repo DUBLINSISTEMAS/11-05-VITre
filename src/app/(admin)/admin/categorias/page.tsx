@@ -57,16 +57,17 @@ export default async function CategoriasPage() {
 
   return (
     <div className="space-y-5">
-      {/* Page header — H1 inline Dublin v3 (24px font-bold tracking -0.025em) */}
+      {/* Page header.
+          S10 (handoff pixel-perfect 2026-05-25): vira `.b3-page-title` +
+          `.b3-page-sub` (handoff stub-pages.jsx:139-140 "Categorias").
+          Subtítulo explica O QUE são categorias (handoff) — count fica
+          implícito na árvore renderizada logo abaixo. */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[22px] font-bold tracking-[-0.025em] text-ink-1">
-            Categorias
-          </h1>
-          <p className="text-ink-4 mt-1 text-sm">
-            {totalCount === 0
-              ? "Nenhuma categoria ainda."
-              : `${totalCount} ${totalCount === 1 ? "categoria" : "categorias"}`}
+          <h1 className="b3-page-title">Categorias</h1>
+          <p className="b3-page-sub">
+            Árvore de categorias usada na vitrine e nos filtros da loja
+            {totalCount > 0 ? ` · ${totalCount} ${totalCount === 1 ? "categoria" : "categorias"}` : ""}
           </p>
         </div>
         <CategoryDialog rootCategories={rootOptions} />

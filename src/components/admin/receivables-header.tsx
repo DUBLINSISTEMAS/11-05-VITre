@@ -22,13 +22,18 @@ export function ReceivablesHeader() {
 
   return (
     <>
+      {/* S7 (handoff pixel-perfect 2026-05-25): vira `.b3-page-title` +
+          `.b3-page-sub` (handoff stub-pages.jsx:53-58 "A receber"). Mantemos
+          o ícone HandCoinsIcon inline (identificador visual útil pro fiado)
+          + subtítulo explicativo do behavior caixa-automático que o handoff
+          mock não conhecia. */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-ink-1 flex items-center gap-2 text-[22px] font-bold tracking-[-0.025em]">
-            <HandCoinsIcon size={20} className="text-brand" />
+          <h1 className="b3-page-title flex items-center gap-2">
+            <HandCoinsIcon size={20} className="text-brand" aria-hidden />
             A receber (fiado)
           </h1>
-          <p className="text-ink-4 mt-1 text-[13px]">
+          <p className="b3-page-sub">
             Vendas fiadas e empréstimos pendentes. Marcar como pago gera
             entrada automática no caixa aberto (quando houver sessão ativa).
           </p>

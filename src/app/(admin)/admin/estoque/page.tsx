@@ -122,11 +122,15 @@ export default async function EstoquePage({ searchParams }: EstoquePageProps) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* H1 + CTAs */}
+      {/* H1 + sub + CTAs. S6 (handoff pixel-perfect 2026-05-25): vira
+          `.b3-page-title` + `.b3-page-sub` (handoff estoque.jsx:12-13). */}
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="text-[22px] font-bold tracking-[-0.025em] text-ink-1">
-          Estoque
-        </h1>
+        <div>
+          <h1 className="b3-page-title">Estoque</h1>
+          <p className="b3-page-sub">
+            Saldo atual, movimentações e alertas de produtos abaixo do mínimo
+          </p>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           {/* Onda 1.4 (2026-05-24): CTA "Nova entrada (compra)" REMOVIDO
               da tela de estoque. Founder reportou que confundia ("por que

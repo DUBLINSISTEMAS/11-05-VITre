@@ -290,13 +290,13 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* H1 + subtítulo dinâmico + CTA Dublin v3. Handoff Passo 11. */}
+      {/* H1 + subtítulo dinâmico + CTA Dublin v3. Handoff Passo 11.
+          S9 (handoff pixel-perfect 2026-05-25): vira `.b3-page-title` +
+          `.b3-page-sub` (handoff clientes.jsx:11-12). */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-[22px] font-bold tracking-[-0.025em] text-ink-1">
-            Clientes
-          </h1>
-          <p className="text-ink-4 mt-1 text-[13px]">
+          <h1 className="b3-page-title">Clientes</h1>
+          <p className="b3-page-sub">
             {kpis.totalCustomers}{" "}
             {kpis.totalCustomers === 1
               ? "cliente cadastrado"

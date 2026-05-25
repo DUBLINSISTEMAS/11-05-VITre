@@ -16,22 +16,23 @@ export default async function ContatosPage({
   if (!data) {
     return (
       <div className="space-y-4">
-        <h1 className="text-ink-1 text-[22px] font-bold tracking-[-0.025em]">
-          Recados do site
-        </h1>
-        <p className="text-ink-3 text-[13px]">Loja não encontrada.</p>
+        <h1 className="b3-page-title">Recados do site</h1>
+        <p className="b3-page-sub">Loja não encontrada.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* S8 (handoff pixel-perfect 2026-05-25): vira `.b3-page-title` +
+          `.b3-page-sub` (handoff stub-pages.jsx:102-103). Subtítulo do
+          handoff é mais preciso pro escopo real do schema `lead` (form
+          da vitrine + cliques no WhatsApp ainda não respondidos). */}
       <div>
-        <h1 className="text-ink-1 text-[22px] font-bold tracking-[-0.025em]">
-          Recados do site
-        </h1>
-        <p className="text-ink-4 mt-1 text-[13px]">
-          Toda intenção de compra via WhatsApp aparece aqui.
+        <h1 className="b3-page-title">Recados do site</h1>
+        <p className="b3-page-sub">
+          Mensagens recebidas pelo formulário da vitrine, ainda não
+          respondidas pelo WhatsApp.
         </p>
       </div>
 
