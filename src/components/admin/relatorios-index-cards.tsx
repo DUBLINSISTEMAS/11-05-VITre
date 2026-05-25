@@ -11,6 +11,7 @@
 import {
   AlertTriangleIcon,
   CalculatorIcon,
+  ChevronRightIcon,
   ClockIcon,
   HandCoinsIcon,
   type LucideIcon,
@@ -79,7 +80,7 @@ export function RelatoriosIndexCards() {
       <div className="text-ink-4 text-[11px] font-bold uppercase tracking-[0.06em]">
         Relatórios imprimíveis (A4)
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]">
         {REPORTS.map((r) => {
           const Icon = r.icon;
           return (
@@ -87,21 +88,27 @@ export function RelatoriosIndexCards() {
               key={r.k}
               href={r.href}
               prefetch
-              className="b3-card b3-card-pad hover:border-brand/50 group block transition"
+              className="b3-card b3-card-pad group flex flex-col gap-3 transition hover:border-mangos-green-700/40 hover:shadow-md"
             >
-              <div className="flex items-start gap-3">
-                <div className="bg-brand-wash text-brand flex size-9 shrink-0 items-center justify-center rounded-md">
-                  <Icon size={16} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-ink-1 group-hover:text-brand text-[13px] font-semibold tracking-tight">
-                    {r.label}
-                  </div>
-                  <p className="text-ink-4 mt-0.5 text-[11.5px] leading-snug">
-                    {r.description}
-                  </p>
-                </div>
+              <div
+                className="text-mangos-green-800 inline-flex size-9 items-center justify-center rounded-[10px]"
+                style={{ background: "var(--mangos-yellow-soft)" }}
+                aria-hidden
+              >
+                <Icon size={18} />
               </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-ink-1 text-[14px] font-semibold tracking-tight">
+                  {r.label}
+                </p>
+                <p className="text-ink-4 mt-1 text-[12.5px] leading-snug">
+                  {r.description}
+                </p>
+              </div>
+              <p className="text-mangos-green-800 mt-auto inline-flex items-center gap-0.5 text-[12px] font-semibold">
+                Abrir relatório
+                <ChevronRightIcon size={13} aria-hidden />
+              </p>
             </Link>
           );
         })}

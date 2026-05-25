@@ -27,6 +27,17 @@ export default async function RelatoriosPage({
 
   return (
     <div className="space-y-6">
+      {/* H1 + subtítulo bate o handoff. RelatoriosIndexCards renderiza
+          a galeria de cards abaixo; ReportView é o dashboard agregado
+          que mantemos pra visão geral rápida. Passo 12. */}
+      <div>
+        <h1 className="text-ink-1 text-[22px] font-bold tracking-[-0.025em]">
+          Relatórios
+        </h1>
+        <p className="text-ink-4 mt-1 text-[13px]">
+          Imprima A4 com logo da loja ou exporte CSV pra mandar pro contador.
+        </p>
+      </div>
       <RelatoriosIndexCards />
       <ReportView report={report} filters={params} />
     </div>
