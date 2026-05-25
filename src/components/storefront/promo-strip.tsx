@@ -56,12 +56,28 @@ export function PromoStrip({
       prefetch={false}
       aria-label={`Em promoção · ${count} ${count === 1 ? "peça" : "peças"}`}
       className={cn(
-        "flex items-center gap-2.5 rounded-xl border border-border bg-gray-50 px-3.5 py-3 outline-none",
-        "transition-colors hover:bg-gray-100/60 focus-visible:ring-2 focus-visible:ring-ring",
+        "flex items-center gap-2.5 rounded-xl border outline-none px-3.5 py-3",
+        "transition-colors focus-visible:ring-2 focus-visible:ring-ring",
         className,
       )}
+      // PP15 (handoff pixel-perfect 2026-05-25) — bg + border usam tom da
+      // loja (brand-store) em vez de gray neutro. Bate vt-promo-strip do
+      // handoff que usa "brand wash" pra criar identidade visual.
+      style={{
+        background:
+          "color-mix(in oklab, var(--brand-store, #174D44) 8%, transparent)",
+        borderColor:
+          "color-mix(in oklab, var(--brand-store, #174D44) 22%, transparent)",
+      }}
     >
-      <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-warning-soft text-warning">
+      <span
+        className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg"
+        style={{
+          background:
+            "color-mix(in oklab, var(--brand-store, #174D44) 18%, transparent)",
+          color: "var(--brand-store, #174D44)",
+        }}
+      >
         <Sparkle className="size-4" strokeWidth={1.6} fill="currentColor" />
       </span>
       <div className="min-w-0 flex-1">
@@ -72,7 +88,11 @@ export function PromoStrip({
           <div className="mt-px text-[10.5px] text-gray-500">{subtitle}</div>
         )}
       </div>
-      <ArrowRight className="size-3.5 shrink-0 text-gray-500" strokeWidth={1.8} />
+      <ArrowRight
+        className="size-3.5 shrink-0"
+        strokeWidth={1.8}
+        style={{ color: "var(--brand-store, #174D44)", opacity: 0.7 }}
+      />
     </Link>
   );
 }
