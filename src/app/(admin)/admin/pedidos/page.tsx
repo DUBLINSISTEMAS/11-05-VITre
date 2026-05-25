@@ -360,13 +360,13 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
     <div className="space-y-4 sm:space-y-6">
       {/* H1 + subtítulo + Exportar CSV. "Nova venda" SAIU daqui — vive
           global no topbar (CTA verde) e F2 em qualquer rota (handoff
-          Passo 4). Aqui só o que é específico de /admin/pedidos. */}
+          Passo 4). Aqui só o que é específico de /admin/pedidos.
+          S3 (handoff pixel-perfect 2026-05-25): h1 vira `.b3-page-title`
+          + `<p class="b3-page-sub">` (handoff pedidos.jsx:25-26). */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-[22px] font-bold tracking-[-0.025em] text-ink-1">
-            Vendas
-          </h1>
-          <p className="text-ink-4 mt-1 text-[13px]">
+          <h1 className="b3-page-title">Vendas</h1>
+          <p className="b3-page-sub">
             Pedidos de balcão (PDV) e online (loja + WhatsApp)
           </p>
         </div>

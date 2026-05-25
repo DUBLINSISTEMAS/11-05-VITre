@@ -1705,6 +1705,20 @@
     margin: 0 0 18px 0;
     color: var(--ink-1);
   }
+  /* S3 (handoff pixel-perfect 2026-05-25): subtítulo logo abaixo do
+     b3-page-title. Pareado em pedidos/produtos/clientes/etc do bundle
+     com texto curto explicando o escopo da página. Quando aparece junto
+     com b3-page-title, neutraliza o margin-bottom 18px do título pra
+     ficarem grudados; o agrupamento (h1+p) recebe o respiro como bloco. */
+  .b3-page-title + .b3-page-sub {
+    margin-top: -14px;
+  }
+  .b3-page-sub {
+    font-size: 13px;
+    color: var(--ink-4);
+    margin: 0 0 18px 0;
+    line-height: 1.4;
+  }
 
   /* ========================================================
    * BUTTONS — base + cta (brand) + ghost + sm

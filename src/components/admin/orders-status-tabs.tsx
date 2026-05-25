@@ -22,17 +22,23 @@ interface OrdersStatusTabsProps {
   counts: OrdersStatusCounts;
 }
 
+// S3 (handoff pixel-perfect 2026-05-25): gênero feminino concordando com
+// "vendas" (handoff pedidos.jsx:6-13). "Cumpridos" → "Entregues" — palavra
+// que lojista usa no balcão. Mantemos "Orçamentos" (feature além do handoff,
+// já existe no schema e o lojista usa); "Fiado" do handoff é um eixo de
+// payment method que cobrimos via toggle `fiado=pendente` no toolbar (mais
+// preciso que tab de status — qualquer venda com receivable pendente entra).
 const TABS: ReadonlyArray<{
   value: string | null;
   label: string;
   countKey: keyof OrdersStatusCounts;
 }> = [
-  { value: null, label: "Todos", countKey: "total" },
+  { value: null, label: "Todas", countKey: "total" },
   { value: "quote", label: "Orçamentos", countKey: "quote" },
   { value: "awaiting_whatsapp", label: "Aguardando", countKey: "awaiting_whatsapp" },
-  { value: "confirmed", label: "Confirmados", countKey: "confirmed" },
-  { value: "fulfilled", label: "Cumpridos", countKey: "fulfilled" },
-  { value: "canceled", label: "Cancelados", countKey: "canceled" },
+  { value: "confirmed", label: "Confirmadas", countKey: "confirmed" },
+  { value: "fulfilled", label: "Entregues", countKey: "fulfilled" },
+  { value: "canceled", label: "Canceladas", countKey: "canceled" },
 ];
 
 export function OrdersStatusTabs({ counts }: OrdersStatusTabsProps) {
