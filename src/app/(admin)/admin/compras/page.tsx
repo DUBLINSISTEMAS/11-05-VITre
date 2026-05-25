@@ -13,12 +13,14 @@ export default async function ComprasPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* S17 (handoff pixel-perfect 2026-05-25): h1+sub viram b3-page-title +
+          b3-page-sub (handoff stub-pages.jsx:167 "Compras"). Sub mantém o
+          texto informativo (custo médio móvel + auditoria) que o mock não
+          conhecia — orientação real pro lojista. */}
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-ink-1 text-[22px] font-bold tracking-[-0.025em]">
-            Compras
-          </h1>
-          <p className="text-ink-4 mt-1 text-[13px]">
+          <h1 className="b3-page-title">Compras</h1>
+          <p className="b3-page-sub">
             Registro de entradas de mercadoria. Cada compra atualiza o custo
             do produto pelo método de custo médio móvel ponderado, soma ao
             estoque e gera movimentação na auditoria.

@@ -26,11 +26,11 @@ export default async function PagamentoPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* S23 (handoff pixel-perfect 2026-05-25): h1+sub viram b3-page-title +
+          b3-page-sub (handoff stub-pages.jsx:175 "Formas de pagamento"). */}
       <div>
-        <h1 className="text-ink-1 text-[22px] font-bold tracking-[-0.025em]">
-          Formas de pagamento
-        </h1>
-        <p className="text-ink-4 mt-1 text-[13px]">
+        <h1 className="b3-page-title">Formas de pagamento</h1>
+        <p className="b3-page-sub">
           Como aparecem parcelas e desconto à vista na sua vitrine e no
           template do WhatsApp.
         </p>

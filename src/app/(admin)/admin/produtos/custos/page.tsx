@@ -80,15 +80,18 @@ export default async function ProdutosCustosPage() {
 
   return (
     <div className="mx-auto max-w-[1360px] space-y-4 p-4 sm:p-6">
+      {/* S18 (handoff pixel-perfect 2026-05-25): h1+sub viram b3-page-title +
+          b3-page-sub. O design anterior usava h1 15px (estilo planilha) que
+          desconectava visualmente do resto do admin. Normalizado pra 24px
+          (handoff stub-pages.jsx:168 "Custo & margem"). Contadores inline
+          (Total / Com custo / Sem custo) mantidos à direita do header. */}
       <header className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <CalculatorIcon className="size-4 text-ink-3" aria-hidden />
-            <h1 className="text-[15px] font-semibold tracking-tight text-ink-1">
-              Custo & Margem
-            </h1>
-          </div>
-          <p className="text-ink-4 text-[12.5px] leading-snug">
+        <div>
+          <h1 className="b3-page-title flex items-center gap-2">
+            <CalculatorIcon className="size-5 text-ink-3" aria-hidden />
+            Custo &amp; margem
+          </h1>
+          <p className="b3-page-sub">
             Preencha o custo e a comissão de vários produtos de uma vez.
             Use Tab pra pular pra próxima linha. Salva automaticamente.
           </p>

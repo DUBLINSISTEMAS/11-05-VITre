@@ -36,11 +36,12 @@ export default async function BannersPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* S20 (handoff pixel-perfect 2026-05-25): h1+sub viram b3-page-title +
+          b3-page-sub (handoff stub-pages.jsx:172 "Banners"). Sub mantém
+          texto informativo (carrossel automático + tempo configurável). */}
       <div>
-        <h1 className="text-ink-1 text-[22px] font-bold tracking-[-0.025em]">
-          Banners
-        </h1>
-        <p className="text-ink-4 mt-1 text-[13px] leading-relaxed">
+        <h1 className="b3-page-title">Banners</h1>
+        <p className="b3-page-sub">
           Imagens grandes que aparecem no topo da sua vitrine. Até{" "}
           {MAX_BANNERS} banners. Com 2 ou mais ativos, eles trocam
           automaticamente em carrossel — ajuste o tempo em Aparência → Banners.

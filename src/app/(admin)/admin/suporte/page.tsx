@@ -32,11 +32,11 @@ export default async function SuportePage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* S25 (handoff pixel-perfect 2026-05-25): h1+sub viram b3-page-title +
+          b3-page-sub (handoff stub-pages.jsx:177 "Suporte"). */}
       <div>
-        <h1 className="text-ink-1 text-[22px] font-bold tracking-[-0.025em]">
-          Suporte
-        </h1>
-        <p className="text-ink-4 mt-1 text-[13px]">
+        <h1 className="b3-page-title">Suporte</h1>
+        <p className="b3-page-sub">
           Canais de ajuda · documentação · primeiros passos.
         </p>
       </div>
