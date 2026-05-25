@@ -1,4 +1,5 @@
 import { AppearanceForm } from "@/components/admin/appearance-form";
+import { StorefrontLivePreview } from "@/components/admin/storefront-live-preview";
 import { ThemeSelector } from "@/components/admin/theme-selector";
 import { requireSession } from "@/lib/auth-server";
 import { getCurrentStore } from "@/lib/store-context";
@@ -24,38 +25,49 @@ export default async function AparenciaPage() {
           Aparência
         </h1>
         <p className="text-ink-4 mt-1 text-[13px]">
-          Modelo da vitrine, logo, cor e como o carrossel de banners se
-          comporta.
+          Edite à esquerda, veja na hora à direita —{" "}
+          <span className="text-ink-2 font-mono">mangospay.app/{store.slug}</span>
         </p>
       </div>
 
-      <section className="space-y-3">
-        <header>
-          <div className="text-ink-4 text-[11px] font-bold uppercase tracking-[0.06em]">
-            Modelo da vitrine
-          </div>
-          <p className="text-ink-4 mt-1 text-xs leading-relaxed">
-            Cada modelo muda a forma das categorias, o estilo dos cards, o
-            hero e a barra inferior.
-          </p>
-        </header>
-        <ThemeSelector
-          currentTheme={{
-            categoryShape: store.categoryShape,
-            productCardStyle: store.productCardStyle,
-            heroStyle: store.heroStyle,
-            bottomNavStyle: store.bottomNavStyle,
-          }}
-        />
-      </section>
+      {/* Layout split editor + preview — handoff Passo 13. No mobile cai
+          empilhado (preview embaixo); no desktop (lg+) split 1fr / 1fr com
+          preview sticky pra continuar visível enquanto rola o editor. */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
+        <div className="space-y-4 sm:space-y-6">
+          <section className="space-y-3">
+            <header>
+              <div className="text-ink-4 text-[11px] font-bold uppercase tracking-[0.06em]">
+                Modelo da vitrine
+              </div>
+              <p className="text-ink-4 mt-1 text-xs leading-relaxed">
+                Cada modelo muda a forma das categorias, o estilo dos cards, o
+                hero e a barra inferior.
+              </p>
+            </header>
+            <ThemeSelector
+              currentTheme={{
+                categoryShape: store.categoryShape,
+                productCardStyle: store.productCardStyle,
+                heroStyle: store.heroStyle,
+                bottomNavStyle: store.bottomNavStyle,
+              }}
+            />
+          </section>
 
-      <AppearanceForm
-        initialData={{
-          primaryColor: store.primaryColor,
-          bannerRotationSec: store.bannerRotationSec,
-          logoUrl: store.logoUrl,
-        }}
-      />
+          <AppearanceForm
+            initialData={{
+              primaryColor: store.primaryColor,
+              bannerRotationSec: store.bannerRotationSec,
+              logoUrl: store.logoUrl,
+            }}
+          />
+        </div>
+
+        <div className="lg:sticky lg:top-4">
+          <StorefrontLivePreview storeSlug={store.slug} />
+        </div>
+      </div>
     </div>
   );
 }
