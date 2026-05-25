@@ -2,12 +2,15 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  ChevronDownIcon,
   DollarSignIcon,
+  ImageIcon,
+  LayoutGridIcon,
   Loader2Icon,
+  PackageIcon,
   PlusCircleIcon,
   SaveIcon,
   StoreIcon,
+  TagIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
@@ -27,7 +30,6 @@ import {
 } from "@/actions/product/schema";
 import { updateProduct } from "@/actions/product/update";
 import { uploadProductImage } from "@/actions/product/upload-image";
-import { MangoIcon } from "@/components/brand/mango-icon";
 import { Button } from "@/components/ui/button";
 import {
   clearFormDraft,
@@ -157,38 +159,44 @@ interface ProductFormProps {
   ) => Promise<{ ok: true; productId: string } | { ok: false; error: string; fieldErrors?: Record<string, string> }>;
 }
 
-// Onda 2.1 — navegação reduzida a 3 perguntas mentais do lojista.
-// "Avançado" tem o copy de orientação "campos opcionais" pra atender
-// o princípio de progressive disclosure.
+// PP1 (handoff pixel-perfect 2026-05-25): 6 abas com sidebar 180px à
+// esquerda + form panel à direita. Bate o ProductFormDrawer do bundle
+// (drawers.jsx linha 209-216).
 const TAB_NAV: {
   key: TabKey;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
 }[] = [
-  { key: "identidade", label: "Identidade", icon: MangoIcon },
-  { key: "preco-estoque", label: "Preço & Estoque", icon: DollarSignIcon },
-  { key: "avancado", label: "Avançado", icon: StoreIcon },
+  { key: "basico", label: "Básico", icon: TagIcon },
+  { key: "imagens", label: "Imagens", icon: ImageIcon },
+  { key: "preco", label: "Preço & custo", icon: DollarSignIcon },
+  { key: "estoque", label: "Estoque", icon: PackageIcon },
+  { key: "variantes", label: "Variantes", icon: LayoutGridIcon },
+  { key: "loja", label: "Loja online", icon: StoreIcon },
 ];
 
 /**
- * Form de edição/criação de produto — Sprint 0/Prompt 6.
+ * Form de edição/criação de produto.
  *
- * Refator de 5 abas (princípios 8 e 9 do CLAUDE.md):
- *   1. Identidade    — Básico, Classificação (marca + categoria), Mídia
- *   2. Preço & Custo — Venda (3 col), Custo (3 col), Tributação (NCM)
- *   3. Estoque       — Controle, Quantidades (condicional), Identificação
- *   4. Variantes     — VariantEditor
- *   5. Loja online   — Publicação, Catálogo (parcelas/desconto), Conteúdo
+ * PP1 redesign 2026-05-25: 6 abas em sidebar vertical 180px à esquerda
+ * (bate drawers.jsx do handoff). Antes era 3 abas horizontais.
+ *   1. Básico       — Nome, descrição, classificação (marca+categoria)
+ *   2. Imagens      — ImageUploader (extraído da Identidade)
+ *   3. Preço & custo — Venda + custo + margem live + simulador markup/margem
+ *   4. Estoque      — Controle on/off + qty + min/max + localização
+ *   5. Variantes    — VariantEditor standalone (antes era dobrável)
+ *   6. Loja online  — Publicação + promo + atacado + comissão + NCM + apparel
  *
- * Comportamento atual 100% preservado: Zod schema, server actions, staged
- * uploads, cadastro contínuo via sessionStorage, sticky save mobile/desktop,
+ * Comportamento preservado: Zod schema, server actions, staged uploads,
+ * cadastro contínuo via sessionStorage, sticky save mobile/desktop,
  * isActive controlado pelo header em modo edit.
+ *
+ * Layout muda: grid `[180px_1fr]` em lg+, vertical stack em mobile (tabs
+ * em scroll horizontal no mobile).
  *
  * Débitos documentados nos arquivos de cada aba:
  *   - "+ Nova marca" inline (Sprint 2, depende da tabela `brand`)
- *   - "atributos pra filtros" multi-select (Sprint futura, schema)
- *   - "estoque atual readonly + Ver movimentações" (Sprint futura, UX
- *     de lançamento inicial)
+ *   - "atributos pra filtros" multi-select (PP6 schema novo)
  */
 export function ProductForm({
   initialData,
@@ -270,7 +278,7 @@ export function ProductForm({
   const [submitMode, setSubmitMode] = useState<"save" | "saveAndContinue">(
     "save",
   );
-  const [activeTab, setActiveTab] = useState<TabKey>("identidade");
+  const [activeTab, setActiveTab] = useState<TabKey>("basico");
 
   // Onda 2.9 (2026-05-22) — autosave de rascunho. Só faz sentido em
   // criação (modo Detalhado de novo produto). Em edit o estado do form
@@ -424,133 +432,169 @@ export function ProductForm({
       onSubmit={handleSubmit(onSubmit)}
       // Padding-bottom em mobile pra clear do sticky save mobile (3.5rem nav +
       // 0.25rem gap + altura do save). Desktop: pb-28 pra clear da bottom
-      // action bar fixa (h-20 + buffer). Form vai full-width até xl (1280px)
-      // pra abrir espaço pro grid 12-col da Identidade (princípio 9).
+      // action bar fixa (h-20 + buffer). PP1: form vai full-width até xl
+      // (1280px) e usa layout sidebar 180px + form panel à direita.
       className="mx-auto pb-36 lg:pb-28 xl:max-w-[1280px]"
     >
-      {/* === Navegação de abas === */}
-      <div
-        className="b3-tabs mb-6"
-        role="tablist"
-        aria-label="Seções do produto"
-      >
-        {TAB_NAV.map((tab) => {
-          const errCount = getTabErrorCount(tab.key, errors);
-          const isActive = activeTab === tab.key;
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              data-active={isActive ? "true" : undefined}
-              className="b3-tab"
-              onClick={() => setActiveTab(tab.key)}
-            >
-              <Icon className="h-4 w-4" />
-              {tab.label}
-              {errCount > 0 ? (
-                <span
-                  aria-label={`${errCount} ${errCount === 1 ? "erro" : "erros"}`}
-                  className="ml-1.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-white"
-                >
-                  {errCount}
-                </span>
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* === Onda 2.1 — 3 abas. Variantes virou dobrável dentro de
-           Identidade. NCM/comissão saíram pra Avançado. === */}
-
-      <div hidden={activeTab !== "identidade"} className="space-y-4">
-        <TabIdentidade
-          control={control}
-          register={register}
-          errors={errors}
-          isPending={isPending}
-          productId={initialData.productId}
-          images={images}
-          onImagesChange={handleImagesChange}
-          isCreating={isCreating}
-          stagedFiles={stagedFiles}
-          onStagedChange={setStagedFiles}
-          localCategories={localCategories}
-          onCategoryCreated={handleCategoryCreated}
-          localBrands={localBrands}
-          onBrandCreated={(b) =>
-            setLocalBrands((prev) => [...prev, b].sort((a, b) => a.name.localeCompare(b.name)))
-          }
-        />
-        {/* Variantes — dobrável (só ~5% dos produtos têm). Default
-            fechado pra produto novo; aberto se já houver variante. */}
-        <details
-          className="b3-card group rounded-xl"
-          open={(initialData.variants?.length ?? 0) > 0}
+      {/* PP1 (handoff 2026-05-25): layout grid sidebar 180px + form panel.
+          Em mobile (<lg) cai pra tabs horizontais scrolláveis no topo +
+          form embaixo. */}
+      <div className="lg:grid lg:grid-cols-[180px_1fr] lg:gap-6">
+        {/* === Navegação de abas — sidebar vertical em lg+, horizontal mobile === */}
+        <nav
+          className={cn(
+            "b3-tabs mb-6 lg:mb-0",
+            "lg:flex lg:flex-col lg:gap-1 lg:bg-bg-app lg:rounded-[10px] lg:p-1.5 lg:self-start lg:sticky lg:top-4",
+          )}
+          role="tablist"
+          aria-label="Seções do produto"
         >
-          <summary className="flex cursor-pointer items-center justify-between gap-2 p-4 text-[13.5px] font-semibold text-ink-1 list-none">
-            <span>
-              Tem tamanho ou cor diferente?
-              <span className="text-ink-4 ml-2 font-normal text-[12px]">
-                Adicione variações deste produto
-              </span>
-            </span>
-            <ChevronDownIcon className="size-4 text-ink-4 transition-transform group-open:rotate-180" />
-          </summary>
-          <div className="border-t border-line p-4 pt-3">
+          {TAB_NAV.map((tab) => {
+            const errCount = getTabErrorCount(tab.key, errors);
+            const isActive = activeTab === tab.key;
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                data-active={isActive ? "true" : undefined}
+                className={cn(
+                  "b3-tab",
+                  // No desktop, cada tab vira row 9px 12px com active wash.
+                  "lg:!flex lg:w-full lg:items-center lg:gap-2.5 lg:rounded-[8px] lg:px-3 lg:py-2.5 lg:text-left lg:text-[13px] lg:font-medium",
+                  "lg:!border-0",
+                  isActive
+                    ? "lg:!bg-surface lg:!text-mangos-green-900 lg:font-semibold lg:shadow-sm"
+                    : "lg:!bg-transparent lg:text-ink-2 lg:hover:bg-bg-app lg:hover:text-ink-1",
+                )}
+                onClick={() => setActiveTab(tab.key)}
+              >
+                <Icon
+                  className={cn(
+                    "h-4 w-4",
+                    isActive ? "lg:text-mangos-yellow-hover" : "lg:text-ink-4",
+                  )}
+                />
+                <span className="lg:flex-1">{tab.label}</span>
+                {errCount > 0 ? (
+                  <span
+                    aria-label={`${errCount} ${errCount === 1 ? "erro" : "erros"}`}
+                    className="ml-1.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-white"
+                  >
+                    {errCount}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* === Form panel — 6 seções, uma visível por vez === */}
+        <div className="min-w-0">
+          <div hidden={activeTab !== "basico"} className="space-y-4">
+            <TabIdentidade
+              control={control}
+              register={register}
+              errors={errors}
+              isPending={isPending}
+              productId={initialData.productId}
+              images={images}
+              onImagesChange={handleImagesChange}
+              isCreating={isCreating}
+              stagedFiles={stagedFiles}
+              onStagedChange={setStagedFiles}
+              localCategories={localCategories}
+              onCategoryCreated={handleCategoryCreated}
+              localBrands={localBrands}
+              onBrandCreated={(b) =>
+                setLocalBrands((prev) =>
+                  [...prev, b].sort((a, b) => a.name.localeCompare(b.name)),
+                )
+              }
+              view="basico"
+            />
+          </div>
+
+          <div hidden={activeTab !== "imagens"} className="space-y-4">
+            <TabIdentidade
+              control={control}
+              register={register}
+              errors={errors}
+              isPending={isPending}
+              productId={initialData.productId}
+              images={images}
+              onImagesChange={handleImagesChange}
+              isCreating={isCreating}
+              stagedFiles={stagedFiles}
+              onStagedChange={setStagedFiles}
+              localCategories={localCategories}
+              onCategoryCreated={handleCategoryCreated}
+              localBrands={localBrands}
+              onBrandCreated={(b) =>
+                setLocalBrands((prev) =>
+                  [...prev, b].sort((a, b) => a.name.localeCompare(b.name)),
+                )
+              }
+              view="imagens"
+            />
+          </div>
+
+          <div hidden={activeTab !== "preco"} className="space-y-4">
+            <TabPrecoCusto
+              control={control}
+              register={register}
+              errors={errors}
+              isPending={isPending}
+              setValue={setValue}
+              hideAdvanced
+            />
+          </div>
+
+          <div hidden={activeTab !== "estoque"} className="space-y-4">
+            <TabEstoque
+              control={control}
+              register={register}
+              errors={errors}
+              isPending={isPending}
+              isCreating={isCreating}
+              originalStockQuantity={initialData.stockQuantity}
+            />
+          </div>
+
+          <div hidden={activeTab !== "variantes"} className="space-y-4">
             <TabVariantes
               control={control}
               isPending={isPending}
               images={images}
             />
           </div>
-        </details>
-      </div>
 
-      <div hidden={activeTab !== "preco-estoque"} className="space-y-4">
-        <TabPrecoCusto
-          control={control}
-          register={register}
-          errors={errors}
-          isPending={isPending}
-          setValue={setValue}
-          hideAdvanced
-        />
-        <TabEstoque
-          control={control}
-          register={register}
-          errors={errors}
-          isPending={isPending}
-          isCreating={isCreating}
-          originalStockQuantity={initialData.stockQuantity}
-        />
-      </div>
-
-      <div hidden={activeTab !== "avancado"} className="space-y-4">
-        <div className="rounded-xl border border-dashed border-line bg-bg-app p-3 text-[12.5px] text-ink-4">
-          Esses campos são opcionais. Só preencha se sua operação precisar
-          (NCM pra contador, override de parcelas pra peça cara, comissão
-          pra vendedor com bônus, etc).
+          <div hidden={activeTab !== "loja"} className="space-y-4">
+            <div className="rounded-xl border border-dashed border-line bg-bg-app p-3 text-[12.5px] text-ink-4">
+              Publicação na vitrine, promoção, atacado, comissão, NCM e
+              metadados editoriais (composição, modelagem, forro, lavagem
+              quando aplicável).
+            </div>
+            <TabLojaOnline
+              control={control}
+              register={register}
+              errors={errors}
+              isPending={isPending}
+              isDraft={isDraft}
+              showApparelMetaFields={showApparelMetaFields}
+            />
+            <TabPrecoCusto
+              control={control}
+              register={register}
+              errors={errors}
+              isPending={isPending}
+              setValue={setValue}
+              onlyAdvanced
+            />
+          </div>
         </div>
-        <TabLojaOnline
-          control={control}
-          register={register}
-          errors={errors}
-          isPending={isPending}
-          isDraft={isDraft}
-          showApparelMetaFields={showApparelMetaFields}
-        />
-        <TabPrecoCusto
-          control={control}
-          register={register}
-          errors={errors}
-          isPending={isPending}
-          setValue={setValue}
-          onlyAdvanced
-        />
       </div>
 
       {/* === Bottom action bar desktop (sticky no rodapé, ≥lg) ===

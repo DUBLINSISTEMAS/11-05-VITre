@@ -230,41 +230,44 @@ export function bumpSessionCounter(): number {
 // Mapping aba → campos do form (pra count de erros por aba).
 // ============================================================================
 
-// Onda 2.1 (2026-05-22): 5 abas → 3 abas. O lojista pensa em 3 perguntas
-// mentais (o que é / quanto custa e quanto tem / raramente toco), não em
-// 5 categorias técnicas. Variantes virou dobrável dentro da Identidade
-// (só ~5% dos produtos têm variante — não merece aba dedicada).
-export type TabKey = "identidade" | "preco-estoque" | "avancado";
+// PP1 (handoff pixel-perfect 2026-05-25): 3 abas → 6 abas conforme
+// drawers.jsx do bundle. Reverte parcialmente a consolidação 2.1 pra
+// match 1:1 do protótipo. Lojista navega por sidebar 180px no drawer.
+export type TabKey =
+  | "basico"
+  | "imagens"
+  | "preco"
+  | "estoque"
+  | "variantes"
+  | "loja";
 
 const TAB_FIELDS: Record<TabKey, Array<keyof ProductFormValues>> = {
-  // Identidade absorveu Variantes (que vive como dobrável aqui).
-  identidade: ["name", "description", "categoryId", "brand", "variants"],
-  // Preço + estoque essencial juntos — preço de venda e custo são
-  // decisão única "quanto pago × quanto vendo"; estoque controla na
-  // mesma tela porque é mesma operação mental.
-  "preco-estoque": [
+  basico: ["name", "description", "categoryId", "brand"],
+  imagens: [], // imagens são state separado (não campo do RHF)
+  preco: [
     "basePriceInCents",
-    "promoPriceInCents",
-    "wholesalePriceInCents",
     "costPriceInCents",
-    "trackStock",
-    "stockQuantity",
-    "minStockQuantity",
-    "maxStockQuantity",
     "gtin",
     "internalCode",
     "unit",
   ],
-  // Tudo que é opcional/raro: publicação, overrides, comissão, NCM,
-  // detalhes editoriais.
-  avancado: [
+  estoque: [
+    "trackStock",
+    "stockQuantity",
+    "minStockQuantity",
+    "maxStockQuantity",
+  ],
+  variantes: ["variants"],
+  loja: [
     "isActive",
     "isPublishedToStorefront",
     "isFeatured",
-    "defaultCommissionBps",
-    "ncm",
+    "promoPriceInCents",
+    "wholesalePriceInCents",
     "installmentsOverride",
     "cashDiscountOverrideBps",
+    "ncm",
+    "defaultCommissionBps",
     "composition",
     "modeling",
     "lining",
