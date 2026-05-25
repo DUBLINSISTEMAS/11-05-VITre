@@ -16,11 +16,13 @@ import type {
   Control,
   FieldErrors,
   UseFormRegister,
+  UseFormSetValue,
 } from "react-hook-form";
 import { Controller, useWatch } from "react-hook-form";
 
 import type { ProductFormValues } from "@/actions/product/schema";
 import { MarginLivePreview } from "@/components/admin/margin-live-preview";
+import { MarginQuickSimulator } from "@/components/admin/margin-quick-simulator";
 import { PriceInput } from "@/components/admin/price-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,6 +34,8 @@ interface TabPrecoCustoProps {
   register: UseFormRegister<ProductFormValues>;
   errors: FieldErrors<ProductFormValues>;
   isPending: boolean;
+  /** Passo 10 — escrita no preço a partir do simulador rápido de markup/margem. */
+  setValue: UseFormSetValue<ProductFormValues>;
   /** Onda 2.2 — esconde promo/atacado/comissão/NCM (vão pra aba Avançado). */
   hideAdvanced?: boolean;
   /** Onda 2.2 — renderiza APENAS o que `hideAdvanced` esconde. */
@@ -43,6 +47,7 @@ export function TabPrecoCusto({
   register,
   errors,
   isPending,
+  setValue,
   hideAdvanced = false,
   onlyAdvanced = false,
 }: TabPrecoCustoProps) {
@@ -110,14 +115,22 @@ export function TabPrecoCusto({
 
             <div className="space-y-1.5">
               <Label>Margem</Label>
-              <div className="rounded-md border border-line bg-bg-app px-3 py-2 text-sm">
-                <MarginLivePreview
-                  costPriceInCents={costPriceInCents}
-                  basePriceInCents={basePriceInCents}
-                  showWhenEmpty
-                />
-              </div>
+              <MarginLivePreview
+                costPriceInCents={costPriceInCents}
+                basePriceInCents={basePriceInCents}
+                showWhenEmpty
+              />
             </div>
+          </div>
+
+          {/* Simulador rápido — handoff Passo 10. Calcula preço de venda
+              a partir do custo + markup/margem-alvo. Só ativo quando o
+              custo está preenchido. */}
+          <div className="mt-4 border-t border-line/60 pt-4">
+            <MarginQuickSimulator
+              costPriceInCents={costPriceInCents}
+              setValue={setValue}
+            />
           </div>
         </SubCard>
       ) : null}

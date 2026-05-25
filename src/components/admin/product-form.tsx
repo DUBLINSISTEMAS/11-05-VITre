@@ -221,6 +221,7 @@ export function ProductForm({
     control,
     formState: { errors },
     setError,
+    setValue,
     watch,
     reset,
   } = useForm<ProductFormValues>({
@@ -515,6 +516,7 @@ export function ProductForm({
           register={register}
           errors={errors}
           isPending={isPending}
+          setValue={setValue}
           hideAdvanced
         />
         <TabEstoque
@@ -546,6 +548,7 @@ export function ProductForm({
           register={register}
           errors={errors}
           isPending={isPending}
+          setValue={setValue}
           onlyAdvanced
         />
       </div>

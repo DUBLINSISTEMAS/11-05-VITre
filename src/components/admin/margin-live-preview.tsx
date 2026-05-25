@@ -4,19 +4,25 @@
  * ADR-0034 Camada 2 — preview de margem em tempo real.
  *
  * Recebe custo e preço de venda (em centavos), exibe Lucro/un, Margem
- * bruta % e Markup %. Atualiza enquanto lojista digita. Quando custo
- * está NULL, mostra aviso "margem desconhecida — preencha o custo".
+ * bruta %, Markup % e Ponto de equilíbrio. Atualiza enquanto lojista
+ * digita. Quando custo está NULL, mostra aviso "margem desconhecida —
+ * preencha o custo".
  *
  * Convenções varejo BR:
- *   - Markup       = (venda - custo) / custo            (ex: comprou 10, vende 30 → markup 200%)
- *   - Margem bruta = (venda - custo) / venda            (ex: comprou 10, vende 30 → margem 66.67%)
- *   - Lucro/un     = venda - custo
+ *   - Markup           = (venda - custo) / custo        (markup 200% = comprou 10 vende 30)
+ *   - Margem bruta     = (venda - custo) / venda        (margem 66.67% mesmo exemplo)
+ *   - Lucro/un         = venda - custo
+ *   - Ponto equilíbrio = unidades/mês pra cobrir R$1k de custo fixo
  *
- * Lojista usa markup pra precificar e margem bruta pra avaliar — os 2
- * são complementares, mostrar ambos.
+ * Lojista usa markup pra precificar e margem bruta pra avaliar. Ponto
+ * de equilíbrio responde a "quantas peças preciso vender pra esse
+ * produto pagar minha conta de luz?".
+ *
+ * Handoff Passo 10 (2026-05-25): visual de 4 cards em cream-soft +
+ * brand-line bordering, bate o protótipo do ProductFormDrawer pixel-pixel.
  */
 
-import { AlertCircleIcon, TrendingDownIcon, TrendingUpIcon } from "lucide-react";
+import { AlertCircleIcon } from "lucide-react";
 
 interface MarginLivePreviewProps {
   costPriceInCents: number | null | undefined;
@@ -35,10 +41,10 @@ function formatBRL(cents: number): string {
   });
 }
 
-function formatPercent(value: number): string {
+function formatPercent(value: number, digits = 1): string {
   return `${value.toLocaleString("pt-BR", {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
   })}%`;
 }
 
@@ -69,11 +75,11 @@ export function MarginLivePreview({
   // Estado 2: tem preço mas não tem custo — aviso.
   if (cost === null) {
     return (
-      <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-[12.5px] text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+      <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-[12.5px] text-amber-900">
         <AlertCircleIcon className="mt-0.5 size-4 shrink-0" aria-hidden />
         <div>
           <p className="font-medium">Margem desconhecida.</p>
-          <p className="text-amber-800 dark:text-amber-300">
+          <p className="text-amber-800">
             Preencha o <strong>preço de custo</strong> pra calcular margem e
             lucro automaticamente em todos os relatórios.
           </p>
@@ -85,11 +91,11 @@ export function MarginLivePreview({
   // Estado 3: tem custo mas não tem preço de venda — aviso simétrico.
   if (price === null) {
     return (
-      <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-[12.5px] text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+      <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-[12.5px] text-amber-900">
         <AlertCircleIcon className="mt-0.5 size-4 shrink-0" aria-hidden />
         <div>
           <p className="font-medium">Defina o preço de venda.</p>
-          <p className="text-amber-800 dark:text-amber-300">
+          <p className="text-amber-800">
             Sem preço de venda, não dá pra calcular margem. Sugestão de
             markup 100%: {formatBRL(cost * 2)}.
           </p>
@@ -98,52 +104,79 @@ export function MarginLivePreview({
     );
   }
 
-  // Estado 4: ambos preenchidos — cálculo principal.
+  // Estado 4: ambos preenchidos — cálculo principal (4 KPIs).
   const profitInCents = price - cost;
-  const isProfit = profitInCents > 0;
   const isLoss = profitInCents < 0;
-  // Markup: divisão por custo. Cost > 0 garantido pelo branch acima.
-  // (cost === 0 caso especial: produto brinde — markup infinito; mostramos texto.)
+  // Markup: divisão por custo. Cost = 0 caso especial (brinde) → mostra "—".
   const markupPct = cost > 0 ? (profitInCents / cost) * 100 : null;
-  // Margem bruta: divisão por venda. Price > 0 garantido.
+  // Margem bruta: divisão por venda.
   const marginPct = (profitInCents / price) * 100;
+  // Ponto de equilíbrio: unidades/mês pra cobrir R$1k fixo (referência
+  // didática). Quando profit ≤ 0, não faz sentido.
+  const breakEvenUnits =
+    profitInCents > 0 ? Math.ceil(100000 / profitInCents) : null;
 
-  const tone = isLoss
-    ? "border-destructive/40 bg-destructive/5 text-destructive"
-    : isProfit
-      ? "border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200"
-      : "border-ink-5 bg-bg-app text-ink-2";
-
-  const Icon = isLoss
-    ? TrendingDownIcon
-    : isProfit
-      ? TrendingUpIcon
-      : AlertCircleIcon;
+  const profitColor = isLoss
+    ? "var(--danger)"
+    : "var(--mangos-green-800)";
+  const marginColor =
+    marginPct > 40
+      ? "var(--ok)"
+      : marginPct > 20
+        ? "var(--warn)"
+        : "var(--danger)";
 
   return (
     <div
-      className={`flex flex-col gap-2 rounded-lg border px-3 py-2.5 text-[12.5px] ${tone}`}
+      className="rounded-[12px] p-4"
+      style={{
+        background: "var(--mangos-cream-soft)",
+        border: "1px solid var(--brand-line)",
+      }}
       aria-live="polite"
     >
-      <div className="flex items-center gap-2 font-semibold">
-        <Icon className="size-4 shrink-0" aria-hidden />
-        <span>
-          {isLoss
-            ? "Prejuízo por unidade"
-            : isProfit
-              ? "Lucro por unidade"
-              : "Sem lucro nem prejuízo"}
-          : {formatBRL(profitInCents)}
-        </span>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <Kpi label="Lucro/un" value={formatBRL(profitInCents)} color={profitColor} />
+        <Kpi label="Margem" value={formatPercent(marginPct)} color={marginColor} />
+        <Kpi
+          label="Markup"
+          value={markupPct === null ? "—" : formatPercent(markupPct, 0)}
+        />
+        <Kpi
+          label="Equilíbrio"
+          value={breakEvenUnits !== null ? `${breakEvenUnits}` : "—"}
+          hint="un/mês p/ R$1k"
+        />
       </div>
-      <dl className="grid grid-cols-2 gap-x-3 gap-y-1 tabular-nums">
-        <dt className="text-current/70">Margem bruta</dt>
-        <dd className="text-right font-medium">{formatPercent(marginPct)}</dd>
-        <dt className="text-current/70">Markup</dt>
-        <dd className="text-right font-medium">
-          {markupPct === null ? "—" : formatPercent(markupPct)}
-        </dd>
-      </dl>
+    </div>
+  );
+}
+
+function Kpi({
+  label,
+  value,
+  color,
+  hint,
+}: {
+  label: string;
+  value: string;
+  color?: string;
+  hint?: string;
+}) {
+  return (
+    <div>
+      <p className="text-ink-4 text-[10.5px] font-bold uppercase tracking-[0.06em]">
+        {label}
+      </p>
+      <p
+        className="font-mono text-[19px] font-bold tabular-nums leading-tight"
+        style={color ? { color } : { color: "var(--mangos-green-900)" }}
+      >
+        {value}
+      </p>
+      {hint ? (
+        <p className="text-ink-4 mt-0.5 text-[10px]">{hint}</p>
+      ) : null}
     </div>
   );
 }
