@@ -3,6 +3,7 @@ import { PlusIcon, SearchXIcon, UsersIcon } from "lucide-react";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import { BulkWhatsappStubButton } from "@/components/admin/bulk-whatsapp-stub-button";
 import { CustomerCreateButton } from "@/components/admin/customer-create-button";
 
 import {
@@ -305,7 +306,10 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
               : ""}
           </p>
         </div>
-        <CustomerCreateButton />
+        <div className="flex flex-wrap items-center gap-2">
+          <BulkWhatsappStubButton />
+          <CustomerCreateButton />
+        </div>
       </div>
 
       {/* KPI strip — 4 cards horizontais sempre visíveis (também na busca
