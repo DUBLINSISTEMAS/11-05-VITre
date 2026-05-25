@@ -14,6 +14,7 @@ import {
   LayoutDashboardIcon,
   LayoutGridIcon,
   LifeBuoyIcon,
+  ListFilterIcon,
   type LucideIcon,
   PackageIcon,
   PaletteIcon,
@@ -124,14 +125,14 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
       { k: "aparencia",  label: "Aparência",           icon: PaletteIcon,       href: "/admin/aparencia"        },
       { k: "banners",    label: "Banners",             icon: ImageIcon,         href: "/admin/banners"          },
       { k: "vitrines",   label: "Vitrines",            icon: LayoutGridIcon,    href: "/admin/colecoes"         },
-      // "Filtros da loja" escondido do menu em 2026-05-24 — feature GHOST:
-      // CRUD de atributo funciona no admin mas o produto NÃO tem campo
-      // `attributes` no schema (comentário em tab-loja-online.tsx:6-8 confirma
-      // "trabalho futuro") + storefront não tem join product↔attribute. Lojista
-      // cria filtro que nunca aparece na loja online → quebra "funciona-ou-esconde".
-      // Rota /admin/atributos segue viva por URL. Volta ao menu quando o
-      // schema do produto + integração storefront estiverem prontos (Onda 2.3+).
-      // { k: "filtros",    label: "Filtros da loja",     icon: ListFilterIcon,    href: "/admin/atributos"        },
+      // PP6 (handoff pixel-perfect 2026-05-25): reativado no menu. CRUD de
+      // atributos + valores funciona; junction product_attribute_value EXISTE
+      // em schema. Falta UI no admin de vincular produto↔valor + storefront
+      // filter dinâmico — ambos pendentes PP6.x. Reativado por decisão
+      // "1:1 handoff" com mock honesto na página explicando o estado.
+      // Régua "funciona-ou-esconde" temporariamente suspensa (memory:
+      // pixel-perfect-redesign-decisao-2026-05-25).
+      { k: "filtros",    label: "Filtros da loja",     icon: ListFilterIcon,    href: "/admin/atributos"        },
       { k: "cupons",     label: "Códigos de desconto", icon: TicketPercentIcon, href: "/admin/promocoes/cupons" },
       { k: "pagamento",  label: "Formas de pagamento", icon: CreditCardIcon,    href: "/admin/pagamento"        },
       // "Equipe" escondida do menu em 2026-05-24 (Onda 1.2 do plano 4 ondas).
