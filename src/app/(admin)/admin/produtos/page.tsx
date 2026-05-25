@@ -18,6 +18,7 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import type { CategoryOption } from "@/components/admin/category-dialog";
+import { ImportCsvStubButton } from "@/components/admin/import-csv-stub-button";
 import { ProductCreateButton } from "@/components/admin/product-create-button";
 import { ProductsErrorToast } from "@/components/admin/products-error-toast";
 import { ProductsGrid } from "@/components/admin/products-grid";
@@ -396,7 +397,10 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
               : ""}
           </p>
         </div>
-        <ProductCreateButton />
+        <div className="flex flex-wrap items-center gap-2">
+          <ImportCsvStubButton />
+          <ProductCreateButton />
+        </div>
       </div>
 
       <Suspense fallback={null}>
