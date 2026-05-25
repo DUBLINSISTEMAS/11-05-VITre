@@ -5,13 +5,29 @@
  * produto na loja vazia; cliente vê copy de catálogo em construção.
  *
  * Estrutura canvas-v1 (em VTHome):
- *   1. <HeroCard>            — kicker editorial + título + subtítulo + CTA
- *   2. Categorias header     — "Categorias" display + count mono
- *   3. <CategoryStrip>       — tiles quadrados horizontal
- *   4. "Em destaque" header  — title + "Ver todos →" cor da loja
- *   5. <ProductGrid (4)>     — 2-col overlay, primeiros 4 destaques
- *   6. <PromoStrip>          — só se houver promo ativa
- *   7. <ProductGrid (2)>     — 2-col overlay, sem header, mais 2 produtos
+ *   1. <BannerCarousel>      — Hero card 16:9 com dots + auto-rotate
+ *                              (rotationSec configurável por loja)
+ *   2. <CollectionStrip>     — "Vitrines" h2 + cards coloridos com kicker
+ *                              (bgColor do admin)
+ *   3. <CategoryStrip>       — "Categorias" h2 + tiles 76×76 shape config
+ *   4. <ProductGrid>         — "Em destaque" + "Ver todos →" link cor da
+ *                              loja + 2-col overlay (featured)
+ *   5. <PromoStrip>          — brand-store wash, só se houver promo ativa
+ *   6. <ProductGrid>         — 2-col overlay sem header (more)
+ *
+ * S30 audit (handoff pixel-perfect 2026-05-25): verificado vs
+ * `design_handoff_mangos_pay/app-storefront/home.jsx`. Estrutura, ordem,
+ * dimensões e componentes batem o handoff. A diferença vs handoff é só
+ * a fonte de dados (DB real vs mock) e business logic adicional
+ * (owner-aware EmptyCatalog). Nenhum gap visual aberto.
+ *
+ * Componentes ports prévios já em pixel-perfect:
+ *   - BannerCarousel + HeroCard: aspect-[16/9], rotação config, dots
+ *   - CollectionStrip: PP5 (kicker + bgColor + cards 280×130 brand wash)
+ *   - CategoryStrip: 76px tiles, shape rounded|square|circle
+ *   - ProductGrid: header h2 + see-all link, 2-col gap-x 14 gap-y 18
+ *   - PromoStrip: PP15 (brand-store wash + Sparkle icon + ArrowRight)
+ *   - StoreHeader (home variant): avatar + name + handle + Search + Bag
  */
 import { Plus, Sparkles } from "lucide-react";
 import Link from "next/link";
