@@ -174,11 +174,8 @@ function ActiveSessionCard({
           </p>
           <p className="text-ink-4 text-[12px]">
             {active.saleCount}{" "}
-            {active.saleCount === 1 ? "venda balcão" : "vendas balcão"} ·
-            esperado em dinheiro{" "}
-            <span className="text-ink-1 mono font-medium">
-              {formatBRL(active.expectedInCents)}
-            </span>
+            {active.saleCount === 1 ? "venda balcão" : "vendas balcão"} nessa
+            sessão
           </p>
         </div>
         <Link
@@ -190,7 +187,11 @@ function ActiveSessionCard({
         </Link>
       </header>
 
-      <dl className="grid grid-cols-2 gap-px bg-line sm:grid-cols-4">
+      {/* Grid de KPIs — 5 cards no desktop (Abertura · Vendas em dinheiro
+          · Sangria · Reforço · Esperado em caixa). O último ganha
+          destaque visual cream-soft (handoff Passo 7) pq é o número
+          chave pro lojista bater na hora do fechamento Z. */}
+      <dl className="grid grid-cols-2 gap-px bg-line sm:grid-cols-3 lg:grid-cols-5">
         <Kpi label="Abertura" value={active.openingAmountInCents} accent="ink" />
         <Kpi
           label="Vendas em dinheiro"
@@ -208,6 +209,11 @@ function ActiveSessionCard({
           value={active.reinforcementInCents}
           accent="warn"
           prefix="+"
+        />
+        <Kpi
+          label="Esperado em caixa"
+          value={active.expectedInCents}
+          accent="brand"
         />
       </dl>
 
@@ -249,7 +255,7 @@ function Kpi({
 }: {
   label: string;
   value: number;
-  accent: "ink" | "ok" | "danger" | "warn";
+  accent: "ink" | "ok" | "danger" | "warn" | "brand";
   prefix?: string;
 }) {
   const colorClass =
@@ -259,13 +265,23 @@ function Kpi({
         ? "text-danger"
         : accent === "warn"
           ? "text-warn"
-          : "text-ink-1";
+          : accent === "brand"
+            ? "text-mangos-green-900"
+            : "text-ink-1";
+  // accent="brand" = destaque cream-soft (KPI principal "Esperado em caixa").
+  const tileClass =
+    accent === "brand"
+      ? "space-y-1 p-3 bg-mangos-cream-soft border-l border-brand-line"
+      : "bg-surface space-y-1 p-3";
+  const labelClass =
+    accent === "brand"
+      ? "text-mangos-green-700 text-[10.5px] font-bold uppercase tracking-[0.06em]"
+      : "text-ink-4 text-[10.5px] font-bold uppercase tracking-[0.06em]";
+  const valueSize = accent === "brand" ? "text-[18px]" : "text-[16px]";
   return (
-    <div className="bg-surface space-y-1 p-3">
-      <dt className="text-ink-4 text-[10.5px] font-bold uppercase tracking-[0.06em]">
-        {label}
-      </dt>
-      <dd className={`mono text-[16px] font-semibold ${colorClass}`}>
+    <div className={tileClass}>
+      <dt className={labelClass}>{label}</dt>
+      <dd className={`mono ${valueSize} font-semibold ${colorClass}`}>
         {prefix && value > 0 ? prefix : ""}
         {formatBRL(value)}
       </dd>

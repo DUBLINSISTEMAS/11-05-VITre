@@ -1,13 +1,15 @@
 import {
   loadActiveCashSession,
+  loadCashSessionDetail,
   loadCashSessionsList,
 } from "@/actions/cash-session/load";
 import { CashSessionLanding } from "@/components/admin/pdv/cash-session-landing";
+import { CashSessionMovementsTable } from "@/components/admin/pdv/cash-session-movements-table";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Página "Caixa" — Audit 2026-05-21.
+ * Página "Caixa" — Audit 2026-05-21 + redesign Passo 7 (handoff 2026-05-25).
  *
  * Foco: gestão do CAIXA formal (abrir / acompanhar / fechar Z), não
  * lista de vendas. A visão "Vendas por método" + tabela de vendas
@@ -17,16 +19,13 @@ export const dynamic = "force-dynamic";
  * Lojista vem aqui pra:
  *  - Ver se o caixa tá aberto (e há quanto tempo) — `CashSessionLanding`
  *  - Acompanhar saldo esperado em dinheiro (troco + cash sales − sangria)
+ *  - Ver movimentações da sessão (Bloco 2 P1 do CLAUDE.md, fechado no
+ *    Passo 7 do redesign — `CashSessionMovementsTable`)
  *  - Fechar caixa Z (entrar o valor real contado, comparar com esperado)
  *  - Ver histórico de fechamentos recentes (últimos 10)
  *
  * Cada fechamento Z tem sua própria rota `/admin/pdv/caixa/[id]` com
  * impressão dedicada (Z gerencial).
- *
- * O filtro de período (data picker) que existia foi removido porque
- * servia só pra filtrar a visão de vendas — que saiu. Se o lojista
- * precisar consultar histórico mais antigo, abre fechamentos do
- * `CashSessionLanding`.
  */
 export default async function CaixaPage() {
   const [activeSession, sessionsList] = await Promise.all([
@@ -34,16 +33,47 @@ export default async function CaixaPage() {
     loadCashSessionsList(10),
   ]);
 
+  // Passo 7 — carrega detalhes (adjustments + sales) só quando há sessão
+  // ativa, pra alimentar a tabela de movimentações sem afetar /admin/pedidos
+  // ou /admin/pdv (que continuam usando o summary lite).
+  const activeDetail = activeSession
+    ? await loadCashSessionDetail(activeSession.session.id)
+    : null;
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-ink-1 text-[22px] font-bold tracking-[-0.025em]">
           Caixa
         </h1>
-        <p className="text-ink-4 mt-1 text-[13px]">
-          Controle o caixa formal — abrir, acompanhar saldo, sangria e
-          fechamento Z. Vendas detalhadas ficam em Vendas.
-        </p>
+        <div className="text-ink-4 mt-1 flex flex-wrap items-center gap-2 text-[13px]">
+          {activeSession ? (
+            <>
+              <span className="b3-pill b3-pill--ok inline-flex items-center gap-1.5">
+                <span
+                  className="size-1.5 rounded-full bg-ok"
+                  aria-hidden
+                />
+                Aberto
+              </span>
+              <span>
+                Aberto às{" "}
+                {activeSession.session.openedAt.toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+                {" · "}
+                {activeSession.saleCount}{" "}
+                {activeSession.saleCount === 1 ? "venda balcão" : "vendas balcão"}
+              </span>
+            </>
+          ) : (
+            <span>
+              Controle o caixa formal — abrir, acompanhar saldo, sangria e
+              fechamento Z.
+            </span>
+          )}
+        </div>
       </div>
 
       <CashSessionLanding
@@ -70,6 +100,13 @@ export default async function CaixaPage() {
           closingActualInCents: s.closingActualInCents,
         }))}
       />
+
+      {activeDetail ? (
+        <CashSessionMovementsTable
+          sales={activeDetail.sales}
+          adjustments={activeDetail.adjustments}
+        />
+      ) : null}
     </div>
   );
 }
