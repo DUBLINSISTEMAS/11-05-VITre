@@ -16,7 +16,10 @@ import {
   HandCoinsIcon,
   type LucideIcon,
   ReceiptIcon,
+  StoreIcon,
   TrendingUpIcon,
+  TruckIcon,
+  UsersIcon,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -26,6 +29,8 @@ interface ReportCard {
   href: string;
   icon: LucideIcon;
   description: string;
+  /** PP10 (handoff 2026-05-25) — cards stub mostram pill "em breve". */
+  soon?: boolean;
 }
 
 const REPORTS: ReportCard[] = [
@@ -38,11 +43,27 @@ const REPORTS: ReportCard[] = [
       "Lista venda-a-venda com cliente, canal e método. Total + ticket médio.",
   },
   {
+    k: "vendas-canal",
+    label: "Vendas por canal",
+    href: "/admin/relatorios/vendas-canal",
+    icon: StoreIcon,
+    description: "Balcão (PDV) vs. loja online (WhatsApp). Compara volume e ticket.",
+    soon: true,
+  },
+  {
     k: "top",
     label: "Top produtos",
     href: "/admin/relatorios/top",
     icon: TrendingUpIcon,
     description: "O que mais vendeu, por faturamento ou quantidade.",
+  },
+  {
+    k: "top-clientes",
+    label: "Top clientes",
+    href: "/admin/relatorios/top-clientes",
+    icon: UsersIcon,
+    description: "Ranking por receita gerada + frequência de compra.",
+    soon: true,
   },
   {
     k: "margem",
@@ -66,6 +87,14 @@ const REPORTS: ReportCard[] = [
     description: "Lista pra cobrança com saldo restante e vencimento.",
   },
   {
+    k: "compras-fornecedor",
+    label: "Compras por fornecedor",
+    href: "/admin/relatorios/compras-fornecedor",
+    icon: TruckIcon,
+    description: "Volume e custo médio agrupado por fornecedor (CMV detalhado).",
+    soon: true,
+  },
+  {
     k: "dre",
     label: "DRE simplificado",
     href: "/admin/relatorios/dre",
@@ -87,15 +116,28 @@ export function RelatoriosIndexCards() {
             <Link
               key={r.k}
               href={r.href}
-              prefetch
+              prefetch={!r.soon}
               className="b3-card b3-card-pad group flex flex-col gap-3 transition hover:border-mangos-green-700/40 hover:shadow-md"
             >
-              <div
-                className="text-mangos-green-800 inline-flex size-9 items-center justify-center rounded-[10px]"
-                style={{ background: "var(--mangos-yellow-soft)" }}
-                aria-hidden
-              >
-                <Icon size={18} />
+              <div className="flex items-start justify-between gap-2">
+                <div
+                  className="text-mangos-green-800 inline-flex size-9 items-center justify-center rounded-[10px]"
+                  style={{ background: "var(--mangos-yellow-soft)" }}
+                  aria-hidden
+                >
+                  <Icon size={18} />
+                </div>
+                {r.soon ? (
+                  <span
+                    className="rounded px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide"
+                    style={{
+                      background: "var(--mangos-yellow-soft)",
+                      color: "var(--mangos-yellow-deep)",
+                    }}
+                  >
+                    Em breve
+                  </span>
+                ) : null}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-ink-1 text-[14px] font-semibold tracking-tight">
@@ -106,7 +148,7 @@ export function RelatoriosIndexCards() {
                 </p>
               </div>
               <p className="text-mangos-green-800 mt-auto inline-flex items-center gap-0.5 text-[12px] font-semibold">
-                Abrir relatório
+                {r.soon ? "Ver detalhes" : "Abrir relatório"}
                 <ChevronRightIcon size={13} aria-hidden />
               </p>
             </Link>
