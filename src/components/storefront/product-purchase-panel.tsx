@@ -87,6 +87,13 @@ export interface ProductPurchasePanelProps {
    */
   selectedVariantId?: string | null;
   onSelectVariant?: (variantId: string | null) => void;
+  /**
+   * Número do WhatsApp da loja (E.164: +5599...) — usado pelo CTA
+   * "Tirar dúvida no WhatsApp" na sticky bar. Passo 16 redesign.
+   */
+  whatsappNumber: string;
+  /** Nome da loja — usado na mensagem pré-preenchida do WhatsApp. */
+  storeName: string;
 }
 
 const META_FIELDS = [
@@ -110,6 +117,8 @@ export function ProductPurchasePanel({
   paymentMethodsNote,
   selectedVariantId: controlledVariantId,
   onSelectVariant,
+  whatsappNumber,
+  storeName,
 }: ProductPurchasePanelProps) {
   const router = useRouter();
   const [internalVariantId, setInternalVariantId] = useState<string | null>(null);
@@ -486,21 +495,37 @@ export function ProductPurchasePanel({
           </button>
         </div>
 
-        {/* Secundário: adiciona e volta pra loja, evita ficar preso no PDP. */}
-        <button
-          type="button"
-          onClick={handleAddAndContinue}
-          disabled={ctaDisabled && !recentlyAdded}
-          className={cn(
-            "h-8 w-full rounded-md text-[11.5px] font-medium outline-none transition-colors",
-            "focus-visible:ring-2 focus-visible:ring-ring",
-            ctaDisabled && !recentlyAdded
-              ? "cursor-not-allowed text-gray-300"
-              : "text-muted-foreground hocus:text-foreground hocus:underline",
-          )}
-        >
-          Adicionar e voltar pra loja
-        </button>
+        {/* Linha secundária: "Adicionar e voltar pra loja" + "Tirar
+            dúvida no WhatsApp" — handoff Passo 16. Cliente que chega da
+            indicação no zap muitas vezes prefere perguntar antes de
+            finalizar; sem essa CTA, abandonava o PDP pra abrir o WA
+            manualmente. Régua "moat" — o storefront diferencia o produto. */}
+        <div className="flex items-center justify-between gap-3 text-[11.5px]">
+          <button
+            type="button"
+            onClick={handleAddAndContinue}
+            disabled={ctaDisabled && !recentlyAdded}
+            className={cn(
+              "h-8 rounded-md font-medium outline-none transition-colors",
+              "focus-visible:ring-2 focus-visible:ring-ring",
+              ctaDisabled && !recentlyAdded
+                ? "cursor-not-allowed text-gray-300"
+                : "text-muted-foreground hocus:text-foreground hocus:underline",
+            )}
+          >
+            Adicionar e voltar
+          </button>
+          <a
+            href={`https://wa.me/${whatsappNumber.replace(/^\+/, "")}?text=${encodeURIComponent(`Oi, tudo bem? Vi este produto na ${storeName} e queria tirar uma dúvida: ${product.name}`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-md font-medium text-[var(--brand-store)] outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Tirar dúvida sobre este produto no WhatsApp"
+          >
+            <MessageCircleIcon className="size-3.5" aria-hidden />
+            Tirar dúvida
+          </a>
+        </div>
       </div>
     </>
   );

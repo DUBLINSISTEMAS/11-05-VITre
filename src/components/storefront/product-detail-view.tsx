@@ -95,6 +95,8 @@ export function ProductDetailView({ product, store }: ProductDetailViewProps) {
           paymentMethodsNote={store.paymentMethodsNote}
           selectedVariantId={selectedVariantId}
           onSelectVariant={setSelectedVariantId}
+          whatsappNumber={store.whatsappNumber}
+          storeName={store.name}
         />
       </div>
 
@@ -116,6 +118,8 @@ export function ProductDetailView({ product, store }: ProductDetailViewProps) {
             paymentMethodsNote={store.paymentMethodsNote}
             selectedVariantId={selectedVariantId}
             onSelectVariant={setSelectedVariantId}
+            whatsappNumber={store.whatsappNumber}
+            storeName={store.name}
           />
         </div>
       </div>
