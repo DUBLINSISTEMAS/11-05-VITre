@@ -35,7 +35,7 @@ interface OrderStatusActionsProps {
   orderId: string;
   status: (typeof ORDER_STATUS_VALUES)[number];
   /**
-   * Sprint 2.1: passados pelo OrderDetailDialog. Quando presentes,
+   * Sprint 2.1: passados pelo OrderDetailDrawer. Quando presentes,
    * o botão de devolução abre o OrderReturnDialog rico (full/partial
    * + fluxo guiado de fiado). Quando ausentes (callers legados), a
    * devolução não é oferecida — o caller precisa migrar.

@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
 
+import { OrderDetailDrawerListener } from "@/components/admin/order-detail-drawer-listener";
+import { NewSaleModalListener } from "@/components/admin/pdv/new-sale-modal";
+
 import { AdminSidebar, type AdminSidebarProps } from "./admin-sidebar";
 import { CommandPalette } from "./command-palette";
 import { MobileHeader } from "./header";
@@ -59,6 +62,14 @@ export function AdminShell({ children, ...userProps }: AdminShellProps) {
       </div>
 
       <CommandPalette />
+      {/* Host global do modal de Nova venda — abre via CTA do topbar (evento
+          NEW_SALE_EVENT) e via tecla F2 (com guarda contra teclar F2 dentro
+          de inputs ou dentro do próprio PdvShell). Handoff 2026-05-25. */}
+      <NewSaleModalListener />
+      {/* Host global do drawer de detalhe da venda — abre via evento
+          OPEN_ORDER_DETAIL_EVENT (row da OrdersTable, "Vendas recentes" do
+          dashboard, etc) ou via deep-link `?detail=<id>`. Handoff 2026-05-25. */}
+      <OrderDetailDrawerListener />
     </div>
   );
 }

@@ -1,22 +1,32 @@
 "use client";
 
 // Lista de pedidos — port Dublin v3 (ADR-0019, Onda A.6).
-// REWRITE pra usar `b3-tbl` canônico (substitui grid custom anterior).
-// Mobile responsivo: CSS @media (max-width: 640px) em globals.css faz
-// thead esconder e tbody tr virar block stack (já no globals).
+// Usa `b3-tbl` canônico; mobile responsivo via @media em globals.css
+// (thead esconde, tbody tr vira block stack).
 //
-// Cada row continua clicável (abre OrderDetailDialog ao clicar).
-// (Checkbox/bulk actions ainda não implementados — quando entrarem,
-// virão acompanhados de uma toolbar de ações em massa.)
+// Cada row continua clicável — handoff design 2026-05-25 (Passo 4):
+// agora dispara `OPEN_ORDER_DETAIL_EVENT` em vez de manter state local.
+// O drawer global (montado em admin-shell via OrderDetailDrawerListener)
+// é quem segura o open state + sincroniza URL.
 
 import { MessageCircleIcon } from "lucide-react";
-import { useState } from "react";
 
 import type { ORDER_STATUS_VALUES } from "@/actions/order/schema";
-import { OrderDetailDialog } from "@/components/admin/order-detail-dialog";
+import {
+  OPEN_ORDER_DETAIL_EVENT,
+  type OpenOrderDetailEventDetail,
+} from "@/components/admin/order-detail-events";
 import { OrderStatusBadge } from "@/components/admin/order-status-badge";
 import { formatRelativeDate } from "@/lib/format";
 import { formatBRL } from "@/lib/pricing";
+
+function openOrderDetail(orderId: string) {
+  window.dispatchEvent(
+    new CustomEvent<OpenOrderDetailEventDetail>(OPEN_ORDER_DETAIL_EVENT, {
+      detail: { orderId },
+    }),
+  );
+}
 
 type OrderStatus = (typeof ORDER_STATUS_VALUES)[number];
 type OrderChannel = "whatsapp" | "balcao";
@@ -49,12 +59,6 @@ export interface OrderTableRow {
 
 export interface OrdersTableProps {
   orders: ReadonlyArray<OrderTableRow>;
-  /**
-   * Onda 2.12 — abre modal de detalhe automaticamente quando vindo de link
-   * externo (dashboard "Vendas recentes", lista de fiados → "Ver venda").
-   * Setado pela page via `?detail=<uuid>`.
-   */
-  initialOpenOrderId?: string | null;
 }
 
 const PAYMENT_LABELS: Record<OrderPaymentMethod, string> = {
@@ -75,14 +79,7 @@ function paymentLabel(
   return PAYMENT_LABELS[method];
 }
 
-export function OrdersTable({
-  orders,
-  initialOpenOrderId,
-}: OrdersTableProps) {
-  const [openOrderId, setOpenOrderId] = useState<string | null>(
-    initialOpenOrderId ?? null,
-  );
-
+export function OrdersTable({ orders }: OrdersTableProps) {
   return (
     <>
       <table className="b3-tbl">
@@ -101,11 +98,11 @@ export function OrdersTable({
           {orders.map((o) => (
             <tr
               key={o.id}
-              onClick={() => setOpenOrderId(o.id)}
+              onClick={() => openOrderDetail(o.id)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  setOpenOrderId(o.id);
+                  openOrderDetail(o.id);
                 }
               }}
               tabIndex={0}
@@ -167,13 +164,6 @@ export function OrdersTable({
           ))}
         </tbody>
       </table>
-
-      <OrderDetailDialog
-        orderId={openOrderId}
-        onOpenChange={(open) => {
-          if (!open) setOpenOrderId(null);
-        }}
-      />
     </>
   );
 }

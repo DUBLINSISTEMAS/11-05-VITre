@@ -74,8 +74,10 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
     page,
     de: dateFrom,
     ate: dateTo,
-    detail: detailOrderId,
     fiado: fiadoFilter,
+    // `detail` permanece no schema pra validar o input do URL, mas é
+    // consumido pelo OrderDetailDrawerListener global em admin-shell —
+    // não precisa mais ser passado pra OrdersTable (handoff 2026-05-25).
   } = pedidosSearchSchema.parse(await searchParams);
   const q = rawQ.trim();
 
@@ -395,14 +397,13 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
             />
           </Suspense>
 
-          {/* Tabela ou estado "sem resultados pra filtro" */}
+          {/* Tabela ou estado "sem resultados pra filtro" — o drawer
+              de detalhe é montado globalmente em admin-shell e lê
+              ?detail= direto do URL (handoff 2026-05-25). */}
           {orders.length === 0 ? (
             <NoResults />
           ) : (
-            <OrdersTable
-              orders={orderRows}
-              initialOpenOrderId={detailOrderId}
-            />
+            <OrdersTable orders={orderRows} />
           )}
 
           {orders.length > 0 ? (

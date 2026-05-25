@@ -26,13 +26,24 @@
   --mangos-cream: #FFF8E8;
   --mangos-cream-soft: #FFFDF7;
   --mangos-surface-muted: #FAF6EC;
+  --mangos-paper: var(--mangos-surface-muted);   /* alias do bundle de design (handoff 2026-05-25) */
   --mangos-side-bg: #F3F4F6;                     /* Sidebar — gray-100 estilo fintech (Abacate Pay ref) */
   --mangos-border: #EADFC8;
   --mangos-border-strong: #DCCBAA;
   --mangos-yellow: #F6B73C;
   --mangos-yellow-hover: #EAA327;
   --mangos-yellow-soft: #FFF2C7;
+  --mangos-yellow-deep: #C28618;                 /* amarelo profundo p/ ícones e cards de vitrine (handoff 2026-05-25) */
   --mangos-orange: #E9822B;
+  /*
+   * NOTA — drift consciente vs. design handoff 2026-05-25 (design_handoff_mangos_pay/README.md):
+   *   handoff prescreve  green-950=#0A2522, green-900=#0D2F2B
+   *   codebase mantém    green-950=#0D2F2B, green-900=#123D38
+   * Mesma família verde, ~1 step de luminância. Mantido pra não quebrar o admin
+   * shell já em produção. Idem para --ink-1..--ink-4 (handoff usa hex literais
+   * #173F3A/#475569; codebase usa aliases oklch via --gray-*). Realinhar tokens
+   * só quando houver auditoria visual completa pós-redesign.
+   */
   --mangos-green-950: #0D2F2B;
   --mangos-green-900: #123D38;
   --mangos-green-800: #174D44;
@@ -1533,6 +1544,48 @@
     box-shadow: 0 0 0 3px color-mix(in oklab, var(--mangos-yellow) 35%, transparent);
   }
   .b3-top-storelink svg { color: var(--mangos-green-800); }
+
+  /* CTA verde "Nova venda" do topbar — handoff design 2026-05-25.
+     Pílula brand-fill com kbd "F2" embutido (fundo translúcido pra
+     contrastar com o verde do botão). Acompanha a altura 36px das
+     outras actions do topbar pra alinhar visualmente. */
+  .b3-top-newsale {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid var(--brand);
+    background: var(--brand);
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    cursor: pointer;
+    outline: none;
+    transition: background-color 150ms, border-color 150ms, box-shadow 150ms,
+      transform 150ms;
+  }
+  .b3-top-newsale:hover {
+    background: var(--brand-2);
+    border-color: var(--brand-2);
+  }
+  .b3-top-newsale:active { transform: translateY(0.5px); }
+  .b3-top-newsale:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--mangos-yellow) 45%, transparent);
+  }
+  .b3-top-newsale kbd {
+    font-family: var(--font-mono, "Geist Mono", ui-monospace, monospace);
+    font-size: 10.5px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.92);
+    padding: 2px 5px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    line-height: 1;
+  }
   .b3-top-icbtn:hover { background: var(--mangos-cream-soft); color: var(--mangos-green-900); }
   .b3-top-icbtn:focus-visible {
     outline: none;
@@ -1547,6 +1600,58 @@
     background: var(--mangos-yellow);
     border-radius: 50%;
     border: 2px solid var(--surface);
+  }
+
+  /* Notifications popover — handoff design 2026-05-25 (Passo 5).
+     Painel ancorado abaixo do sino do topbar. Largura fixa 360px;
+     altura limitada pra rolar internamente; sombra fintech. */
+  .b3-notif-panel {
+    width: 360px;
+    max-height: min(540px, calc(100vh - 88px));
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 24px 48px -16px rgba(13, 47, 43, 0.18),
+                0 8px 16px -8px rgba(13, 47, 43, 0.08);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    outline: none;
+  }
+  .b3-notif-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+    background: var(--mangos-cream-soft);
+  }
+  .b3-notif-item {
+    display: flex;
+    width: 100%;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    cursor: pointer;
+    transition: background 120ms ease;
+  }
+  .b3-notif-item:last-child { border-bottom: 0; }
+  .b3-notif-item:hover  { background: var(--bg-app); }
+  .b3-notif-item:focus-visible {
+    outline: none;
+    background: var(--bg-app);
+    box-shadow: inset 3px 0 0 var(--mangos-yellow);
+  }
+  .b3-notif-item[data-unread="true"] {
+    background: color-mix(in oklab, var(--mangos-yellow-soft) 35%, var(--surface));
+  }
+  .b3-notif-item[data-unread="true"]:hover {
+    background: color-mix(in oklab, var(--mangos-yellow-soft) 55%, var(--surface));
   }
 
   /* Page wrapper */

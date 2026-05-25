@@ -1,22 +1,30 @@
 "use client";
 
-// Topbar desktop do admin — redesign Fase 2 ref Abacate Pay (2026-05-21).
+// Topbar desktop do admin — redesign Fase 2 ref Abacate Pay (2026-05-21),
+// handoff design 2026-05-25 (CTA "Nova venda" verde com kbd F2).
 //
 // Layout:
 // - LEFT: breadcrumb da rota atual (ícone + Seção / ícone + Item)
-// - RIGHT: search trigger (Cmd+K), CTA "Ver loja online", sino
+// - RIGHT: search trigger (Cmd+K), CTA "Ver loja", sino, CTA verde "Nova venda" (F2)
 //
 // Background TRANSPARENTE — flutua sobre o cinza do .b3-main acima do
 // card branco .b3-main-card. Mobile não usa este componente.
-import { BellIcon, ExternalLinkIcon, SearchIcon } from "lucide-react";
+import { ExternalLinkIcon, PlusIcon, SearchIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { NEW_SALE_EVENT } from "@/components/admin/pdv/new-sale-events";
+
 import { Breadcrumb } from "./breadcrumb";
+import { NotificationsPopover } from "./notifications-popover";
 
 function openPalette() {
   window.dispatchEvent(new Event("admin:open-palette"));
+}
+
+function openNewSale() {
+  window.dispatchEvent(new Event(NEW_SALE_EVENT));
 }
 
 export interface TopBarProps {
@@ -70,14 +78,24 @@ export function TopBar({ storeSlug }: TopBarProps) {
           <span>Ver loja online</span>
         </Link>
 
+        {/* Popover do sino — clica abre painel com lista (ou empty state
+            honesto). Dot só renderiza com unreadCount > 0. Handoff Passo 5. */}
+        <NotificationsPopover />
+
+        {/* CTA verde "Nova venda" + kbd F2 — entrada principal de fluxo
+            operacional do lojista. Disponível em qualquer rota do admin
+            (não só /admin/pedidos). Abre o modal global montado em
+            admin-shell via evento NEW_SALE_EVENT. */}
         <button
           type="button"
-          className="b3-top-icbtn"
-          aria-label="Notificações"
-          title="Notificações (em breve)"
+          className="b3-top-newsale"
+          onClick={openNewSale}
+          aria-label="Nova venda (F2)"
+          title="Nova venda (F2)"
         >
-          <BellIcon size={18} />
-          <span className="ndot" aria-hidden />
+          <PlusIcon size={15} aria-hidden />
+          <span>Nova venda</span>
+          <kbd>F2</kbd>
         </button>
       </div>
     </header>

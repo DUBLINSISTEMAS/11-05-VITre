@@ -78,6 +78,8 @@ export type OrderDetail = {
   linkedCustomer: OrderDetailLinkedCustomer | null;
   totalInCents: number;
   status: (typeof ORDER_STATUS_VALUES)[number];
+  /** Canal de origem — `balcao` (PDV) ou `whatsapp` (loja online). */
+  channel: "whatsapp" | "balcao";
   whatsappOpenedAt: Date | null;
   confirmedAt: Date | null;
   expiresAt: Date | null;
@@ -97,7 +99,7 @@ export type LoadOrderDetailResult =
 
 /**
  * Carrega detalhe completo do pedido sob demanda (Onda 4, 2026-05-12).
- * Usado pelo OrderDetailDialog — substitui a rota /admin/pedidos/[id].
+ * Usado pelo OrderDetailDrawer — substitui a rota /admin/pedidos/[id].
  * Tudo passa pelo withTenant garantindo isolamento por loja.
  */
 export async function loadOrderDetail(
@@ -127,6 +129,7 @@ export async function loadOrderDetail(
         customerId: true,
         totalInCents: true,
         status: true,
+        channel: true,
         whatsappOpenedAt: true,
         confirmedAt: true,
         expiresAt: true,
@@ -243,6 +246,7 @@ export async function loadOrderDetail(
     order: {
       ...result.order,
       status: result.order.status as (typeof ORDER_STATUS_VALUES)[number],
+      channel: result.order.channel as "whatsapp" | "balcao",
       items: result.items,
       payments: result.payments,
       linkedCustomer: result.linkedCustomer,

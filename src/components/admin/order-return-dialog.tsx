@@ -22,7 +22,7 @@
  *   - Botão "Confirmar" desabilitado se: motivo curto, partial sem
  *     item selecionado, todos sem saldo.
  *
- * Recebe `items` carregados pelo OrderDetailDialog — não busca por si.
+ * Recebe `items` carregados pelo OrderDetailDrawer — não busca por si.
  */
 
 import { Loader2Icon, Undo2Icon } from "lucide-react";

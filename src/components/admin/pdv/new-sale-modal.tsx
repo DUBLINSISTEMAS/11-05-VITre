@@ -33,9 +33,11 @@
 import { ArrowLeftIcon, Loader2Icon, PlusIcon, XIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Dialog as DialogPrimitive } from "radix-ui";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
+
+import { NEW_SALE_EVENT } from "./new-sale-events";
 
 // PdvShell tem ~2200 linhas + várias deps próprias. Dynamic import com
 // ssr:false faz o chunk baixar só quando o modal abre — initial bundle
@@ -57,9 +59,106 @@ const PdvShell = dynamic(
   },
 );
 
+/**
+ * Conteúdo do modal de Nova venda — Overlay + Content + Header + PdvShell.
+ * Extraído pra ser reusado tanto pelo `NewSaleModalButton` (trigger inline,
+ * usado em /admin/pedidos) quanto pelo `NewSaleModalListener` (controlado
+ * por evento global, montado em admin-shell pro CTA do topbar).
+ *
+ * Regras de fechamento: documentadas no comment no topo do arquivo.
+ */
+function NewSaleDialogBody({ onClose }: { onClose: () => void }) {
+  return (
+    <DialogPrimitive.Portal>
+      <DialogPrimitive.Overlay
+        className={cn(
+          "fixed inset-0 z-50 bg-black/30 backdrop-blur-sm",
+          "duration-[150ms] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
+        )}
+      />
+
+      {/* Container do modal — quase a viewport inteira em desktop, tela
+          cheia em mobile (rounded-none). Marker `data-pdv-modal` é
+          usado pelo handler de F-keys do PdvShell pra distinguir
+          este modal (que CONTÉM o PdvShell) de sub-dialogs que abrem
+          por cima (ex: ProductPickerDialog, QuickSale) — F-keys
+          disparam normalmente dentro deste, mas skipam quando o foco
+          está num descendente que não é este. */}
+      <DialogPrimitive.Content
+        aria-describedby={undefined}
+        data-pdv-modal="true"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        className={cn(
+          "bg-surface fixed top-1/2 left-1/2 z-50 flex -translate-x-1/2 -translate-y-1/2 flex-col outline-none",
+          "h-dvh w-screen rounded-none",
+          "lg:h-[92vh] lg:max-h-[920px] lg:w-[95vw] lg:max-w-[1400px] lg:rounded-[20px]",
+          "lg:shadow-[0_10px_40px_-12px_rgba(0,0,0,0.25),0_4px_12px_-6px_rgba(0,0,0,0.1)]",
+          "duration-[150ms] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+        )}
+      >
+        <header
+          className={cn(
+            "flex h-14 shrink-0 items-center justify-between",
+            "border-line border-b px-3",
+          )}
+        >
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Voltar"
+            className={cn(
+              "text-ink-4 inline-flex size-8 items-center justify-center rounded-md outline-none",
+              "hocus:bg-bg-app hocus:text-ink-2 transition-colors",
+              "focus-visible:ring-2 focus-visible:ring-ring/40",
+            )}
+          >
+            <ArrowLeftIcon className="size-4" strokeWidth={1.6} aria-hidden />
+          </button>
+
+          <DialogPrimitive.Title
+            className={cn(
+              "text-ink-1 text-[15px] font-semibold tracking-[-0.01em]",
+              "max-w-[60vw] truncate sm:max-w-none",
+            )}
+          >
+            Nova venda · Balcão
+          </DialogPrimitive.Title>
+
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar"
+            className={cn(
+              "text-ink-4 inline-flex size-8 items-center justify-center rounded-md outline-none",
+              "hocus:bg-bg-app hocus:text-ink-2 transition-colors",
+              "focus-visible:ring-2 focus-visible:ring-ring/40",
+            )}
+          >
+            <XIcon className="size-4" strokeWidth={1.6} aria-hidden />
+          </button>
+        </header>
+
+        {/* Body — só o PdvShell. CashSessionStatus saiu do modal e ficou
+            na página /admin/pedidos (acima do listing). */}
+        <div className="flex flex-1 flex-col overflow-hidden p-3 sm:p-4">
+          {/* Wrapper que força o PdvShell (h-[calc(100vh-...)]) a ocupar
+              APENAS o espaço restante do modal. A variante arbitrária
+              [&>div]:!h-full sobrescreve a altura do primeiro div do
+              PdvShell, sem precisar editar suas 2200+ linhas. */}
+          <div className="flex-1 min-h-0 overflow-hidden [&>div]:!h-full">
+            <PdvShell />
+          </div>
+        </div>
+      </DialogPrimitive.Content>
+    </DialogPrimitive.Portal>
+  );
+}
+
 export function NewSaleModalButton() {
   const [open, setOpen] = useState(false);
-  const close = () => setOpen(false);
+  const close = useCallback(() => setOpen(false), []);
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
@@ -68,92 +167,56 @@ export function NewSaleModalButton() {
           <PlusIcon size={14} aria-hidden /> Nova venda
         </button>
       </DialogPrimitive.Trigger>
+      <NewSaleDialogBody onClose={close} />
+    </DialogPrimitive.Root>
+  );
+}
 
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay
-          className={cn(
-            "fixed inset-0 z-50 bg-black/30 backdrop-blur-sm",
-            "duration-[150ms] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
-          )}
-        />
+/**
+ * Host global do modal — montado em `<AdminShell>` pra que a CTA "Nova
+ * venda" do topbar (e a tecla F2 global) possam abrir o fluxo de qualquer
+ * rota do admin sem cada página precisar montar o próprio Dialog.
+ *
+ * Como abrir:
+ *   - Clique na CTA "Nova venda" do topbar (dispara `NEW_SALE_EVENT`)
+ *   - Tecla F2 (com guarda: skipa quando foco está em input, textarea,
+ *     contentEditable ou descendente de `[data-pdv-modal]` — o PDV já
+ *     usa F2 internamente como "focar busca de produto")
+ */
+export function NewSaleModalListener() {
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
 
-        {/* Container do modal — quase a viewport inteira em desktop, tela
-            cheia em mobile (rounded-none). Marker `data-pdv-modal` é
-            usado pelo handler de F-keys do PdvShell pra distinguir
-            este modal (que CONTÉM o PdvShell) de sub-dialogs que abrem
-            por cima (ex: ProductPickerDialog, QuickSale) — F-keys
-            disparam normalmente dentro deste, mas skipam quando o foco
-            está num descendente que não é este. */}
-        <DialogPrimitive.Content
-          aria-describedby={undefined}
-          data-pdv-modal="true"
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onInteractOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={(e) => e.preventDefault()}
-          className={cn(
-            "bg-surface fixed top-1/2 left-1/2 z-50 flex -translate-x-1/2 -translate-y-1/2 flex-col outline-none",
-            "h-dvh w-screen rounded-none",
-            "lg:h-[92vh] lg:max-h-[920px] lg:w-[95vw] lg:max-w-[1400px] lg:rounded-[20px]",
-            "lg:shadow-[0_10px_40px_-12px_rgba(0,0,0,0.25),0_4px_12px_-6px_rgba(0,0,0,0.1)]",
-            "duration-[150ms] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
-          )}
-        >
-          {/* ── Header sticky 56px: voltar / título / fechar ── */}
-          <header
-            className={cn(
-              "flex h-14 shrink-0 items-center justify-between",
-              "border-line border-b px-3",
-            )}
-          >
-            <button
-              type="button"
-              onClick={close}
-              aria-label="Voltar"
-              className={cn(
-                "text-ink-4 inline-flex size-8 items-center justify-center rounded-md outline-none",
-                "hocus:bg-bg-app hocus:text-ink-2 transition-colors",
-                "focus-visible:ring-2 focus-visible:ring-ring/40",
-              )}
-            >
-              <ArrowLeftIcon className="size-4" strokeWidth={1.6} aria-hidden />
-            </button>
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener(NEW_SALE_EVENT, onOpen);
+    return () => window.removeEventListener(NEW_SALE_EVENT, onOpen);
+  }, []);
 
-            <DialogPrimitive.Title
-              className={cn(
-                "text-ink-1 text-[15px] font-semibold tracking-[-0.01em]",
-                "max-w-[60vw] truncate sm:max-w-none",
-              )}
-            >
-              Nova venda · Balcão
-            </DialogPrimitive.Title>
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "F2") return;
+      const target = e.target as HTMLElement | null;
+      // Guarda 1: skipa se o foco está num campo editável (digitar F2
+      // dentro de input não deve roubar pra abrir modal).
+      const tag = target?.tagName;
+      const isFormField =
+        tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" ||
+        target?.isContentEditable === true;
+      if (isFormField) return;
+      // Guarda 2: skipa se já estamos dentro do PdvShell (o handler
+      // interno do PDV usa F2 pra focar a busca de produto).
+      if (target?.closest?.("[data-pdv-modal]")) return;
+      e.preventDefault();
+      setOpen(true);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
-            <button
-              type="button"
-              onClick={close}
-              aria-label="Fechar"
-              className={cn(
-                "text-ink-4 inline-flex size-8 items-center justify-center rounded-md outline-none",
-                "hocus:bg-bg-app hocus:text-ink-2 transition-colors",
-                "focus-visible:ring-2 focus-visible:ring-ring/40",
-              )}
-            >
-              <XIcon className="size-4" strokeWidth={1.6} aria-hidden />
-            </button>
-          </header>
-
-          {/* ── Body: só o PdvShell. CashSessionStatus saiu do modal e
-              ficou na página /admin/pedidos (acima do listing). ── */}
-          <div className="flex flex-1 flex-col overflow-hidden p-3 sm:p-4">
-            {/* Wrapper que força o PdvShell (h-[calc(100vh-...)]) a ocupar
-                APENAS o espaço restante do modal. A variante arbitrária
-                [&>div]:!h-full sobrescreve a altura do primeiro div do
-                PdvShell, sem precisar editar suas 2200+ linhas. */}
-            <div className="flex-1 min-h-0 overflow-hidden [&>div]:!h-full">
-              <PdvShell />
-            </div>
-          </div>
-        </DialogPrimitive.Content>
-      </DialogPrimitive.Portal>
+  return (
+    <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
+      <NewSaleDialogBody onClose={close} />
     </DialogPrimitive.Root>
   );
 }
