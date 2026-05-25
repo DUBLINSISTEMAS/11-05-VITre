@@ -13,6 +13,7 @@
 import {
   PackageIcon,
   PlusIcon,
+  ReceiptIcon,
   SearchIcon,
   ShoppingBagIcon,
   StoreIcon,
@@ -23,15 +24,27 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { globalSearch, type SearchHit } from "@/actions/search/global";
+import { NEW_SALE_EVENT } from "@/components/admin/pdv/new-sale-events";
 
 type QuickAction = {
   label: string;
-  href: string;
   hint: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
-};
+  /** kbd a renderizar ao lado direito (ex: "F2"). */
+  kbd?: string;
+} & ({ href: string; event?: never } | { href?: never; event: string });
 
+// Sentinela do "Nova venda balcão" — em vez de navegar pra /admin/pdv,
+// dispara o evento global do modal PDV (handoff Passo 4). Funciona de
+// qualquer rota do admin sem perder contexto.
 const QUICK_ACTIONS: QuickAction[] = [
+  {
+    label: "Nova venda balcão",
+    hint: "Abre o PDV modal (também F2 em qualquer rota)",
+    icon: ShoppingBagIcon,
+    event: NEW_SALE_EVENT,
+    kbd: "F2",
+  },
   {
     label: "Novo produto",
     href: "/admin/produtos/novo",
@@ -45,16 +58,10 @@ const QUICK_ACTIONS: QuickAction[] = [
     icon: UserIcon,
   },
   {
-    label: "Abrir PDV",
-    href: "/admin/pdv",
-    hint: "Venda de balcão",
-    icon: ShoppingBagIcon,
-  },
-  {
     label: "Vendas",
     href: "/admin/pedidos",
     hint: "Lista de vendas",
-    icon: PackageIcon,
+    icon: ReceiptIcon,
   },
   {
     label: "Clientes",
@@ -74,6 +81,12 @@ function kindLabel(k: SearchHit["kind"]) {
   if (k === "product") return "Produtos";
   if (k === "customer") return "Clientes";
   return "Vendas";
+}
+
+function kindIcon(k: SearchHit["kind"]) {
+  if (k === "product") return PackageIcon;
+  if (k === "customer") return UsersIcon;
+  return ReceiptIcon;
 }
 
 export function CommandPalette() {
@@ -137,16 +150,18 @@ export function CommandPalette() {
     return () => clearTimeout(id);
   }, [query]);
 
-  // Items combinados (quick actions OR hits)
+  // Items combinados (quick actions OR hits). Pra quick actions sem href
+  // (event-only), inventamos um id estável a partir do event name. Esses
+  // items são tratados especialmente no Enter handler abaixo.
   const items = useMemo(() => {
     if (query.trim()) return hits;
-    return QUICK_ACTIONS.map<SearchHit & { _quick: true }>((a) => ({
+    return QUICK_ACTIONS.map<SearchHit>((a) => ({
       kind: "product",
-      id: a.href,
+      id: a.href ?? `event:${a.event}`,
       label: a.label,
       sublabel: a.hint,
-      href: a.href,
-      _quick: true,
+      // href fictício pros event-only — fireEventOrNavigate filtra antes.
+      href: a.href ?? "",
     }));
   }, [query, hits]);
 
@@ -169,6 +184,20 @@ export function CommandPalette() {
     [router],
   );
 
+  // Executa um quick action — se for event-only, dispara o evento e fecha;
+  // senão navega. Handoff Passo 15.
+  const runQuickAction = useCallback(
+    (action: QuickAction) => {
+      setOpen(false);
+      if (action.event !== undefined) {
+        window.dispatchEvent(new Event(action.event));
+        return;
+      }
+      router.push(action.href);
+    },
+    [router],
+  );
+
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -179,7 +208,16 @@ export function CommandPalette() {
     } else if (e.key === "Enter") {
       e.preventDefault();
       const target = items[activeIndex];
-      if (target) navigate(target.href);
+      if (!target) return;
+      // Quick action event-only (id começa com "event:") → dispara evento.
+      if (!query.trim() && target.id.startsWith("event:")) {
+        const action = QUICK_ACTIONS.find(
+          (a) => `event:${a.event}` === target.id,
+        );
+        if (action) runQuickAction(action);
+        return;
+      }
+      navigate(target.href);
     } else if (e.key === "Escape") {
       e.preventDefault();
       setOpen(false);
@@ -239,19 +277,24 @@ export function CommandPalette() {
                 const Icon = a.icon;
                 return (
                   <button
-                    key={a.href}
+                    key={a.href ?? a.event}
                     type="button"
                     onMouseEnter={() => setActiveIndex(i)}
-                    onClick={() => navigate(a.href)}
+                    onClick={() => runQuickAction(a)}
                     className={`flex w-full items-center gap-3 px-4 py-2 text-left text-[13px] ${
                       isActive ? "bg-ink-1/5" : ""
                     }`}
                   >
                     <Icon size={16} className="text-ink-3" />
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <div className="text-ink-1">{a.label}</div>
                       <div className="text-ink-4 text-[11px]">{a.hint}</div>
                     </div>
+                    {a.kbd ? (
+                      <kbd className="border-line text-ink-4 hidden rounded border bg-bg-app px-1.5 py-0.5 font-mono text-[10px] sm:inline">
+                        {a.kbd}
+                      </kbd>
+                    ) : null}
                   </button>
                 );
               })}
@@ -267,6 +310,7 @@ export function CommandPalette() {
                 flatIndex++;
                 const isActive = flatIndex === activeIndex;
                 const idx = flatIndex;
+                const Icon = kindIcon(h.kind);
                 return (
                   <button
                     key={`${h.kind}:${h.id}`}
@@ -277,9 +321,12 @@ export function CommandPalette() {
                       isActive ? "bg-ink-1/5" : ""
                     }`}
                   >
-                    <div className="flex-1">
-                      <div className="text-ink-1">{h.label}</div>
-                      <div className="text-ink-4 text-[11px]">{h.sublabel}</div>
+                    <Icon size={16} className="text-ink-3 shrink-0" aria-hidden />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-ink-1 truncate">{h.label}</div>
+                      <div className="text-ink-4 text-[11px] truncate">
+                        {h.sublabel}
+                      </div>
                     </div>
                   </button>
                 );
