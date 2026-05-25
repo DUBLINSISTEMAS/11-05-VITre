@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { FeedbackWidget } from "@/components/admin/feedback-widget";
 import { OrderDetailDrawerListener } from "@/components/admin/order-detail-drawer-listener";
 import { NewSaleModalListener } from "@/components/admin/pdv/new-sale-modal";
 
@@ -70,6 +71,14 @@ export function AdminShell({ children, ...userProps }: AdminShellProps) {
           OPEN_ORDER_DETAIL_EVENT (row da OrdersTable, "Vendas recentes" do
           dashboard, etc) ou via deep-link `?detail=<id>`. Handoff 2026-05-25. */}
       <OrderDetailDrawerListener />
+      {/* Widget flutuante de feedback — botão amarelo bottom-right + Sheet
+          com 4 tipos · mensagem · contexto auto-preenchido. Resend manda
+          pra suporte@mangospay.app com reply-to do lojista. Handoff Passo 14. */}
+      <FeedbackWidget
+        ownerName={userProps.ownerName}
+        ownerEmail={userProps.ownerEmail}
+        storeName={userProps.storeName}
+      />
     </div>
   );
 }

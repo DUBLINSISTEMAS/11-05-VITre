@@ -49,6 +49,9 @@ const envSchema = z.object({
   // Resend
   RESEND_API_KEY: z.string().min(1),
   RESEND_FROM_EMAIL: z.string().email(),
+  /** Destinatário do widget de feedback flutuante. Default em código:
+      suporte@mangospay.app (Passo 14 redesign). */
+  FEEDBACK_TO_EMAIL: optionalString,
 
   // Upstash Redis (rate limit)
   UPSTASH_REDIS_REST_URL: z.string().url(),

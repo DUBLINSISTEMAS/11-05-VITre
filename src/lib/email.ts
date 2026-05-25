@@ -83,6 +83,69 @@ export async function sendPasswordResetEmail({
   return result;
 }
 
+/**
+ * Feedback do lojista pro time Mangos — handoff Passo 14 (2026-05-25).
+ *
+ * Formato plaintext-ish (sem CTA button) pra preservar o conteúdo bruto
+ * digitado. Destinatário fixo (suporte@mangospay.app). Reply-to do
+ * lojista pra responder fechar o loop sem pular email.
+ */
+interface SendFeedbackEmailInput {
+  fromOwnerName: string;
+  fromOwnerEmail: string;
+  storeName: string;
+  storeSlug: string;
+  type: "idea" | "bug" | "feature" | "praise";
+  message: string;
+}
+
+const FEEDBACK_TYPE_LABEL: Record<SendFeedbackEmailInput["type"], string> = {
+  idea: "💡 Ideia",
+  bug: "🐛 Bug / erro",
+  feature: "➕ Pedido de feature",
+  praise: "🙌 Elogio",
+};
+
+export async function sendFeedbackEmail({
+  fromOwnerName,
+  fromOwnerEmail,
+  storeName,
+  storeSlug,
+  type,
+  message,
+}: SendFeedbackEmailInput) {
+  const typeLabel = FEEDBACK_TYPE_LABEL[type];
+  const subject = `[Feedback] ${typeLabel} — ${storeName}`;
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#0a0a0a;">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:560px;background:#ffffff;border-radius:16px;padding:28px;border:1px solid #e5e5e5;">
+        <tr><td style="padding-bottom:16px;">
+          <div style="display:inline-block;background:#174D44;color:#FFF8E8;border-radius:10px;padding:6px 12px;font-weight:700;font-size:13px;">${escapeHtml(typeLabel)}</div>
+        </td></tr>
+        <tr><td style="font-size:18px;font-weight:700;line-height:1.3;padding-bottom:8px;">${escapeHtml(storeName)}</td></tr>
+        <tr><td style="font-size:13px;color:#525252;padding-bottom:20px;">${escapeHtml(fromOwnerName)} &lt;${escapeHtml(fromOwnerEmail)}&gt; · mangospay.app/${escapeHtml(storeSlug)}</td></tr>
+        <tr><td style="padding-bottom:8px;border-top:1px solid #f5f5f5;padding-top:20px;font-size:11px;color:#a3a3a3;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;">Mensagem</td></tr>
+        <tr><td style="font-size:15px;line-height:1.6;color:#0a0a0a;white-space:pre-wrap;">${escapeHtml(message)}</td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+  const result = await resend.emails.send({
+    from: `Mangos Pay Feedback <${env.RESEND_FROM_EMAIL}>`,
+    to: env.FEEDBACK_TO_EMAIL ?? "suporte@mangospay.app",
+    replyTo: fromOwnerEmail,
+    subject,
+    html,
+  });
+  if (result.error) {
+    throw new Error(`Resend falhou ao enviar feedback: ${result.error.message}`);
+  }
+  return result;
+}
+
 interface BuildEmailInput {
   title: string;
   bodyText: string;
