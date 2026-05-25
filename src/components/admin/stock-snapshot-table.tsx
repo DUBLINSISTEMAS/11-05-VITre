@@ -381,6 +381,8 @@ function ActionCell({ row }: { row: StockSnapshotRow }) {
       productId={row.productId}
       productName={row.productName}
       variants={[]}
+      currentStockQuantity={row.stockQuantity ?? 0}
+      unit={row.unit}
       trigger={
         <button
           type="button"

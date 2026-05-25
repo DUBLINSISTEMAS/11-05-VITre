@@ -288,6 +288,7 @@ function StockCell({
           productId={productId}
           productName={productName}
           variants={[]}
+          currentStockQuantity={q}
           trigger={
             <button
               type="button"
