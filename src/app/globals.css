@@ -1587,6 +1587,16 @@
     line-height: 1;
   }
   .b3-top-icbtn:hover { background: var(--mangos-cream-soft); color: var(--mangos-green-900); }
+  /* S1 (handoff pixel-perfect 2026-05-25) — bell pressed/popover-open state.
+     O bundle do design aplica `background: var(--surface); color: var(--ink-1)`
+     no botão do sino quando `notifOpen=true` (app-oficial/topbar.jsx:74).
+     Como o sino aqui usa Radix Popover, o estado abre o atributo
+     `data-state="open"` no trigger — capturamos os dois (hover + open). */
+  .b3-top-icbtn[data-state="open"] {
+    background: var(--surface);
+    color: var(--ink-1);
+    box-shadow: var(--shadow-sm);
+  }
   .b3-top-icbtn:focus-visible {
     outline: none;
     box-shadow: 0 0 0 3px color-mix(in oklab, var(--mangos-yellow) 35%, transparent);

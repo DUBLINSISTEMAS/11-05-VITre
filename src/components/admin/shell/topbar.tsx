@@ -57,14 +57,19 @@ export function TopBar({ storeSlug }: TopBarProps) {
           aria-label={`Abrir busca (${shortcut})`}
           title={`Buscar produto, cliente ou pedido (${shortcut})`}
         >
-          <SearchIcon size={15} aria-hidden />
+          <SearchIcon size={14} aria-hidden />
           <span>Buscar</span>
           <kbd>{shortcut}</kbd>
         </button>
 
         {/* CTA persistente pro lojista ver a loja online — o storefront é o
             diferencial defensável do Mangos Pay (princípio do norte). Manter
-            o caminho pra ele a 1 clique. */}
+            o caminho pra ele a 1 clique.
+
+            S1 (handoff pixel-perfect 2026-05-25): label normalizado pra
+            "Ver loja" conforme app-oficial/topbar.jsx do bundle + README
+            "ícone notificações, 'Ver loja', 'Nova venda' CTA verde". O
+            "online" segue no aria-label e title pra clareza assistiva. */}
         <Link
           href={`/${storeSlug}`}
           target="_blank"
@@ -74,8 +79,8 @@ export function TopBar({ storeSlug }: TopBarProps) {
           aria-label="Abrir loja online em uma nova aba"
           title="Ver loja online (abre em nova aba)"
         >
-          <ExternalLinkIcon size={15} aria-hidden />
-          <span>Ver loja online</span>
+          <ExternalLinkIcon size={14} aria-hidden />
+          <span>Ver loja</span>
         </Link>
 
         {/* Popover do sino — clica abre painel com lista (ou empty state
@@ -93,7 +98,7 @@ export function TopBar({ storeSlug }: TopBarProps) {
           aria-label="Nova venda (F2)"
           title="Nova venda (F2)"
         >
-          <PlusIcon size={15} aria-hidden />
+          <PlusIcon size={14} aria-hidden />
           <span>Nova venda</span>
           <kbd>F2</kbd>
         </button>
