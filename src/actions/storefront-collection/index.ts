@@ -43,6 +43,8 @@ function toSlug(input: string): string {
     .slice(0, 60);
 }
 
+const HEX_COLOR_RE = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+
 const upsertSchema = z.object({
   id: z.string().uuid().nullable(),
   name: z.string().trim().min(1).max(80),
@@ -58,6 +60,23 @@ const upsertSchema = z.object({
     .max(500)
     .nullish()
     .transform((v) => (v && v.length > 0 ? v : null)),
+  // PP5 (handoff 2026-05-25) — kicker + bgColor pra renderizar cards
+  // coloridos no CollectionStrip da home.
+  kicker: z
+    .string()
+    .trim()
+    .max(30, "Máximo 30 caracteres.")
+    .nullish()
+    .transform((v) => (v && v.length > 0 ? v : null)),
+  bgColor: z
+    .string()
+    .trim()
+    .nullish()
+    .transform((v) => (v && v.length > 0 ? v : null))
+    .refine(
+      (v) => v === null || HEX_COLOR_RE.test(v),
+      "Cor deve estar em formato #aabbcc ou #abc.",
+    ),
   showInHome: z.boolean().default(true),
   isActive: z.boolean().default(true),
   position: z.number().int().min(0).default(0),
@@ -78,6 +97,10 @@ export interface CollectionListItem {
   name: string;
   slug: string;
   description: string | null;
+  /** PP5 — kicker curto opcional (ex: "Top semana", "Promo junho"). */
+  kicker: string | null;
+  /** PP5 — cor de fundo hex do card na home. */
+  bgColor: string | null;
   position: number;
   showInHome: boolean;
   isActive: boolean;
@@ -121,6 +144,8 @@ export async function loadCollections(): Promise<CollectionListItem[]> {
       name: c.name,
       slug: c.slug,
       description: c.description,
+      kicker: c.kicker,
+      bgColor: c.bgColor,
       position: c.position,
       showInHome: c.showInHome,
       isActive: c.isActive,
@@ -159,6 +184,8 @@ export async function loadCollectionDetail(
       name: row.name,
       slug: row.slug,
       description: row.description,
+      kicker: row.kicker,
+      bgColor: row.bgColor,
       position: row.position,
       showInHome: row.showInHome,
       isActive: row.isActive,
@@ -242,6 +269,8 @@ export async function upsertCollection(
               name: data.name,
               slug,
               description: data.description,
+              kicker: data.kicker,
+              bgColor: data.bgColor,
               showInHome: data.showInHome,
               isActive: data.isActive,
               position: data.position,
@@ -265,6 +294,8 @@ export async function upsertCollection(
             name: data.name,
             slug,
             description: data.description,
+            kicker: data.kicker,
+            bgColor: data.bgColor,
             showInHome: data.showInHome,
             isActive: data.isActive,
             position: data.position,

@@ -102,6 +102,9 @@ const checks = [
   { id: "69b", desc: "product_variant.track_stock default true (sprint flash 2026-05-24)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='product_variant' AND column_name='track_stock' AND column_default='true'" },
   { id: "70a", desc: "order_payment.installments column (sprint flash 2026-05-24)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='order_payment' AND column_name='installments'" },
   { id: "70b", desc: "order_payment installments range + credit_only CHECKs", q: "SELECT 1 FROM pg_constraint WHERE conname IN ('order_payment_installments_range','order_payment_installments_credit_only') HAVING count(*) = 2" },
+  // PP5 (handoff pixel-perfect 2026-05-25) — storefront_collection ganha kicker + bg_color.
+  { id: "71a", desc: "storefront_collection.kicker + bg_color columns (PP5)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='storefront_collection' AND column_name IN ('kicker','bg_color') HAVING count(*) = 2" },
+  { id: "71b", desc: "storefront_collection kicker_length + bg_color_format CHECKs", q: "SELECT 1 FROM pg_constraint WHERE conname IN ('storefront_collection_kicker_length','storefront_collection_bg_color_format') HAVING count(*) = 2" },
 ];
 
 const url = process.env.DIRECT_URL;

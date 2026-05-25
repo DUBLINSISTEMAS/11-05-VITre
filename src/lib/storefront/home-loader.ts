@@ -45,6 +45,10 @@ export interface HomeCollection {
   slug: string;
   name: string;
   description: string | null;
+  /** PP5 (2026-05-25) — kicker curto opcional ("Top semana", "Promo"). */
+  kicker: string | null;
+  /** PP5 — cor de fundo hex do card colorido (null = fallback neutro). */
+  bgColor: string | null;
   productCount: number;
   /** Thumbnail = imagem primária do produto na 1ª posição da coleção. */
   thumbnailUrl: string | null;
@@ -114,6 +118,8 @@ async function loadHomePageDataFromDb(storeId: string): Promise<HomePageData> {
         slug: storefrontCollectionTable.slug,
         name: storefrontCollectionTable.name,
         description: storefrontCollectionTable.description,
+        kicker: storefrontCollectionTable.kicker,
+        bgColor: storefrontCollectionTable.bgColor,
         position: storefrontCollectionTable.position,
       })
       .from(storefrontCollectionTable)
@@ -222,6 +228,8 @@ async function loadHomePageDataFromDb(storeId: string): Promise<HomePageData> {
           slug: c.slug,
           name: c.name,
           description: c.description,
+          kicker: c.kicker,
+          bgColor: c.bgColor,
           productCount: countByCollection.get(c.id) ?? 0,
           thumbnailUrl,
         };

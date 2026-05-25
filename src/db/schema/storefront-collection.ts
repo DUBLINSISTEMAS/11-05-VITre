@@ -37,6 +37,18 @@ export const storefrontCollectionTable = pgTable(
     /** URL slug (`/colecao/[slug]`). UNIQUE por loja. */
     slug: text("slug").notNull(),
     description: text("description"),
+    /**
+     * PP5 (handoff pixel-perfect 2026-05-25) — kicker curto acima do
+     * título no card da home (ex: "Top semana", "Promo junho"). Max
+     * 30 chars (CHECK em SQL 71).
+     */
+    kicker: text("kicker"),
+    /**
+     * PP5 — cor de fundo do card na home. Hex `#aabbcc` ou `#abc`
+     * (CHECK regex em SQL 71). Quando NULL, CollectionStrip aplica
+     * fallback neutro (var(--bg-app)).
+     */
+    bgColor: text("bg_color"),
     /** Ordem entre coleções (na home / lista admin). */
     position: integer("position").notNull().default(0),
     /** Se a coleção aparece como seção na home da loja. */

@@ -253,6 +253,9 @@ function CollectionEditor({
   const [name, setName] = useState(collection?.name ?? "");
   const [slug, setSlug] = useState(collection?.slug ?? "");
   const [description, setDescription] = useState(collection?.description ?? "");
+  // PP5 — kicker + cor de fundo do card colorido na home (handoff 2026-05-25).
+  const [kicker, setKicker] = useState(collection?.kicker ?? "");
+  const [bgColor, setBgColor] = useState(collection?.bgColor ?? "");
   const [showInHome, setShowInHome] = useState(collection?.showInHome ?? true);
   const [isActive, setIsActive] = useState(collection?.isActive ?? true);
   const [selectedIds, setSelectedIds] = useState<string[]>(
@@ -292,6 +295,8 @@ function CollectionEditor({
         name,
         slug: slug.trim() || null,
         description: description.trim() || null,
+        kicker: kicker.trim() || null,
+        bgColor: bgColor.trim() || null,
         showInHome,
         isActive,
         position: collection?.position ?? 0,
@@ -316,6 +321,8 @@ function CollectionEditor({
         name: name.trim(),
         slug: slug.trim() || slugifyClient(name),
         description: description.trim() || null,
+        kicker: kicker.trim() || null,
+        bgColor: bgColor.trim() || null,
         position: collection?.position ?? 0,
         showInHome,
         isActive,
@@ -383,6 +390,57 @@ function CollectionEditor({
                 className="border-line bg-surface focus:border-brand w-full resize-none rounded-[8px] border px-3 py-2 text-[13px] outline-none"
                 placeholder="Texto curto que aparece no topo da vitrine."
               />
+            </div>
+
+            {/* PP5 — kicker + cor pra card colorido na home (handoff 2026-05-25). */}
+            <div>
+              <label className="text-ink-2 mb-1 block text-[12px] font-medium">
+                Kicker no card
+              </label>
+              <input
+                value={kicker}
+                onChange={(e) => setKicker(e.target.value)}
+                placeholder="Ex: Top semana · Promo junho"
+                className="b3-input w-full"
+                maxLength={30}
+              />
+              {errors.kicker ? (
+                <p className="mt-1 text-[10.5px] text-red-600">{errors.kicker}</p>
+              ) : (
+                <p className="text-ink-4 mt-1 text-[10.5px]">
+                  Texto pequeno em cima do título no card da home. Opcional.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="text-ink-2 mb-1 block text-[12px] font-medium">
+                Cor do card na home
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={bgColor}
+                  onChange={(e) => setBgColor(e.target.value)}
+                  placeholder="#174D44"
+                  className="b3-input flex-1 font-mono"
+                  maxLength={7}
+                />
+                <input
+                  type="color"
+                  value={/^#[0-9a-f]{6}$/i.test(bgColor) ? bgColor : "#174D44"}
+                  onChange={(e) => setBgColor(e.target.value)}
+                  className="h-9 w-9 cursor-pointer rounded border border-line"
+                  aria-label="Escolher cor"
+                />
+              </div>
+              {errors.bgColor ? (
+                <p className="mt-1 text-[10.5px] text-red-600">{errors.bgColor}</p>
+              ) : (
+                <p className="text-ink-4 mt-1 text-[10.5px]">
+                  Hex (ex: #174D44). Vazio = card cinza neutro.
+                </p>
+              )}
             </div>
             <label className="flex items-center gap-2 text-[12.5px]">
               <input
