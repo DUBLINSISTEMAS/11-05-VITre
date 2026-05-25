@@ -159,6 +159,48 @@ export function SidebarContent({
         ) : null}
       </div>
 
+      {/* PP14 (handoff pixel-perfect 2026-05-25) — StoreSwitcher compact
+          entre logo e nav. Bate sidebar.jsx do bundle linhas 15-27.
+          Esconde no modo collapsed (espaço apertado, info redundante
+          com avatar do footer). */}
+      {!collapsed ? (
+        <Link
+          href={`/${storeSlug}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="b3-side-label mx-3 mb-2 flex items-center gap-2.5 rounded-[10px] border border-line bg-bg-app px-2.5 py-2 text-left transition-colors hover:bg-mangos-cream-soft outline-none focus-visible:ring-2 focus-visible:ring-mangos-yellow/40"
+          title="Abrir loja online em nova aba"
+        >
+          {logoUrl ? (
+            <span className="relative flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-line bg-white">
+              <Image
+                src={logoUrl}
+                alt=""
+                fill
+                sizes="28px"
+                className="object-contain p-0.5"
+              />
+            </span>
+          ) : (
+            <span
+              aria-hidden
+              className="grid size-7 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white"
+              style={{ background: primaryColor }}
+            >
+              {getInitials(storeName)}
+            </span>
+          )}
+          <span className="min-w-0 flex-1">
+            <b className="text-ink-1 block truncate text-[12.5px] leading-tight">
+              {storeName}
+            </b>
+            <span className="text-ink-4 block truncate font-mono text-[10.5px] leading-tight">
+              mangospay.app/{storeSlug}
+            </span>
+          </span>
+        </Link>
+      ) : null}
+
       <nav className="flex-1 overflow-y-auto py-2" aria-label="Navegação principal">
         {/* Início standalone — sempre visível, fora do accordion */}
         <div className="px-0 pb-1">
