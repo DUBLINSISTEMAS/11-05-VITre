@@ -42,11 +42,13 @@ export default async function CaixaPage() {
 
   return (
     <div className="space-y-6">
+      {/* S5 (handoff pixel-perfect 2026-05-25): "Caixa do dia" (handoff
+          caixa.jsx:35 e :77) — bate o label da sidebar. h1 vira
+          `.b3-page-title`, subtítulo vira `.b3-page-sub` com pill "Aberto"
+          inline quando há sessão ativa. */}
       <div>
-        <h1 className="text-ink-1 text-[22px] font-bold tracking-[-0.025em]">
-          Caixa
-        </h1>
-        <div className="text-ink-4 mt-1 flex flex-wrap items-center gap-2 text-[13px]">
+        <h1 className="b3-page-title">Caixa do dia</h1>
+        <p className="b3-page-sub flex flex-wrap items-center gap-2">
           {activeSession ? (
             <>
               <span className="b3-pill b3-pill--ok inline-flex items-center gap-1.5">
@@ -73,7 +75,7 @@ export default async function CaixaPage() {
               fechamento Z.
             </span>
           )}
-        </div>
+        </p>
       </div>
 
       <CashSessionLanding
