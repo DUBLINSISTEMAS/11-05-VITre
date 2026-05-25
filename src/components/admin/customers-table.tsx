@@ -25,6 +25,7 @@ import { MessageCircleIcon } from "lucide-react";
 import type { CustomerType } from "@/db/schema";
 import { formatDocument } from "@/lib/document";
 import { formatRelativeDate } from "@/lib/format";
+import { formatBRL } from "@/lib/pricing";
 
 import {
   OPEN_CUSTOMER_FORM_EVENT,
@@ -52,6 +53,14 @@ export interface CustomerTableRow {
   addressCity: string | null;
   addressState: string | null;
   createdAt: Date;
+  /**
+   * PP8 (handoff pixel-perfect 2026-05-25) — agg por-customer pra
+   * colunas Último pedido / Pedidos / Fiado. Opcionais pra não quebrar
+   * callers que não passam (drawer reusa shape sem agg).
+   */
+  orderCount?: number;
+  lastOrderAt?: Date | null;
+  fiadoOutstandingInCents?: number;
 }
 
 interface CustomersTableProps {
@@ -84,6 +93,9 @@ export function CustomersTable({ customers }: CustomersTableProps) {
           <th>Nome</th>
           <th>Contato</th>
           <th>Tipo</th>
+          <th>Último pedido</th>
+          <th style={{ textAlign: "right" }}>Pedidos</th>
+          <th style={{ textAlign: "right" }}>Fiado</th>
           <th style={{ paddingRight: 20, textAlign: "right" }}>Status</th>
         </tr>
       </thead>
@@ -159,6 +171,33 @@ export function CustomersTable({ customers }: CustomersTableProps) {
                 <span className="b3-pill">
                   {c.type === "company" ? "PJ" : "PF"}
                 </span>
+              </td>
+              {/* PP8 (handoff 2026-05-25) — Último pedido / Pedidos / Fiado. */}
+              <td className="text-ink-3" style={{ fontSize: 12.5 }}>
+                {c.lastOrderAt ? (
+                  formatRelativeDate(c.lastOrderAt)
+                ) : (
+                  <span className="text-ink-4">—</span>
+                )}
+              </td>
+              <td className="mono" style={{ textAlign: "right" }}>
+                {(c.orderCount ?? 0) > 0 ? (
+                  <span className="tabular-nums">{c.orderCount}</span>
+                ) : (
+                  <span className="text-ink-4">—</span>
+                )}
+              </td>
+              <td className="mono" style={{ textAlign: "right" }}>
+                {(c.fiadoOutstandingInCents ?? 0) > 0 ? (
+                  <span
+                    className="b3-pill b3-pill--gold"
+                    title="Fiado em aberto"
+                  >
+                    {formatBRL(c.fiadoOutstandingInCents ?? 0)}
+                  </span>
+                ) : (
+                  <span className="text-ink-4">—</span>
+                )}
               </td>
               <td style={{ textAlign: "right", paddingRight: 20 }}>
                 <span

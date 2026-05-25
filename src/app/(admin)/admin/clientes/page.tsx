@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, ilike, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 import { PlusIcon, SearchXIcon, UsersIcon } from "lucide-react";
 import { Suspense } from "react";
 import { z } from "zod";
@@ -89,7 +89,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
   // com a forma como o lojista pensa ("últimos 30 dias" > "mês civil arbitrário").
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
 
-  const { customers, total, kpis } = await withTenant(
+  const { customers, total, kpis, perCustomerAgg } = await withTenant(
     store.id,
     session.user.id,
     async (tx) => {
@@ -116,6 +116,73 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
         .select({ value: count() })
         .from(customerTable)
         .where(whereClause);
+
+      // PP8 (handoff 2026-05-25) — agregações por-customer pras 3 colunas
+      // novas (Último pedido / Pedidos / Fiado). Restringe aos clientes
+      // visíveis da página + storeId pra não escanear toda a base.
+      const customerIds = customers.map((c) => c.id);
+      const orderAggByCustomer = new Map<
+        string,
+        { orderCount: number; lastOrderAt: Date | null }
+      >();
+      const fiadoByCustomer = new Map<string, number>();
+      if (customerIds.length > 0) {
+        const orderRows = await tx
+          .select({
+            customerId: orderTable.customerId,
+            cnt: sql<number>`COUNT(*)::int`,
+            lastAt: sql<Date | null>`MAX(${orderTable.createdAt})`,
+          })
+          .from(orderTable)
+          .where(
+            and(
+              eq(orderTable.storeId, store.id),
+              inArray(orderTable.customerId, customerIds),
+              sql`${orderTable.status} NOT IN ('canceled','expired')`,
+            ),
+          )
+          .groupBy(orderTable.customerId);
+        for (const r of orderRows) {
+          if (r.customerId) {
+            orderAggByCustomer.set(r.customerId, {
+              orderCount: Number(r.cnt),
+              lastOrderAt: r.lastAt,
+            });
+          }
+        }
+
+        const fiadoRows = await tx
+          .select({
+            customerId: receivableTable.customerId,
+            outstanding: sql<string>`
+              COALESCE(SUM(${receivableTable.amountInCents}), 0)
+              - COALESCE(SUM(
+                  CASE WHEN ${receivablePaymentTable.id} IS NULL THEN 0
+                       ELSE ${receivablePaymentTable.amountInCents}
+                  END
+                ), 0)
+            `,
+          })
+          .from(receivableTable)
+          .leftJoin(
+            receivablePaymentTable,
+            eq(receivablePaymentTable.receivableId, receivableTable.id),
+          )
+          .where(
+            and(
+              eq(receivableTable.storeId, store.id),
+              inArray(receivableTable.customerId, customerIds),
+              isNull(receivableTable.paidAt),
+            ),
+          )
+          .groupBy(receivableTable.customerId);
+        for (const r of fiadoRows) {
+          if (r.customerId) {
+            const v = Number(r.outstanding);
+            if (v > 0) fiadoByCustomer.set(r.customerId, v);
+          }
+        }
+      }
 
       // ---- KPIs — handoff Passo 11 ----
       // Total de clientes SEM filtros (universo da loja, não do filtro
@@ -195,7 +262,12 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
         newThisMonth: Number(newAgg?.value ?? 0),
       };
 
-      return { customers, total: totalRows[0]?.value ?? 0, kpis };
+      return {
+        customers,
+        total: totalRows[0]?.value ?? 0,
+        kpis,
+        perCustomerAgg: { orderAggByCustomer, fiadoByCustomer },
+      };
     },
   );
 
@@ -257,7 +329,21 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
           {customers.length === 0 ? (
             <NoResults />
           ) : (
-            <CustomersTable customers={customers} />
+            <CustomersTable
+              customers={customers.map((c) => {
+                const orderAgg =
+                  perCustomerAgg.orderAggByCustomer.get(c.id);
+                return {
+                  ...c,
+                  // PP8 — agregações por-customer pra colunas Último pedido /
+                  // Pedidos / Fiado (handoff 2026-05-25).
+                  orderCount: orderAgg?.orderCount ?? 0,
+                  lastOrderAt: orderAgg?.lastOrderAt ?? null,
+                  fiadoOutstandingInCents:
+                    perCustomerAgg.fiadoByCustomer.get(c.id) ?? 0,
+                };
+              })}
+            />
           )}
 
           {customers.length > 0 ? (
