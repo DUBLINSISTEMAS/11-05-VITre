@@ -20,8 +20,10 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  date,
   index,
   integer,
+  pgEnum,
   pgTable,
   smallint,
   text,
@@ -505,6 +507,79 @@ export const receivablePaymentRelations = relations(
 
 export type ReceivablePayment = typeof receivablePaymentTable.$inferSelect;
 export type NewReceivablePayment = typeof receivablePaymentTable.$inferInsert;
+
+// =====================================================================
+// expense — despesas operacionais da loja (S2.1 do Plano de Endurecimento)
+// =====================================================================
+// Destrava DRE honesto. Sem isso, "Lucro bruto = Receita − CMV" mente
+// em 10-25% pra cima porque ignora aluguel, salário, comissão, taxa real
+// de cartão. Veja docs/PLANO-ENDURECIMENTO.md §S2.1.
+// SQL: supabase/sql/75_expense_table.sql.
+
+export const expenseCategoryEnum = pgEnum("expense_category", [
+  "rent",
+  "payroll",
+  "utilities",
+  "supplies",
+  "marketing",
+  "tax",
+  "card_fees",
+  "other",
+]);
+
+export const expenseTable = pgTable(
+  "expense",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => storeTable.id, { onDelete: "cascade" }),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => userTable.id, { onDelete: "restrict" }),
+
+    category: expenseCategoryEnum("category").notNull().default("other"),
+    amountInCents: integer("amount_in_cents").notNull(),
+    /** Data efetiva de pagamento. NULL = pendente. */
+    paidAt: date("paid_at"),
+    /** Vencimento. NULL = pagamento à vista no momento. */
+    dueDate: date("due_date"),
+    supplierId: uuid("supplier_id").references(() => supplierTable.id, {
+      onDelete: "set null",
+    }),
+    /** true = veio de "Repetir mensalmente". App gera 12 entries no INSERT. */
+    recurring: boolean("recurring").notNull().default(false),
+    notes: text("notes"),
+
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    storePaidAtIdx: index("expense_store_paid_at_idx").on(t.storeId, t.paidAt),
+    storeCategoryIdx: index("expense_store_category_idx").on(
+      t.storeId,
+      t.category,
+    ),
+  }),
+);
+
+export const expenseRelations = relations(expenseTable, ({ one }) => ({
+  store: one(storeTable, {
+    fields: [expenseTable.storeId],
+    references: [storeTable.id],
+  }),
+  supplier: one(supplierTable, {
+    fields: [expenseTable.supplierId],
+    references: [supplierTable.id],
+  }),
+  createdBy: one(userTable, {
+    fields: [expenseTable.createdBy],
+    references: [userTable.id],
+  }),
+}));
+
+export type Expense = typeof expenseTable.$inferSelect;
+export type NewExpense = typeof expenseTable.$inferInsert;
 
 // Sentinel pra evitar tree-shaking matar imports e quebrar tipo Drizzle
 // quando alguma das tabelas acima for usada apenas via relation
