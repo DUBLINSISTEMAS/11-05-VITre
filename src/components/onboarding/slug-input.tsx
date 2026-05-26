@@ -28,7 +28,7 @@ type Status =
 
 /**
  * Input de slug com:
- * - Prefixo visual `mangospay.app/`
+ * - Prefixo visual `vitre.site/` (vem do env, fallback p/ esse domínio)
  * - Sanitização ao digitar (lowercase, sem espaço, hífen)
  * - Debounced check de disponibilidade no servidor (500ms)
  * - Last-request-wins (cancela checks anteriores)

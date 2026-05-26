@@ -32,11 +32,13 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState, useTransition } from "react";
+import { toast } from "sonner";
 
 import {
   loadOrderDetail,
   type OrderDetail,
 } from "@/actions/order/load-detail";
+import { updateOrderNotes } from "@/actions/order/update-notes";
 import { CustomerLinkSection } from "@/components/admin/customer-link-section";
 import { OrderStatusActions } from "@/components/admin/order-status-actions";
 import { OrderStatusBadge } from "@/components/admin/order-status-badge";
@@ -60,6 +62,19 @@ const PAYMENT_LABELS: Record<string, string> = {
   credit: "Crédito",
   other: "Outro",
 };
+
+/**
+ * Audit 2026-05-26 — label de pagamento com parcelamento. Hoje o drawer
+ * mostrava só "Crédito" mesmo em 3×; agora mostra "Crédito 3×" quando faz
+ * sentido. Outras formas (cash/pix/debit/other) são sempre à vista.
+ */
+function paymentLabelFull(method: string, installments: number): string {
+  const base = PAYMENT_LABELS[method] ?? method;
+  if (method === "credit" && installments > 1) {
+    return `${base} ${installments}×`;
+  }
+  return base;
+}
 
 interface OrderDetailDrawerProps {
   /** ID do pedido aberto. null = fechado. */
@@ -112,6 +127,11 @@ export function OrderDetailDrawer({ orderId, onOpenChange }: OrderDetailDrawerPr
           <DrawerContent
             order={data}
             onCustomerLinkChange={() => setReloadKey((k) => k + 1)}
+            onNotesUpdate={(next) => {
+              setData((prev) =>
+                prev ? { ...prev, customerNotes: next } : prev,
+              );
+            }}
           />
         ) : null}
       </SheetContent>
@@ -154,9 +174,13 @@ function getInitials(name: string): string {
 function DrawerContent({
   order,
   onCustomerLinkChange,
+  onNotesUpdate,
 }: {
   order: OrderDetail;
   onCustomerLinkChange: () => void;
+  /** Sprint final 2026-05-26 — sobe notes atualizadas pro parent reconciliar
+   *  o state sem refetch (otimista). */
+  onNotesUpdate: (next: string | null) => void;
 }) {
   const itemCount = order.items.reduce((s, i) => s + i.quantity, 0);
   const whatsappLink = order.customerPhone
@@ -257,14 +281,14 @@ function DrawerContent({
               </Button>
             ) : null}
           </div>
-          {order.customerNotes ? (
-            <div className="bg-bg-app mt-2 space-y-1 rounded-lg p-3">
-              <p className="text-eyebrow">Observações da cliente</p>
-              <p className="text-ink-1 text-sm whitespace-pre-wrap">
-                {order.customerNotes}
-              </p>
-            </div>
-          ) : null}
+          {/* Audit 2026-05-26 — observação editável inline. Antes era
+              read-only mesmo com o comentário em orders-table prometendo
+              "edita no drawer". Action updateOrderNotes lida com o save. */}
+          <OrderNotesEditor
+            orderId={order.id}
+            initialNotes={order.customerNotes}
+            onUpdate={onNotesUpdate}
+          />
         </Section>
 
         {/* Cliente cadastrado (vínculo opcional — Fase 3 / ADR-0014) */}
@@ -361,8 +385,10 @@ function DrawerContent({
                   <span>
                     Pagamento:{" "}
                     <b className="text-ink-1">
-                      {PAYMENT_LABELS[order.payments[0]!.method] ??
-                        order.payments[0]!.method}
+                      {paymentLabelFull(
+                        order.payments[0]!.method,
+                        order.payments[0]!.installments,
+                      )}
                     </b>
                   </span>
                 ) : (
@@ -392,7 +418,7 @@ function DrawerContent({
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-ink-1 font-medium">
-                        {PAYMENT_LABELS[p.method] ?? p.method}
+                        {paymentLabelFull(p.method, p.installments)}
                       </p>
                       {troco !== null ? (
                         <p className="text-ink-4 font-mono text-[11.5px] tabular-nums">
@@ -469,18 +495,137 @@ function DrawerContent({
           </Button>
         ) : null}
 
+        {/* Audit 2026-05-26 — `target="_blank"` removido: o lojista pediu
+            pra NÃO abrir nova aba. Navega na mesma tab; a página
+            `/imprimir` dispara `window.print()` auto e o lojista volta
+            pela seta do browser. Sprint 4 vai refatorar pra portal de
+            print inline (sem navegação), mas isso é épico próprio. */}
         <Button asChild variant="outline" size="sm" className="w-full">
-          <a
-            href={`/admin/pedidos/${order.id}/imprimir`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+          <a href={`/admin/pedidos/${order.id}/imprimir`}>
             <PrinterIcon aria-hidden />{" "}
             {order.status === "quote" ? "Imprimir orçamento" : "Imprimir venda"}
           </a>
         </Button>
       </div>
     </>
+  );
+}
+
+/**
+ * Editor inline de observação da venda — Sprint final Vendas 2026-05-26.
+ *
+ * Antes: card cinza read-only renderizado apenas quando havia notes.
+ * Agora: 3 estados — vazio (link "Adicionar observação"), com notes (texto
+ * + link "Editar"), editing (textarea + Salvar/Cancelar).
+ *
+ * `onUpdate` notifica o parent pra reconciliar `data.customerNotes` sem
+ * refetch (UX otimista). Falha do servidor reverte via re-fetch.
+ */
+function OrderNotesEditor({
+  orderId,
+  initialNotes,
+  onUpdate,
+}: {
+  orderId: string;
+  initialNotes: string | null;
+  onUpdate: (next: string | null) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(initialNotes ?? "");
+  const [isPending, startTransition] = useTransition();
+
+  const startEdit = () => {
+    setDraft(initialNotes ?? "");
+    setEditing(true);
+  };
+
+  const cancel = () => {
+    setEditing(false);
+    setDraft(initialNotes ?? "");
+  };
+
+  const save = () => {
+    startTransition(async () => {
+      const next = draft.trim() === "" ? null : draft.trim();
+      const r = await updateOrderNotes({ orderId, notes: next });
+      if (!r.ok) {
+        toast.error(r.error);
+        return;
+      }
+      onUpdate(next);
+      setEditing(false);
+      toast.success(
+        next === null
+          ? "Observação removida."
+          : "Observação salva.",
+      );
+    });
+  };
+
+  if (editing) {
+    return (
+      <div className="bg-bg-app mt-2 space-y-2 rounded-lg p-3">
+        <p className="text-eyebrow">Observação da venda</p>
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          maxLength={500}
+          rows={3}
+          placeholder="Ex: embrulho de presente · retirar dia 30 · fiado vale #12"
+          className="border-line focus:border-brand bg-surface w-full resize-y rounded-md border px-3 py-2 text-[13px] outline-none transition"
+          disabled={isPending}
+          autoFocus
+        />
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={cancel}
+            disabled={isPending}
+            className="text-ink-4 hover:text-ink-1 text-[12px]"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={save}
+            disabled={isPending}
+            className="b3-btn b3-btn--sm b3-btn--primary"
+          >
+            {isPending ? "Salvando…" : "Salvar"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (initialNotes && initialNotes.trim().length > 0) {
+    return (
+      <div className="bg-bg-app mt-2 space-y-1 rounded-lg p-3">
+        <div className="flex items-baseline justify-between">
+          <p className="text-eyebrow">Observação da venda</p>
+          <button
+            type="button"
+            onClick={startEdit}
+            className="text-mangos-green-800 text-[11px] font-medium hover:underline"
+          >
+            Editar
+          </button>
+        </div>
+        <p className="text-ink-1 text-sm whitespace-pre-wrap">
+          {initialNotes}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={startEdit}
+      className="text-ink-4 hover:text-ink-2 mt-2 inline-flex items-center gap-1 text-[12px] font-medium"
+    >
+      + Adicionar observação
+    </button>
   );
 }
 

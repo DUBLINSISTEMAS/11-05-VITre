@@ -181,13 +181,10 @@ export function OrdersToolbar({
 
   return (
     <div className="b3-toolbar flex-wrap gap-y-2">
-      <input
-        type="checkbox"
-        aria-label="Selecionar todos (em breve)"
-        title="Bulk actions chegam em breve"
-        disabled
-        className="cursor-not-allowed opacity-50"
-      />
+      {/* Audit 2026-05-26 — checkbox "Selecionar todos" placeholder REMOVIDO.
+          Quebrava a régua "funciona ou esconde": ficava cinza com tooltip
+          "em breve" mas não tinha bulk actions atrás. Volta quando ações
+          em lote (cancelar/imprimir múltiplo) forem implementadas. */}
       <div className="b3-toolbar-search">
         <SearchIcon size={14} aria-hidden />
         <input

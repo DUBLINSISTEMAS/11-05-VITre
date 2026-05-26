@@ -86,6 +86,9 @@ export async function updatePayment(
           installmentBasePrice: data.installmentBasePrice,
           showInstallmentsOnPDP: data.showInstallmentsOnPDP,
           cashDiscountBps: data.cashDiscountBps,
+          // Sprint 3 (2026-05-26) — juros do cartão de crédito no PDV.
+          cardInterestRateBps: data.cardInterestRateBps,
+          cardInterestFreeUpTo: data.cardInterestFreeUpTo,
           paymentMethodsNote: emptyToNull(data.paymentMethodsNote),
           updatedAt: new Date(),
         })

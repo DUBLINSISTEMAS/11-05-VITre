@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { BulkWhatsappStubButton } from "@/components/admin/bulk-whatsapp-stub-button";
 import { CustomerCreateButton } from "@/components/admin/customer-create-button";
+import { PrintPageButton } from "@/components/admin/print/print-page-button";
 
 import {
   CustomersKpiStrip,
@@ -307,6 +308,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <PrintPageButton label="Imprimir lista" />
           <BulkWhatsappStubButton />
           <CustomerCreateButton />
         </div>

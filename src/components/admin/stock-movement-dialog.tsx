@@ -102,6 +102,14 @@ export function StockMovementDialog({
   const [direction, setDirection] = useState<"positive" | "negative">("positive");
   const [quantity, setQuantity] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
+  // Audit 2026-05-26 — modo do ajuste:
+  //   "delta": lojista digita "quanto ajustar" (atual + sinal). Padrão.
+  //   "final": lojista digita "saldo contado" — sistema calcula delta sozinho.
+  // Só disponível em movementType=adjustment + sem variante selecionada
+  // (currentStockQuantity é do produto, variante teria saldo próprio).
+  const [adjustmentMode, setAdjustmentMode] = useState<"delta" | "final">(
+    "delta",
+  );
 
   const reset = () => {
     setMovementType("manual_in");
@@ -109,6 +117,7 @@ export function StockMovementDialog({
     setDirection("positive");
     setQuantity("");
     setNotes("");
+    setAdjustmentMode("delta");
   };
 
   const handleOpenChange = (next: boolean) => {
@@ -119,10 +128,37 @@ export function StockMovementDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const qty = Number(quantity);
-    if (!Number.isInteger(qty) || qty < 1) {
-      toast.error("Quantidade inválida.");
+    const rawNum = Number(quantity);
+    if (!Number.isInteger(rawNum) || rawNum < 0) {
+      toast.error("Valor inválido.");
       return;
+    }
+
+    // Audit 2026-05-26 — modo "saldo final": calcula delta = contado − atual.
+    // Quando contado === atual, NADA muda — bloquear pra evitar lançamento vazio.
+    let finalQty: number;
+    let finalDirection: "positive" | "negative" = direction;
+
+    if (
+      movementType === "adjustment" &&
+      adjustmentMode === "final" &&
+      typeof currentStockQuantity === "number"
+    ) {
+      const delta = rawNum - currentStockQuantity;
+      if (delta === 0) {
+        toast.error(
+          "Saldo contado igual ao atual — nada a ajustar.",
+        );
+        return;
+      }
+      finalQty = Math.abs(delta);
+      finalDirection = delta > 0 ? "positive" : "negative";
+    } else {
+      if (rawNum < 1) {
+        toast.error("Quantidade inválida.");
+        return;
+      }
+      finalQty = rawNum;
     }
 
     startTransition(async () => {
@@ -130,9 +166,9 @@ export function StockMovementDialog({
         productId,
         variantId: variantId === "__none__" ? null : variantId,
         movementType,
-        quantity: qty,
+        quantity: finalQty,
         adjustmentDirection:
-          movementType === "adjustment" ? direction : undefined,
+          movementType === "adjustment" ? finalDirection : undefined,
         notes: notes.trim() || null,
       });
 
@@ -143,37 +179,48 @@ export function StockMovementDialog({
 
       const sign =
         movementType === "manual_in" ||
-        (movementType === "adjustment" && direction === "positive")
+        (movementType === "adjustment" && finalDirection === "positive")
           ? "+"
           : "-";
-      toast.success(`Movimentação registrada (${sign}${qty}).`);
+      toast.success(`Movimentação registrada (${sign}${finalQty}).`);
       setOpen(false);
       reset();
       router.refresh();
     });
   };
 
-  // PP3 — cálculo de preview do novo saldo. Considera tipo + direção.
-  //   manual_in           → atual + qty
-  //   manual_out          → atual - qty  (clamp em 0)
-  //   adjustment positive → atual + qty
-  //   adjustment negative → atual - qty  (clamp em 0)
-  // Nota: "acerto" no protótipo é "contagem real" (qty SUBSTITUI saldo);
-  // no schema atual adjustment é DELTA. Pra evitar contradição com Zod +
-  // recordStockMovement, mantemos delta-mode e o label deixa claro.
+  // Audit 2026-05-26 — preview de novo saldo agora cobre 2 modos:
+  //   delta (default): qty é o quanto ajustar. previewNewStock = atual + sinal × qty.
+  //   final: qty é o saldo contado. previewNewStock = qty diretamente.
+  // Em manual_in / manual_out o modo final não se aplica.
   const qtyNum = Number(quantity);
-  const hasValidQty = Number.isInteger(qtyNum) && qtyNum >= 1;
+  const isAdjustmentFinalMode =
+    movementType === "adjustment" && adjustmentMode === "final";
+  const hasValidQty = isAdjustmentFinalMode
+    ? Number.isInteger(qtyNum) && qtyNum >= 0
+    : Number.isInteger(qtyNum) && qtyNum >= 1;
   const showPreview =
     typeof currentStockQuantity === "number" && hasValidQty;
   let previewNewStock: number | null = null;
   if (showPreview) {
-    const delta =
-      movementType === "manual_in" ||
-      (movementType === "adjustment" && direction === "positive")
-        ? qtyNum
-        : -qtyNum;
-    previewNewStock = Math.max(0, currentStockQuantity! + delta);
+    if (isAdjustmentFinalMode) {
+      // Modo "saldo final" — o que o lojista digita já É o novo saldo.
+      previewNewStock = qtyNum;
+    } else {
+      const delta =
+        movementType === "manual_in" ||
+        (movementType === "adjustment" && direction === "positive")
+          ? qtyNum
+          : -qtyNum;
+      previewNewStock = Math.max(0, currentStockQuantity! + delta);
+    }
   }
+  // Toggle só faz sentido em adjustment SEM variante selecionada
+  // (currentStockQuantity é do produto, variante teria saldo próprio).
+  const canShowAdjustmentModeToggle =
+    movementType === "adjustment" &&
+    typeof currentStockQuantity === "number" &&
+    variantId === "__none__";
 
   const isOutflow =
     movementType === "manual_out" ||
@@ -256,8 +303,50 @@ export function StockMovementDialog({
               <p className="text-ink-4 text-xs">{TYPE_HINT[movementType]}</p>
             </div>
 
-            {/* Direção (só pra adjustment) */}
-            {movementType === "adjustment" ? (
+            {/* Audit 2026-05-26 — toggle DELTA vs SALDO FINAL no ajuste.
+                Resolve a confusão "digitei 8 mas atual era 12, deu -4 errado".
+                Só aparece quando há saldo atual conhecido (sem variante). */}
+            {canShowAdjustmentModeToggle ? (
+              <div className="space-y-2">
+                <Label>Como você quer ajustar</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAdjustmentMode("delta")}
+                    className={cn(
+                      "rounded-md border px-3 py-2 text-left text-[13px] font-medium leading-tight",
+                      adjustmentMode === "delta"
+                        ? "border-brand bg-brand-wash text-brand"
+                        : "border-line bg-surface text-ink-1 hocus:bg-bg-app",
+                    )}
+                  >
+                    Lançar diferença
+                    <span className="text-ink-4 mt-0.5 block text-[10.5px] font-normal">
+                      Ex: +2 ou −3 sobre o atual
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdjustmentMode("final")}
+                    className={cn(
+                      "rounded-md border px-3 py-2 text-left text-[13px] font-medium leading-tight",
+                      adjustmentMode === "final"
+                        ? "border-brand bg-brand-wash text-brand"
+                        : "border-line bg-surface text-ink-1 hocus:bg-bg-app",
+                    )}
+                  >
+                    Tenho o saldo contado
+                    <span className="text-ink-4 mt-0.5 block text-[10.5px] font-normal">
+                      Digito o número que contei
+                    </span>
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {/* Direção (só pra adjustment em modo delta).
+                No modo "final" a direção é calculada do delta automaticamente. */}
+            {movementType === "adjustment" && adjustmentMode === "delta" ? (
               <div className="space-y-2">
                 <Label>Direção do ajuste</Label>
                 <div className="grid grid-cols-2 gap-2">
@@ -315,23 +404,29 @@ export function StockMovementDialog({
               </div>
             ) : null}
 
-            {/* Quantidade */}
+            {/* Quantidade — label e placeholder mudam quando modo "saldo final". */}
             <div className="space-y-2">
-              <Label htmlFor="stock-movement-qty">Quantidade</Label>
+              <Label htmlFor="stock-movement-qty">
+                {isAdjustmentFinalMode
+                  ? `Saldo contado (atual: ${currentStockQuantity} ${unit})`
+                  : "Quantidade"}
+              </Label>
               <Input
                 id="stock-movement-qty"
                 type="number"
                 inputMode="numeric"
-                min={1}
+                min={isAdjustmentFinalMode ? 0 : 1}
                 step={1}
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
-                placeholder="Ex: 10"
+                placeholder={isAdjustmentFinalMode ? "Ex: 8" : "Ex: 10"}
                 autoFocus
                 required
               />
               <p className="text-ink-4 text-xs">
-                Sempre positivo. O sinal sai do tipo escolhido acima.
+                {isAdjustmentFinalMode
+                  ? "Digite o número que você contou. O sistema calcula a diferença sozinho."
+                  : "Sempre positivo. O sinal sai do tipo escolhido acima."}
               </p>
             </div>
 

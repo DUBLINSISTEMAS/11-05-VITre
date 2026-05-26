@@ -14,6 +14,8 @@ Sistema de gestão para lojas de pequeno/médio porte (joia, semijoia, roupa, pe
 
 **Diferencial defensável**: loja online integrada nativa. Concorrentes (GFIL/Bling/Tiny/Dimas) NÃO têm storefront público de fábrica. Todo trabalho no storefront fortalece moat; todo trabalho clonando GFIL diminui.
 
+**Domínio operacional**: `vitre.site` (vitre.site/{slug-da-loja} hoje; subdomínio `{slug}.vitre.site` planejado pra Fase 2 Bloco 5).
+
 ---
 
 ## Princípios de execução (regras inquebráveis)
@@ -27,6 +29,7 @@ Sistema de gestão para lojas de pequeno/médio porte (joia, semijoia, roupa, pe
 7. **Tudo de mutação é server action `"use server"`.** Client nunca chama Drizzle. Loaders com prefixo `load*` são leituras puras, sem side-effect.
 8. **Produto é nó central, não apêndice da loja online.** O cadastro de produto alimenta com peso igual: venda balcão, gestão de estoque, relatório de margem, fiado/financeiro, compras e catálogo público. A UI do form NÃO pode parecer "preenche tudo pra loja online aparecer" — tem que parecer "registro central que alimenta o sistema inteiro". `isPublishedToStorefront` é UM checkbox entre dezenas, não a moldura mental do form.
 9. **Inteligência espacial — sem formulários esticados borda a borda.** Campo numérico curto (preço, custo, %, quantidade, GTIN, código interno) NUNCA ocupa 100% da largura sozinho — vai em grid de 2 ou 3 colunas. Campo texto longo (descrição, observação, composição) ocupa linha cheia. Campos relacionados ficam visualmente agrupados em sub-cards ou fieldsets com 16-20px de respiro. Se a tela tem 4+ contextos distintos (identidade vs custo vs estoque vs catálogo), divide em abas — nunca scroll vertical infinito. Densidade utilitária ≠ apertado: respiração proposital entre grupos é parte da legibilidade.
+10. **Funciona ou esconde.** Feature exposta na UI tem que entregar fluxo ponta-a-ponta no caminho comum, senão remove da UI (rota pode seguir viva por URL). Aplicado em 2026-05-24 (sprint flash): Equipe, Atributos, Assinatura e Estoque-baixo escondidos por essa régua.
 
 ---
 
@@ -34,8 +37,8 @@ Sistema de gestão para lojas de pequeno/médio porte (joia, semijoia, roupa, pe
 
 1. **Nenhum ADR novo enquanto Sprint atual estiver aberta.** Decisão pequena = commit + comentário. ADR só pra mudança estrutural irreversível.
 2. **Nenhuma feature nova entra sem responder: "qual fluxo essa feature completa?"** Se for "vai ficar disponível pra quando alguém precisar", NÃO constrói. Atributo, Coleção, Cupom, Lead já foram construídos assim — não repetir.
-3. **Toda Sprint termina com auditoria de 1 dia.** Schema drift, RLS audit, dead code sweep, type-check zero warning. Sem isso, drift acumula.
-4. **Sem prompt amplo pro Claude Code.** Prompt é cirúrgico: analisa → mostra diff → espera aprovação humana → aplica. Não "refatore toda a sidebar"; sim "leia X, liste Y, proponha Z, espere meu OK".
+3. **Toda Sprint termina com auditoria curta.** `tsc --noEmit` zero erro + `npm test` 100% verde + dead code sweep + sync CLAUDE.md. Sem isso, drift acumula.
+4. **Sem prompt amplo pro Claude Code.** Prompt é cirúrgico: analisa → mostra diff → espera aprovação humana → aplica. Não "refatore toda a sidebar"; sim "leia X, liste Y, proponha Z, espere meu OK". Exceções (auditoria explícita pedida pelo founder com `/agents`) viram tasks rastreadas.
 
 ---
 
@@ -47,11 +50,11 @@ Sidebar do admin tem **4 grupos**, cada um com 4-6 itens. Lojista que abre o adm
 
 | Item | Rota |
 |---|---|
-| Venda balcão (PDV) | `/admin/pdv` |
+| Venda balcão (PDV) | `/admin/pdv` (também via modal "Nova venda" do topbar / F2) |
 | Caixa do dia | `/admin/pdv/caixa` |
 | Vendas | `/admin/pedidos` |
 | Movimentação de estoque | `/admin/estoque` |
-| A receber (fiado) | `/admin/financeiro/receber` *(Sprint 4)* |
+| A receber (fiado) | `/admin/financeiro/receber` |
 | Recados do site | `/admin/contatos` |
 
 ### Grupo 2 — Cadastros (monto UMA VEZ, mexo pouco)
@@ -60,21 +63,21 @@ Sidebar do admin tem **4 grupos**, cada um com 4-6 itens. Lojista que abre o adm
 |---|---|
 | Produtos | `/admin/produtos` |
 | Categorias | `/admin/categorias` |
-| Marcas | `/admin/marcas` *(Sprint 2)* |
+| Marcas | `/admin/marcas` |
 | Clientes | `/admin/clientes` |
 | Grupos de cliente | `/admin/clientes/grupos` |
-| Fornecedores | `/admin/fornecedores` *(Sprint 3)* |
+| Fornecedores | `/admin/fornecedores` |
 
 ### Grupo 3 — Gestão (OLHO pra decidir)
 
 | Item | Rota |
 |---|---|
-| Vendas por período | `/admin/relatorios/vendas` *(Sprint 5)* |
-| Margem por produto | `/admin/relatorios/margem` *(Sprint 5)* |
-| Top produtos | `/admin/relatorios/top` *(Sprint 5)* |
-| Estoque baixo | `/admin/estoque/relatorio` |
-| DRE simplificado | `/admin/relatorios/dre` *(Sprint 5)* |
-| Compras | `/admin/compras` *(Sprint 3)* |
+| Vendas por período | `/admin/relatorios/vendas` |
+| Margem por produto | `/admin/relatorios/margem` |
+| Top produtos | `/admin/relatorios/top` |
+| Estoque (relatório) | `/admin/estoque/relatorio` |
+| DRE simplificado | `/admin/relatorios/dre` |
+| Compras | `/admin/compras` |
 | Custo & margem (batch) | `/admin/produtos/custos` |
 
 ### Grupo 4 — Loja online + Configurações (AJUSTO esporadicamente)
@@ -84,14 +87,13 @@ Sidebar do admin tem **4 grupos**, cada um com 4-6 itens. Lojista que abre o adm
 | Aparência | `/admin/aparencia` |
 | Banners | `/admin/banners` |
 | Vitrines (coleções) | `/admin/colecoes` |
-| Filtros da loja (atributos) | `/admin/atributos` |
 | Códigos de desconto (cupons) | `/admin/promocoes/cupons` |
 | Formas de pagamento | `/admin/pagamento` |
-| Equipe | `/admin/equipe` |
 | Dados da loja | `/admin/configuracoes` |
-| Plano e assinatura | `/admin/assinatura` |
 
-Item "Suporte" sai da sidebar principal — vira link discreto no footer da sidebar ou no menu do avatar do usuário.
+Item "Suporte" no footer da sidebar / menu do avatar.
+
+**Escondidos do menu (régua "funciona ou esconde")**: `/admin/atributos`, `/admin/equipe`, `/admin/assinatura`. Rotas vivas só por URL.
 
 ---
 
@@ -122,127 +124,168 @@ Régua: se ficou um vestígio do termo antigo em UI, é bug.
 
 ## Glossário operacional — estoque (travar copy nas labels)
 
-Os termos do controle de estoque confundem porque hoje os labels do form não explicam pra que serve cada um. Toda tela que use estes campos DEVE usar exatamente as labels e helpers abaixo. Sem variação.
-
 **Controlar estoque** (switch on/off)
-- *ON*: produto físico que precisa contar (joia, roupa, perfume). Sistema desconta automático a cada venda, soma a cada compra. Se zera, alerta no PDV antes de finalizar (configurável: bloqueia ou só avisa).
-- *OFF*: serviço, produto sob encomenda, consignado. Sistema deixa vender sem checar quantidade. NÃO entra em relatórios de estoque baixo.
-- Helper visível: *"Deixe ligado se você conta as peças. Desligue para serviços ou produtos sob encomenda."*
+- *ON*: produto físico que precisa contar. Sistema desconta automático a cada venda, soma a cada compra. Default `true` desde SQL 69.
+- *OFF*: serviço, produto sob encomenda, consignado. Sistema deixa vender sem checar quantidade.
+- Helper: *"Deixe ligado se você conta as peças. Desligue para serviços ou produtos sob encomenda."*
 
 **Estoque atual** (número, calculado)
-- Não é editável por digitação direta. É resultado do somatório de movimentações: compras (+), vendas (−), devoluções (+), ajustes manuais (±), perdas (−).
+- Não é editável por digitação direta. É somatório de movimentações: compras (+), vendas (−), devoluções (+), ajustes manuais (±), perdas (−).
 - Pra corrigir, lojista usa "Lançar ajuste manual" com motivo obrigatório.
-- Link inline: *"Ver movimentações"* → leva pra `/admin/estoque` filtrado.
 
-**Estoque mínimo** (número, opcional)
-- Quando estoque atual cai a ou abaixo deste valor, o produto aparece no card "Estoque baixo" do dashboard e no relatório dedicado.
-- É alerta de reposição, NÃO bloqueia venda.
-- Helper visível: *"Quando o estoque atingir esse número, avisamos que está na hora de comprar mais."*
+**Estoque mínimo / máximo** (números, opcionais)
+- Mínimo = quando atual cai abaixo, produto aparece em "Estoque baixo" do dashboard + notificação no sino.
+- Máximo = útil para relatório "estoque parado".
 
-**Estoque máximo** (número, opcional)
-- Útil para relatório de "estoque parado" (capital empatado em produto que não gira). Sem uso operacional direto.
-- Helper visível: *"Limite acima do qual consideramos estoque parado. Deixe em branco se não controla."*
-
-**Unidade** (select: un, kg, g, m, m², L, ml, par, dúzia)
-- Default 'un'. Aplicado em label visível no PDV, recibos, relatórios.
-- Helper visível: *"Como você conta esse produto na hora da venda."*
+**Unidade** (select: un, kg, g, m, m², L, ml, par, dúzia) — default 'un'.
 
 ---
 
-## Impressão e exportação — padrão universal
+## Impressão e exportação — padrão universal (Sprint 4 ✅)
 
-Princípio do sistema, não feature isolada. Toda tela do Grupo 3 (Gestão) tem dois botões fixos no topo direito: **Imprimir** e **Exportar CSV**.
+Sistema implementado em 2026-05-26. **Toda tela do Grupo 1 (vendas, listagens) e Grupo 3 (gestão) tem botão "Imprimir" universal** que dispara `window.print()` direto, sem nova aba.
 
-- **Imprimir** abre página nova DENTRO do próprio sistema (não popup) com layout A4 — cabeçalho com logo da loja, nome, CNPJ, endereço, telefone; corpo com os dados; rodapé com "Gerado em DD/MM/AAAA HH:MM por {operador}". `Ctrl+P` ou botão Imprimir do navegador manda pra impressora. Detecta impressora térmica 80mm e quebra layout pra coluna estreita (mesmo dado, formatação adaptada).
-- **Exportar CSV** baixa o CSV bruto pra Excel/contadora manipular.
-- PDV imprime cupom 80mm como padrão; orçamento imprime A4 com cabeçalho completo + opção 80mm; fechamento de caixa Z imprime A4 + 80mm.
-- Componente único: `<ReportLayout />` (Sprint 5) — todo papel impresso do sistema compartilha a mesma identidade visual.
+**Componentes:**
+- `<PrintPageButton />` — botão universal pra imprimir página atual. CSS global `@media print` esconde `[data-admin-chrome]` (sidebar + topbar). Plugado em `/admin/pedidos`, `/admin/clientes`.
+- `<ReportLayout />` — A4 imprimível pra relatórios (`/admin/relatorios/*` e `/admin/estoque/relatorio`). Header com logo + dados da loja + CNPJ. Footer com "Gerado em DD/MM/AAAA HH:MM por {operador}".
+- `<SaleReceiptThermal />` — cupom 80mm pra venda balcão (`/admin/pedidos/[id]/imprimir?formato=termica`). Toggle visível Térmica ↔ A4.
+- **Exportar CSV** em listagens (vendas + relatórios) baixa o filtro atual (pendência: vendas hoje exporta só página, fix em backlog).
 
----
-
-## Sprint atual: Fase 2 — Multi-tenant pleno
-
-**Início**: 2026-05-21
-**Objetivo**: fundação segura pra qualquer lojista entrar via signup self-service, sem seed manual. Quando o primeiro lojista real (Sandra ou outro) for criado, vai ser via fluxo público, não script.
-
-**Contexto da decisão**: Fase 1.7 (deploy técnico) encerrada em 2026-05-21 com deploy Vercel feito mas smoke real descartado — Anderson decidiu terminar o sistema antes de expor a lojista real, evitando que o primeiro cliente entre via seed que viraria dívida de produto. Detalhes em `docs/sessoes/2026-05-21-encerramento-fase-1.7.md`.
-
-Estado de partida (atualizado 2026-05-24): 70 SQLs em prod, 533/533 testes verdes (+ 39 skipped que rodam só com `RUN_INTEGRATION=1`), `tsc` limpo, anon bloqueado em 10/10 tabelas, deploy Vercel em produção (sem tráfego real ainda).
-
-### Critério de "pronto" (5 blocos — ordem importa, não pular pra frente)
-
-**Bloco 1 — Isolamento real** ✅ **DONE (descoberto em auditoria 2026-05-21)**
-- [x] Role `vitre_app` criada com `NOBYPASSRLS, NOSUPERUSER, NOCREATEDB, NOCREATEROLE` (`supabase/sql/09_app_role_setup.sql`)
-- [x] `DATABASE_URL` aponta pra `vitre_app` (`.env.local` + Vercel env); `DIRECT_URL` mantém `postgres` pra migrations
-- [x] `FORCE ROW LEVEL SECURITY` em todas as 32 tabelas de domínio (sqls 10, 29, 31-36, 39, 46, 49, 53, 55, 56)
-- [x] `withTenant` é único caminho autenticado (`src/lib/tenant.ts`); `withServiceRole(reason, fn)` loga toda exceção legítima cross-tenant
-- [x] Verificação cross-tenant: `npm run db:smoke-idor` (manual, saída humana) + `RUN_INTEGRATION=1 npm test` (automatizado, ver Bloco 2)
-
-**Bloco 2 — Validação automatizada** ✅ **DONE em 2026-05-21**
-- [x] Suite `tests/integration/rls-cross-tenant.test.ts` cobre cross-tenant SELECT em 18 tabelas privadas (order, order_item, order_payment, order_return, order_return_item, customer, customer_group, receivable, receivable_payment, cash_session, cash_adjustment, stock_movement, supplier, purchase, purchase_item, audit_event, lead, coupon)
-- [x] Sanity-check: teste falha se `DATABASE_URL` apontar pra `postgres` (BYPASSRLS invalida o teste)
-- [x] Smoke manual (`scripts/smoke-idor.mjs`) mantido com saída humana pra pré-deploy
-- [x] Cenários **INSERT cross-tenant** (WITH CHECK ou FK rejeita) em 5 tabelas (product, customer, supplier, cash_session, lead) — descobriu e fechou buraco em `lead_anon_insert` (SQL 58)
-- [x] Cenários **UPDATE cross-tenant** (USING bloqueia, rowCount=0) nas mesmas 5 tabelas
-- [x] Gate pré-merge documentado (ver "Convenção #10" abaixo). Job CI dedicado com DB ephemeral defer pra Fase 5 (custo: ~meio dia + manutenção do schema do test DB)
-- [x] Auditoria curta: `npm test` 533/533 + `tsc --noEmit` zero warning + `RUN_INTEGRATION=1 npm run test:integration` 39/39
-
-**Bloco 3 — Signup self-service (substitui seed manual)**
-- [ ] Tela `/cadastro` cria usuário Better Auth + loja em transação atômica
-- [ ] Wizard pós-signup: nome da loja, slug (com colisão handling), tipo de negócio, primeira categoria, primeiro produto
-- [ ] Slugs reservados (`src/lib/slug.ts`) respeitados no cadastro
-- [ ] Loja recém-criada já entra com config padrão (formas de pagamento default, aparência default)
-- [ ] Sem dependência de script — qualquer pessoa com email cria loja em ≤3 min
-
-**Bloco 4 — Hardening de auth**
-- [ ] Email verification ON no Better Auth (sem verificar = sem login)
-- [ ] Template de email transacional com identidade Mangos Pay (Resend)
-- [ ] Domínio próprio verificado no Resend (sair de `onboarding@resend.dev`)
-- [ ] Rate limit em `/api/auth/sign-up` e `/api/auth/sign-in` (≤5/min por IP)
-- [ ] Senha mínima + revogação de sessão antiga em troca de senha
-
-**Bloco 5 — Roteamento multi-tenant**
-- [ ] Subdomínio (`{slug}.mangospay.app` → loja `{slug}`) via middleware Next.js
-- [ ] OU domínio próprio do lojista via CNAME (decisão de design fica pro início do bloco)
-- [ ] Resolução DNS → storeSlug → rendering correto
-- [ ] Documentação curta em `/admin/configuracoes` ensinando o lojista a configurar DNS
-
-### Régua de execução
-
-- Cada bloco fecha com mini-auditoria (testes verdes + tsc limpo + RLS audit) antes do próximo
-- Bloco 1 e 2 são bloqueantes — sem eles, não tem multi-tenant. Não começar Bloco 3 antes
-- Sem ADR novo dentro da Fase (regra meta-1). Decisão pontual = commit com mensagem clara
-- Pendências carregadas da Fase 1.7 (rever antes do primeiro lojista real entrar):
-  - ~~`vercel.json` não tem `regions: ["gru1"]` declarado~~ — verificado 2026-05-24: já está em `vercel.json:3`
-  - ~~HMAC sigs dos crons em `vercel.json` ainda são placeholders~~ — verificado 2026-05-24: sigs reais (256-bit hex) já estão lá
-  - Smoke test prod (storefront / WhatsApp / câmera / PDV) deferido pro setup do primeiro lojista real
-  - Lighthouse mobile ≥ 90 deferido pelo mesmo motivo
-
-### Sprint flash 2026-05-24 (auditoria pós-conselho-5-agentes)
-
-Anderson fez dogfooding e atribuiu nota 4/10. 5 agentes Explore varreram o admin; conselho identificou: motor sólido, casca quebrava régua "funciona-ou-esconde" em 3 pontos visíveis, parcelamento de cartão (P0 BR) faltando, bug status confundindo. Executados em ~3h:
-
-- [x] Esconder do menu: `/admin/assinatura` (Stripe Fase 3), `/admin/atributos` (schema produto sem vínculo), "Estoque baixo" em Gestão (duplicava `/admin/estoque`) — `nav-items.ts`
-- [x] Bug status: venda balcão nascia `'fulfilled'`, foi pra `'confirmed'` — lojista marca cumprida quando entrega via botão existente. `create-balcao-sale.ts:1086` + sentinela atualizada
-- [x] `window.confirm()` do orçamento → AlertDialog shadcn — UX consistente com resto do admin
-- [x] `trackStock` default `true` (era `false`) + migration SQL 69 retroativa — bug do "produto somindo de /admin/estoque" eliminado
-- [x] **Parcelamento de cartão ponta-a-ponta**: coluna `order_payment.installments` (SQL 70) + Zod validação ("só credit pode >1") + dropdown 1-12x no PDV + persist + display "Crédito 3x" no recibo. Mangos Pay registra escolha, NÃO calcula juros (maquininha do lojista cobra a taxa)
-- [x] Sync deste documento
-
-Régua aplicada: **feature na UI tem que entregar fluxo comum, senão esconde**. Equipe, Atributos, Assinatura e Estoque-baixo escondidos por isso. Rotas seguem vivas por URL pra reativação futura sem refator.
+CSS bug histórico corrigido em 2026-05-26: `body:has(.report-print-root)` agora gate a regra restritiva, evitando que páginas sem ReportLayout imprimam em branco.
 
 ---
 
-## Próximas Sprints (planejadas, NÃO em execução)
+## Sprint atual: Cadastros Sprint 1 ✅ FECHADA (2026-05-26)
 
-Não comece código de Sprint futura antes da atual estar com TODOS os checkboxes marcados.
+**Objetivo**: destravar feature de wholesale (que estava 100% pronta no backend mas zumbi por 2 pontos de UI faltando) + cleanup óbvio + ordenação na tabela de produtos.
 
-- **Fase 3 — Monetização**: Vercel Pro, plano Free com limite (X produtos / Y pedidos), plano Pago via Stripe (mensalidade Mangos Pay, NÃO checkout do lojista). Só começa quando Fase 2 fechar.
-- **Fase 4+ — Diferenciação**: cupom de desconto avançado, frete grátis acima de X, programa de pontos, integração Correios.
-- **Fase 5 — Onboarding do primeiro lojista real**: criar conta da Sandra (ou outro piloto) via signup self-service da Fase 2, importar produtos via planilha, smoke test real em prod, Lighthouse mobile ≥ 90 com dado real. NÃO antes da Fase 2 fechar.
-- **Sprint 6 follow-ups** (defensivos opcionais): 2FA pro lojista, refator `pdv-shell.tsx` (2154 linhas) e `create-balcao-sale.ts` (1141 linhas) — fazer junto da próxima feature que tocar nesses arquivos.
+### Entregue na Cadastros Sprint 1
 
-Sprints 0 → 6 ✅ concluídas (resumo em `docs/sessoes/2026-05-21-fechamento-sprints-0-a-6.md`).
+- **C1 Cliente form com Select de Grupo** — `customer/schema.ts` + `customer-form.tsx` ganham `groupId`. Drawer carrega grupos via `loadCustomerGroups()`. Esconde Select se loja não tem grupo.
+- **C2 Customer Group form com `defaultPricingTier`** — 2 botões "Preço normal" / "Preço de atacado" no dialog do customer-groups-manager. Schema upsert agora propaga campo. PDV já consumia via `groupPricingTier` — agora a ponta de cadastro fecha o ciclo.
+- **C4 Cleanup** — `update-related.ts` órfão (~120 linhas server action sem caller) DELETADO.
+- **C5 Cleanup** — `slugifyBrand` + `slugifyClient` agora delegam pro canônico `generateSlug` em `lib/slug.ts` (pacote slugify locale pt). Antes eram 2 cópias NFD+replace manual que podiam divergir do storefront.
+- **C6 Supplier máscara CPF/CNPJ** — `maskDocumentInput` plugado no manager (consistente com customer-form). Schema já validava dígito-verificador (`isValidCpf`/`isValidCnpj`).
+- **C7 Ordenação de produtos** — `?sort=updated-desc|name-asc|name-desc|price-asc|price-desc|stock-asc|stock-desc` URL-driven. Select de 7 opções no `products-toolbar`. Lojista com 250 SKUs agora consegue "menor estoque primeiro".
+
+### Deferido
+
+- **C3 CEP autocomplete (cliente + fornecedor)** — ViaCEP integration + hook + plug em 2 forms. Backlog Sprint 2 alta prioridade.
+
+## Sprint anterior: Estoque Sprint 2 ✅ FECHADA (2026-05-26)
+
+**Objetivo**: tirar Estoque das frições 🟠 que custavam cliques diários (sem ser blocker mas atrapalhando). Atingido — 4 de 5 itens.
+
+### Entregue na Sprint 2
+
+- **E9 Coluna "Valor em R$"** na snapshot table — lojista escolhe quem repor por capital empatado, não unidade. Tooltip mostra valor de custo.
+- **E10 Filtros de data no feed** — presets Hoje/Ontem/7d/Mês + chip custom (mesmo padrão de orders-toolbar). Auditoria forense agora viável sem rolar página por página.
+- **E11 Toggle "saldo final" no ajuste manual** — dialog oferece 2 modos: "Lançar diferença" (delta, padrão) ou "Tenho o saldo contado" (sistema calcula delta + direção sozinho). Resolve a confusão "atual era 12, contei 8, digito -4 ou 8?".
+- **E13 KPI "Ajustes do mês"** mostra agora delta absoluto também — "12 lançamentos · 47 peças movimentadas".
+- **E12 Aging report deferido** — produtos sem venda há N dias é Sprint 3 (precisa LATERAL JOIN + nova tab, decidi não estourar tempo).
+
+## Sprint anterior: Estoque Sprint 1 ✅ FECHADA (2026-05-26 — bloqueadores 🔴)
+
+**Objetivo**: tirar Estoque do "NÃO está pronto pra Vânia usar" — 3 bloqueadores 🔴 identificados pela auditoria sênior (KPI saldo em unidades · tab Alertas paginação quebrada · botão "+" disabled em produto com variantes). Atingido.
+
+**Estado**: 72 SQLs em prod, 537 testes verdes (+ 40 skipped integration), tsc zero erro.
+
+### Entregue
+
+- **E1 KPI Saldo em R$ (custo + venda + unidades)** — antes era "487 un" (soma de anel+brinco+colar inútil). Agora "R$ 84.500 a custo · R$ 156.200 a venda · 487 un como contexto". Lojista responde "quanto vale o estoque?" sem abrir relatório.
+- **E2 Tab Alertas server-side OR** — novo `status: "alerts"` em `loadStockSnapshot` (zero ∪ low). Antes carregava 2 queries paginadas + merge local com `total = items.length` mentindo. Agora paginação honesta com total real.
+- **E3 Botão "+" da snapshot ativa pra produto com variantes** — antes disabled; o `StockMovementDialog` já suportava multi-variante via Select, só faltava passar `variantBreakdown`. Joalheria com 60% de variantes economiza 30-45 cliques por compra recebida.
+- **E4 KPI "Compras no mês"** — filtra agora SÓ `manual_in`. Devoluções e ajustes positivos não inflavam o número. Renomeado pra clareza.
+- **E5 KPI exclui produtos draft** — antes KPI somava produtos com slug `draft-%`, tabela snapshot não — divergência (497 ≠ 487). Agora ambos consistentes.
+- **E6 Cleanup trivial** — checkbox "Selecionar todos" placeholder removido, JSX comment órfão, `export type NewStockMovement` (sem importer), emoji 🌱 do empty state.
+
+### Backlog de Estoque deferred (não-bloqueante)
+
+🟠 Frição alta (Sprint 2 — quando atual estiver fechada):
+- Coluna "Valor em R$" na snapshot table (qty × custo) — joalheira escolhe quem repor por valor, não unidade
+- Filtro de data + por produto no feed de movimentações
+- Toggle "saldo final" no ajuste manual (hoje só delta, label confunde)
+- Aging report — produtos sem movimentação há N dias
+- KPI "Ajustes do mês" mostrar delta absoluto, não só count
+
+🏗️ Estrutural (precisa schema migration):
+- Manual_in com `unitCostInCents` + motivo obrigatório (atualiza CMP)
+- Contagem física com segmentação por categoria + truncate warning
+- Importação CSV real (hoje stub fake) — gate de onboarding sério
+- Lote/validade pra perfumaria/cosmético do ICP
+
+---
+
+## Sprint anterior: Vendas SaaS-grade ✅ FECHADA (2026-05-26)
+
+**Objetivo**: deixar Vendas usável diariamente por lojista BR de pequeno varejo, sem dor de cabeça em fluxo comum (abrir caixa → ring sales → fiado → cancelar/devolver → fechar caixa → imprimir cupom). **Atingido.**
+
+**Estado verificado em 2026-05-26**: 72 SQLs em prod, 537/577 testes verdes (+ 40 skipped que rodam só com `RUN_INTEGRATION=1`), `tsc --noEmit` zero erro.
+
+### O que foi entregue (turnos 1-7 do dia 2026-05-26)
+
+**Turno 1 — Sprint flash 1** (3 fixes): prefetch do PdvShell · banner "Caixa fechado" no PDV · badge "Fiado em aberto" no card do cliente vinculado.
+
+**Turno 2 — Análise sênior + Sprint 1.2** (4 fixes): cliente obrigatório no submit · stock check preemptivo por item · atalhos F-keys visíveis no rodapé do PDV (FKeysLegend) · ícone "obs" na linha de pedido.
+
+**Turno 3 — Sprint 2** (3 fixes): status inline-edit (dropdown no badge da linha) · print sem nova aba (target=_blank removido) · botão print direto na linha da tabela.
+
+**Turno 4 — Sprint 4 sistema universal de impressão** (3 entregas): `<SaleReceiptThermal />` cupom 80mm + toggle Térmica/A4 · bug CSS global de print corrigido (page em branco quando sem ReportLayout) · `<PrintPageButton />` reusável plugado em listagens.
+
+**Turno 5 — Sprint 3 cartão com juros** (SQL 72): coluna `card_interest_free_up_to` no `store` · form em `/admin/pagamento` com select "X parcelas sem juros" + input "% ao mês" · `loadPdvConfig` · `lib/installments.ts` aplica Sistema PRICE em cents · PDV mostra "12× de R$ 50 (com juros) · Total c/ juros: R$ X".
+
+**Turno 6 — Refinamentos finais** (3 entregas): sino do topbar com dot real via `loadAdminNotifications` (vendas WhatsApp pendentes 24h + estoque crítico, polling 60s visibility-aware) · coluna "Itens" na orders-table (sum quantity) · botão "Aplicar à venda" no PDV pra juros virarem acréscimo automático.
+
+**Turno 7 — Cleanup + finalização** (3 ondas):
+- **Onda 1 polimento**: FKeysLegend duplicado removido · checkbox "Selecionar todos" placeholder removido · drawer mostra "Crédito 3×" (não só "Crédito").
+- **Onda 2 dead code**: deletados `product-actions-menu.tsx`, `related-products-card.tsx`, pasta `/admin/produtos/[id]/etiqueta/`, `barcode-label.tsx`, 6 scripts one-off, dep `jsbarcode`. 4 cópias locais de `formatBRL` consolidadas em `lib/pricing.ts` (canônico agora com thousand separator + NBSP normalizado).
+- **Onda 3 refinamentos reais**: 3× `window.confirm` migrados pra AlertDialog (limpar carrinho, lançar fiado, cancelar inline) · edição inline de observação da venda no drawer (action `updateOrderNotes`) · audit de desconto manual > 10% via `recordAuditEvent` (anti-fraude vendedora).
+
+### Régua "pronto pra usar daily"
+
+Lojista BR de joalheria/perfumaria/roupa em cidade do interior consegue:
+1. Abrir caixa → ver banner se esquecer ✅
+2. Ring multi-payment (até 5 formas) com troco automático LIFO ✅
+3. Vender com cartão crédito + juros calculado via Sistema PRICE ✅
+4. Lançar fiado parcial ou total com vencimento ✅
+5. Ver badge "Fiado em aberto" do cliente ANTES de liberar mais crédito ✅
+6. Mudar status da venda clicando no badge (inline-edit) ✅
+7. Imprimir cupom térmico OU A4 sem nova aba ✅
+8. Editar obs da venda depois ✅
+9. Receber notificação de venda WhatsApp nova em ≤60s ✅
+10. Atalhos F2/F3/F4/F9/ESC visíveis no rodapé do PDV ✅
+11. Auditoria de descontos grandes registrada em `audit_event` ✅
+12. Cancelar venda inline com confirmação rica (AlertDialog) ✅
+
+### Backlog de Vendas deferred (não-bloqueante)
+
+- **#2 Inline product search no PDV** — refator de `pdv-shell.tsx` (3300+ linhas hoje) pra eliminar segundo dialog. Esforço L. Não bloqueia uso.
+- **#3 full Vendedor no order** — `sold_by_user_id` + UI + filtro + relatório por operadora. Esforço L. Bloqueia comissionamento em loja com 2+ vendedoras.
+- **#8 Devolução iniciada pelo PDV** — hoje vai pelo drawer; lojista com cliente devolvendo no balcão precisa sair do PDV. Esforço M.
+- **CSV de vendas server-side** — exporta só página atual hoje. Esforço M.
+- **PIN do dono pra desconto > X%** — config setting + dialog + audit table dedicada. Esforço M.
+- **Adjustment dialog com 6 tipos** — hoje só sangria + reforço; schema suporta 6 (pay_supplier, pay_bill, other_in, other_out). Esforço S.
+
+---
+
+## Próximas Sprints (ordem real)
+
+**Próximo módulo a auditar (recomendado)**: **Estoque** (`/admin/estoque`, `/estoque/contagem`, `/estoque/relatorio`). Mesmo método de auditoria sênior que fizemos em Vendas. Provável escopo equivalente: 8-12 frições + 2-3 cleanup.
+
+**Outros módulos não auditados**: Clientes, Cadastros (Produtos, Categorias, Marcas, Fornecedores, Grupos), Relatórios (qualidade do conteúdo), Loja online (storefront público / vitrine — em pixel-perfect paralelo), Configurações.
+
+**Fase 2 Multi-tenant Pleno** (pausada pelo refator de Vendas, gate de produção):
+- Bloco 1 ✅ Isolamento real (role `vitre_app`, FORCE RLS em 32+ tabelas)
+- Bloco 2 ✅ Validação automatizada (`tests/integration/rls-cross-tenant.test.ts`)
+- **Bloco 3** ❌ Signup self-service — tela `/cadastro` cria user + loja em transação atômica, wizard pós-signup. Sem isso, lojista real entra só via seed.
+- **Bloco 4** ❌ Hardening de auth — email verification ON, rate limit em `/api/auth/*`, domínio próprio no Resend, senha mínima, revogação de sessão.
+- **Bloco 5** ❌ Roteamento multi-tenant — middleware Next pra `{slug}.vitre.site` ou CNAME do lojista.
+
+Esforço total Fase 2 restante: ~5-7 dias. **Gate absoluto pra qualquer lojista real entrar em produção.**
+
+**Fase 3 — Monetização**: plano Free com limite + plano Pago via Stripe (mensalidade Mangos Pay, NÃO checkout do lojista). Começa quando Fase 2 fechar.
+
+**Fase 5 — Onboarding do primeiro lojista real**: criar conta da Sandra (ou outro) via signup self-service, importar produtos via planilha, smoke test prod, Lighthouse mobile ≥ 90. NÃO antes da Fase 2 fechar.
 
 ---
 
@@ -253,21 +296,22 @@ Sprints 0 → 6 ✅ concluídas (resumo em `docs/sessoes/2026-05-21-fechamento-s
 3. **Mutações server-only** — client nunca chama Drizzle. Sempre `"use server"`. Ações com prefixo `load*` são leituras async pra dialogs client, sem side-effects.
 4. **`revalidateTag('store-${slug}')`** em toda mutação que afeta catálogo público.
 5. **Imagens** — sharp 800×800 WebP 75% ANTES do upload. Max 5 imagens/produto. Servidas via `next/image`.
-6. **Rate limit** — endpoints sensíveis (auth, orders, upload, PDV) protegidos via `@upstash/ratelimit`. Toda mutation `"use server"` chama `checkRateLimit(rateLimits.mutation, userId)`; reads (`load*`, `search*`) ficam sem rate limit (autenticadas + escopadas via RLS).
+6. **Rate limit** — endpoints sensíveis (auth, orders, upload, PDV) protegidos via `@upstash/ratelimit`. Toda mutation `"use server"` chama `checkRateLimit(rateLimits.mutation, userId)`; reads (`load*`, `search*`) ficam sem rate limit (autenticadas + escopadas via RLS). Sentinela `tests/rate-limit-coverage.test.ts` falha se nova action mutadora esquecer.
 7. **Slugs reservados** — ver lista em `src/lib/slug.ts`.
 8. **Naming PT-vs-EN** — URLs e UI strings em PT-BR (vocabulário do lojista: `/admin/aparencia`, `"Filtros da loja"`). Pastas, identifiers TypeScript e nomes de função em EN (convenção dev: `attributeTable`, `loadOrderDetail`). Nunca misturar dentro da mesma camada.
-9. **Sem `sql.raw`** — todo input no SQL deve ser parametrizado (Drizzle template tag `sql\`\`` faz isso automaticamente). Se precisar interpolar valor dinâmico, calcule server-side antes (ex: `new Date(Date.now() - days * 86400000)` em vez de `sql.raw(\`interval '${days} days'\`)`).
-10. **Integration tests RLS pré-merge** — qualquer mudança em: schema de tabela com `store_id`, policy RLS, role/grant, `withTenant` / `withServiceRole`, ou nas suites `tests/integration/*` exige rodar localmente `RUN_INTEGRATION=1 npm run test:integration` e confirmar 39/39 verde **antes** de commit/merge. CI hoje só faz unit (`npm test`) — gate de integration roda contra DB real e ainda não tem DB ephemeral na pipeline (defer Fase 5). Esse é o cinto que pegou o vazamento de `lead_anon_insert` (SQL 58); pular ele = vazamento volta sem aviso.
+9. **Sem `sql.raw` com input dinâmico** — todo input no SQL deve ser parametrizado (Drizzle template tag `sql\`\`` faz automaticamente). Calcule server-side antes (ex: `new Date(Date.now() - days * 86400000)` em vez de `sql.raw(\`interval '${days} days'\`)`).
+10. **Integration tests RLS pré-merge** — qualquer mudança em: schema de tabela com `store_id`, policy RLS, role/grant, `withTenant` / `withServiceRole`, ou nas suites `tests/integration/*` exige rodar localmente `RUN_INTEGRATION=1 npm run test:integration` e confirmar **40/40 verde** antes de commit/merge. CI hoje só faz unit (`npm test`); gate de integration roda contra DB real e ainda não tem DB ephemeral na pipeline (defer Fase 5). Esse é o cinto que pegou o vazamento de `lead_anon_insert` (SQL 58); pular ele = vazamento volta sem aviso.
+11. **Auditoria forense via `recordAuditEvent`** — operações sensíveis (open/close caixa, devolução, reverso de pagamento, desconto manual > 10%) gravam linha em `audit_event` na MESMA transação. Falha de audit NÃO derruba a operação (princípio: audit é defensivo, não bloqueante). Ver `src/lib/audit.ts`.
 
 ## Stack (não revisitar sem problema concreto)
 
-Next 15 + React 19 + TypeScript · Drizzle ORM + Supabase Postgres · Better Auth (somente lojista) · Supabase Storage · shadcn/ui + Tailwind v4 · TanStack Query · react-hook-form + Zod · Sonner · Resend · Upstash Ratelimit · sharp · Vercel.
+Next 15 + React 19 + TypeScript · Drizzle ORM + Supabase Postgres · Better Auth (somente lojista) · Supabase Storage · shadcn/ui + Tailwind v4 · TanStack Query · react-hook-form + Zod 4 · Sonner · Resend · Upstash Ratelimit · sharp · Sentry · Vercel.
 
-**Não usamos**: Stripe (lojista vende pelo WhatsApp ou POS físico), Supabase Auth, Prisma, NextAuth, Electron.
+**Não usamos**: Stripe (lojista cobra fora do Mangos Pay), Supabase Auth, Prisma, NextAuth, Electron.
 
 ## O que NÃO fazer
 
-- ❌ Adicionar Stripe ao checkout (lojista cobra fora do Mangos Pay)
+- ❌ Adicionar Stripe ao checkout do storefront (lojista cobra fora do Mangos Pay)
 - ❌ Cadastro/login de cliente final no storefront. Carrinho em localStorage. Favoritos em localStorage. Reafirmado [ADR-0008](docs/decisoes/0008-ux-catalogo-publico-storefront.md)
 - ❌ NF-e, SEFAZ, integração fiscal. [ADR-0033](docs/decisoes/0033-veto-fiscal-explicito.md)
 - ❌ Acesso remoto/captura de tela dentro do produto. Suporte = AnyDesk fora do produto. [ADR-0018](docs/decisoes/0018-suporte-remoto-fora-do-produto.md)
@@ -275,17 +319,19 @@ Next 15 + React 19 + TypeScript · Drizzle ORM + Supabase Postgres · Better Aut
 - ❌ Subir imagens sem compressão
 - ❌ Fazer mutação sem `revalidateTag`
 - ❌ Pular ADR antes do código quando a mudança é estrutural — MAS não criar ADR pra decisão pequena (regra meta-1)
-- ❌ Construir feature sem fluxo de uso claro
+- ❌ Construir feature sem fluxo de uso claro (régua "funciona ou esconde")
 - ❌ Formulário em coluna única com campos numéricos curtos ocupando 100% (princípio 9)
 - ❌ Tratar produto como apêndice da loja online (princípio 8)
+- ❌ `window.confirm` ou `window.alert` em fluxos de venda — usar AlertDialog do shadcn (consistência visual + mobile)
+- ❌ Implementar formatBRL local — sempre importar de `@/lib/pricing`
 
 ## Ambiente
 
-Windows 11 + PowerShell + VS Code + **Claude Code** (CLI). PT-BR. Repo em `C:\Users\ANDERSON FELIPE\Documents\Mangos Pay\`.
+Windows 11 + PowerShell + VS Code + **Claude Code** (CLI). PT-BR. Repo em `C:\Users\ANDERSON FELIPE\Documents\MANGOS PAY\`.
 
 ## Founder
 
-Anderson Felipe — dev solo, PT-BR. Aplica `/arrow-skill` (conselho-5-agentes) em decisões substanciais. Quer abordagem de dev sênior, sem amadorismo. Confirma antes de operações destrutivas.
+Anderson Felipe — dev solo, PT-BR. Aplica `/arrow-skill` (conselho-5-agentes) em decisões substanciais. Quer abordagem de dev sênior, sem amadorismo. Estilo de colaboração: **copiloto + piloto** — age, não pergunta a cada passo. Confirma antes de operações destrutivas.
 
 ---
 
@@ -301,6 +347,7 @@ Senão: commit com mensagem clara + comentário em código. Lista de "decisões 
 - Adicionar campo nullable em tabela existente → commit
 - Decidir entre dois pacotes npm que fazem a mesma coisa → commit + comentário
 - Mudar texto de UI → commit
+- Migrar `window.confirm` pra AlertDialog → commit
 
 ---
 
@@ -309,9 +356,9 @@ Senão: commit com mensagem clara + comentário em código. Lista de "decisões 
 Estado de fases até 2026-05-21 vive em:
 - `docs/decisoes/` (ADRs 0001-0034, ordem cronológica)
 - `docs/sessoes/` (logs de sessões importantes)
-- `docs/auditoria-2026-05-21/` (5 docs read-only do estado do código pré-Sprint 2)
-- `docs/produto/roadmap.md` (checklist por fase do MVP catálogo — pendente: Fase 1.7)
-- `docs/CONTEXT.md` (briefing 1-minuto pré-pivô)
+- `docs/auditoria-2026-05-21/` (5 docs read-only do estado pré-Sprint 2)
+- `docs/produto/roadmap.md`
+- `docs/CONTEXT.md`
 
 Marcos:
 - MVP catálogo (Fases 0-1.6) ✅
@@ -321,8 +368,12 @@ Marcos:
 - Fases 2-5 + PWA do pivô ✅ (2026-05-16)
 - Veto fiscal explícito 2026-05-19 ([ADR-0033](docs/decisoes/0033-veto-fiscal-explicito.md))
 - Camada Comercial Mangos Pay 2026-05-19 ([ADR-0034](docs/decisoes/0034-camada-comercial-vitre.md))
-- Sprints 0 → 6 ✅ todas fechadas até 2026-05-21 (`docs/sessoes/2026-05-21-fechamento-sprints-0-a-6.md`)
-- Fase 1.7 (deploy técnico) encerrada 2026-05-21 com deploy Vercel feito; smoke real descartado junto com Sandra — primeiro lojista real entra via signup self-service depois da Fase 2 (`docs/sessoes/2026-05-21-encerramento-fase-1.7.md`)
-- Fase 2 (Multi-tenant pleno) virou Sprint atual em 2026-05-21 — bloqueador real pra qualquer lojista entrar com segurança
+- Sprints 0 → 6 ✅ fechadas até 2026-05-21 (`docs/sessoes/2026-05-21-fechamento-sprints-0-a-6.md`)
+- Fase 1.7 (deploy técnico) encerrada 2026-05-21
+- Fase 2 (Multi-tenant pleno) Bloco 1 ✅ + Bloco 2 ✅ em 2026-05-21
+- Sprint flash pós-conselho-5-agentes 2026-05-24 (parcelamento cartão, status venda balcão, AlertDialog do orçamento, trackStock default true, SQLs 69-70)
+- Domínio operacional mudou de `mangospay.app` pra `vitre.site` em 2026-05-25
+- Redesign pixel-perfect PP1-PP15 ✅ admin completo (2026-05-25)
+- **Sprint Vendas SaaS-grade 2026-05-26** — 7 turnos, 25+ fixes, sistema de impressão universal, cartão com juros, notificações in-app, cleanup de 12 arquivos órfãos. Esta é a Sprint atual neste arquivo.
 
-**Norte vivo sobrescreve qualquer ADR conflitante.** Se ADR-0034 disser "5-7 semanas" e este arquivo disser "12-18 semanas", vale este arquivo. ADR é registro de decisão no momento; norte vivo é régua de execução atual.
+**Norte vivo sobrescreve qualquer ADR conflitante.** Se ADR antigo disser X e este arquivo disser Y, vale este arquivo. ADR é registro de decisão no momento; norte vivo é régua de execução atual.

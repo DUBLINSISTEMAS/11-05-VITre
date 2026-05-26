@@ -92,7 +92,7 @@ export default async function SuportePage() {
           <TourCard
             step="3"
             title="Compartilhe seu link"
-            description={`Seu link público fica em mangospay.app/<sua-loja>. Compartilhe no Instagram, Stories, link na bio.`}
+            description={`Seu link público fica em vitre.site/<sua-loja>. Compartilhe no Instagram, Stories, link na bio.`}
           />
           <TourCard
             step="4"

@@ -117,7 +117,7 @@ export function StoreFooter({ store }: StoreFooterProps) {
             reservados.
           </span>
           <a
-            href="https://mangospay.app"
+            href="https://vitre.site"
             target="_blank"
             rel="noopener noreferrer"
             className="hocus:text-foreground transition-colors"

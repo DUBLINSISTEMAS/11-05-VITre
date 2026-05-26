@@ -29,6 +29,7 @@ import { StockSnapshotToolbar } from "@/components/admin/stock-snapshot-toolbar"
 import { StockToolbar } from "@/components/admin/stock-toolbar";
 import { Pagination } from "@/components/common/pagination";
 import {
+  dateOrNullSchema,
   enumOrNull,
   idOrNullSchema,
   pageNumberSchema,
@@ -74,6 +75,9 @@ const estoqueSearchSchema = z.object({
   categoryId: idOrNullSchema,
   sort: enumOrNull(SNAPSHOT_SORT_VALUES),
   page: pageNumberSchema,
+  // Audit 2026-05-26 — filtro de data no feed (mesmos params que orders).
+  de: dateOrNullSchema,
+  ate: dateOrNullSchema,
 });
 
 interface EstoquePageProps {
@@ -168,7 +172,13 @@ export default async function EstoquePage({ searchParams }: EstoquePageProps) {
       </Suspense>
 
       {isFeed ? (
-        <FeedView page={params.page} q={params.q} typeFilter={params.type} />
+        <FeedView
+          page={params.page}
+          q={params.q}
+          typeFilter={params.type}
+          dateFrom={params.de}
+          dateTo={params.ate}
+        />
       ) : isAlerts ? (
         <AlertsView
           page={params.page}
@@ -308,36 +318,33 @@ async function AlertsView({
   categoryId: string | null;
   sort: StockSnapshotSort;
 }) {
-  // Carrega 2 buckets em paralelo: zerados + abaixo do min. Não usa
-  // status="low" sozinho porque a lib trata "low" como SÓ low (sem
-  // zerados). Carregamos os dois e mesclamos pra view de alertas.
-  const [zeroResult, lowResult] = await Promise.all([
-    loadStockSnapshot({
-      q: q.trim() || undefined,
-      status: "zero",
-      categoryId,
-      sort,
-      page,
-      pageSize: PAGE_SIZE,
-    }),
-    loadStockSnapshot({
-      q: q.trim() || undefined,
-      status: "low",
-      categoryId,
-      sort,
-      page,
-      pageSize: PAGE_SIZE,
-    }),
-  ]);
-
-  // Merge: zerados primeiro (mais urgentes), depois low. Dedup por id.
-  const seen = new Set<string>();
-  const items = [...zeroResult.items, ...lowResult.items].filter((r) => {
-    if (seen.has(r.productId)) return false;
-    seen.add(r.productId);
-    return true;
+  // Audit 2026-05-26 — usa `status: "alerts"` (bucket combinado zero+low
+  // server-side). Antes carregava 2 buckets paginados e fazia merge local
+  // → total = items.length da página, pill divergia da tabela, segunda
+  // página inacessível. Agora é 1 query paginada honesta.
+  const { items, total } = await loadStockSnapshot({
+    q: q.trim() || undefined,
+    status: "alerts",
+    categoryId,
+    sort,
+    page,
+    pageSize: PAGE_SIZE,
   });
-  const total = items.length;
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const offset = (page - 1) * PAGE_SIZE;
+  const rangeStart = total === 0 ? 0 : offset + 1;
+  const rangeEnd = Math.min(offset + PAGE_SIZE, total);
+
+  const buildHref = (nextPage: number) => {
+    const usp = new URLSearchParams();
+    usp.set("view", "alertas");
+    if (q.trim()) usp.set("q", q.trim());
+    if (categoryId) usp.set("categoryId", categoryId);
+    if (sort !== "stock-asc") usp.set("sort", sort);
+    if (nextPage > 1) usp.set("page", String(nextPage));
+    return `?${usp.toString()}`;
+  };
 
   if (total === 0) {
     return (
@@ -351,7 +358,7 @@ async function AlertsView({
           </h2>
           <p className="text-ink-4 max-w-sm text-sm">
             Todos os produtos com controle ativo estão acima do mínimo
-            cadastrado. Lojista relax 🌱
+            cadastrado.
           </p>
         </div>
       </div>
@@ -393,7 +400,19 @@ async function AlertsView({
           ?
         </p>
       </div>
+      <div className="border-t border-line px-4 py-2 text-[12px] text-ink-4">
+        {rangeStart} – {rangeEnd} de {total}
+      </div>
       <StockSnapshotTable rows={items} currentSort={sort} />
+      {totalPages > 1 ? (
+        <div className="border-t border-line p-3">
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            buildHref={buildHref}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -405,16 +424,38 @@ async function FeedView({
   page,
   q,
   typeFilter,
+  dateFrom,
+  dateTo,
 }: {
   page: number;
   q: string;
   typeFilter: StockMovement["movementType"] | null;
+  dateFrom: Date | null;
+  dateTo: Date | null;
 }) {
+  // Range inclusivo: `ate` vai pro fim do dia (23:59:59.999) — espelha
+  // o tratamento de orders/page.tsx.
+  const dateToEnd = dateTo
+    ? new Date(
+        dateTo.getFullYear(),
+        dateTo.getMonth(),
+        dateTo.getDate(),
+        23,
+        59,
+        59,
+        999,
+      )
+    : null;
+  const dateFromIso = dateFrom ? toIsoDate(dateFrom) : null;
+  const dateToIso = dateTo ? toIsoDate(dateTo) : null;
+
   const { items, total } = await listStockMovements({
     q: q.trim() || undefined,
     movementType: typeFilter,
     page,
     pageSize: PAGE_SIZE,
+    fromDate: dateFrom,
+    toDate: dateToEnd,
   });
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -427,16 +468,22 @@ async function FeedView({
       ? "0 de 0"
       : `${rangeStart} – ${rangeEnd} de ${total}`;
 
+  const hasDateFilter = dateFromIso !== null || dateToIso !== null;
+  const hasAllFilters =
+    q.trim() !== "" || typeFilter !== null || hasDateFilter;
+
   const buildHref = (nextPage: number) => {
     const usp = new URLSearchParams();
     usp.set("view", "historico");
     if (q.trim()) usp.set("q", q.trim());
     if (typeFilter) usp.set("type", typeFilter);
+    if (dateFromIso) usp.set("de", dateFromIso);
+    if (dateToIso) usp.set("ate", dateToIso);
     if (nextPage > 1) usp.set("page", String(nextPage));
     return `?${usp.toString()}`;
   };
 
-  if (items.length === 0 && !hasFilters) {
+  if (items.length === 0 && !hasAllFilters) {
     return <EmptyFeed />;
   }
 
@@ -452,7 +499,11 @@ async function FeedView({
         </span>
       </div>
       <Suspense fallback={<div className="bg-bg-app h-14 animate-pulse" />}>
-        <StockToolbar rangeLabel={rangeLabel} />
+        <StockToolbar
+          rangeLabel={rangeLabel}
+          dateFromIso={dateFromIso}
+          dateToIso={dateToIso}
+        />
       </Suspense>
       {items.length === 0 ? (
         <NoResults />
@@ -470,6 +521,15 @@ async function FeedView({
       ) : null}
     </div>
   );
+}
+
+/** YYYY-MM-DD em horário local — echo na URL e refletido pro toolbar.
+ *  Audit 2026-05-26: copiado de orders-toolbar.tsx (mesma régua). */
+function toIsoDate(d: Date): string {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 function EmptySnapshot() {

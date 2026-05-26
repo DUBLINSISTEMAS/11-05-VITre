@@ -27,6 +27,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatBRL } from "@/lib/pricing";
+import { generateSlug } from "@/lib/slug";
 
 type Product = {
   id: string;
@@ -596,13 +597,11 @@ function CollectionEditor({
   );
 }
 
+/**
+ * Audit 2026-05-26 \u2014 wrapper sobre `generateSlug` can\u00f4nico (lib/slug).
+ * Antes era reimplementa\u00e7\u00e3o NFD+replace manual aqui \u2014 divergia do servidor.
+ * Hoje delega pro pacote `slugify` com locale pt + slice(60).
+ */
 function slugifyClient(input: string): string {
-  return input
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
+  return generateSlug(input).slice(0, 60);
 }

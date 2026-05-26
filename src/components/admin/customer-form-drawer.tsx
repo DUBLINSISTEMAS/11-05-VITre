@@ -24,10 +24,12 @@ import { toast } from "sonner";
 
 import { deleteCustomer } from "@/actions/customer/delete";
 import { loadCustomerDetail } from "@/actions/customer/load";
+import { loadCustomerGroups } from "@/actions/customer-group";
 import type { CustomerDetail } from "@/actions/customer/types";
 import { CustomerFiadoCard } from "@/components/admin/customer-fiado-card";
 import {
   CustomerForm,
+  type CustomerGroupOption,
   type CustomerInitialData,
 } from "@/components/admin/customer-form";
 import {
@@ -77,6 +79,7 @@ function emptyInitialData(): CustomerInitialData {
     addressState: null,
     addressZip: null,
     notes: null,
+    groupId: null,
   };
 }
 
@@ -88,6 +91,10 @@ export function CustomerFormDrawer({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, startLoad] = useTransition();
   const [isDeleting, startDelete] = useTransition();
+  // Audit 2026-05-26 — grupos pra select no form. Carregado 1x ao abrir.
+  // Vazio quando lojista não tem nenhum grupo (Select esconde — feature
+  // wholesale fica opt-in).
+  const [groupOptions, setGroupOptions] = useState<CustomerGroupOption[]>([]);
   const submitRef = useRef<HTMLButtonElement | null>(null);
 
   const mode: "edit" | "new" | null =
@@ -114,6 +121,29 @@ export function CustomerFormDrawer({
         setError("Não foi possível carregar o cliente.");
       }
     });
+  }, [target]);
+
+  // Audit 2026-05-26 — carrega grupos quando drawer abre (qualquer modo).
+  useEffect(() => {
+    if (target === null) return;
+    let cancelled = false;
+    loadCustomerGroups()
+      .then((groups) => {
+        if (cancelled) return;
+        setGroupOptions(
+          groups.map((g) => ({
+            id: g.id,
+            name: g.name,
+            defaultPricingTier: g.defaultPricingTier,
+          })),
+        );
+      })
+      .catch(() => {
+        // Falha silenciosa — sem grupos, Select esconde.
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [target]);
 
   const handleDelete = () => {
@@ -154,6 +184,7 @@ export function CustomerFormDrawer({
             addressState: detail.customer.addressState,
             addressZip: detail.customer.addressZip,
             notes: detail.customer.notes,
+            groupId: detail.customer.groupId,
           }
         : emptyInitialData();
 
@@ -250,6 +281,7 @@ export function CustomerFormDrawer({
                 embedded
                 submitRef={submitRef}
                 initialData={initialDataWithId}
+                groupOptions={groupOptions}
                 onAfterSave={() => {
                   onOpenChange(false);
                 }}

@@ -1,4 +1,7 @@
-// Sparkline SVG inline — handoff design 2026-05-25 (Passo 3 redesign dashboard).
+"use client";
+
+// Sparkline SVG inline interativo — handoff design 2026-05-25 (Passo 3 redesign
+// dashboard), incrementado em 2026-05-26 com hover/tooltip.
 //
 // Replica `design_handoff_mangos_pay/app-oficial/dashboard.jsx` linhas 54-102:
 // - viewBox 720x180 com padding pra y-axis labels (esquerda) + x-axis labels
@@ -7,12 +10,15 @@
 // - 3 x-axis date labels (start, meio, hoje) em Geist Mono
 // - Path stroke + area fill em brand verde Mangos (var(--brand))
 // - Endpoint dot no último ponto, cor brand
+// - Hover: guideline vertical + dot ampliado + tooltip flutuante com data +
+//   valor BRL formatado. Hit-areas invisíveis (1 rect por dia) capturam o
+//   mousemove; ponteiro `mouseleave` no svg limpa o hover.
 //
-// Cores: verde brand Mangos (var(--brand) = #174D44). O codebase tinha
-// `#1A3A8F` (navy antigo Vitrê) — bug residual do rebrand 2026-05-21,
-// corrigido aqui.
-//
-// SVG puro, zero deps (~80kB economizados vs Recharts).
+// Client component (precisa de state pra hover). SVG puro, zero deps.
+
+import { useState } from "react";
+
+import { formatBRL as formatBRLFull, formatBRLShort } from "@/lib/pricing";
 
 const VIEW_W = 720;
 const VIEW_H = 180;
@@ -20,19 +26,6 @@ const PAD = { top: 12, right: 12, bottom: 28, left: 36 };
 const INNER_W = VIEW_W - PAD.left - PAD.right;
 const INNER_H = VIEW_H - PAD.top - PAD.bottom;
 const TICKS = 4;
-
-function formatBRLShort(cents: number): string {
-  if (cents >= 100_000_00) {
-    return "R$ " + (cents / 100_000_00).toFixed(1).replace(".", ",") + "M";
-  }
-  if (cents >= 1000_00) {
-    return "R$ " + (cents / 1000_00).toFixed(1).replace(".", ",") + "k";
-  }
-  return (
-    "R$ " +
-    (cents / 100).toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-  );
-}
 
 export interface SparklineProps {
   /** Série em CENTAVOS. Cada elemento = 1 dia (ordenado ASC). */
@@ -86,6 +79,50 @@ export function Sparkline({ data, className }: SparklineProps) {
 
   const lastPoint = points[points.length - 1]!;
 
+  // ---- HOVER state (índice do dia ativo, ou null) ----
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+
+  // Datas completas pra tooltip (1 entrada por ponto).
+  const fullDates = safeData.map((_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() - (safeData.length - 1 - i));
+    return d.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  });
+
+  // Hit-area: largura = dx, mas no mínimo 4px pra séries longas; rect
+  // estende verticalmente em todo o INNER_H pra captar mouse a qualquer altura.
+  const hitW = Math.max(dx, 4);
+
+  // Tooltip layout — calculado em SVG units (mesmo viewBox).
+  // Anchora à direita do ponto por default; se ficar overflowing à direita,
+  // espelha pra esquerda. Largura/altura calculadas com base no texto.
+  const hoverPoint = hoverIdx !== null ? points[hoverIdx]! : null;
+  const hoverValue = hoverIdx !== null ? safeData[hoverIdx]! : 0;
+  const hoverDate = hoverIdx !== null ? fullDates[hoverIdx]! : "";
+  const valueText = hoverIdx !== null ? formatBRLFull(hoverValue) : "";
+
+  const TT_W = 132;
+  const TT_H = 44;
+  const TT_GAP = 10;
+  const tooltipPos =
+    hoverPoint === null
+      ? null
+      : (() => {
+          let tx = hoverPoint.x + TT_GAP;
+          const ty = Math.max(
+            PAD.top,
+            Math.min(hoverPoint.y - TT_H / 2, PAD.top + INNER_H - TT_H),
+          );
+          if (tx + TT_W > VIEW_W - PAD.right) {
+            tx = hoverPoint.x - TT_GAP - TT_W;
+          }
+          return { x: tx, y: ty };
+        })();
+
   return (
     <svg
       viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
@@ -94,6 +131,7 @@ export function Sparkline({ data, className }: SparklineProps) {
       aria-label="Tendência de receita no período"
       className={className}
       style={{ display: "block", maxWidth: "100%" }}
+      onMouseLeave={() => setHoverIdx(null)}
     >
       {/* y gridlines tracejadas + label de valor à esquerda */}
       {yTicks.map((t, i) => (
@@ -137,15 +175,18 @@ export function Sparkline({ data, className }: SparklineProps) {
         strokeLinecap="round"
       />
 
-      {/* Endpoint dot — último valor da série */}
-      <circle
-        cx={lastPoint.x}
-        cy={lastPoint.y}
-        r={4}
-        fill="var(--brand)"
-        stroke="var(--surface)"
-        strokeWidth={2}
-      />
+      {/* Endpoint dot — último valor da série (escondido enquanto hover está
+          ativo pra não competir com o dot do hover). */}
+      {hoverIdx === null ? (
+        <circle
+          cx={lastPoint.x}
+          cy={lastPoint.y}
+          r={4}
+          fill="var(--brand)"
+          stroke="var(--surface)"
+          strokeWidth={2}
+        />
+      ) : null}
 
       {/* x-axis date labels */}
       {xLabels.map((l, i) => (
@@ -160,6 +201,82 @@ export function Sparkline({ data, className }: SparklineProps) {
         >
           {l.label}
         </text>
+      ))}
+
+      {/* ---- HOVER OVERLAY ----
+          Guideline vertical + dot ampliado + tooltip. Renderizado APÓS o
+          gráfico pra ficar visualmente por cima. */}
+      {hoverPoint !== null && tooltipPos !== null ? (
+        <g pointerEvents="none">
+          <line
+            x1={hoverPoint.x}
+            x2={hoverPoint.x}
+            y1={PAD.top}
+            y2={PAD.top + INNER_H}
+            stroke="var(--brand)"
+            strokeOpacity={0.35}
+            strokeWidth={1}
+            strokeDasharray="2 3"
+          />
+          <circle
+            cx={hoverPoint.x}
+            cy={hoverPoint.y}
+            r={5.5}
+            fill="var(--brand)"
+            stroke="var(--surface)"
+            strokeWidth={2.5}
+          />
+          {/* Tooltip pill: rect com sombra discreta + 2 linhas (data + valor) */}
+          <rect
+            x={tooltipPos.x}
+            y={tooltipPos.y}
+            width={TT_W}
+            height={TT_H}
+            rx={8}
+            ry={8}
+            fill="var(--surface)"
+            stroke="var(--line)"
+            strokeWidth={1}
+            style={{
+              filter:
+                "drop-shadow(0 4px 12px color-mix(in oklab, var(--ink-1) 12%, transparent))",
+            }}
+          />
+          <text
+            x={tooltipPos.x + 10}
+            y={tooltipPos.y + 17}
+            fontSize={10.5}
+            fontFamily="var(--font-mono, 'Geist Mono', ui-monospace, monospace)"
+            fill="var(--ink-4)"
+          >
+            {hoverDate}
+          </text>
+          <text
+            x={tooltipPos.x + 10}
+            y={tooltipPos.y + 33}
+            fontSize={12.5}
+            fontWeight={700}
+            fill="var(--ink-1)"
+          >
+            {valueText}
+          </text>
+        </g>
+      ) : null}
+
+      {/* Hit-areas: 1 rect transparente por ponto, captura mousemove.
+          Ficam por ÚLTIMO no DOM pra ficarem em cima de tudo e capturarem
+          o mouse. `pointer-events: all` é default em SVG <rect>. */}
+      {points.map((p, i) => (
+        <rect
+          key={i}
+          x={p.x - hitW / 2}
+          y={PAD.top}
+          width={hitW}
+          height={INNER_H}
+          fill="transparent"
+          onMouseEnter={() => setHoverIdx(i)}
+          onMouseMove={() => setHoverIdx(i)}
+        />
       ))}
     </svg>
   );

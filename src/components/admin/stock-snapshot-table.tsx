@@ -35,6 +35,7 @@ import type {
   StockSnapshotSort,
 } from "@/actions/stock/types";
 import { StockMovementDialog } from "@/components/admin/stock-movement-dialog";
+import { formatBRL } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
 export interface StockSnapshotTableProps {
@@ -164,6 +165,7 @@ export function StockSnapshotTable({
             align="right"
           />
           <th style={{ textAlign: "right", paddingRight: 12 }}>DIF</th>
+          <th style={{ textAlign: "right", paddingRight: 12 }}>VALOR</th>
           <th style={{ paddingLeft: 12 }}>STATUS</th>
           <th style={{ width: 80, textAlign: "center" }}>AÇÃO</th>
         </tr>
@@ -255,6 +257,12 @@ export function StockSnapshotTable({
               >
                 <DiffCell row={r} />
               </td>
+              <td
+                className="mono"
+                style={{ textAlign: "right", paddingRight: 12 }}
+              >
+                <ValorCell row={r} />
+              </td>
               <td>
                 <StatusPill row={r} />
               </td>
@@ -269,6 +277,34 @@ export function StockSnapshotTable({
         })}
       </tbody>
     </table>
+  );
+}
+
+/**
+ * Audit 2026-05-26 — coluna "VALOR" mostrando qty × preço de venda.
+ * Permite lojista priorizar reposição por capital empatado, não unidades.
+ * Tooltip mostra também o custo total (qty × cost). Produto sem tracking
+ * OU sem qty mostra "—".
+ */
+function ValorCell({ row }: { row: StockSnapshotRow }) {
+  if (!row.trackStock) return <span className="text-ink-4">—</span>;
+  const qty = row.stockQuantity ?? 0;
+  if (qty <= 0) return <span className="text-ink-4">—</span>;
+  const saleValue = qty * row.basePriceInCents;
+  const costValue = row.costPriceInCents
+    ? qty * row.costPriceInCents
+    : null;
+  return (
+    <span
+      className="tabular-nums"
+      title={
+        costValue !== null
+          ? `Custo total ${formatBRL(costValue)}`
+          : "Custo não cadastrado"
+      }
+    >
+      {formatBRL(saleValue)}
+    </span>
   );
 }
 
@@ -345,28 +381,21 @@ function StatusPill({ row }: { row: StockSnapshotRow }) {
 }
 
 function ActionCell({ row }: { row: StockSnapshotRow }) {
-  // Produto com variantes não suporta movimentação rápida (precisa escolher
-  // qual variante). Mostra botão disabled com tooltip apontando o caminho.
-  if (row.variantCount > 0) {
-    return (
-      <button
-        type="button"
-        disabled
-        className="b3-btn b3-btn--sm size-7 p-0 opacity-40"
-        title="Produto com variantes — abra o produto pra movimentar a variante específica."
-        aria-label="Movimentar estoque (variantes — abra o produto)"
-      >
-        <PlusIcon size={13} aria-hidden />
-      </button>
-    );
-  }
-  // Produto sem variantes ou sem tracking: dialog rápido (manual_in,
-  // manual_out, adjustment). O dialog em si lida com !trackStock — ele
-  // permite registrar movement mas o trigger SQL não atualiza cache
-  // (SQL 43 — trigger respeita trackStock); útil pra audit log apenas.
-  // Pra produtos sem tracking, mostra ChevronRight em vez (abrir produto
-  // pra ligar tracking antes).
-  if (!row.trackStock) {
+  // Audit 2026-05-26 — produtos COM variantes rastreadas: passa
+  // variantBreakdown pro dialog (que JÁ suporta multi-variante via Select).
+  // Antes botão ficava disabled e lojista navegava 3 níveis pra movimentar.
+  // O dialog renderiza select de variante quando variants.length > 0.
+  const trackedVariants = row.variantBreakdown
+    .filter((v) => v.trackStock)
+    .map((v) => ({
+      id: v.id,
+      name: v.name,
+      stockQuantity: v.stockQuantity ?? 0,
+    }));
+
+  // Produto SEM tracking (e sem variantes que rastreiam): caminho informativo
+  // — chevron mostra "abre produto pra ligar tracking antes".
+  if (!row.trackStock && trackedVariants.length === 0) {
     return (
       <span
         className="text-ink-4 inline-flex items-center justify-center"
@@ -376,18 +405,23 @@ function ActionCell({ row }: { row: StockSnapshotRow }) {
       </span>
     );
   }
+
   return (
     <StockMovementDialog
       productId={row.productId}
       productName={row.productName}
-      variants={[]}
+      variants={trackedVariants}
       currentStockQuantity={row.stockQuantity ?? 0}
       unit={row.unit}
       trigger={
         <button
           type="button"
           className="b3-btn b3-btn--sm size-7 p-0"
-          title="Lançar movimentação rápida (entrada, saída ou ajuste)"
+          title={
+            trackedVariants.length > 0
+              ? "Lançar movimentação na variante específica (entrada, saída ou ajuste)"
+              : "Lançar movimentação rápida (entrada, saída ou ajuste)"
+          }
           aria-label="Movimentar estoque"
         >
           <PlusIcon size={13} aria-hidden />

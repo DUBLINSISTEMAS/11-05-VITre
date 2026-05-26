@@ -154,6 +154,22 @@ export const updatePaymentSchema = z.object({
     .int("Use um número inteiro.")
     .min(0, "Não pode ser negativo.")
     .max(9999, "Máximo 99.99%."),
+  // Sprint 3 (2026-05-26) — juros do cartão de crédito no PDV.
+  // bps por mês: 0 = sem juros, 299 = 2.99% a.m. Range 0..9999 espelha
+  // o CHECK do SQL 17 (mesmo limite do cashDiscountBps por simetria).
+  cardInterestRateBps: z.coerce
+    .number()
+    .int("Use um número inteiro.")
+    .min(0, "Juros não pode ser negativo.")
+    .max(9999, "Máximo 99.99% a.m."),
+  // Sprint 3 (SQL 72) — parcelas sem juros antes de aplicar a taxa.
+  // Default 1 = só 1x à vista. Lojista que oferece "3x sem juros" usa 3.
+  // CHECK 1..24 no SQL 72.
+  cardInterestFreeUpTo: z.coerce
+    .number()
+    .int("Use um número inteiro.")
+    .min(1, "Mínimo 1 parcela sem juros.")
+    .max(24, "Máximo 24 parcelas sem juros."),
   paymentMethodsNote: z
     .string()
     .trim()

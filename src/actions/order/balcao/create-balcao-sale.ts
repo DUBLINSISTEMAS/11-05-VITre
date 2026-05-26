@@ -44,6 +44,7 @@ import {
   receivableTable,
   storeTable,
 } from "@/db/schema";
+import { recordAuditEvent } from "@/lib/audit";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { recordSaleMovements } from "@/lib/order/record-sale-movements";
@@ -102,6 +103,16 @@ class OutOfStockError extends Error {
 }
 
 const MAX_SHORTCODE_RETRIES = 5;
+
+/**
+ * Audit 2026-05-26 — gatilho da auditoria de desconto manual. Acima
+ * desse percentual do subtotal, grava `order.large_discount_applied` em
+ * audit_event pra lojista revisar depois (anti-fraude de vendedora que
+ * dá 50% pra amigo).
+ *
+ * 10% é o padrão; futuro: configurável por loja (Sprint própria PIN).
+ */
+const LARGE_DISCOUNT_PCT_THRESHOLD = 10;
 
 export async function createBalcaoSale(
   input: CreateBalcaoSaleInput,
@@ -1192,6 +1203,36 @@ export async function createBalcaoSale(
                 await incrementCouponUsesTx(innerTx as unknown as Tx, {
                   storeId: store.id,
                   couponId: validatedCoupon.couponId,
+                });
+              }
+
+              // Audit 2026-05-26 — registra desconto manual grande (>10%
+              // do subtotal) pra lojista ver depois "quem deu 50% nessa
+              // venda". Cupom NÃO entra aqui (auditoria de cupom já vive
+              // em uses_count). Mesma transação — rollback derruba audit
+              // junto, consistência total.
+              if (
+                discount > 0 &&
+                !validatedCoupon &&
+                subtotalInCents > 0 &&
+                (discount * 100) / subtotalInCents >
+                  LARGE_DISCOUNT_PCT_THRESHOLD
+              ) {
+                await recordAuditEvent(innerTx as unknown as Tx, {
+                  storeId: store.id,
+                  actorUserId: userId,
+                  action: "order.large_discount_applied",
+                  entityType: "order",
+                  entityId: orderRow.id,
+                  payload: {
+                    discountInCents: discount,
+                    subtotalInCents,
+                    discountPct: Number(
+                      ((discount * 100) / subtotalInCents).toFixed(2),
+                    ),
+                    threshold: LARGE_DISCOUNT_PCT_THRESHOLD,
+                    channel: "balcao",
+                  },
                 });
               }
 

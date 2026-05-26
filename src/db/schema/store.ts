@@ -128,13 +128,22 @@ export const storeTable = pgTable(
     // Quando 1, label não é renderizada (parcela única = preço cheio, ruído).
     cardMaxInstallments: integer("card_max_installments").notNull().default(1),
 
-    // Juros em basis points (1bps = 0.01%). 0 = sem juros.
-    // MVP da Fase 2: UI só permite 0. Coluna existe pra Fase 5 (PDV) não
-    // precisar de migration quando suportar "Nx com juros de Y% no balcão".
+    // Sprint 3 (audit 2026-05-26): ATIVADO no PDV. Juros do cartão em
+    // basis points por mês (1bps = 0.01%; 299 = 2.99% a.m.). 0 = sem juros.
+    // PDV aplica via Sistema PRICE quando installments > cardInterestFreeUpTo.
     // CHECK 0..9999 no SQL 17.
     cardInterestRateBps: integer("card_interest_rate_bps")
       .notNull()
       .default(0),
+
+    // Sprint 3 (SQL 72) — parcelas sem juros antes de aplicar
+    // cardInterestRateBps. Default 1 = só 1x à vista sem juros (juros
+    // começa de 2x se rate>0). Lojista que oferece "3x sem juros" coloca 3.
+    // 12 ou mais = "absorvo a taxa em tudo" (juros nunca aplica).
+    // CHECK 1..24 no SQL 72.
+    cardInterestFreeUpTo: integer("card_interest_free_up_to")
+      .notNull()
+      .default(1),
 
     // Base de cálculo da parcela. Ver doc do enum installmentBasePriceEnum.
     installmentBasePrice: installmentBasePriceEnum("installment_base_price")

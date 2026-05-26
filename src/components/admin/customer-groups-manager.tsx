@@ -23,6 +23,13 @@ type EditState = {
   discountPct: string; // string pra digitar livre "10,5"
   description: string;
   isActive: boolean;
+  /**
+   * Audit 2026-05-26 — tier do grupo. "regular" = preço normal de venda;
+   * "wholesale" = PDV usa product.wholesalePriceInCents quando lojista
+   * vincula cliente desse grupo. Antes era ignorado pelo form (default
+   * DB "regular" pra sempre) — feature wholesale ficava zumbi.
+   */
+  defaultPricingTier: "regular" | "wholesale";
 };
 
 const EMPTY: EditState = {
@@ -31,6 +38,7 @@ const EMPTY: EditState = {
   discountPct: "0",
   description: "",
   isActive: true,
+  defaultPricingTier: "regular",
 };
 
 export function CustomerGroupsManager({
@@ -53,6 +61,7 @@ export function CustomerGroupsManager({
       discountPct: (g.discountBps / 100).toString().replace(".", ","),
       description: g.description ?? "",
       isActive: g.isActive,
+      defaultPricingTier: g.defaultPricingTier,
     });
     setOpen(true);
   }
@@ -72,6 +81,7 @@ export function CustomerGroupsManager({
         description: edit.description.trim() || null,
         position: 0,
         isActive: edit.isActive,
+        defaultPricingTier: edit.defaultPricingTier,
       });
       if (res.ok) {
         toast.success(edit.id ? "Grupo atualizado." : "Grupo criado.");
@@ -229,6 +239,49 @@ export function CustomerGroupsManager({
                 maxLength={280}
               />
             </div>
+            {/* Audit 2026-05-26 — tier de pricing. Quando "Atacado", o PDV
+                puxa product.wholesalePriceInCents ao vincular cliente desse
+                grupo. Sem essa seleção, feature wholesale era zumbi. */}
+            <div>
+              <label className="text-ink-2 mb-1 block text-[12.5px] font-medium">
+                Como o PDV aplica o preço
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEdit({ ...edit, defaultPricingTier: "regular" })
+                  }
+                  className={`rounded-md border px-3 py-2 text-left text-[12.5px] font-medium leading-tight ${
+                    edit.defaultPricingTier === "regular"
+                      ? "border-brand bg-brand-wash text-brand"
+                      : "border-line bg-surface text-ink-1 hover:bg-bg-app"
+                  }`}
+                >
+                  Preço normal
+                  <span className="text-ink-4 mt-0.5 block text-[10.5px] font-normal">
+                    Mesmo preço de venda da loja
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEdit({ ...edit, defaultPricingTier: "wholesale" })
+                  }
+                  className={`rounded-md border px-3 py-2 text-left text-[12.5px] font-medium leading-tight ${
+                    edit.defaultPricingTier === "wholesale"
+                      ? "border-brand bg-brand-wash text-brand"
+                      : "border-line bg-surface text-ink-1 hover:bg-bg-app"
+                  }`}
+                >
+                  Preço de atacado
+                  <span className="text-ink-4 mt-0.5 block text-[10.5px] font-normal">
+                    Usa preço atacado cadastrado no produto
+                  </span>
+                </button>
+              </div>
+            </div>
+
             <label className="flex items-center gap-2 text-[12.5px]">
               <input
                 type="checkbox"

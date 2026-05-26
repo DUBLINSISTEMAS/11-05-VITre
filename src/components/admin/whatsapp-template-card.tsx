@@ -87,7 +87,7 @@ export function WhatsAppTemplateCard({
     subtotalInCents: 34970,
     discountInCents: 3497,
     shortCode: "A7K2",
-    publicUrl: "https://mangospay.app/p/exemplo",
+    publicUrl: "https://vitre.site/p/exemplo",
     customerNotes: "Retirar no fim da tarde.",
     // Preview do placeholder {formaPagamento} — não puxa do banco aqui
     // (template-card é client puro), só ilustra como ficaria quando

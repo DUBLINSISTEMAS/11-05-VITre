@@ -74,7 +74,7 @@ export function StorefrontLivePreview({ storeSlug }: StorefrontLivePreviewProps)
           </button>
         </div>
         <p className="text-ink-4 truncate font-mono text-[11.5px]">
-          mangospay.app/{storeSlug}
+          vitre.site/{storeSlug}
         </p>
         <div className="flex items-center gap-1">
           <button

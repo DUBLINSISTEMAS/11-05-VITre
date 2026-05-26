@@ -72,7 +72,7 @@ export default async function AparenciaPage() {
           <h1 className="b3-page-title">Aparência da loja</h1>
           <p className="b3-page-sub">
             Edite à esquerda, veja na hora abaixo —{" "}
-            <span className="text-ink-2 font-mono">mangospay.app/{store.slug}</span>
+            <span className="text-ink-2 font-mono">vitre.site/{store.slug}</span>
           </p>
         </div>
         <Link

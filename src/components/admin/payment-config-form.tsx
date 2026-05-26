@@ -32,6 +32,9 @@ export interface PaymentConfigInitialData {
   installmentBasePrice: "base" | "effective";
   showInstallmentsOnPDP: boolean;
   cashDiscountBps: number;
+  // Sprint 3 (2026-05-26) — juros do cartão no PDV.
+  cardInterestRateBps: number;
+  cardInterestFreeUpTo: number;
   paymentMethodsNote: string | null;
 }
 
@@ -71,6 +74,8 @@ export function PaymentConfigForm({ initialData }: PaymentConfigFormProps) {
       installmentBasePrice: initialData.installmentBasePrice,
       showInstallmentsOnPDP: initialData.showInstallmentsOnPDP,
       cashDiscountBps: initialData.cashDiscountBps,
+      cardInterestRateBps: initialData.cardInterestRateBps,
+      cardInterestFreeUpTo: initialData.cardInterestFreeUpTo,
       paymentMethodsNote: initialData.paymentMethodsNote ?? "",
     },
   });
@@ -209,6 +214,118 @@ export function PaymentConfigForm({ initialData }: PaymentConfigFormProps) {
             promoção (3× de R$ 100 em vez de 3× de R$ 80). &ldquo;Preço
             atual&rdquo; divide sempre pelo valor que o cliente paga hoje.
           </p>
+        </div>
+      </FormCard>
+
+      {/* Sprint 3 (audit 2026-05-26) — juros do cartão de crédito no PDV.
+          Lojista comunica "3x sem juros, acima cobramos taxa". Ativo no
+          PDV (venda balcão): seleção de parcela calcula via Sistema PRICE
+          e mostra "12× de R$ X (com juros)" + total com juros embaixo. */}
+      <FormCard
+        title="Juros do cartão (PDV)"
+        description="Ativo na venda balcão. Acima de X parcelas, o PDV calcula automaticamente a taxa e mostra ao operador. Não afeta a vitrine — lá a parcela continua sendo só uma referência."
+      >
+        <div className="space-y-1.5">
+          <Label htmlFor="pay-card-free-up-to">
+            Até quantas parcelas SEM juros
+          </Label>
+          <Controller
+            name="cardInterestFreeUpTo"
+            control={control}
+            render={({ field }) => {
+              const v = typeof field.value === "number" ? field.value : 1;
+              return (
+                <Select
+                  value={String(v)}
+                  onValueChange={(val) => field.onChange(Number(val))}
+                  disabled={isPending || !acceptsCardValue}
+                >
+                  <SelectTrigger
+                    id="pay-card-free-up-to"
+                    className="w-full sm:max-w-[160px]"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                      <SelectItem key={n} value={String(n)}>
+                        {n}×
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              );
+            }}
+          />
+          <p className="text-ink-4 text-xs">
+            Ex: &ldquo;3×&rdquo; significa 1×, 2× e 3× sem juros — acima
+            disso, o PDV aplica a taxa abaixo. Para absorver todas as
+            parcelas, escolha o mesmo número do máximo lá em cima.
+          </p>
+          {errors.cardInterestFreeUpTo?.message ? (
+            <p className="text-destructive text-xs">
+              {errors.cardInterestFreeUpTo.message}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="pay-card-interest">Juros ao mês (%)</Label>
+          <Controller
+            name="cardInterestRateBps"
+            control={control}
+            render={({ field }) => {
+              // Mesmo padrão de cashDiscountBps: state em bps (299 = 2.99%),
+              // UI em decimal percentual.
+              const bpsValue =
+                typeof field.value === "number" ? field.value : 0;
+              return (
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="pay-card-interest"
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    min={0}
+                    max={99.99}
+                    value={
+                      bpsValue === 0
+                        ? ""
+                        : String(Math.round(bpsValue) / 100).replace(".", ",")
+                    }
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(",", ".").trim();
+                      if (raw === "") {
+                        field.onChange(0);
+                        return;
+                      }
+                      const pct = Number.parseFloat(raw);
+                      if (!Number.isFinite(pct) || pct < 0) {
+                        field.onChange(0);
+                        return;
+                      }
+                      field.onChange(Math.min(9999, Math.round(pct * 100)));
+                    }}
+                    placeholder="0,00"
+                    className="w-32"
+                    disabled={isPending || !acceptsCardValue}
+                    aria-invalid={!!errors.cardInterestRateBps}
+                  />
+                  <span className="text-ink-4 text-sm">% ao mês</span>
+                </div>
+              );
+            }}
+          />
+          <p className="text-ink-4 text-xs">
+            Taxa típica do varejo BR fica entre 1,99% e 4,99% ao mês.
+            Confira na sua maquininha (Stone, Cielo, PagSeguro) e replique
+            aqui — o PDV calcula via Sistema PRICE, o mesmo que a operadora.
+          </p>
+          {errors.cardInterestRateBps?.message ? (
+            <p className="text-destructive text-xs">
+              {errors.cardInterestRateBps.message}
+            </p>
+          ) : null}
         </div>
       </FormCard>
 

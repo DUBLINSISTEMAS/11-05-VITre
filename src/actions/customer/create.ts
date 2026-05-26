@@ -83,6 +83,8 @@ export async function createCustomer(
           addressState: data.addressState,
           addressZip: data.addressZip,
           notes: data.notes,
+          // Audit 2026-05-26 — grava groupId quando lojista atribui grupo.
+          groupId: data.groupId,
         })
         .returning({
           id: customerTable.id,

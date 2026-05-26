@@ -8,6 +8,8 @@
  * window.print() + URL.createObjectURL pra CSV.
  */
 
+import { formatBRL } from "@/lib/pricing";
+
 import {
   type ReportColumn,
   ReportLayout,
@@ -32,13 +34,6 @@ interface StockReportClientProps {
   storeInfo: ReportStoreInfo;
   /** Sprint 4.8 — operador no rodapé. */
   operatorName?: string | null;
-}
-
-function formatBRL(cents: number): string {
-  return (cents / 100).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
 }
 
 function formatQty(qty: number | null, unit: string): string {

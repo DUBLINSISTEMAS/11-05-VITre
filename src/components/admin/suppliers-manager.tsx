@@ -17,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { maskDocumentInput, normalizeDocument } from "@/lib/document";
 
 interface EditState {
   id: string | null;
@@ -321,14 +322,20 @@ export function SuppliersManager({ initialSuppliers }: SuppliersManagerProps) {
                 error={fieldErrors.name}
                 autoFocus
               />
+              {/* Audit 2026-05-26 — máscara automática CPF/CNPJ (mesmo helper
+                  do customer-form). Detecta tipo pelo nº de dígitos: 11 → CPF
+                  formatado, 14 → CNPJ formatado. Schema valida dígito-verif. */}
               <Field
-                label="CPF/CNPJ (sem máscara)"
+                label="CPF/CNPJ"
                 value={edit.document}
-                onChange={(v) =>
-                  setEdit({ ...edit, document: v.replace(/\D/g, "") })
-                }
-                placeholder="11 ou 14 dígitos"
-                maxLength={14}
+                onChange={(v) => {
+                  const digits = normalizeDocument(v);
+                  const type: "individual" | "company" =
+                    digits.length > 11 ? "company" : "individual";
+                  setEdit({ ...edit, document: maskDocumentInput(digits, type) });
+                }}
+                placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                maxLength={18}
                 mono
                 error={fieldErrors.document}
               />

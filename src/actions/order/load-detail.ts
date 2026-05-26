@@ -65,6 +65,11 @@ export type OrderDetailPayment = {
   amountInCents: number;
   /** Pra cálculo de troco quando method='cash'. NULL pros outros. */
   cashReceivedInCents: number | null;
+  /**
+   * Audit 2026-05-26 — número de parcelas no cartão de crédito (SQL 70).
+   * 1 = à vista; > 1 só com method='credit'. Drawer exibe "Crédito 3×".
+   */
+  installments: number;
   notes: string | null;
 };
 
@@ -184,6 +189,7 @@ export async function loadOrderDetail(
         method: orderPaymentTable.method,
         amountInCents: orderPaymentTable.amountInCents,
         cashReceivedInCents: orderPaymentTable.cashReceivedInCents,
+        installments: orderPaymentTable.installments,
         notes: orderPaymentTable.notes,
       })
       .from(orderPaymentTable)

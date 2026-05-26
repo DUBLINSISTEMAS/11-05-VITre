@@ -719,6 +719,13 @@
    * SHELL — sidebar 248px + topbar + main + page
    * ======================================================== */
   .b3-shell {
+    /* Fonte do chrome admin = Inter (decisão founder 2026-05-26).
+       Geist (humanist sans) pesa como "fonte de site" no admin denso.
+       Inter é a fonte canônica de dashboard (Stripe, Linear, GitHub) —
+       cantos retos, métrica de grid, lê melhor em 11-12px de tabela.
+       Storefront, auth e onboarding continuam Geist via :root default. */
+    font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI",
+      Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
     display: flex;
     align-items: flex-start;
     min-height: 100vh;
@@ -790,13 +797,6 @@
   .b3-side {
     width: 280px;
     background-color: var(--mangos-side-bg);
-    /* Brand watermark — manga decorativa no canto inferior direito.
-       Background-image fica preso ao padding-box, não scrolla com o nav.
-       Opacidade baixíssima (~7%) pra não competir com o texto dos links. */
-    background-image: url("/logos/favicon.svg");
-    background-repeat: no-repeat;
-    background-position: right -50px bottom -40px;
-    background-size: 320px 320px;
     /* Sem border-right nem border-radius: o cinza do sidebar precisa ir
        flush até o topo, base e borda direita, sem contorno visível nem
        cantos arredondados que revelariam o branco do main por trás
@@ -811,25 +811,35 @@
     flex-shrink: 0;
     align-self: flex-start;
   }
-  /* Watermark suave via pseudo-element pra controlar opacidade
-     independente do conteúdo (background-image em si não aceita opacity). */
+  .b3-side::-webkit-scrollbar { width: 0; }
+
+  /* Watermark da manga — decorativo, padrão "ícone de fundo de sistema"
+     (handoff founder 2026-05-26 iter 3). Bleeding sutil pelo canto
+     direito do sidebar pra a folhinha verde (top-right do SVG da manga)
+     "encostar" na divisa com o main area — leitura de acento ambiente
+     do brand, não de logo deliberada. Opacidade 6% pra desaparecer no
+     primeiro plano e só aparecer pra quem repara.
+
+     Posição: `right -45px` faz 45px do mango bleed pra direita (folhinha
+     fica colada / parcialmente cortada na borda direita do sidebar);
+     `bottom 110px` sobe pouco em relação ao Suporte+Footer (~90px), só
+     o suficiente pra não competir com os links clicáveis. Tamanho
+     240×240: levemente maior que a iteração anterior pra compensar a
+     parte cortada no bleed. */
   .b3-side::before {
     content: "";
     position: absolute;
     inset: 0;
     background-image: url("/logos/favicon.svg");
     background-repeat: no-repeat;
-    background-position: right -50px bottom -40px;
-    background-size: 320px 320px;
-    opacity: 0.07;
+    background-position: right -15px bottom 100px;
+    background-size: 240px 240px;
+    opacity: 0.06;
     pointer-events: none;
     z-index: 0;
   }
-  /* Reset do background-image direto do .b3-side — o ::before assume. */
-  .b3-side { background-image: none; }
   /* Conteúdo da sidebar fica acima do watermark. */
   .b3-side > * { position: relative; z-index: 1; }
-  .b3-side::-webkit-scrollbar { width: 0; }
 
   /* Mesmo watermark no drawer mobile (Sheet com data-admin-sidebar). */
   [data-admin-sidebar]::before {
@@ -838,13 +848,17 @@
     inset: 0;
     background-image: url("/logos/favicon.svg");
     background-repeat: no-repeat;
-    background-position: right -50px bottom -40px;
-    background-size: 320px 320px;
-    opacity: 0.07;
+    background-position: right -15px bottom 100px;
+    background-size: 240px 240px;
+    opacity: 0.06;
     pointer-events: none;
     z-index: 0;
   }
   [data-admin-sidebar] > * { position: relative; z-index: 1; }
+
+  /* Modo collapsed (72px): watermark some — não cabe horizontalmente.
+     Reaparece quando o usuário expande. */
+  .b3-side[data-collapsed="true"]::before { display: none; }
 
   /* ========================================================
    * VIEWPORT-LOCK do shell admin (desktop ≥ 1024px)
@@ -877,7 +891,13 @@
       align-items: stretch;
     }
     .b3-side {
-      position: static;
+      /* `relative` (não `static`) — cria contexto de posicionamento pro
+         pseudo-element `::before` do watermark se prender ao sidebar.
+         Com `static`, o `inset: 0` do ::before fugia pro viewport e o
+         mango aparecia centralizado na tela inteira (bug histórico do
+         código original, corrigido 2026-05-26). Não afeta layout —
+         relative respeita o flow normal igual a static. */
+      position: relative;
       top: auto;
       height: auto;
       min-height: 0;
@@ -2566,11 +2586,13 @@
  */
 @media print {
   @page {
-    size: A4;
+    size: A4 portrait;
     margin: 12mm;
   }
 
-  /* Ancestrais do root viram transparentes pra empurrar pra folha. */
+  /* Reset bg/colors universalmente em print pra economizar tinta + bater
+     com expectativa de "folha branca, texto preto". */
+  html,
   body,
   body > *,
   body > * > *,
@@ -2578,8 +2600,29 @@
     background: white !important;
   }
 
-  /* Esconde tudo que NÃO é descendente do report-print-root */
-  body :not(.report-print-root):not(.report-print-root *):not(:has(.report-print-root)) {
+  /* Esconde chrome do admin universalmente — sidebar, topbar, mobile
+     header. Aplicável a QUALQUER página do admin sem opt-in. */
+  [data-admin-chrome] {
+    display: none !important;
+  }
+
+  /* Esconde elementos de UI sem valor no papel (botões flutuantes,
+     ações, feedback widget, command palette). */
+  [data-feedback-widget],
+  [data-command-palette],
+  .b3-pdv-modal,
+  [aria-hidden="true"][role="status"] {
+    display: none !important;
+  }
+
+  /* Sprint 4 (audit 2026-05-26) — fix de bug do print universal: a
+     regra antiga `body :not(.report-print-root)...` derrubava a página
+     INTEIRA em branco quando NÃO havia `.report-print-root` (qualquer
+     rota sem ReportLayout). Agora condicionado a `body:has(.report-print-root)`
+     — só restringe quando há um root explícito.
+
+     Esconde tudo que NÃO é descendente nem ancestral do report-print-root. */
+  body:has(.report-print-root) :not(.report-print-root):not(.report-print-root *):not(:has(.report-print-root)) {
     display: none !important;
   }
 

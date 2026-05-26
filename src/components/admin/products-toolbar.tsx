@@ -43,6 +43,8 @@ export function ProductsToolbar({ categories, rangeLabel }: ProductsToolbarProps
 
   const initialQ = searchParams.get("q") ?? "";
   const categoryId = searchParams.get("categoryId") ?? CATEGORY_ALL;
+  // Audit 2026-05-26 — sort URL-driven.
+  const sort = searchParams.get("sort") ?? "updated-desc";
 
   const [q, setQ] = useState(initialQ);
 
@@ -66,6 +68,17 @@ export function ProductsToolbar({ categories, rangeLabel }: ProductsToolbarProps
     const usp = new URLSearchParams(window.location.search);
     if (value === CATEGORY_ALL) usp.delete("categoryId");
     else usp.set("categoryId", value);
+    usp.delete("page");
+    startTransition(() => {
+      router.replace(`?${usp.toString()}`, { scroll: false });
+    });
+  };
+
+  // Audit 2026-05-26 — handler de sort. Default "updated-desc" omite param.
+  const updateSort = (value: string) => {
+    const usp = new URLSearchParams(window.location.search);
+    if (value === "updated-desc") usp.delete("sort");
+    else usp.set("sort", value);
     usp.delete("page");
     startTransition(() => {
       router.replace(`?${usp.toString()}`, { scroll: false });
@@ -138,11 +151,26 @@ export function ProductsToolbar({ categories, rangeLabel }: ProductsToolbarProps
         </SelectContent>
       </Select>
 
-      {/* Onda C #12 (auditoria 2026-05-19): botões "Ordenar"/"Filtros"
-       * eram toast.info("Em breve") em prod — pior que ausentes (frustra
-       * lojista clicando achando que abre filtro). Removidos até ter
-       * implementação real. Pattern de URL state já existe em /pedidos
-       * (server-rendered + ?status= via Link) — replicar quando voltar. */}
+      {/* Audit 2026-05-26 — botão "Ordenar" REATIVADO com implementação real.
+          URL-driven (?sort=). Padrão de stock-snapshot. Default "updated-desc"
+          omite o param. */}
+      <Select value={sort} onValueChange={updateSort}>
+        <SelectTrigger
+          className="h-9 min-w-40 max-w-52"
+          data-active={sort !== "updated-desc" ? "true" : undefined}
+        >
+          <SelectValue placeholder="Ordenar" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="updated-desc">Mais recentes</SelectItem>
+          <SelectItem value="name-asc">Nome (A–Z)</SelectItem>
+          <SelectItem value="name-desc">Nome (Z–A)</SelectItem>
+          <SelectItem value="price-asc">Preço (menor)</SelectItem>
+          <SelectItem value="price-desc">Preço (maior)</SelectItem>
+          <SelectItem value="stock-asc">Estoque (menor)</SelectItem>
+          <SelectItem value="stock-desc">Estoque (maior)</SelectItem>
+        </SelectContent>
+      </Select>
 
       <div className="flex-1" />
 

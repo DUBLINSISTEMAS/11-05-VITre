@@ -195,7 +195,7 @@ export function SidebarContent({
               {storeName}
             </b>
             <span className="text-ink-4 block truncate font-mono text-[10.5px] leading-tight">
-              mangospay.app/{storeSlug}
+              vitre.site/{storeSlug}
             </span>
           </span>
         </Link>

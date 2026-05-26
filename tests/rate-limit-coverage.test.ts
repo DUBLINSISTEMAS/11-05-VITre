@@ -50,6 +50,7 @@ const READS_AND_HELPERS_ALLOWLIST: ReadonlyArray<string> = [
   "search.ts",
   "search-for-pdv.ts",
   "load-for-pdv.ts", // category/load-for-pdv.ts — read pro picker do PDV
+  "load-pdv-config.ts", // store/load-pdv-config.ts — Sprint 3: config de juros/parcelas pro PDV
   "load-form-data.ts", // product/load-form-data.ts — PP1 Fase B: carrega data pro ProductFormDrawer
   "global.ts", // search/global.ts — busca admin cmd+K
   "filter-options.ts", // Sprint 4.2 — read pra dropdowns de categoria/marca

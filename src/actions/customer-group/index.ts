@@ -27,6 +27,15 @@ const upsertSchema = z.object({
     .transform((v) => (v && v.trim() !== "" ? v.trim() : null)),
   position: z.number().int().min(0).default(0),
   isActive: z.boolean().default(true),
+  /**
+   * Audit 2026-05-26 — tier de pricing default do grupo. Antes o schema
+   * IGNORAVA o campo (existia no DB com default 'regular' mas form nunca
+   * setava). PDV já lê via `groupPricingTier` quando vincula cliente —
+   * se grupo for "wholesale", PDV substitui preço base por
+   * `product.wholesalePriceInCents`. Sem esse campo, feature inteira
+   * de preço atacado era zumbi.
+   */
+  defaultPricingTier: z.enum(["regular", "wholesale"]).default("regular"),
 });
 
 export type UpsertGroupInput = z.input<typeof upsertSchema>;
@@ -90,6 +99,7 @@ export async function upsertCustomerGroup(
             description: data.description,
             position: data.position,
             isActive: data.isActive,
+            defaultPricingTier: data.defaultPricingTier,
             updatedAt: new Date(),
           })
           .where(
@@ -109,6 +119,7 @@ export async function upsertCustomerGroup(
           description: data.description,
           position: data.position,
           isActive: data.isActive,
+          defaultPricingTier: data.defaultPricingTier,
         })
         .returning({ id: customerGroupTable.id });
       return created!.id;

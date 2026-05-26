@@ -27,6 +27,20 @@ function openNewSale() {
   window.dispatchEvent(new Event(NEW_SALE_EVENT));
 }
 
+/**
+ * Prefetch silencioso do chunk do PdvShell ao primeiro hover/focus do CTA.
+ * Cobre o caso "lojista em outra rota (relatórios, cadastros, etc) clica
+ * Nova venda" — sem isso o chunk só baixaria no click, gerando 1-3s de
+ * espera. Idempotente (Webpack/Turbopack cacheiam após primeira chamada).
+ * Marcador `prefetched` evita disparo a cada hover. Audit 2026-05-26.
+ */
+let _pdvPrefetched = false;
+function prefetchPdvOnce() {
+  if (_pdvPrefetched) return;
+  _pdvPrefetched = true;
+  void import("@/components/admin/pdv/pdv-shell");
+}
+
 export interface TopBarProps {
   /** Slug da loja do usuário, usado pra montar o link da loja online. */
   storeSlug: string;
@@ -95,6 +109,8 @@ export function TopBar({ storeSlug }: TopBarProps) {
           type="button"
           className="b3-top-newsale"
           onClick={openNewSale}
+          onMouseEnter={prefetchPdvOnce}
+          onFocus={prefetchPdvOnce}
           aria-label="Nova venda (F2)"
           title="Nova venda (F2)"
         >

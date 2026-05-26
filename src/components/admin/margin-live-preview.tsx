@@ -24,6 +24,8 @@
 
 import { AlertCircleIcon } from "lucide-react";
 
+import { formatBRL } from "@/lib/pricing";
+
 interface MarginLivePreviewProps {
   costPriceInCents: number | null | undefined;
   basePriceInCents: number | null | undefined;
@@ -32,13 +34,6 @@ interface MarginLivePreviewProps {
    * não preencheu nem custo nem venda — não polui visual com placeholder.
    */
   showWhenEmpty?: boolean;
-}
-
-function formatBRL(cents: number): string {
-  return (cents / 100).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
 }
 
 function formatPercent(value: number, digits = 1): string {

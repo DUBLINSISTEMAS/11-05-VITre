@@ -110,6 +110,18 @@ const customerInputBase = z.object({
       const digits = normalizeDocument(v ?? undefined);
       return digits === "" ? null : digits;
     }),
+  /**
+   * Audit 2026-05-26 — atribuição de grupo. Antes o schema do form
+   * ignorava `groupId` mesmo com a coluna existindo no DB e FK ativa.
+   * Toda a feature de tier wholesale (PDV usa via groupPricingTier)
+   * ficava inacessível porque cliente nunca tinha grupo. Agora opcional
+   * via select no form. NULL = sem grupo (default).
+   */
+  groupId: z
+    .string()
+    .uuid("Grupo inválido.")
+    .nullish()
+    .transform((v) => v ?? null),
 });
 
 /**

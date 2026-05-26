@@ -33,6 +33,7 @@ import { updateProductCostBatch } from "@/actions/product/update-cost-batch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { logger } from "@/lib/logger";
+import { formatBRL as formatBRLPricing } from "@/lib/pricing";
 
 interface CostGridRow {
   id: string;
@@ -65,10 +66,7 @@ const AUTOSAVE_DEBOUNCE_MS = 1200;
 
 function formatBRL(cents: number | null): string {
   if (cents === null) return "—";
-  return (cents / 100).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
+  return formatBRLPricing(cents);
 }
 
 function formatPercent(value: number): string {

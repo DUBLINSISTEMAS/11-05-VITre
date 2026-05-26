@@ -17,6 +17,13 @@ import { updateCustomer } from "@/actions/customer/update";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { CustomerType } from "@/db/schema";
 import { maskDocumentInput, normalizeDocument } from "@/lib/document";
@@ -52,11 +59,28 @@ export interface CustomerInitialData {
   addressState: string | null;
   addressZip: string | null;
   notes: string | null;
+  /**
+   * Audit 2026-05-26 — FK pra customer_group (opcional). NULL = sem grupo.
+   * Permite atribuir cliente a "VIP", "Atacado", etc — destrava feature de
+   * tier wholesale que o PDV já consome via groupPricingTier.
+   */
+  groupId: string | null;
+}
+
+/** Opções de grupo carregadas via loadCustomerGroupsForSelect. */
+export interface CustomerGroupOption {
+  id: string;
+  name: string;
+  defaultPricingTier: "regular" | "wholesale";
 }
 
 export type CustomerFormMode = "create" | "edit";
 
 interface CustomerFormProps {
+  /** Lista de grupos pra exibir no Select. Vazia = nenhum grupo cadastrado.
+   *  Carregada uma vez pelo caller (drawer/page) via loadCustomerGroupsForSelect. */
+  groupOptions?: ReadonlyArray<CustomerGroupOption>;
+
   mode: CustomerFormMode;
   initialData: CustomerInitialData;
   onAfterSave: (opts: { customerId?: string }) => void;
@@ -79,6 +103,7 @@ export function CustomerForm({
   onAfterSave,
   embedded = false,
   submitRef,
+  groupOptions = [],
 }: CustomerFormProps) {
   const [isPending, startTransition] = useTransition();
   const submittingRef = useRef(false);
@@ -113,6 +138,7 @@ export function CustomerForm({
       addressState: initialData.addressState ?? "",
       addressZip: initialData.addressZip ?? "",
       notes: initialData.notes ?? "",
+      groupId: initialData.groupId,
     } as FormInput,
   });
 
@@ -501,6 +527,56 @@ export function CustomerForm({
           }}
         />
       </FormCard>
+
+      {/* Audit 2026-05-26 — Grupo do cliente (VIP/Atacado/etc).
+          Destrava feature de tier wholesale: PDV já lê groupPricingTier
+          mas o cliente NUNCA tinha grupo atribuído. Quando o grupo é
+          atacado, PDV substitui preço base por wholesalePriceInCents do
+          produto. Esconde a seção inteira quando lojista não cadastrou
+          nenhum grupo. */}
+      {groupOptions.length > 0 ? (
+        <FormCard
+          title="Grupo"
+          description="Cliente entra num grupo (VIP, Atacado, etc). Grupos com tier atacado fazem o PDV puxar o preço de atacado dos produtos."
+        >
+          <Controller
+            name="groupId"
+            control={control}
+            render={({ field }) => {
+              const v = (field.value as string | null) ?? "__none__";
+              return (
+                <Select
+                  value={v}
+                  onValueChange={(next) =>
+                    field.onChange(next === "__none__" ? null : next)
+                  }
+                  disabled={isPending}
+                >
+                  <SelectTrigger
+                    id="cust-group"
+                    className="w-full sm:max-w-[280px]"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sem grupo</SelectItem>
+                    {groupOptions.map((g) => (
+                      <SelectItem key={g.id} value={g.id}>
+                        {g.name}
+                        {g.defaultPricingTier === "wholesale" ? (
+                          <span className="text-ink-4 ml-1.5 text-[10.5px]">
+                            (atacado)
+                          </span>
+                        ) : null}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              );
+            }}
+          />
+        </FormCard>
+      ) : null}
 
       {/* PP2 — quando embedded, drawer footer chama submit via submitRef. */}
       {embedded ? (

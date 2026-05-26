@@ -91,6 +91,8 @@ export async function updateCustomer(
           addressState: data.addressState,
           addressZip: data.addressZip,
           notes: data.notes,
+          // Audit 2026-05-26 — atualiza groupId no edit (pode mudar de grupo).
+          groupId: data.groupId,
           updatedAt: new Date(),
         })
         .where(

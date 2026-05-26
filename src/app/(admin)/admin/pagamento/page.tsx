@@ -69,6 +69,8 @@ export default async function PagamentoPage() {
           installmentBasePrice: store.installmentBasePrice,
           showInstallmentsOnPDP: store.showInstallmentsOnPDP,
           cashDiscountBps: store.cashDiscountBps,
+          cardInterestRateBps: store.cardInterestRateBps,
+          cardInterestFreeUpTo: store.cardInterestFreeUpTo,
           paymentMethodsNote: store.paymentMethodsNote,
         }}
       />

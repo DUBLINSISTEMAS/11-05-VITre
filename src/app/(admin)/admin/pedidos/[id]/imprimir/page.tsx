@@ -1,27 +1,32 @@
 /**
  * Visualização imprimível do pedido — Onda 7 (2026-05-13).
  *
- * Rota auth-gated. Lojista abre daqui (novo tab) a partir do modal de
- * detalhe e clica em Imprimir. Layout otimizado pra papel:
- *   - sem chrome do admin (oculta sidebar/topbar via root segment override
- *     com CSS print-only no <head>)
+ * Sprint 4 (audit 2026-05-26): suporta dois formatos via `?formato=`:
+ *   - `?formato=termica` → cupom 80mm (SaleReceiptThermal) + @page 80mm auto
+ *   - default (`?formato=a4` ou omitido) → A4 com tabelas + @page 1.5cm
+ *
+ * Toggle UI no `PrintTrigger` (sticky bar). Auto-print no mount; ao
+ * trocar formato, navegação re-monta a página e re-dispara o print().
+ *
+ * Mesma tab (sem `target="_blank"` no caller — audit 2026-05-26 fix).
+ * Layout otimizado pra papel:
+ *   - sem chrome do admin (oculta sidebar/topbar via CSS print-only inline)
  *   - mono em códigos, sans em texto
  *   - quebra de página controlada por seção
  *   - cores neutras (sem brand) — economia de tinta
- *
- * Auto-fire window.print() on mount via PrintTrigger client component.
- * Lojista pode imprimir de novo ou cancelar e voltar.
  */
 import { and, asc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 
 import { PrintStoreHeader } from "@/components/admin/print/print-store-header";
+import { SaleReceiptThermal } from "@/components/admin/print/sale-receipt-thermal";
 import { orderItemTable, orderPaymentTable, orderTable } from "@/db/schema";
 import { requireSession } from "@/lib/auth-server";
 import { formatBRL } from "@/lib/pricing";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
+import { type PrintFormat, PrintFormatToggle } from "./format-toggle";
 import { PrintTrigger } from "./print-trigger";
 
 const PAYMENT_LABELS: Record<string, string> = {
@@ -36,6 +41,11 @@ export const dynamic = "force-dynamic";
 
 interface ImprimirPageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ formato?: string }>;
+}
+
+function parseFormat(raw: string | undefined): PrintFormat {
+  return raw === "termica" ? "termica" : "a4";
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -49,8 +59,11 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default async function ImprimirPedidoPage({
   params,
+  searchParams,
 }: ImprimirPageProps) {
   const { id } = await params;
+  const sp = await searchParams;
+  const format = parseFormat(sp.formato);
 
   const session = await requireSession();
   const store = await getCurrentStore(session.user.id);
@@ -144,6 +157,63 @@ export default async function ImprimirPedidoPage({
     return acc;
   }, 0);
 
+  // Sprint 4 — formato térmica: layout completamente diferente (cupom
+  // 80mm em coluna única monospace). Compartilha o SQL/loader acima e
+  // sai cedo. `@page { size: 80mm auto }` faz o browser propor o tamanho
+  // certo no dialog (impressoras térmicas selecionadas no SO ficam OK).
+  if (format === "termica") {
+    return (
+      <>
+        <style>{`
+          @media print {
+            @page { size: 80mm auto; margin: 0; }
+            html, body { background: white !important; color: black !important; margin: 0; padding: 0; }
+            [data-admin-chrome] { display: none !important; }
+          }
+          @media screen {
+            body { background: #efefef; }
+          }
+        `}</style>
+
+        <PrintTrigger formatKey={format}>
+          <PrintFormatToggle current={format} />
+        </PrintTrigger>
+
+        <div className="mx-auto my-4 max-w-[80mm] bg-white shadow-md print:my-0 print:max-w-none print:shadow-none">
+          <SaleReceiptThermal
+            store={store}
+            order={{
+              shortCode: order.shortCode,
+              status: order.status,
+              customerName: order.customerName,
+              customerPhone: order.customerPhone,
+              customerNotes: order.customerNotes,
+              totalInCents: order.totalInCents,
+              discountInCents: order.discountInCents,
+              surchargeInCents: order.surchargeInCents,
+              quoteValidUntil: order.quoteValidUntil,
+              createdAt: order.createdAt,
+            }}
+            items={items.map((it) => ({
+              id: it.id,
+              productNameSnapshot: it.productNameSnapshot,
+              variantNameSnapshot: it.variantNameSnapshot,
+              priceInCentsSnapshot: it.priceInCentsSnapshot,
+              quantity: it.quantity,
+              discountInCents: it.discountInCents,
+            }))}
+            payments={paymentLines.map((p) => ({
+              id: p.id,
+              method: p.method,
+              amountInCents: p.amountInCents,
+              cashReceivedInCents: p.cashReceivedInCents,
+            }))}
+          />
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       {/*
@@ -153,13 +223,15 @@ export default async function ImprimirPedidoPage({
       */}
       <style>{`
         @media print {
-          @page { margin: 1.5cm; }
+          @page { size: A4 portrait; margin: 1.5cm; }
           html, body { background: white !important; color: black !important; }
           [data-admin-chrome] { display: none !important; }
         }
       `}</style>
 
-      <PrintTrigger />
+      <PrintTrigger formatKey={format}>
+        <PrintFormatToggle current={format} />
+      </PrintTrigger>
 
       <article className="mx-auto max-w-[700px] bg-white px-6 py-8 text-black print:px-0 print:py-0">
         {/* Onda 2.7 — cabeçalho universal (logo + CNPJ + endereço + tel) */}
@@ -409,7 +481,7 @@ export default async function ImprimirPedidoPage({
               Este documento é apenas orçamento. Não tem valor fiscal.
             </p>
           ) : null}
-          Mangos Pay · {store.name} · mangospay.app/{store.slug}
+          Mangos Pay · {store.name} · vitre.site/{store.slug}
         </footer>
       </article>
     </>

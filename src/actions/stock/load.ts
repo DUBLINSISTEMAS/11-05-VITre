@@ -98,6 +98,15 @@ export async function listStockMovements(
       conditions.push(eq(stockMovementTable.movementType, params.movementType));
     }
 
+    // Audit 2026-05-26 — filtro de data inclusivo (range Hoje/Ontem/7d/Mês
+    // OU range custom). gte/lte aplicados quando o caller passar.
+    if (params.fromDate) {
+      conditions.push(gte(stockMovementTable.createdAt, params.fromDate));
+    }
+    if (params.toDate) {
+      conditions.push(lte(stockMovementTable.createdAt, params.toDate));
+    }
+
     // Busca por nome de produto ou variante.
     if (params.q) {
       const safeQ = params.q.replace(/[\\%_]/g, "\\$&");
@@ -201,23 +210,39 @@ export async function loadStockKpis(): Promise<StockKpis> {
   const session = await requireSession();
   const store = await getCurrentStore(session.user.id);
   if (!store) {
-    return { currentTotal: 0, monthIn: 0, monthOut: 0, monthAdjustments: 0 };
+    return {
+      currentCostInCents: 0,
+      currentSaleInCents: 0,
+      currentUnits: 0,
+      monthPurchases: 0,
+      monthOut: 0,
+      monthAdjustments: 0,
+      monthAdjustmentsAbsTotal: 0,
+    };
   }
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
   return withTenant(store.id, session.user.id, async (tx) => {
-    // 1) saldo atual via cache (produto sem variantes + variantes)
-    const productTotalRow = await tx
+    // Audit 2026-05-26 — KPIs em R$ (não mais só unidades). Produtos rascunho
+    // (slug "draft-%") excluídos pra match do KPI com a tabela snapshot.
+    //
+    // Produto SEM variantes: usa product.stock × product.price/cost.
+    // Produto COM variantes: usa variant.stock × product.price/cost (variantes
+    // não têm preço próprio em snapshot KPI — sprint futura pode refinar).
+    const productAggRow = await tx
       .select({
-        value: sql<string>`COALESCE(SUM(${productTable.stockQuantity}), 0)`,
+        units: sql<string>`COALESCE(SUM(${productTable.stockQuantity}), 0)`,
+        sale: sql<string>`COALESCE(SUM(${productTable.stockQuantity} * ${productTable.basePriceInCents}), 0)`,
+        cost: sql<string>`COALESCE(SUM(${productTable.stockQuantity} * COALESCE(${productTable.costPriceInCents}, 0)), 0)`,
       })
       .from(productTable)
       .where(
         and(
           eq(productTable.storeId, store.id),
           eq(productTable.trackStock, true),
+          sql`${productTable.slug} NOT LIKE 'draft-%'`,
           sql`NOT EXISTS (
             SELECT 1
               FROM product_variant pv
@@ -227,35 +252,55 @@ export async function loadStockKpis(): Promise<StockKpis> {
           )`,
         ),
       );
-    const variantTotalRow = await tx
+
+    const variantAggRow = await tx
       .select({
-        value: sql<string>`COALESCE(SUM(${productVariantTable.stockQuantity}), 0)`,
+        units: sql<string>`COALESCE(SUM(${productVariantTable.stockQuantity}), 0)`,
+        sale: sql<string>`COALESCE(SUM(${productVariantTable.stockQuantity} * ${productTable.basePriceInCents}), 0)`,
+        cost: sql<string>`COALESCE(SUM(${productVariantTable.stockQuantity} * COALESCE(${productTable.costPriceInCents}, 0)), 0)`,
       })
       .from(productVariantTable)
+      .innerJoin(
+        productTable,
+        eq(productTable.id, productVariantTable.productId),
+      )
       .where(
         and(
           eq(productVariantTable.storeId, store.id),
           eq(productVariantTable.trackStock, true),
+          sql`${productTable.slug} NOT LIKE 'draft-%'`,
         ),
       );
-    const currentTotal =
-      Number(productTotalRow[0]?.value ?? 0) +
-      Number(variantTotalRow[0]?.value ?? 0);
 
-    // 2) entradas/saídas/ajustes do mês via stock_movement
+    const currentUnits =
+      Number(productAggRow[0]?.units ?? 0) +
+      Number(variantAggRow[0]?.units ?? 0);
+    const currentSaleInCents =
+      Number(productAggRow[0]?.sale ?? 0) +
+      Number(variantAggRow[0]?.sale ?? 0);
+    const currentCostInCents =
+      Number(productAggRow[0]?.cost ?? 0) +
+      Number(variantAggRow[0]?.cost ?? 0);
+
+    // 2) movimentações do mês via stock_movement.
     const monthWhere = and(
       eq(stockMovementTable.storeId, store.id),
       gte(stockMovementTable.createdAt, monthStart),
       lte(stockMovementTable.createdAt, now),
     );
 
-    const inRow = await tx
+    // Audit 2026-05-26 — "Entradas do mês" virou "Compras no mês": filtra
+    // apenas `manual_in` (compras lançadas via dialog). `initial` (saldo
+    // inicial / backfill) e `return` (devolução) inflavam o KPI.
+    const purchasesRow = await tx
       .select({
         value: sql<string>`COALESCE(SUM(${stockMovementTable.quantityDelta}), 0)`,
       })
       .from(stockMovementTable)
-      .where(and(monthWhere, gte(stockMovementTable.quantityDelta, 0)));
-    const monthIn = Number(inRow[0]?.value ?? 0);
+      .where(
+        and(monthWhere, eq(stockMovementTable.movementType, "manual_in")),
+      );
+    const monthPurchases = Number(purchasesRow[0]?.value ?? 0);
 
     const outRow = await tx
       .select({
@@ -266,12 +311,24 @@ export async function loadStockKpis(): Promise<StockKpis> {
     const monthOut = Math.abs(Number(outRow[0]?.value ?? 0));
 
     const adjRow = await tx
-      .select({ value: count() })
+      .select({
+        countValue: count(),
+        absValue: sql<string>`COALESCE(SUM(ABS(${stockMovementTable.quantityDelta})), 0)`,
+      })
       .from(stockMovementTable)
       .where(and(monthWhere, eq(stockMovementTable.movementType, "adjustment")));
-    const monthAdjustments = adjRow[0]?.value ?? 0;
+    const monthAdjustments = Number(adjRow[0]?.countValue ?? 0);
+    const monthAdjustmentsAbsTotal = Number(adjRow[0]?.absValue ?? 0);
 
-    return { currentTotal, monthIn, monthOut, monthAdjustments };
+    return {
+      currentCostInCents,
+      currentSaleInCents,
+      currentUnits,
+      monthPurchases,
+      monthOut,
+      monthAdjustments,
+      monthAdjustmentsAbsTotal,
+    };
   });
 }
 
@@ -463,6 +520,14 @@ export async function loadStockSnapshot(
       );
     } else if (status === "no-tracking") {
       conditions.push(sql`NOT ${controlsStock}`);
+    } else if (status === "alerts") {
+      // Audit 2026-05-26 — combo "zero" ∪ "low" pra tab Alertas. Server-side
+      // OR (em vez de 2 queries paginadas separadas + merge local que mente
+      // o total). Inclui: trackStock=true E (estoque=0 OU estoque <= min).
+      conditions.push(controlsStock);
+      conditions.push(
+        sql`(${effectiveStock} = 0 OR (${productTable.minStockQuantity} IS NOT NULL AND ${effectiveStock} <= ${productTable.minStockQuantity}))`,
+      );
     }
 
     const where = and(...conditions);

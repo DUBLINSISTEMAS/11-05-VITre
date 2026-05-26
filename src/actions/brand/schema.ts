@@ -29,14 +29,15 @@ export const deleteBrandSchema = z.object({
   id: z.string().uuid(),
 });
 
-/** Helper pra gerar slug a partir do nome. Espelha logic do storefront. */
+/**
+ * Audit 2026-05-26 — slug agora delegado pro `generateSlug` canônico em
+ * `lib/slug.ts`. Antes essa função reimplementava NFD + replace manual e
+ * podia divergir do storefront (que usa o pacote `slugify` com locale pt).
+ * Re-export pra preservar callers existentes (action/brand/index importa
+ * pelo nome `slugifyBrand`).
+ */
+import { generateSlug } from "@/lib/slug";
+
 export function slugifyBrand(name: string): string {
-  return name
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
+  return generateSlug(name).slice(0, 60);
 }

@@ -16,8 +16,11 @@ import {
 } from "@/components/admin/orders-toolbar";
 import { OrdersExportCsvButton } from "@/components/admin/orders-export-csv-button";
 import { CashSessionStatus } from "@/components/admin/pdv/cash-session-status";
+import { PdvPrefetcher } from "@/components/admin/pdv/pdv-prefetcher";
+import { PrintPageButton } from "@/components/admin/print/print-page-button";
 import { Pagination } from "@/components/common/pagination";
 import {
+  orderItemTable,
   orderPaymentTable,
   orderTable,
   receivablePaymentTable,
@@ -165,6 +168,7 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
     statusCounts,
     paymentCountsByOrderId,
     creditOutstandingByOrderId,
+    itemQtyByOrderId,
     periodSummary,
   } = await withTenant(
     store.id,
@@ -185,6 +189,11 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
           status: true,
           channel: true,
           paymentMethod: true,
+          // Audit 2026-05-26 — `customerNotes` na lista pra mostrar ícone
+          // "tem obs" sem o lojista precisar abrir drawer. Campo é a
+          // observação livre do pedido (nome herdado, persiste obs do
+          // balcão também). Conteúdo completo continua só no detail.
+          customerNotes: true,
           createdAt: true,
         },
       });
@@ -216,6 +225,9 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
       // − receivable_payment.amount, só pendentes). Permite badge "Fiado
       // R$X" na linha sem o lojista clicar.
       const creditOutstandingByOrderId = new Map<string, number>();
+      // Audit 2026-05-26 — qty total de itens (sum quantity) por pedido,
+      // pra exibir como coluna "Itens" sem N+1.
+      const itemQtyByOrderId = new Map<string, number>();
       if (orderIds.length > 0) {
         const rows = await tx
           .select({
@@ -227,6 +239,19 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
           .groupBy(orderPaymentTable.orderId);
         for (const r of rows) {
           paymentCountsByOrderId.set(r.orderId, Number(r.cnt));
+        }
+
+        // Soma quantity de order_item por order. 1 query batch.
+        const itemRows = await tx
+          .select({
+            orderId: orderItemTable.orderId,
+            qty: sql<number>`coalesce(sum(${orderItemTable.quantity}), 0)::int`,
+          })
+          .from(orderItemTable)
+          .where(inArray(orderItemTable.orderId, orderIds))
+          .groupBy(orderItemTable.orderId);
+        for (const r of itemRows) {
+          itemQtyByOrderId.set(r.orderId, Number(r.qty));
         }
 
         const creditRows = await tx
@@ -322,6 +347,7 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
         },
         paymentCountsByOrderId,
         creditOutstandingByOrderId,
+        itemQtyByOrderId,
         periodSummary,
       };
     },
@@ -330,9 +356,19 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
   // Enriquecer rows com paymentCount + saldo fiado pra renderizar
   // "Misto" e "Fiado R$X" sem precisar abrir cada venda.
   const orderRows: OrderTableRow[] = orders.map((o) => ({
-    ...o,
+    id: o.id,
+    shortCode: o.shortCode,
+    customerName: o.customerName,
+    customerPhone: o.customerPhone,
+    totalInCents: o.totalInCents,
+    status: o.status,
+    channel: o.channel,
+    paymentMethod: o.paymentMethod,
+    notes: o.customerNotes,
+    createdAt: o.createdAt,
     paymentCount: paymentCountsByOrderId.get(o.id) ?? 0,
     creditOutstandingInCents: creditOutstandingByOrderId.get(o.id) ?? 0,
+    itemQuantity: itemQtyByOrderId.get(o.id) ?? 0,
   }));
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -358,6 +394,11 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* Prefetch silencioso do chunk do PdvShell — venda é o caminho
+          principal desta rota; sem prefetch a primeira "Nova venda" do
+          dia espera 1-3s em conexão de cidade do interior (audit 2026-05-26). */}
+      <PdvPrefetcher />
+
       {/* H1 + subtítulo + Exportar CSV. "Nova venda" SAIU daqui — vive
           global no topbar (CTA verde) e F2 em qualquer rota (handoff
           Passo 4). Aqui só o que é específico de /admin/pedidos.
@@ -370,7 +411,10 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
             Pedidos de balcão (PDV) e online (loja + WhatsApp)
           </p>
         </div>
-        <OrdersExportCsvButton orders={orderRows} storeSlug={store.slug} />
+        <div className="flex flex-wrap items-center gap-2">
+          <PrintPageButton label="Imprimir lista" />
+          <OrdersExportCsvButton orders={orderRows} storeSlug={store.slug} />
+        </div>
       </div>
 
       {/* Banner de caixa — fora do modal (audit 2026-05-21). Lojista

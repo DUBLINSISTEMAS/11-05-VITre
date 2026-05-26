@@ -431,7 +431,7 @@ function SeoSection({ storeSlug }: { storeSlug: string }) {
           <p className="text-ink-2 text-[12.5px] font-semibold">URL da loja</p>
           <div className="border-line bg-bg-app mt-1.5 flex items-center overflow-hidden rounded-md border">
             <span className="text-ink-4 border-line border-r px-3 py-2 font-mono text-[12px]">
-              mangospay.app/
+              vitre.site/
             </span>
             <span className="text-ink-1 flex-1 px-3 py-2 font-mono text-[13px]">
               {storeSlug}

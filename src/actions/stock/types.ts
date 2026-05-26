@@ -21,6 +21,13 @@ export interface ListMovementsParams {
   movementType?: StockMovement["movementType"] | null;
   page?: number;
   pageSize?: number;
+  /**
+   * Audit 2026-05-26 — filtros de data no feed pra auditoria forense.
+   * Range inclusivo (gte fromDate ∩ lte toDate). null/undefined = sem
+   * filtro daquele lado. Caller (page.tsx) gera Date a partir do ISO.
+   */
+  fromDate?: Date | null;
+  toDate?: Date | null;
 }
 
 export interface ListMovementsResult {
@@ -29,14 +36,34 @@ export interface ListMovementsResult {
 }
 
 export interface StockKpis {
-  /** Soma de product.stockQuantity (cache) — saldo atual estimado. */
-  currentTotal: number;
-  /** Soma de deltas positivos no mês corrente (manual_in + sale return + initial). */
-  monthIn: number;
+  /**
+   * Audit 2026-05-26 — KPIs de saldo em R$ (não mais em unidades agregadas).
+   * Joalheria tem peças de R$ 80 e de R$ 4.500 — somar unidades é inútil.
+   * Lojista quer ver "quanto vale o estoque hoje" pra contador/banco.
+   */
+  /** Valor TOTAL do estoque a preço de CUSTO (qty × costPriceInCents). */
+  currentCostInCents: number;
+  /** Valor TOTAL do estoque a preço de VENDA (qty × basePriceInCents). */
+  currentSaleInCents: number;
+  /** Soma de unidades em estoque — exibido como linha secundária. */
+  currentUnits: number;
+  /**
+   * Soma de deltas positivos no mês corrente, filtrada SÓ pra compras
+   * reais (movementType IN manual_in, initial). Devoluções e ajustes
+   * positivos NÃO entram aqui — distorciam o KPI. Renomeado pra
+   * "compras no mês".
+   */
+  monthPurchases: number;
   /** Soma de deltas negativos no mês corrente (valor absoluto: manual_out + sale). */
   monthOut: number;
   /** Contagem de movimentos type=adjustment no mês corrente. */
   monthAdjustments: number;
+  /**
+   * Audit 2026-05-26 — soma absoluta dos deltas em ajustes do mês
+   * (Σ |quantityDelta|). Antes só mostrávamos count ("12 ajustes") —
+   * lojista não sabia se eram 12 peças ou 1200. Agora "12 lançamentos · 47 peças".
+   */
+  monthAdjustmentsAbsTotal: number;
 }
 
 export type { StockMovement };
@@ -94,7 +121,13 @@ export type StockSnapshotStatus =
   | "with-stock"
   | "zero"
   | "low"
-  | "no-tracking";
+  | "no-tracking"
+  /**
+   * Audit 2026-05-26 — bucket combinado: "zero" ∪ "low" (todos que precisam
+   * de reposição). Server-side OR pra evitar duas queries + merge local com
+   * paginação quebrada. Usado pela tab "Alertas" do /admin/estoque.
+   */
+  | "alerts";
 
 /**
  * Chave de ordenação clicável nos cabeçalhos da snapshot.

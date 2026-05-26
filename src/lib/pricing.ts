@@ -47,10 +47,35 @@ export function getEffectivePrice(
 }
 
 /**
- * Formata centavos como BRL: 1990 → "R$ 19,90".
+ * Formata centavos como BRL: 1990 → "R$ 19,90", 123456 → "R$ 1.234,56".
+ *
+ * Audit 2026-05-26: upgrade pra `toLocaleString` com `style: "currency"`.
+ * Antes era `(c/100).toFixed(2).replace(".",",")` que NÃO incluía separador
+ * de milhar — gerava "R$ 1234,56" em vez do padrão BR "R$ 1.234,56".
+ * 4 cópias locais já usavam toLocaleString por causa disso — agora todas
+ * convergem aqui.
  */
 export function formatBRL(cents: number): string {
-  return `R$ ${(cents / 100).toFixed(2).replace(".", ",")}`;
+  // toLocaleString usa NBSP (U+00A0) entre "R$" e valor. Normalizamos pra
+  // espaço comum (U+0020) por consistência com print thermal + asserts de
+  // teste + tooltip/aria-label que casam contra "R$ X,XX" digitado.
+  return (cents / 100)
+    .toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+    .replace(/ /g, " ");
+}
+
+/**
+ * Versão curta pra eixos de gráfico: 100 → "R$ 100", 1500 → "R$ 1,5k",
+ * 1500000 → "R$ 1,5M". Sparkline + bars KPI usam essa pra eixo Y.
+ */
+export function formatBRLShort(cents: number): string {
+  if (cents >= 100_000_00) {
+    return "R$ " + (cents / 100_000_00).toFixed(1).replace(".", ",") + "M";
+  }
+  if (cents >= 1000_00) {
+    return "R$ " + (cents / 1000_00).toFixed(1).replace(".", ",") + "k";
+  }
+  return formatBRL(cents);
 }
 
 // ============================================================

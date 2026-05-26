@@ -59,6 +59,20 @@ type StatusFilter = (typeof STATUS_VALUES)[number];
 
 const VIEW_VALUES = ["table", "grid"] as const;
 
+// Audit 2026-05-26 — sort URL-driven na tabela de produtos. Antes era
+// `updatedAt desc` hardcoded — lojista com 250 SKUs não conseguia "menor
+// estoque primeiro" ou "menor margem". Padrão idêntico ao stock-snapshot.
+const SORT_VALUES = [
+  "updated-desc",
+  "name-asc",
+  "name-desc",
+  "price-asc",
+  "price-desc",
+  "stock-asc",
+  "stock-desc",
+] as const;
+type ProductSort = (typeof SORT_VALUES)[number];
+
 const produtosSearchSchema = z.object({
   q: searchTextSchema,
   categoryId: idOrNullSchema,
@@ -67,6 +81,7 @@ const produtosSearchSchema = z.object({
   page: pageNumberSchema,
   // Passo 9 — toggle table↔grid (default omite param).
   view: z.enum(VIEW_VALUES).catch("table"),
+  sort: z.enum(SORT_VALUES).catch("updated-desc"),
 });
 
 interface ProdutosPageProps {
@@ -87,6 +102,7 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
     promo: onlyPromo,
     page,
     view,
+    sort,
   } = produtosSearchSchema.parse(await searchParams);
 
   // ---- WHERE base (storeId + busca + categoria) — SEM promo nem status ----
@@ -186,10 +202,33 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
     variantCountByProduct,
     tabCounts,
   } = await withTenant(store.id, session.user.id, async (tx) => {
+    // Audit 2026-05-26 — sort dinâmico URL-driven. Default `updated-desc`
+    // preserva comportamento anterior; opções extras: name asc/desc,
+    // price asc/desc, stock asc/desc.
+    const orderByClause = (() => {
+      switch (sort as ProductSort) {
+        case "name-asc":
+          return [asc(productTable.name)];
+        case "name-desc":
+          return [desc(productTable.name)];
+        case "price-asc":
+          return [asc(productTable.basePriceInCents)];
+        case "price-desc":
+          return [desc(productTable.basePriceInCents)];
+        case "stock-asc":
+          return [asc(productTable.stockQuantity)];
+        case "stock-desc":
+          return [desc(productTable.stockQuantity)];
+        case "updated-desc":
+        default:
+          return [desc(productTable.updatedAt)];
+      }
+    })();
+
     // SÉRIE dentro do tx — `pg` deprecou queries paralelas no mesmo client.
     const products = await tx.query.productTable.findMany({
       where: whereClause,
-      orderBy: [desc(productTable.updatedAt)],
+      orderBy: orderByClause,
       limit: PAGE_SIZE,
       offset,
       columns: {

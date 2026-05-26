@@ -22,6 +22,7 @@ import {
   ChevronDownIcon,
   CreditCardIcon,
   HandCoinsIcon,
+  LockKeyholeIcon,
   MinusIcon,
   PackageIcon,
   PercentIcon,
@@ -35,6 +36,7 @@ import {
   UserIcon,
   XIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   forwardRef,
@@ -47,6 +49,8 @@ import {
 } from "react";
 import { toast } from "sonner";
 
+import { loadActiveCashSession } from "@/actions/cash-session/load";
+import { loadPdvConfig } from "@/actions/store/load-pdv-config";
 import { createCustomer } from "@/actions/customer/create";
 import {
   type CustomerSearchHit,
@@ -85,6 +89,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatDocument } from "@/lib/document";
+import {
+  calculateInstallments,
+  type InstallmentBreakdown,
+} from "@/lib/installments";
 import { logger } from "@/lib/logger";
 import { formatBRL, getEffectivePrice } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
@@ -286,6 +294,11 @@ export function PdvShell() {
   // antigo — UX consistente com o resto do admin, sem dependência do popup
   // nativo do browser).
   const [quoteConfirmOpen, setQuoteConfirmOpen] = useState(false);
+  // Audit 2026-05-26 — mesma régua pra fiado e pra "limpar carrinho" (ESC).
+  // Ambos usavam window.confirm; agora ambos abrem AlertDialog rico com
+  // contexto (total do fiado, vencimento; quantidade de itens do carrinho).
+  const [fiadoConfirmOpen, setFiadoConfirmOpen] = useState(false);
+  const [clearCartConfirmOpen, setClearCartConfirmOpen] = useState(false);
   // ADR-0020 — desconto e acréscimo duais (R$ ou %). R$ é canônico no DB; %
   // é UX. `lastEdit` evita stomp quando o subtotal muda: se usuário digitou
   // em %, manter % e recomputar R$; se digitou em R$, manter R$ e recomputar %.
@@ -316,12 +329,66 @@ export function PdvShell() {
   const [customerGroupLabel, setCustomerGroupLabel] = useState<string | null>(
     null,
   );
+  // Audit 2026-05-26 — saldo fiado em aberto do cliente vinculado, em centavos.
+  // Vem do `searchCustomers` hit. PDV renderiza badge "Fiado: R$ X" no card
+  // pra operadora ver inadimplência ANTES de aceitar venda fiada/parcial.
+  // 0 ou null = sem fiado.
+  const [customerCreditOutstandingInCents, setCustomerCreditOutstandingInCents] =
+    useState<number>(0);
   // Venda rápida (Frente A.2): nome/tel direto no order, sem cadastro de
   // customer. Só usados quando customerId === null.
   const [walkInName, setWalkInName] = useState<string>("");
   const [walkInPhone, setWalkInPhone] = useState<string>("");
   const [isSubmitting, startSubmit] = useTransition();
   const [lastSale, setLastSale] = useState<LastSale | null>(null);
+
+  // Audit 2026-05-26 — detecta sessão de caixa ATIVA pra renderizar banner
+  // "Caixa fechado" no topo do PDV. Antes desse fix o lojista podia montar
+  // venda inteira (cart + cliente + pagamento) e só descobrir no submit que
+  // a sessão estava fechada (erro server-side). undefined = ainda buscando
+  // (sem banner pra evitar flash); null = caixa fechado (mostra banner);
+  // object = caixa aberto (sem banner). Re-fetch ao montar é suficiente —
+  // se lojista abre caixa em outra aba, recarregar o PDV pega.
+  const [cashSessionStatus, setCashSessionStatus] = useState<
+    "loading" | "open" | "closed"
+  >("loading");
+  useEffect(() => {
+    let cancelled = false;
+    loadActiveCashSession()
+      .then((session) => {
+        if (cancelled) return;
+        setCashSessionStatus(session ? "open" : "closed");
+      })
+      .catch(() => {
+        // Falha de rede: não bloqueia o PDV, só não mostra banner.
+        if (cancelled) return;
+        setCashSessionStatus("open");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Sprint 3 (audit 2026-05-26) — config de juros do cartão. Default
+  // conservador (sem juros, 1× sem juros) se ainda carregando OU falhar
+  // o load — comportamento idêntico ao anterior, zero regressão.
+  const [cardInterestRateBps, setCardInterestRateBps] = useState(0);
+  const [cardInterestFreeUpTo, setCardInterestFreeUpTo] = useState(1);
+  useEffect(() => {
+    let cancelled = false;
+    loadPdvConfig()
+      .then((cfg) => {
+        if (cancelled || !cfg) return;
+        setCardInterestRateBps(cfg.cardInterestRateBps);
+        setCardInterestFreeUpTo(cfg.cardInterestFreeUpTo);
+      })
+      .catch(() => {
+        // Mantém defaults (sem juros) — não bloqueia PDV.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Subtotal LÍQUIDO de descontos por linha. O subtotal bruto (sem
   // item discounts) é exposto separado pra UI mostrar breakdown
@@ -666,6 +733,7 @@ export function PdvShell() {
     setNotes("");
     setCustomerId(null);
     setCustomerLabel("");
+    setCustomerCreditOutstandingInCents(0);
     setWalkInName("");
     setWalkInPhone("");
   }, []);
@@ -685,8 +753,18 @@ export function PdvShell() {
       paymentLines.length > 0 &&
       paymentLines.length <= MAX_PAYMENT_LINES;
 
+  // Audit 2026-05-26 — cliente obrigatório (founder rule). Aceita
+  // qualquer um dos 2: customer cadastrado (customerId !== null) OU
+  // venda rápida com nome digitado (walkInName trim() >= 2 chars).
+  // Não permite "venda fantasma" sem nenhum identificador — bloqueia
+  // ANTES do submit (canSubmit) e refor­ça no handleSubmit pra defesa
+  // em profundidade caso alguém pule a UI.
+  const hasIdentifiedCustomer =
+    !!customerId || walkInName.trim().length >= 2;
+
   const canSubmit =
     cart.length > 0 &&
+    hasIdentifiedCustomer &&
     !isSubmitting &&
     discountInCents <= subtotalInCents &&
     paymentsValidForCheckout &&
@@ -696,6 +774,38 @@ export function PdvShell() {
   const handleSubmit = () => {
     if (cart.length === 0) {
       toast.error("Adicione pelo menos um item.");
+      return;
+    }
+    // Audit 2026-05-26 — cliente obrigatório (defesa em profundidade,
+    // canSubmit já bloqueia o botão). Refor­ça aqui pra atalho F4 e
+    // qualquer outro caller futuro.
+    if (!hasIdentifiedCustomer) {
+      toast.error(
+        "Identifique o cliente antes de finalizar — vincule um cadastrado ou preencha o nome (venda rápida).",
+      );
+      return;
+    }
+    // Audit 2026-05-26 — checa estoque PREEMPTIVAMENTE antes de mandar
+    // pro server. addToCart já bloqueia adição com estoque insuficiente,
+    // MAS entre o add e o submit outro caixa pode ter vendido a peça
+    // (carrinho aberto há minutos, vendedora colega usando o sistema em
+    // outra estação). Antes desse check o servidor retornava OUT_OF_STOCK
+    // sem dizer QUAL item. Agora identifica por nome no toast.
+    const outOfStockItem = cart.find(
+      (it) =>
+        it.trackStock &&
+        it.stockQuantity !== null &&
+        it.quantity > it.stockQuantity,
+    );
+    if (outOfStockItem) {
+      const label = outOfStockItem.variantName
+        ? `${outOfStockItem.productName} (${outOfStockItem.variantName})`
+        : outOfStockItem.productName;
+      toast.error(
+        outOfStockItem.stockQuantity === 0
+          ? `"${label}" está sem estoque. Remova do carrinho ou atualize o estoque.`
+          : `"${label}" só tem ${outOfStockItem.stockQuantity} em estoque — ajuste a quantidade.`,
+      );
       return;
     }
     if (discountInCents > subtotalInCents) {
@@ -792,14 +902,12 @@ export function PdvShell() {
       toast.error("Desconto maior que o subtotal.");
       return;
     }
-    if (
-      !window.confirm(
-        `Lançar venda fiada para o cliente selecionado? Total ${formatBRL(totalInCents)}. Vencimento em 30 dias. ESTOQUE SERÁ DESCONTADO.`,
-      )
-    ) {
-      return;
-    }
+    // Audit 2026-05-26 — abre AlertDialog em vez de window.confirm.
+    // performSubmitFiado é o que de fato manda pro server.
+    setFiadoConfirmOpen(true);
+  };
 
+  const performSubmitFiado = () => {
     const payload: CreateBalcaoSaleInput = {
       mode: "fiado",
       dueDaysFromNow: 30,
@@ -843,6 +951,12 @@ export function PdvShell() {
   const handleSubmitQuote = () => {
     if (cart.length === 0) {
       toast.error("Adicione pelo menos um item.");
+      return;
+    }
+    if (!hasIdentifiedCustomer) {
+      toast.error(
+        "Identifique o cliente para salvar o orçamento — vincule um cadastrado ou preencha o nome.",
+      );
       return;
     }
     setQuoteConfirmOpen(true);
@@ -988,9 +1102,8 @@ export function PdvShell() {
           if (ae instanceof HTMLTextAreaElement) return;
           if (cartLengthRef.current === 0) return;
           e.preventDefault();
-          if (window.confirm("Limpar a venda atual?")) {
-            reset();
-          }
+          // Audit 2026-05-26 — AlertDialog em vez de window.confirm.
+          setClearCartConfirmOpen(true);
           return;
         }
       }
@@ -1001,6 +1114,39 @@ export function PdvShell() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col lg:h-[calc(100vh-2.5rem)]">
+      {/* Banner "Caixa fechado" — audit 2026-05-26. Renderiza quando
+          loadActiveCashSession retorna null. Sem este sinal, lojista podia
+          montar venda inteira e só ver erro no submit. CTA pra /admin/pdv/caixa
+          em nova rota (mantém PDV aberto pra não perder carrinho). */}
+      {cashSessionStatus === "closed" ? (
+        <div
+          role="status"
+          className="mb-2 flex items-center gap-2.5 rounded-[10px] border border-warn/40 bg-warn/10 px-3 py-2 text-[12.5px]"
+        >
+          <LockKeyholeIcon
+            size={15}
+            className="text-warn shrink-0"
+            aria-hidden
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-ink-1 font-semibold">
+              Caixa fechado
+            </p>
+            <p className="text-ink-4 text-[11.5px]">
+              Vendas registradas agora não entram no fluxo de caixa do dia.
+            </p>
+          </div>
+          <Link
+            href="/admin/pdv/caixa"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="b3-btn b3-btn--sm shrink-0"
+          >
+            Abrir caixa
+          </Link>
+        </div>
+      ) : null}
+
       {/* Layout 2-col (rebalance 2026-05-21 audit). Coluna ESQUERDA
           empilha Cliente + Search + Carrinho. Coluna DIREITA é o
           painel de Pagamento — ocupa do TOPO do modal até o final,
@@ -1019,6 +1165,7 @@ export function PdvShell() {
               customerNotes={customerNotes}
               customerGroupLabel={customerGroupLabel}
               customerPricingTier={customerPricingTier}
+              customerCreditOutstandingInCents={customerCreditOutstandingInCents}
               walkInName={walkInName}
               walkInPhone={walkInPhone}
               setWalkInName={setWalkInName}
@@ -1027,6 +1174,9 @@ export function PdvShell() {
                 setCustomerId(c?.id ?? null);
                 setCustomerLabel(c ? `${c.name} · ${c.phone}` : "");
                 setCustomerNotes(c?.notes ?? null);
+                setCustomerCreditOutstandingInCents(
+                  c?.creditOutstandingInCents ?? 0,
+                );
                 // Sprint 5.4 — pricing tier do grupo. Sprint flash 2026-05-24:
                 // se tier='wholesale' E carrinho tem itens recalculáveis
                 // (têm wholesalePriceInCents > 0 diferente do atual), abre
@@ -1112,6 +1262,8 @@ export function PdvShell() {
                 onSurchargePctChange={onSurchargePctChange}
                 notes={notes}
                 setNotes={setNotes}
+                cardInterestRateBps={cardInterestRateBps}
+                cardInterestFreeUpTo={cardInterestFreeUpTo}
               />
             ) : (
               <div className="text-ink-4 flex h-full flex-col items-center justify-center gap-2 p-6 text-center text-xs">
@@ -1330,6 +1482,70 @@ export function PdvShell() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Audit 2026-05-26 — Confirmação de venda fiada (era window.confirm).
+          Mostra cliente + total + vencimento e avisa que estoque desce. */}
+      <AlertDialog open={fiadoConfirmOpen} onOpenChange={setFiadoConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Lançar venda fiada?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {customerLabel ? (
+                <>
+                  Cliente: <strong>{customerLabel}</strong>. Total{" "}
+                  <strong>{formatBRL(totalInCents)}</strong> com vencimento em
+                  30 dias.
+                  <br />
+                </>
+              ) : null}
+              O <strong>estoque dos itens vai ser descontado</strong> agora,
+              mesmo sem pagamento — você está liberando a peça por confiança.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setFiadoConfirmOpen(false);
+                performSubmitFiado();
+              }}
+            >
+              Lançar fiado
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Audit 2026-05-26 — Confirmação de "Limpar venda" via ESC (era
+          window.confirm). Mostra quantos itens vão ser perdidos. */}
+      <AlertDialog
+        open={clearCartConfirmOpen}
+        onOpenChange={setClearCartConfirmOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Limpar a venda atual?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {cart.length === 1
+                ? "1 item vai ser removido do carrinho."
+                : `${cart.length} itens vão ser removidos do carrinho.`}{" "}
+              Cliente, pagamento e desconto também resetam.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setClearCartConfirmOpen(false);
+                reset();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Limpar venda
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Confirmação de "Salvar como orçamento" (era window.confirm) */}
       <AlertDialog open={quoteConfirmOpen} onOpenChange={setQuoteConfirmOpen}>
         <AlertDialogContent>
@@ -1359,6 +1575,131 @@ export function PdvShell() {
       <div className="shrink-0">
         <FKeysLegend />
       </div>
+    </div>
+  );
+}
+
+/**
+ * Selector de parcelas do cartão de crédito — Sprint 3 (audit 2026-05-26).
+ *
+ * Antes era um <select> inline que sempre mostrava "Nx de R$ X" sem juros
+ * (divisão linear simples). Agora aplica Sistema PRICE quando configurado
+ * em /admin/pagamento: cada opção do dropdown mostra "Nx de R$ X" calculado
+ * com a taxa real. Abaixo do select, quando há juros, mostra "Total c/ juros".
+ *
+ * `amt` é o valor da LINHA de pagamento (não do total da venda). Em pagamento
+ * único (1 linha credit ocupando 100%), bate com o total. Em mistos, é só
+ * a fatia do crédito — quem paga juros é só essa fatia.
+ */
+function CreditInstallmentSelector({
+  line,
+  amt,
+  cardInterestRateBps,
+  cardInterestFreeUpTo,
+  onChangeInstallments,
+  onApplyInterest,
+}: {
+  line: PaymentLineState;
+  amt: number;
+  cardInterestRateBps: number;
+  cardInterestFreeUpTo: number;
+  onChangeInstallments: (n: number) => void;
+  /**
+   * Audit 2026-05-26 — callback acionado pelo botão "Aplicar à venda".
+   * Recebe o valor dos juros em centavos; PaymentSection responsabiliza-se
+   * por (a) bumpar amountInput da linha de crédito e (b) adicionar ao
+   * acréscimo da venda. Sem callback (default no-op) o botão não aparece.
+   */
+  onApplyInterest?: (interestInCents: number) => void;
+}) {
+  // Pre-computa breakdown pra cada N de 1 até MAX_PDV_INSTALLMENTS pra
+  // renderizar o select e o resumo abaixo. amt=0 = sem cálculo (dropdown
+  // mostra só "Nx").
+  const breakdowns: InstallmentBreakdown[] = Array.from(
+    { length: MAX_PDV_INSTALLMENTS },
+    (_, i) =>
+      calculateInstallments({
+        totalInCents: amt,
+        installments: i + 1,
+        bpsPerMonth: cardInterestRateBps,
+        freeUpTo: cardInterestFreeUpTo,
+      }),
+  );
+  const current = breakdowns[line.installments - 1];
+
+  return (
+    <div className="mt-1.5 grid grid-cols-[120px_1fr_auto] items-center gap-1.5">
+      <label
+        htmlFor={`installments-${line.id}`}
+        className="text-ink-4 text-[10.5px]"
+      >
+        Parcelas
+      </label>
+      <select
+        id={`installments-${line.id}`}
+        aria-label="Número de parcelas no cartão"
+        className="b3-select h-8 text-[12px]"
+        value={line.installments}
+        onChange={(e) => onChangeInstallments(Number(e.target.value))}
+      >
+        {breakdowns.map((b, idx) => {
+          const n = idx + 1;
+          if (n === 1) {
+            return (
+              <option key={n} value={n}>
+                {n}x (à vista)
+              </option>
+            );
+          }
+          if (amt <= 0) {
+            return (
+              <option key={n} value={n}>
+                {n}x
+              </option>
+            );
+          }
+          return (
+            <option key={n} value={n}>
+              {n}x de {formatBRL(b.perInstallmentInCents)}
+              {b.hasInterest ? " (com juros)" : ""}
+            </option>
+          );
+        })}
+      </select>
+      {line.installments > 1 && current ? (
+        <span className="text-ink-4 text-[10.5px] tabular-nums">
+          {current.hasInterest ? "com juros" : "sem juros"}
+        </span>
+      ) : (
+        <span />
+      )}
+
+      {/* Linha de resumo embaixo do select quando há juros: mostra total
+          com juros + valor dos juros + botão "Aplicar à venda". Hidden
+          quando 1x ou amt vazio. */}
+      {current && current.hasInterest && line.installments > 1 ? (
+        <div className="col-span-3 mt-1 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[10.5px] text-ink-4">
+            Total c/ juros:{" "}
+            <span className="text-ink-1 font-semibold tabular-nums">
+              {formatBRL(current.totalWithInterestInCents)}
+            </span>
+            <span className="ml-1 tabular-nums">
+              (juros {formatBRL(current.interestInCents)})
+            </span>
+          </p>
+          {onApplyInterest ? (
+            <button
+              type="button"
+              onClick={() => onApplyInterest(current.interestInCents)}
+              className="text-mangos-green-800 text-[10.5px] font-semibold underline hover:opacity-70"
+              title="Adiciona o valor dos juros como acréscimo da venda e ajusta o valor da linha de cartão"
+            >
+              Aplicar à venda
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1892,6 +2233,8 @@ function PaymentSection({
   onSurchargePctChange,
   notes,
   setNotes,
+  cardInterestRateBps,
+  cardInterestFreeUpTo,
 }: {
   paymentLines: PaymentLineState[];
   setPaymentLines: React.Dispatch<React.SetStateAction<PaymentLineState[]>>;
@@ -1913,6 +2256,9 @@ function PaymentSection({
   onSurchargePctChange: (v: string) => void;
   notes: string;
   setNotes: (v: string) => void;
+  /** Sprint 3 (2026-05-26) — config de juros do cartão da loja. */
+  cardInterestRateBps: number;
+  cardInterestFreeUpTo: number;
 }) {
   // Audit 2026-05-21 — densificado: h-9→h-8, text-[13px]→text-[12.5px]
   // pra caber sem scroll quando Mais opções expandido.
@@ -2030,43 +2376,34 @@ function PaymentSection({
               </div>
 
               {line.method === "credit" ? (
-                <div className="mt-1.5 grid grid-cols-[120px_1fr_auto] items-center gap-1.5">
-                  <label
-                    htmlFor={`installments-${line.id}`}
-                    className="text-ink-4 text-[10.5px]"
-                  >
-                    Parcelas
-                  </label>
-                  <select
-                    id={`installments-${line.id}`}
-                    aria-label="Número de parcelas no cartão"
-                    className="b3-select h-8 text-[12px]"
-                    value={line.installments}
-                    onChange={(e) =>
-                      updateLine(line.id, {
-                        installments: Number(e.target.value),
-                      })
-                    }
-                  >
-                    {Array.from(
-                      { length: MAX_PDV_INSTALLMENTS },
-                      (_, i) => i + 1,
-                    ).map((n) => (
-                      <option key={n} value={n}>
-                        {n}x{n > 1 && amt > 0
-                          ? ` de ${formatBRL(Math.floor(amt / n))}`
-                          : ""}
-                      </option>
-                    ))}
-                  </select>
-                  {line.installments > 1 ? (
-                    <span className="text-ink-4 text-[10.5px] tabular-nums">
-                      sem juros
-                    </span>
-                  ) : (
-                    <span />
-                  )}
-                </div>
+                <CreditInstallmentSelector
+                  line={line}
+                  amt={amt}
+                  cardInterestRateBps={cardInterestRateBps}
+                  cardInterestFreeUpTo={cardInterestFreeUpTo}
+                  onChangeInstallments={(n) =>
+                    updateLine(line.id, { installments: n })
+                  }
+                  onApplyInterest={(interestInCents) => {
+                    // Audit 2026-05-26 — adiciona juros ao acréscimo da
+                    // venda + bumpa o valor da linha de crédito. Caminho
+                    // explícito (botão click); sem auto pra evitar loop
+                    // do useEffect de rebalance.
+                    const currentSurcharge =
+                      inputToCents(surchargeAmountInput) ?? 0;
+                    const nextSurcharge = currentSurcharge + interestInCents;
+                    onSurchargeAmountChange(centsToInput(nextSurcharge));
+                    // Bump no amountInput da linha pra absorver o juros —
+                    // assim a linha cobra o total real do cliente.
+                    const newAmt = amt + interestInCents;
+                    updateLine(line.id, {
+                      amountInput: centsToInput(newAmt),
+                    });
+                    toast.success(
+                      "Juros do cartão aplicado à venda (acréscimo).",
+                    );
+                  }}
+                />
               ) : null}
 
               {line.method === "cash" ? (
@@ -2424,6 +2761,7 @@ function CustomerComboboxLight({
   customerNotes,
   customerGroupLabel,
   customerPricingTier,
+  customerCreditOutstandingInCents,
   walkInName,
   walkInPhone,
   setWalkInName,
@@ -2435,6 +2773,7 @@ function CustomerComboboxLight({
   customerNotes: string | null;
   customerGroupLabel: string | null;
   customerPricingTier: "regular" | "wholesale" | null;
+  customerCreditOutstandingInCents: number;
   walkInName: string;
   walkInPhone: string;
   setWalkInName: (v: string) => void;
@@ -2511,6 +2850,35 @@ function CustomerComboboxLight({
               Trocar
             </button>
           </div>
+
+          {/* Audit 2026-05-26 — badge "Fiado em aberto" quando cliente tem
+              receivable não quitada. Visível ANTES da venda nova pra operadora
+              ver inadimplência sem precisar abrir /admin/financeiro/receber.
+              Tom danger (vermelho) porque é sinal de risco: estamos prestes a
+              dar MAIS crédito a quem já deve. */}
+          {customerCreditOutstandingInCents > 0 ? (
+            <div className="mt-2 flex items-center gap-2 rounded-md border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-[11.5px]">
+              <TriangleAlertIcon
+                size={13}
+                className="text-danger shrink-0"
+                aria-hidden
+              />
+              <span className="text-ink-2">
+                Fiado em aberto:{" "}
+                <span className="text-danger font-semibold">
+                  {formatBRL(customerCreditOutstandingInCents)}
+                </span>
+              </span>
+              <Link
+                href={`/admin/financeiro/receber?cliente=${customerId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-ink-4 hover:text-ink-1 ml-auto text-[10.5px] underline"
+              >
+                Ver extrato
+              </Link>
+            </div>
+          ) : null}
 
           {/* Sprint 3.2 — anotação do cliente visível antes de liberar
               fiado. <details> nativo: badge clicável que expande o texto.
@@ -2874,6 +3242,8 @@ function FullCustomerCreateDialog({
         // tier atacado linka via /admin/clientes depois.
         groupPricingTier: null,
         groupName: null,
+        // Cliente recém-criado nunca tem fiado em aberto.
+        creditOutstandingInCents: 0,
       });
     });
   };
