@@ -1,0 +1,57 @@
+# Backup semanal do Postgres prod (S1.6 do Plano de Endurecimento).
+#
+# Executa todo domingo 06:00 UTC (03:00 BRT). Resultado vira artifact com
+# retenção 30 dias.
+#
+# Pré-requisito: secret PROD_DIRECT_URL no GitHub (Settings → Secrets and
+# Variables → Actions). Recomendado criar role read-only `vitre_backup`
+# em prod e usar credenciais dela (Sprint 2 task).
+#
+# Teste manual: ir em Actions → Backup weekly → Run workflow.
+name: Backup weekly
+
+on:
+  schedule:
+    # Todo domingo 06:00 UTC = 03:00 BRT
+    - cron: "0 6 * * 0"
+  workflow_dispatch: # permite trigger manual
+
+jobs:
+  backup:
+    name: pg_dump
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install postgresql-client-16
+        run: |
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-16
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run backup
+        id: backup
+        env:
+          DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
+        run: |
+          if [ -z "$DIRECT_URL" ]; then
+            echo "::error::Secret PROD_DIRECT_URL não configurado. Veja docs/dr.md."
+            exit 1
+          fi
+          node scripts/backup-snapshot.mjs
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mangos-pay-backup-${{ steps.backup.outputs.backup_date }}
+          path: ${{ steps.backup.outputs.backup_file }}
+          retention-days: 30
