@@ -169,6 +169,15 @@ export const createBalcaoSaleSchema = z
     /** FK customer opcional. NULL = walk-in. */
     customerId: z.string().uuid().nullable(),
     /**
+     * S3.1 (2026-05-26) — vendedor que atendeu. Quando null, action usa
+     * o user logado como fallback. Loja com 2+ vendedoras exibe seletor
+     * no PDV; loja solo deixa null (vira user logado automático).
+     */
+    sellerId: z
+      .string()
+      .nullish()
+      .transform((v) => v ?? null),
+    /**
      * Venda rápida (ADR-0030 / Frente A): quando NÃO há customerId, lojista
      * pode digitar um nome (+ tel opcional) que vira snapshot do order SEM
      * criar customer no DB. Ignorado se customerId presente.

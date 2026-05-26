@@ -53,6 +53,7 @@ const READS_AND_HELPERS_ALLOWLIST: ReadonlyArray<string> = [
   "load-pdv-config.ts", // store/load-pdv-config.ts — Sprint 3: config de juros/parcelas pro PDV
   "load-form-data.ts", // product/load-form-data.ts — PP1 Fase B: carrega data pro ProductFormDrawer
   "load-aging.ts", // stock/load-aging.ts — S3.6: aging report read-only
+  "load-sellers.ts", // reports/load-sellers.ts — S3.1: vendas por vendedora read-only
   "global.ts", // search/global.ts — busca admin cmd+K
   "filter-options.ts", // Sprint 4.2 — read pra dropdowns de categoria/marca
   // Tipos exportados (não são actions)

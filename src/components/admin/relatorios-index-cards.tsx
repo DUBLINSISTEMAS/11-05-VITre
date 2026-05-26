@@ -95,11 +95,20 @@ const REPORTS: ReportCard[] = [
     soon: true,
   },
   {
+    k: "vendedoras",
+    label: "Vendas por vendedora",
+    href: "/admin/relatorios/vendedoras",
+    icon: UsersIcon,
+    description:
+      "Total vendido + ticket médio + comissão devida no período. Por sellerId.",
+  },
+  {
     k: "dre",
     label: "DRE simplificado",
     href: "/admin/relatorios/dre",
     icon: ClockIcon,
-    description: "Receita − CMV = lucro bruto. Sem despesas operacionais.",
+    description:
+      "Receita líquida − CMV − despesas operacionais = lucro operacional.",
   },
 ];
 
