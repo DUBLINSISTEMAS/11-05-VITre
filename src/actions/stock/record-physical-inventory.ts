@@ -32,6 +32,7 @@ import {
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { safeUserMessage } from "@/lib/safe-error";
 import {
   checkRateLimit,
   RateLimitError,
@@ -253,7 +254,12 @@ export async function recordPhysicalInventory(
     return out;
   } catch (e) {
     logger.error("stock.physical_inventory_failed", { err: e });
-    const msg = e instanceof Error ? e.message : "Falha desconhecida.";
-    return { ok: false, error: msg };
+    return {
+      ok: false,
+      error: safeUserMessage(
+        e,
+        "Falha ao registrar contagem física. Tente novamente.",
+      ),
+    };
   }
 }

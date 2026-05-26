@@ -38,6 +38,7 @@ import {
 import { extractClientContext, recordAuditEvent } from "@/lib/audit";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { safeUserMessage } from "@/lib/safe-error";
 import {
   checkRateLimit,
   RateLimitError,
@@ -283,7 +284,9 @@ export async function reverseReceivablePayment(
     );
   } catch (e) {
     logger.error("receivable.reverse_payment_failed", { err: e });
-    const msg = e instanceof Error ? e.message : "Falha desconhecida.";
-    return { ok: false, error: msg };
+    return {
+      ok: false,
+      error: safeUserMessage(e, "Falha ao estornar pagamento. Tente novamente."),
+    };
   }
 }

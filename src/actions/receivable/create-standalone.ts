@@ -26,6 +26,7 @@ import { z } from "zod";
 import { customerTable, receivableTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { safeUserMessage } from "@/lib/safe-error";
 import {
   checkRateLimit,
   RateLimitError,
@@ -150,7 +151,9 @@ export async function createStandaloneReceivable(
     );
   } catch (e) {
     logger.error("receivable.standalone_failed", { err: e });
-    const msg = e instanceof Error ? e.message : "Falha desconhecida.";
-    return { ok: false, error: msg };
+    return {
+      ok: false,
+      error: safeUserMessage(e, "Falha ao gravar fiado. Tente novamente."),
+    };
   }
 }

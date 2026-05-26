@@ -154,6 +154,20 @@ async function run() {
       await client2.query(sql);
       console.log(`  ✓ ${file}`);
     } catch (err) {
+      // Em CI o Drizzle export JÁ criou tabelas/colunas/types do schema.
+      // SQLs do supabase/sql/* que adicionam coluna via ALTER TABLE ADD COLUMN
+      // (sem IF NOT EXISTS) conflitam. Em PROD os SQLs são aplicados em ordem
+      // antes do Drizzle existir, então o erro NÃO ocorre lá — é específico
+      // do setup CI. Toleramos esses códigos:
+      //   42P07 = duplicate_table        42701 = duplicate_column
+      //   42710 = duplicate_object       42P06 = duplicate_schema
+      //   42P16 = invalid_table_definition (constraint já existe)
+      //   42704 = undefined_object (DROP IF EXISTS quando objeto não existe)
+      const TOLERATED = new Set(["42P07", "42701", "42710", "42P06", "42P16"]);
+      if (TOLERATED.has(err.code)) {
+        console.log(`  ⚠ ${file} (${err.code}: ${err.message.split("\n")[0]})`);
+        continue;
+      }
       console.error(`  ✗ ${file}`);
       console.error(`    error: ${err.message}`);
       console.error(`    code: ${err.code} severity: ${err.severity}`);

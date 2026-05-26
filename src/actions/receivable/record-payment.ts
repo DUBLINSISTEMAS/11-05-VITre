@@ -33,6 +33,7 @@ import {
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { safeUserMessage } from "@/lib/safe-error";
 import {
   checkRateLimit,
   RateLimitError,
@@ -262,7 +263,9 @@ export async function recordReceivablePayment(
     );
   } catch (e) {
     logger.error("receivable.record_payment_failed", { err: e });
-    const msg = e instanceof Error ? e.message : "Falha desconhecida.";
-    return { ok: false, error: msg };
+    return {
+      ok: false,
+      error: safeUserMessage(e, "Falha ao registrar pagamento. Tente novamente."),
+    };
   }
 }
