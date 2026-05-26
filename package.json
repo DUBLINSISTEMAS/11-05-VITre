@@ -7,6 +7,7 @@
   "//": "TODO: migrar next lint para ESLint CLI antes do Next 16. Ver docs/issues/next16-eslint-cli.md",
   "scripts": {
     "dev": "next dev --turbopack",
+    "prebuild": "node scripts/stamp-sw.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
