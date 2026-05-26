@@ -21,6 +21,7 @@
 import { and, asc, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 
+import type { ProductFormInitialData } from "@/components/admin/product-form";
 import {
   brandTable,
   categoryTable,
@@ -32,8 +33,6 @@ import {
 import { auth } from "@/lib/auth";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
-
-import type { ProductFormInitialData } from "@/components/admin/product-form";
 
 export interface ProductFormDrawerData {
   initialData: ProductFormInitialData;

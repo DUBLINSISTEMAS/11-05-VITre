@@ -12,6 +12,7 @@
  * em nova aba (rota legacy virou redirect pra ?customer=new).
  */
 import { PlusIcon } from "lucide-react";
+import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 
@@ -49,7 +50,7 @@ export function CustomerCreateButton({
   className,
 }: CustomerCreateButtonProps) {
   return (
-    <a
+    <Link
       href="/admin/clientes/novo"
       onClick={handleClick}
       className={cn("b3-btn b3-btn--cta", className)}
@@ -61,6 +62,6 @@ export function CustomerCreateButton({
           <span className="sm:hidden">Novo</span>
         </>
       )}
-    </a>
+    </Link>
   );
 }

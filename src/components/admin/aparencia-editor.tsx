@@ -330,7 +330,7 @@ function FeaturedSection({ featuredCount }: { featuredCount: number }) {
           >
             Produtos
           </Link>{" "}
-          → aba "Loja online" → toggle "Produto em destaque". Multi-select
+          → aba &quot;Loja online&quot; → toggle &quot;Produto em destaque&quot;. Multi-select
           aqui na Aparência entra com PP6 (Atributos) ou em onda dedicada.
         </p>
       </div>
@@ -402,7 +402,7 @@ function AboutSection() {
           .
         </p>
         <p className="text-ink-4 mt-1 text-[12px]">
-          Texto livre da página "Sobre" entra com PP-x quando schema tiver
+          Texto livre da página &quot;Sobre&quot; entra com PP-x quando schema tiver
           `store.about_html` ou tabela `store_page`.
         </p>
       </div>

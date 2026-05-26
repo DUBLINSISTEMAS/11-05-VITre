@@ -50,7 +50,6 @@ import {
 import { toast } from "sonner";
 
 import { loadActiveCashSession } from "@/actions/cash-session/load";
-import { loadPdvConfig } from "@/actions/store/load-pdv-config";
 import { createCustomer } from "@/actions/customer/create";
 import {
   type CustomerSearchHit,
@@ -66,6 +65,7 @@ import {
   type PdvProductVariantHit,
   searchProductsForPdv,
 } from "@/actions/product/search-for-pdv";
+import { loadPdvConfig } from "@/actions/store/load-pdv-config";
 import {
   type PickerSelection,
   ProductPickerDialog,

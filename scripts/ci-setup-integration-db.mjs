@@ -46,6 +46,7 @@ const SQL_DIR = path.resolve(process.cwd(), "supabase/sql");
 const SKIP_FILES = new Set([
   "02_storage_buckets.sql", // depende de schema `storage` do Supabase
   "99_cleanup_orphan_drafts.sql", // cleanup pontual, não estrutural
+  // 15 OK porque criamos roles anon+authenticated antes (REVOKE funciona)
 ]);
 
 async function run() {
@@ -113,6 +114,7 @@ async function run() {
   const root2 = new pg.Client({ connectionString: POSTGRES_URL });
   await root2.connect();
 
+  console.log(`→ aplicando ${files.length} SQLs de supabase/sql/* ...`);
   for (const file of files) {
     let sql = await readFile(path.join(SQL_DIR, file), "utf8");
     if (file.startsWith("09_")) {
@@ -120,9 +122,15 @@ async function run() {
     }
     try {
       await root2.query(sql);
-      console.log(`✓ ${file}`);
+      console.log(`  ✓ ${file}`);
     } catch (err) {
-      console.error(`✗ ${file} — ${err.message}`);
+      console.error(`  ✗ ${file}`);
+      console.error(`    error: ${err.message}`);
+      if (err.position) {
+        const idx = parseInt(err.position, 10);
+        const snippet = sql.slice(Math.max(0, idx - 80), idx + 80);
+        console.error(`    near (pos ${idx}): ...${snippet}...`);
+      }
       throw err;
     }
   }

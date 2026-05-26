@@ -1,18 +1,17 @@
-import { and, asc, count, desc, eq, gte, ilike, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, inArray, isNull, or, type SQL,sql } from "drizzle-orm";
 import { PlusIcon, SearchXIcon, UsersIcon } from "lucide-react";
 import { Suspense } from "react";
 import { z } from "zod";
 
 import { BulkWhatsappStubButton } from "@/components/admin/bulk-whatsapp-stub-button";
 import { CustomerCreateButton } from "@/components/admin/customer-create-button";
-import { PrintPageButton } from "@/components/admin/print/print-page-button";
-
 import {
-  CustomersKpiStrip,
   type CustomersKpis,
+  CustomersKpiStrip,
 } from "@/components/admin/customers-kpi-strip";
 import { CustomersTable } from "@/components/admin/customers-table";
 import { CustomersToolbar } from "@/components/admin/customers-toolbar";
+import { PrintPageButton } from "@/components/admin/print/print-page-button";
 import { Pagination } from "@/components/common/pagination";
 import {
   customerTable,

@@ -12,7 +12,7 @@
 // recarregar. Live diff seria 2x mais trabalho (draft store state + bind
 // via channel API) e não é régua mínima pra "ver minha loja".
 
-import { ExternalLinkIcon, RefreshCwIcon, SmartphoneIcon, MonitorIcon } from "lucide-react";
+import { ExternalLinkIcon, MonitorIcon,RefreshCwIcon, SmartphoneIcon } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";

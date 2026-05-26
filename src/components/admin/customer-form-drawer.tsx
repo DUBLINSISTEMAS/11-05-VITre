@@ -24,8 +24,8 @@ import { toast } from "sonner";
 
 import { deleteCustomer } from "@/actions/customer/delete";
 import { loadCustomerDetail } from "@/actions/customer/load";
-import { loadCustomerGroups } from "@/actions/customer-group";
 import type { CustomerDetail } from "@/actions/customer/types";
+import { loadCustomerGroups } from "@/actions/customer-group";
 import { CustomerFiadoCard } from "@/components/admin/customer-fiado-card";
 import {
   CustomerForm,

@@ -14,6 +14,7 @@
  * legacy como fallback).
  */
 import { PlusIcon } from "lucide-react";
+import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 
@@ -55,7 +56,7 @@ export function ProductCreateButton({
   size = "default",
 }: ProductCreateButtonProps) {
   return (
-    <a
+    <Link
       href="/admin/produtos/novo"
       onClick={handleClick}
       className={cn(
@@ -71,6 +72,6 @@ export function ProductCreateButton({
           <span className="sm:hidden">Adicionar</span>
         </>
       )}
-    </a>
+    </Link>
   );
 }
