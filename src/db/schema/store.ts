@@ -200,6 +200,19 @@ export const storeTable = pgTable(
     maxImageMb: integer("max_image_mb").notNull().default(2),
 
     // =================================================================
+    // Multa + juros fiado (S3.2 do Plano de Endurecimento, 2026-05-26)
+    // =================================================================
+    // Defaults globais da loja em bps (0.01%). Lojista ajusta em
+    // /admin/pagamento. Receivable individual pode override via update.
+    // CHECK 0..9999 no SQL 78.
+    receivableDefaultLateFeeBps: integer("receivable_default_late_fee_bps")
+      .notNull()
+      .default(200), // 2%
+    receivableDefaultInterestBps: integer("receivable_default_interest_bps")
+      .notNull()
+      .default(100), // 1%/mês
+
+    // =================================================================
     // Horários de funcionamento (ADR-0023)
     // jsonb 7 dias × até 2 turnos. NULL = não configurado.
     // Validação estrutural via CHECK no SQL 30; semântica via Zod.

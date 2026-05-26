@@ -177,9 +177,27 @@ export function ReceivablesList({ rows: initial }: ReceivablesListProps) {
                     ) : null}
                   </td>
                   <td className="text-right">
-                    <div className="mono font-medium tabular-nums">
-                      {formatBRL(r.remainingInCents)}
-                    </div>
+                    {/* S3.2 — quando vencido, mostra principal + multa + juros */}
+                    {r.isOverdue && r.totalDueInCents > r.remainingInCents ? (
+                      <>
+                        <div className="mono font-medium tabular-nums">
+                          {formatBRL(r.totalDueInCents)}
+                        </div>
+                        <div className="text-ink-4 mt-0.5 text-[10px] leading-tight">
+                          {formatBRL(r.remainingInCents)} +{" "}
+                          {formatBRL(r.lateFeeInCents)} multa +{" "}
+                          {formatBRL(r.interestInCents)} juros
+                          <br />
+                          <span className="text-destructive">
+                            {r.daysLate}d de atraso
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="mono font-medium tabular-nums">
+                        {formatBRL(r.remainingInCents)}
+                      </div>
+                    )}
                     {isPartial ? (
                       <>
                         <div className="text-ink-4 mt-0.5 text-[11px]">

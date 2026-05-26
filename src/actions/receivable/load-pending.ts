@@ -15,6 +15,7 @@ import {
   receivableTable,
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { calculateReceivableFees } from "@/lib/receivable-fees";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
@@ -33,6 +34,14 @@ export interface PendingReceivableRow {
   isOverdue: boolean;
   notes: string | null;
   createdAt: Date;
+  /** S3.2 — multa atual (zero se não vencido). */
+  lateFeeInCents: number;
+  /** S3.2 — juros acumulados (zero se não vencido). */
+  interestInCents: number;
+  /** S3.2 — total a cobrar = remaining + multa + juros. */
+  totalDueInCents: number;
+  /** S3.2 — dias de atraso (0 se em dia). */
+  daysLate: number;
 }
 
 export interface PendingReceivablesResult {
@@ -88,6 +97,9 @@ export async function loadPendingReceivables(): Promise<PendingReceivablesResult
         dueDate: receivableTable.dueDate,
         notes: receivableTable.notes,
         createdAt: receivableTable.createdAt,
+        // S3.2 — bps override por receivable (NULL = herda da loja).
+        lateFeeBps: receivableTable.lateFeeBps,
+        interestPerMonthBps: receivableTable.interestPerMonthBps,
       })
       .from(receivableTable)
       .innerJoin(
@@ -131,9 +143,19 @@ export async function loadPendingReceivables(): Promise<PendingReceivablesResult
 
     const t = totals[0];
     const now = new Date();
+    // S3.2 — defaults da loja pra multa+juros (override por receivable opcional)
+    const storeLateFeeBps = store.receivableDefaultLateFeeBps;
+    const storeInterestBps = store.receivableDefaultInterestBps;
     return {
       rows: rows.map((r) => {
         const remainingInCents = Math.max(0, r.amountInCents - r.paidInCents);
+        const fees = calculateReceivableFees({
+          principalInCents: remainingInCents,
+          dueDate: r.dueDate,
+          lateFeeBps: r.lateFeeBps ?? storeLateFeeBps,
+          interestPerMonthBps: r.interestPerMonthBps ?? storeInterestBps,
+          now,
+        });
         return {
           id: r.id,
           customerId: r.customerId,
@@ -147,6 +169,10 @@ export async function loadPendingReceivables(): Promise<PendingReceivablesResult
           isOverdue: r.dueDate !== null && r.dueDate < now,
           notes: r.notes,
           createdAt: r.createdAt,
+          lateFeeInCents: fees.feeInCents,
+          interestInCents: fees.interestInCents,
+          totalDueInCents: fees.totalInCents,
+          daysLate: fees.daysLate,
         };
       }),
       totals: {

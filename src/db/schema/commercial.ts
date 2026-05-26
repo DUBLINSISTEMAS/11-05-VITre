@@ -383,6 +383,13 @@ export const receivableTable = pgTable(
     /** Forma de pagamento usada pra quitar. NULL enquanto pendente. */
     paidMethod: orderPaymentMethodEnum("paid_method"),
 
+    /**
+     * S3.2 (2026-05-26) — overrides por receivable. NULL = herda de
+     * store.receivable_default_*. Range 0..9999 bps (SQL 78).
+     */
+    lateFeeBps: integer("late_fee_bps"),
+    interestPerMonthBps: integer("interest_per_month_bps"),
+
     notes: text("notes"),
 
     createdAt: timestamp("created_at").notNull().defaultNow(),
