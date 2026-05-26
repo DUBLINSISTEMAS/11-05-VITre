@@ -26,7 +26,7 @@
  */
 
 // Formato: mangospay-YYYYMMDD — BUMP THIS ON DEPLOY se mudou estratégia de cache.
-const CACHE_VERSION = "mangospay-20260519";
+const CACHE_VERSION = "mangospay-20260526";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 
 self.addEventListener("install", () => {
