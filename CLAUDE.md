@@ -155,7 +155,20 @@ CSS bug histórico corrigido em 2026-05-26: `body:has(.report-print-root)` agora
 
 ---
 
-## Sprint atual: Cadastros Sprint 1 ✅ FECHADA (2026-05-26)
+## Sprint atual: Estabilização Semana 1 (2026-05-26 — em curso)
+
+**Objetivo**: limpar terreno antes de atacar Fase 2 (gate de produção). Sequência D1-D5:
+
+- **D1 ✅** — Auditoria `main` vs `feat/redesign-admin-storefront`: 41 commits ahead, fast-forward possível, zero conflito, 2 SQLs novas (71+72) já em prod, tsc zero erro, 536/576 testes verdes.
+- **D2 ✅** — Merge `feat` → `main` (`7249aac`), push, Vercel rebuild production. vitre.site agora reflete o redesign pixel-perfect + 4 sprints sênior (Vendas, Estoque 1+2, Cadastros 1).
+- **D3 ✅** — Sync deste CLAUDE.md com realidade pós-catch-up.
+- **D4-D5** — Auditoria sênior **Relatórios** (último módulo grande não auditado). Provável escopo: gráficos hover, export CSV server-side, filtros data presets, DRE simplificado real.
+
+**Estado técnico verificado em 2026-05-26 pós-merge**: 73 SQLs em prod (até #72 + 99_cleanup), 536/576 testes verdes (+ 40 skipped integration), `tsc --noEmit` zero erro, branch única `main` com tudo.
+
+**Próximo bloco após D5**: Semana 2 = Fase 2 Bloco 3-4-5 (gate de produção). Sem isso, sistema é demo, não produto.
+
+## Sprint anterior: Cadastros Sprint 1 ✅ FECHADA (2026-05-26)
 
 **Objetivo**: destravar feature de wholesale (que estava 100% pronta no backend mas zumbi por 2 pontos de UI faltando) + cleanup óbvio + ordenação na tabela de produtos.
 
@@ -270,11 +283,11 @@ Lojista BR de joalheria/perfumaria/roupa em cidade do interior consegue:
 
 ## Próximas Sprints (ordem real)
 
-**Próximo módulo a auditar (recomendado)**: **Estoque** (`/admin/estoque`, `/estoque/contagem`, `/estoque/relatorio`). Mesmo método de auditoria sênior que fizemos em Vendas. Provável escopo equivalente: 8-12 frições + 2-3 cleanup.
+**Em curso (Semana 1 D4-D5)**: Auditoria sênior **Relatórios** (`/admin/relatorios/*`). Último módulo grande não auditado. Mesmo método de Vendas/Estoque/Cadastros.
 
-**Outros módulos não auditados**: Clientes, Cadastros (Produtos, Categorias, Marcas, Fornecedores, Grupos), Relatórios (qualidade do conteúdo), Loja online (storefront público / vitrine — em pixel-perfect paralelo), Configurações.
+**Módulos ainda não auditados** (Semana 3, "boutique"): Clientes (drawer detalhado, agregações), Configurações.
 
-**Fase 2 Multi-tenant Pleno** (pausada pelo refator de Vendas, gate de produção):
+**Fase 2 Multi-tenant Pleno** — Semana 2, GATE DE PRODUÇÃO:
 - Bloco 1 ✅ Isolamento real (role `vitre_app`, FORCE RLS em 32+ tabelas)
 - Bloco 2 ✅ Validação automatizada (`tests/integration/rls-cross-tenant.test.ts`)
 - **Bloco 3** ❌ Signup self-service — tela `/cadastro` cria user + loja em transação atômica, wizard pós-signup. Sem isso, lojista real entra só via seed.
@@ -374,6 +387,8 @@ Marcos:
 - Sprint flash pós-conselho-5-agentes 2026-05-24 (parcelamento cartão, status venda balcão, AlertDialog do orçamento, trackStock default true, SQLs 69-70)
 - Domínio operacional mudou de `mangospay.app` pra `vitre.site` em 2026-05-25
 - Redesign pixel-perfect PP1-PP15 ✅ admin completo (2026-05-25)
-- **Sprint Vendas SaaS-grade 2026-05-26** — 7 turnos, 25+ fixes, sistema de impressão universal, cartão com juros, notificações in-app, cleanup de 12 arquivos órfãos. Esta é a Sprint atual neste arquivo.
+- Sprint Vendas SaaS-grade 2026-05-26 — 7 turnos, 25+ fixes (impressão universal, cartão com juros, notificações in-app, cleanup 12 arquivos órfãos).
+- Sprint Estoque 1+2 e Cadastros Sprint 1 ✅ FECHADAS 2026-05-26.
+- **Catch-up `feat/redesign-admin-storefront` → `main` em 2026-05-26** — 41 commits, fast-forward, vitre.site production passa a refletir TODO o trabalho sênior das últimas semanas (redesign + 4 sprints + demo seed jewelry). SQLs 71-72 aditivas já aplicadas em prod antes do merge. Próximo bloco operacional: Semana 2 Fase 2 (Blocos 3-4-5).
 
 **Norte vivo sobrescreve qualquer ADR conflitante.** Se ADR antigo disser X e este arquivo disser Y, vale este arquivo. ADR é registro de decisão no momento; norte vivo é régua de execução atual.
