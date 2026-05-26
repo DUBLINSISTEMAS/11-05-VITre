@@ -161,6 +161,34 @@ export interface DreSimpleSummary {
   /** % itens com custo cadastrado — qualifica a precisão do CMV. */
   cogsCoveragePercent: number;
   totalOrderCount: number;
+  /**
+   * S2.3 (2026-05-26) — despesas operacionais do período (somatório
+   * de expense.amount_in_cents com paid_at no range). Inclui aluguel,
+   * salário, comissão, taxa de cartão real, etc.
+   */
+  operatingExpensesInCents: number;
+  /**
+   * S2.3 — breakdown por categoria de despesa. UI renderiza linha-a-linha
+   * "(-) Aluguel R$ X · Salário R$ Y · ...".
+   */
+  operatingExpensesByCategory: Array<{
+    category:
+      | "rent"
+      | "payroll"
+      | "utilities"
+      | "supplies"
+      | "marketing"
+      | "tax"
+      | "card_fees"
+      | "other";
+    amountInCents: number;
+  }>;
+  /**
+   * S2.3 — lucro OPERACIONAL = lucro bruto - despesas operacionais.
+   * Destaque do DRE substitui "lucro bruto". Se = grossProfit (sem
+   * despesa cadastrada), UI mostra warning "cadastre despesas".
+   */
+  operationalProfitInCents: number;
 }
 
 export type SalesReport = {

@@ -12,6 +12,7 @@ import { InfoIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { CATEGORY_LABEL_BR } from "@/actions/expense/schema";
 import type { DreSimpleSummary } from "@/actions/reports/types";
 import {
   type ReportColumn,
@@ -105,9 +106,22 @@ export function DreReportClient({
       isSimplification: summary.cogsCoveragePercent < 100,
     },
     {
-      kind: "total",
+      kind: "subtotal",
       label: "(=) Lucro bruto",
       value: summary.grossProfitInCents,
+    },
+    // S2.3 (2026-05-26) — despesas operacionais. Linha-a-linha por
+    // categoria com label PT-BR. Quando zero (lojista não cadastrou
+    // nenhuma despesa), a UI mostra warning genérico via banner externo.
+    ...summary.operatingExpensesByCategory.map((e) => ({
+      kind: "minus" as const,
+      label: `(−) ${CATEGORY_LABEL_BR[e.category]}`,
+      value: e.amountInCents,
+    })),
+    {
+      kind: "total" as const,
+      label: "(=) Lucro operacional",
+      value: summary.operationalProfitInCents,
     },
   ];
 

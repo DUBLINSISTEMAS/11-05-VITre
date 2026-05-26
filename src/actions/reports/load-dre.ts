@@ -25,11 +25,12 @@
  * cogsCoveragePercent reporta a precisão do CMV (% itens com custo
  * cadastrado). Se baixo, a lucro bruto é otimista — UI explica.
  */
-import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNotNull, lte, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 
 import { COUNTABLE_STATUSES } from "@/actions/order/constants";
 import {
+  expenseTable,
   orderItemTable,
   orderReturnItemTable,
   orderTable,
@@ -111,6 +112,37 @@ export async function loadDreSimple(
       .innerJoin(orderTable, eq(orderTable.id, orderItemTable.orderId))
       .where(orderCond);
 
+    // 4) S2.3 — despesas operacionais paid_at no período.
+    //    Vincula a paid_at (não due_date) pq DRE é regime de CAIXA:
+    //    despesa só pesa quando saiu o dinheiro. due_date é usado
+    //    pra dashboard de "a pagar".
+    const rangeFromDate = range.start.toISOString().slice(0, 10);
+    const rangeToDate = range.end.toISOString().slice(0, 10);
+    const expenseRows = await tx
+      .select({
+        category: expenseTable.category,
+        amountInCents: sql<number>`coalesce(sum(${expenseTable.amountInCents}), 0)::int`,
+      })
+      .from(expenseTable)
+      .where(
+        and(
+          eq(expenseTable.storeId, store.id),
+          isNotNull(expenseTable.paidAt),
+          gte(expenseTable.paidAt, rangeFromDate),
+          lte(expenseTable.paidAt, rangeToDate),
+        ),
+      )
+      .groupBy(expenseTable.category);
+
+    const operatingExpensesByCategory = expenseRows.map((r) => ({
+      category: r.category,
+      amountInCents: r.amountInCents,
+    }));
+    const operatingExpensesInCents = operatingExpensesByCategory.reduce(
+      (sum, r) => sum + r.amountInCents,
+      0,
+    );
+
     const grossRevenue = itemAgg?.grossRevenue ?? 0;
     const discounts = orderAgg?.discounts ?? 0;
     const surcharges = orderAgg?.surcharges ?? 0;
@@ -144,6 +176,9 @@ export async function loadDreSimple(
         grossProfitInCents: grossProfit,
         cogsCoveragePercent: coverage,
         totalOrderCount: orderAgg?.count ?? 0,
+        operatingExpensesInCents,
+        operatingExpensesByCategory,
+        operationalProfitInCents: grossProfit - operatingExpensesInCents,
       },
     };
   });
