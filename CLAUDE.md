@@ -155,18 +155,56 @@ CSS bug histórico corrigido em 2026-05-26: `body:has(.report-print-root)` agora
 
 ---
 
-## Sprint atual: Estabilização Semana 1 (2026-05-26 — em curso)
+## Sprint atual: Plano de Endurecimento Sprint 0-2 ✅ (2026-05-26)
 
-**Objetivo**: limpar terreno antes de atacar Fase 2 (gate de produção). Sequência D1-D5:
+**Objetivo (PLANO-ENDURECIMENTO.md)**: transformar Mangos Pay de "MVP solo bem feito" em "SaaS pronto pra 10-15 lojas operando todo dia, sem mentir nos números, sem cair no pico, sem deixar dinheiro do lojista na mesa".
 
-- **D1 ✅** — Auditoria `main` vs `feat/redesign-admin-storefront`: 41 commits ahead, fast-forward possível, zero conflito, 2 SQLs novas (71+72) já em prod, tsc zero erro, 536/576 testes verdes.
-- **D2 ✅** — Merge `feat` → `main` (`7249aac`), push, Vercel rebuild production. vitre.site agora reflete o redesign pixel-perfect + 4 sprints sênior (Vendas, Estoque 1+2, Cadastros 1).
-- **D3 ✅** — Sync deste CLAUDE.md com realidade pós-catch-up.
-- **D4-D5** — Auditoria sênior **Relatórios** (último módulo grande não auditado). Provável escopo: gráficos hover, export CSV server-side, filtros data presets, DRE simplificado real.
+Auditoria sênior cruzada (3 agentes paralelos + conselho 5 agentes) revelou 10 bloqueadores reais + 13 dores diárias. Plano de 4 sprints com Definition of Done escrito por item.
 
-**Estado técnico verificado em 2026-05-26 pós-merge**: 73 SQLs em prod (até #72 + 99_cleanup), 536/576 testes verdes (+ 40 skipped integration), `tsc --noEmit` zero erro, branch única `main` com tudo.
+### Sprints fechadas neste dia
 
-**Próximo bloco após D5**: Semana 2 = Fase 2 Bloco 3-4-5 (gate de produção). Sem isso, sistema é demo, não produto.
+**Sprint 0 — Fundamento** (1/3 done + 1 quase + 1 externa):
+- S0.1 ✅ Pool DB max 5/1 (`5c20683`)
+- S0.2 🟡 CI integration RLS (workflow + script ok, último fix `9ae00cb` Node 22)
+- S0.3 ⏸️ Sentry sourcemap (depende founder setar `SENTRY_AUTH_TOKEN` no Vercel)
+
+**Sprint 1 — Endurecimento Produção** (5/6 done, 1 deferido):
+- S1.1 ⏸️ Email verification (defer — Resend domínio externo)
+- S1.2 ✅ Rate limit Better Auth catch-all (`61bf2af`)
+- S1.3 ✅ Quota por loja + SQL 73 (`3be1955`)
+- S1.4 ✅ Sanitize 5 actions financeiras + `@/lib/safe-error` (`b1adbbe`)
+- S1.5 ✅ attachPrimaryImage DISTINCT ON (`e33e2b3`)
+- S1.6 ✅ DR doc + backup script + weekly cron (`d9bd78b`)
+
+**Sprint 2 — Honestidade do Dashboard** (7/7 ✅ FECHADA):
+- S2.1 ✅ Schema expense + RLS + 4 actions CRUD + integration test (`5fca31a`, SQL 75)
+- S2.2 ✅ Tela /admin/financeiro/pagar com KPIs/filtros/dialog (`fe656c8`)
+- S2.3 ✅ DRE com despesas operacionais reais (`b1b5361`)
+- S2.4 ✅ Taxa real cartão deduzida + SQL 76 (`2661c65`)
+- S2.5 ✅ Margem subtrai desconto manual (`2b4d048`)
+- S2.6 ✅ Variante cost_price_in_cents + WAC variante-aware + cost snapshot no order_item (`7178f7b`, SQL 77)
+- S2.7 ✅ weight_grams no produto + SQL 74 (`2b4d048`)
+
+### Descoberta crítica durante S2.6
+
+`order_item.unit_cost_snapshot_in_cents` NÃO estava sendo gravado em nenhuma venda (PDV nem WhatsApp). Bug invalidava toda margem do sistema (relatórios filtram `WHERE not null`, retornavam vazio). Fix incluído no commit `7178f7b`: snapshot agora vem de `coalesce(variant.cost, product.cost)` em ambos os sites.
+
+### Estado técnico verificado
+
+73 SQLs aplicadas + 77 = **78 SQLs em prod** (até #77 + 99_cleanup), 580 testes (539 pass / 0 fail / 41 skipped integration), `tsc --noEmit` zero erro, lint zero erro (2 warnings non-blocking), branch única `main`.
+
+### Próximo bloco
+
+**Sprint 3 — Lojista BR Real** (~5-6 dias): sold_by_user_id ativo + comissão calculada, multa+juros fiado, pausa-venda PDV, lote/validade pra perfumaria, aging report, sangria 6-tipo. Detalhamento em `docs/PLANO-ENDURECIMENTO.md` §6.
+
+**Sprint 4 — Refinamentos** (~5-6 dias): refactor pdv-shell.tsx 3409→<1500 linhas, KPI estoque variant price, window.prompt → AlertDialog estorno, CSV server-side vendas+DRE, slug consolidado, submitContact via withTenant, sw.js auto-stamp, cleanup dead code.
+
+### Pendências externas (4 itens curtos, não-código)
+
+1. Setar `SENTRY_AUTH_TOKEN` + `SENTRY_ORG` + `SENTRY_PROJECT` no Vercel — fecha S0.3 (10 min, doc em `docs/sentry-setup.md`)
+2. Setar `PROD_DIRECT_URL` como GitHub secret — destrava workflow `backup-weekly.yml` (3 min)
+3. Rotacionar senha Supabase — exposta em conversa de 2026-05-26 (5 min)
+4. Resend domínio próprio + flip `requireEmailVerification: true` — destrava S1.1 quando lojista entrar (~30 min)
 
 ## Sprint anterior: Cadastros Sprint 1 ✅ FECHADA (2026-05-26)
 

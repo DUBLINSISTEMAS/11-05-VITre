@@ -5,6 +5,28 @@
 >
 > **Não é roadmap aspiracional. É plano fechado de 4 sprints com Definition of Done escrito por item.**
 
+## Status atual (2026-05-26 fim do dia)
+
+| Sprint | Itens | Status | Pendências externas |
+|--------|-------|--------|---------------------|
+| **0** Fundamento | S0.1 ✅ Pool DB · S0.2 🟡 CI quase verde · S0.3 ⏸️ Sentry | 1/3 done | Founder seta SENTRY_AUTH_TOKEN no Vercel |
+| **1** Endurecimento Produção | S1.1 ⏸️ defer Resend · S1.2 ✅ rate limit Better Auth · S1.3 ✅ quota · S1.4 ✅ sanitize · S1.5 ✅ DISTINCT ON · S1.6 ✅ DR doc | 5/6 done | S1.1 aguarda Resend domínio próprio |
+| **2** Honestidade do Dashboard | S2.1-S2.7 todos ✅ | **7/7 done** | — |
+| **3** Lojista BR Real | não iniciado | ⏸️ | — |
+| **4** Refinamentos | não iniciado | ⏸️ | — |
+
+**Commits chave**: `5c20683` (S0.1), `b1adbbe` (S1.4), `e33e2b3` (S1.5), `61bf2af` (S1.2), `d9bd78b` (S1.6), `3be1955` (S1.3), `2b4d048` (S2.5+S2.7), `5fca31a` (S2.1), `b1b5361` (S2.3), `2661c65` (S2.4), `fe656c8` (S2.2), `7178f7b` (S2.6), `9ae00cb` (CI Node 22).
+
+**SQLs aplicadas em prod neste plano**: 73 (quotas), 74 (weight_grams), 75 (expense), 76 (card fees), 77 (variant cost).
+
+**Pendências externas** (não-código, dependem do founder):
+1. **SENTRY_AUTH_TOKEN + SENTRY_ORG + SENTRY_PROJECT** no Vercel (10 min) — fecha S0.3.
+2. **PROD_DIRECT_URL** como GitHub secret (3 min) — destrava backup weekly.
+3. **Rotacionar senha Supabase** (5 min) — exposta na conversa de 2026-05-26.
+4. **Resend domínio próprio** (~30 min, defer) — destrava S1.1 email verification.
+
+
+
 ---
 
 ## 1. Contexto e Não-Negociáveis
@@ -130,9 +152,11 @@ Origem: 3 agentes paralelos (Arquitetura/Escala, Lógica Varejista, Bugs/Dívida
 
 ## 3. Sprint 0 — Fundamento (1 dia)
 
+**Status**: 1/3 ✅ + 1/3 🟡 (CI integration próximo do verde) + 1/3 ⏸️ (Sentry depende de env vars no Vercel).
+
 **Objetivo**: instalar 3 gates de infraestrutura que TODAS as sprints seguintes dependem. Sem isso, próximas sprints constroem em areia.
 
-### S0.1 — Pool DB ajustado (0.1d)
+### S0.1 — Pool DB ajustado (0.1d) ✅ commit `5c20683`
 
 **Mudança**: `src/db/index.ts` ajusta `max` dos dois pools.
 
