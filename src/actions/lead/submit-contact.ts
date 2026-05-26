@@ -22,7 +22,7 @@ import {
   rateLimits,
 } from "@/lib/rate-limit";
 import { getStoreBySlug } from "@/lib/storefront/store-loader";
-import { withServiceRole } from "@/lib/tenant";
+import { withTenant } from "@/lib/tenant";
 import { isValidWhatsAppBR, parseWhatsAppBR } from "@/lib/whatsapp-format";
 
 const inputSchema = z.object({
@@ -106,21 +106,22 @@ export async function submitContactMessage(
   }
 
   try {
-    await withServiceRole(
-      "submitContactMessage — formulário público anônimo",
-      async (tx) => {
-        await tx.insert(leadTable).values({
-          storeId: store.id,
-          productId: null,
-          customerName: data.customerName,
-          customerPhone: phoneE164,
-          productSnapshot: null,
-          source: "contact_form" as const,
-          status: "new",
-          notes: data.message,
-        });
-      },
-    );
+    // S4.6 (2026-05-26) — migrado de withServiceRole pra withTenant(null).
+    // Agora exercita policy `lead_anon_insert` (SQL 58) que permite INSERT
+    // quando app.current_user_id = 'anonymous'. Defesa em profundidade real
+    // — antes BYPASSRLS nunca testava a policy.
+    await withTenant(store.id, null, async (tx) => {
+      await tx.insert(leadTable).values({
+        storeId: store.id,
+        productId: null,
+        customerName: data.customerName,
+        customerPhone: phoneE164,
+        productSnapshot: null,
+        source: "contact_form" as const,
+        status: "new",
+        notes: data.message,
+      });
+    });
     logger.info("contact_form.submitted", {
       storeId: store.id,
       hasPhone: true,

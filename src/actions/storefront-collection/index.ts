@@ -27,20 +27,20 @@ import {
   RateLimitError,
   rateLimits,
 } from "@/lib/rate-limit";
+import { generateSlug } from "@/lib/slug";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
+/**
+ * S4.5 (2026-05-26) \u2014 antes era NFD+replace manual local que podia
+ * divergir do storefront (que usa pacote `slugify` com locale pt). Agora
+ * delega ao can\u00f4nico em `@/lib/slug`. Sprint Cadastros 1 fez o mesmo
+ * com brand + customer; storefront-collection ficou esquecido.
+ */
 function toSlug(input: string): string {
-  return input
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
+  return generateSlug(input).slice(0, 60);
 }
 
 const HEX_COLOR_RE = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;

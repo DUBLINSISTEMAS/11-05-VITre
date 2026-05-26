@@ -34,8 +34,19 @@ import {
 } from "@/actions/receivable/load-detail";
 import { recordReceivablePayment } from "@/actions/receivable/record-payment";
 import { reverseReceivablePayment } from "@/actions/receivable/reverse-payment";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { logger } from "@/lib/logger";
 import { formatBRL } from "@/lib/pricing";
 
@@ -99,6 +110,16 @@ export function ReceivablePaymentDialog({
   const [didChange, setDidChange] = useState(false);
   /** Pre-Sprint-6 B: id da linha sendo estornada (pra mostrar loading). */
   const [reversingId, setReversingId] = useState<string | null>(null);
+  /**
+   * S4.3 (2026-05-26) — substituiu window.prompt (CLAUDE.md proíbe).
+   * Mantém pagamento alvo + razão controlada num AlertDialog.
+   */
+  const [reverseTarget, setReverseTarget] = useState<{
+    paymentId: string;
+    paymentAmount: number;
+  } | null>(null);
+  const [reverseReason, setReverseReason] = useState("");
+  const [reverseReasonError, setReverseReasonError] = useState<string | null>(null);
 
   const refresh = async () => {
     setLoading(true);
@@ -188,16 +209,21 @@ export function ReceivablePaymentDialog({
     }
   };
 
-  const handleReverse = async (paymentId: string, paymentAmount: number) => {
-    const reason = window.prompt(
-      `Estornar pagamento de ${formatBRL(paymentAmount)}?\n\n` +
-        `Informe o motivo (mín 3 caracteres):`,
-    );
-    if (reason === null) return; // cancelou prompt
-    if (reason.trim().length < 3) {
-      toast.error("Motivo precisa ter pelo menos 3 caracteres.");
+  const handleReverse = (paymentId: string, paymentAmount: number) => {
+    setReverseReason("");
+    setReverseReasonError(null);
+    setReverseTarget({ paymentId, paymentAmount });
+  };
+
+  const confirmReverse = async () => {
+    if (!reverseTarget) return;
+    const reason = reverseReason.trim();
+    if (reason.length < 3) {
+      setReverseReasonError("Motivo precisa ter pelo menos 3 caracteres.");
       return;
     }
+    const { paymentId } = reverseTarget;
+    setReverseTarget(null);
     setReversingId(paymentId);
     try {
       const r = await reverseReceivablePayment({
@@ -541,6 +567,52 @@ export function ReceivablePaymentDialog({
           )}
         </div>
       </div>
+
+      {/* S4.3 (2026-05-26) — AlertDialog substitui window.prompt no estorno.
+          CLAUDE.md proíbe window.prompt em fluxo financeiro. Input controlado
+          + validação inline. */}
+      <AlertDialog
+        open={reverseTarget !== null}
+        onOpenChange={(o) => !o && setReverseTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Estornar pagamento de{" "}
+              {reverseTarget ? formatBRL(reverseTarget.paymentAmount) : ""}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              O valor volta pro saldo aberto do fiado e fica registrado no
+              histórico como estorno. Informe o motivo (mínimo 3 caracteres).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-1.5">
+            <Label htmlFor="reverse-reason" className="text-[12.5px]">
+              Motivo
+            </Label>
+            <Input
+              id="reverse-reason"
+              value={reverseReason}
+              onChange={(e) => {
+                setReverseReason(e.target.value);
+                if (reverseReasonError) setReverseReasonError(null);
+              }}
+              placeholder="Ex: cliente cancelou o cartão, lançamento duplicado…"
+              maxLength={200}
+              autoFocus
+            />
+            {reverseReasonError ? (
+              <p className="text-destructive text-xs">{reverseReasonError}</p>
+            ) : null}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmReverse}>
+              Estornar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
