@@ -184,12 +184,44 @@ async function run() {
   // SQL 09 dá GRANT explícito apenas em 6 tabelas + DEFAULT PRIVILEGES pra
   // FUTURAS. Mas no CI a ordem é: Drizzle export cria todas tabelas →
   // SQL 09 cria role + grants. As tabelas Drizzle ficam sem grant.
-  // Solução: GRANT ALL TABLES após SQLs aplicarem.
+  //
+  // Solução robusta: client fresh (não o client2 que aplicou SQLs e pode
+  // ter ficado em estado degradado por erros tolerados) + valida via
+  // information_schema que o grant pegou.
   await step("GRANT em todas tabelas pra vitre_app", async () => {
-    await client2.query(`
-      GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO vitre_app;
-      GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO vitre_app;
-    `);
+    const grantClient = new pg.Client({ connectionString: POSTGRES_URL });
+    await grantClient.connect();
+    try {
+      await grantClient.query(`GRANT USAGE ON SCHEMA public TO vitre_app`);
+      await grantClient.query(
+        `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO vitre_app`,
+      );
+      await grantClient.query(
+        `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO vitre_app`,
+      );
+
+      // Validação: lista 3 tabelas que ANTES falhavam (order_payment,
+      // customer, supplier) e confirma que vitre_app tem SELECT nelas.
+      const check = await grantClient.query(`
+        SELECT table_name, privilege_type
+          FROM information_schema.table_privileges
+         WHERE grantee = 'vitre_app'
+           AND privilege_type = 'SELECT'
+           AND table_name IN ('order_payment', 'customer', 'supplier', 'audit_event', 'lead')
+         ORDER BY table_name
+      `);
+      console.log(`  grants confirmados (${check.rows.length} rows):`);
+      for (const row of check.rows) {
+        console.log(`    ${row.table_name} → ${row.privilege_type}`);
+      }
+      if (check.rows.length < 5) {
+        throw new Error(
+          `GRANT não pegou em todas tabelas — esperava 5, recebi ${check.rows.length}. Veja log acima.`,
+        );
+      }
+    } finally {
+      await grantClient.end();
+    }
   });
 
   // ---- 8. Seed
