@@ -53,7 +53,6 @@ import {
 import { extractClientContext, recordAuditEvent } from "@/lib/audit";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
-import { safeUserMessage } from "@/lib/safe-error";
 import {
   restockOrderItems,
   restockOrderItemsPartial,
@@ -64,6 +63,7 @@ import {
   RateLimitError,
   rateLimits,
 } from "@/lib/rate-limit";
+import { safeUserMessage } from "@/lib/safe-error";
 import { getCurrentStore } from "@/lib/store-context";
 import { type Tx, withTenant } from "@/lib/tenant";
 

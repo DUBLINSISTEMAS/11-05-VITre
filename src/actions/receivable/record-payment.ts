@@ -33,12 +33,12 @@ import {
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
-import { safeUserMessage } from "@/lib/safe-error";
 import {
   checkRateLimit,
   RateLimitError,
   rateLimits,
 } from "@/lib/rate-limit";
+import { safeUserMessage } from "@/lib/safe-error";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
