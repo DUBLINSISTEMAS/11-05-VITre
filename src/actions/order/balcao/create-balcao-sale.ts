@@ -264,6 +264,10 @@ export async function createBalcaoSale(
             // cobra agora, providencia depois. Estoque vai negativo como
             // sinal de "pendência de entrega".
             allowOversell: true,
+            // S2.6 (2026-05-26): snapshot cost na venda → DRE + margem
+            // têm dado. Sem isso, unit_cost_snapshot_in_cents fica NULL
+            // e relatórios não computam CMV.
+            costPriceInCents: true,
           },
         });
 
@@ -293,6 +297,8 @@ export async function createBalcaoSale(
                   promoPriceInCents: true,
                   trackStock: true,
                   stockQuantity: true,
+                  // S2.6 — coalesce no snapshot (variant cost OU product cost).
+                  costPriceInCents: true,
                 },
               })
             : [];
@@ -311,6 +317,12 @@ export async function createBalcaoSale(
           quantity: number;
           /** Desconto da linha em centavos. NULL = sem desconto (default). */
           itemDiscountInCents: number | null;
+          /**
+           * S2.6 — snapshot do custo no momento da venda (centavos).
+           * Coalesce variant.cost OR product.cost. NULL = produto sem custo
+           * cadastrado, margem fica "desconhecida" no relatório.
+           */
+          unitCostSnapshotInCents: number | null;
         }> = [];
         let subtotalInCents = 0;
 
@@ -373,6 +385,9 @@ export async function createBalcaoSale(
           const itemDiscountInCents = rawItemDiscount > 0 ? rawItemDiscount : null;
 
           subtotalInCents += lineGross - rawItemDiscount;
+          // S2.6 — coalesce(variant.cost, product.cost) no snapshot.
+          const unitCostSnapshotInCents =
+            variant?.costPriceInCents ?? product.costPriceInCents ?? null;
           computedItems.push({
             productId: it.productId,
             variantId: it.variantId,
@@ -381,6 +396,7 @@ export async function createBalcaoSale(
             priceInCents: effectivePrice,
             quantity: it.quantity,
             itemDiscountInCents,
+            unitCostSnapshotInCents,
           });
         }
 
@@ -568,6 +584,7 @@ export async function createBalcaoSale(
                       priceInCentsSnapshot: ci.priceInCents,
                       quantity: ci.quantity,
                       discountInCents: ci.itemDiscountInCents,
+                      unitCostSnapshotInCents: ci.unitCostSnapshotInCents,
                     })),
                   );
                 }
@@ -784,6 +801,7 @@ export async function createBalcaoSale(
                       priceInCentsSnapshot: ci.priceInCents,
                       quantity: ci.quantity,
                       discountInCents: ci.itemDiscountInCents,
+                      unitCostSnapshotInCents: ci.unitCostSnapshotInCents,
                     })),
                   );
                 }
@@ -1140,6 +1158,7 @@ export async function createBalcaoSale(
                     priceInCentsSnapshot: ci.priceInCents,
                     quantity: ci.quantity,
                     discountInCents: ci.itemDiscountInCents,
+                    unitCostSnapshotInCents: ci.unitCostSnapshotInCents,
                   })),
                 );
               }

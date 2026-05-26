@@ -253,11 +253,15 @@ export async function loadStockKpis(): Promise<StockKpis> {
         ),
       );
 
+    // S2.6 (2026-05-26) — KPI honra variant.cost_price_in_cents quando
+    // disponível. Antes usava sempre product.costPriceInCents, fazendo o
+    // KPI mentir em loja com variantes que têm cost próprio (ouro vs banhado).
+    // Idem pra preço (sale): coalesce(variant.priceInCents, product.basePriceInCents).
     const variantAggRow = await tx
       .select({
         units: sql<string>`COALESCE(SUM(${productVariantTable.stockQuantity}), 0)`,
-        sale: sql<string>`COALESCE(SUM(${productVariantTable.stockQuantity} * ${productTable.basePriceInCents}), 0)`,
-        cost: sql<string>`COALESCE(SUM(${productVariantTable.stockQuantity} * COALESCE(${productTable.costPriceInCents}, 0)), 0)`,
+        sale: sql<string>`COALESCE(SUM(${productVariantTable.stockQuantity} * COALESCE(${productVariantTable.priceInCents}, ${productTable.basePriceInCents})), 0)`,
+        cost: sql<string>`COALESCE(SUM(${productVariantTable.stockQuantity} * COALESCE(${productVariantTable.costPriceInCents}, ${productTable.costPriceInCents}, 0)), 0)`,
       })
       .from(productVariantTable)
       .innerJoin(

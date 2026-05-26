@@ -263,6 +263,8 @@ export async function createOrderFromCart(
         imageUrl: string | null;
         priceInCents: number;
         quantity: number;
+        /** S2.6 — snapshot cost no momento da venda (coalesce variant/product). */
+        unitCostSnapshotInCents: number | null;
       }> = [];
       let totalInCents = 0;
 
@@ -313,6 +315,10 @@ export async function createOrderFromCart(
           now,
         );
 
+        // S2.6 — snapshot cost (coalesce variant/product). NULL = produto
+        // sem custo cadastrado, margem fica "desconhecida" no relatório.
+        const unitCostSnapshotInCents =
+          variant?.costPriceInCents ?? product.costPriceInCents ?? null;
         computedItems.push({
           productId: product.id,
           variantId: variant?.id ?? null,
@@ -321,6 +327,7 @@ export async function createOrderFromCart(
           imageUrl: null, // será preenchido depois
           priceInCents: effective,
           quantity: item.quantity,
+          unitCostSnapshotInCents,
         });
         totalInCents += effective * item.quantity;
       }
@@ -537,6 +544,7 @@ export async function createOrderFromCart(
                 imageUrlSnapshot: ci.imageUrl,
                 priceInCentsSnapshot: ci.priceInCents,
                 quantity: ci.quantity,
+                unitCostSnapshotInCents: ci.unitCostSnapshotInCents,
               })),
             );
 

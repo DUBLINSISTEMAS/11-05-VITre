@@ -351,6 +351,13 @@ export const productVariantTable = pgTable(
       .default(sql`'{}'::jsonb`), // { tamanho: "P", cor: "preto" }
     priceInCents: integer("price_in_cents"), // null = usa product.basePriceInCents
     promoPriceInCents: integer("promo_price_in_cents"),
+    /**
+     * S2.6 (2026-05-26) — custo médio ponderado da variante (centavos).
+     * NULL = herda de product.cost_price_in_cents. WAC variante-aware em
+     * src/actions/purchase atualiza isso quando purchase_item.variant_id
+     * é informado. CHECK >= 0 no SQL 77.
+     */
+    costPriceInCents: integer("cost_price_in_cents"),
     trackStock: boolean("track_stock").notNull().default(true),
     stockQuantity: integer("stock_quantity"),
     isActive: boolean("is_active").notNull().default(true),

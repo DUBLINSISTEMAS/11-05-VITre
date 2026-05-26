@@ -244,6 +244,7 @@ export async function createPurchase(
             id: productTable.id,
             name: productTable.name,
             trackStock: productTable.trackStock,
+            costPriceInCents: productTable.costPriceInCents,
           })
           .from(productTable)
           .where(
@@ -381,77 +382,121 @@ export async function createPurchase(
               ? variantById.get(it.variantId)
               : null;
 
-            // 1. Advisory lock POR PRODUTO pra serializar WAC.
-            await innerTx.execute(
-              sql`SELECT pg_advisory_xact_lock(hashtext(${"cost-product-" + it.productId}))`,
-            );
+            // S2.6 (2026-05-26) — WAC variante-aware:
+            //   - Se purchase_item tem variant_id: lock + WAC na VARIANTE
+            //     (estoque da variante × custo atual da variante).
+            //     Joalheria com ouro 18k e banhado mantém cost separado.
+            //   - Else: lock + WAC no produto (comportamento legacy pré-S2.6).
 
-            // 2. Releitura do produto (cost atual + stock atual). Pra
-            //    WAC, precisamos do estoque AGREGADO do produto (não da
-            //    variante específica). Usamos product.stock_quantity
-            //    quando não há variantes ativas com trackStock; caso
-            //    contrário somamos as variantes.
-            const [productRow] = await innerTx
-              .select({
-                trackStock: productTable.trackStock,
-                stockQuantity: productTable.stockQuantity,
-                costPriceInCents: productTable.costPriceInCents,
-              })
-              .from(productTable)
-              .where(eq(productTable.id, it.productId));
-            if (!productRow) {
-              throw new Error(`Produto ${it.productId} sumiu durante a tx.`);
+            if (variant) {
+              // ────── WAC POR VARIANTE ──────
+              await innerTx.execute(
+                sql`SELECT pg_advisory_xact_lock(hashtext(${"cost-variant-" + variant.id}))`,
+              );
+
+              const [variantRow] = await innerTx
+                .select({
+                  stockQuantity: productVariantTable.stockQuantity,
+                  costPriceInCents: productVariantTable.costPriceInCents,
+                })
+                .from(productVariantTable)
+                .where(eq(productVariantTable.id, variant.id));
+              if (!variantRow) {
+                throw new Error(`Variante ${variant.id} sumiu durante a tx.`);
+              }
+
+              // Custo atual da variante: usa o próprio coalesced com o do
+              // produto (se variante nunca teve compra com cost, herda).
+              const variantStock = variantRow.stockQuantity ?? 0;
+              const currentCost =
+                variantRow.costPriceInCents ?? product.costPriceInCents ?? 0;
+              const newQty = it.quantity;
+              const newCost = it.unitCostInCents;
+              const totalQty = variantStock + newQty;
+              const weightedCost =
+                currentCost === 0 || variantStock === 0
+                  ? newCost
+                  : Math.round(
+                      (variantStock * currentCost + newQty * newCost) /
+                        totalQty,
+                    );
+
+              await innerTx
+                .update(productVariantTable)
+                .set({ costPriceInCents: weightedCost })
+                .where(
+                  and(
+                    eq(productVariantTable.id, variant.id),
+                    eq(productVariantTable.storeId, ctx.store.id),
+                  ),
+                );
+            } else {
+              // ────── WAC NO PRODUTO (comportamento legacy) ──────
+              await innerTx.execute(
+                sql`SELECT pg_advisory_xact_lock(hashtext(${"cost-product-" + it.productId}))`,
+              );
+
+              const [productRow] = await innerTx
+                .select({
+                  trackStock: productTable.trackStock,
+                  stockQuantity: productTable.stockQuantity,
+                  costPriceInCents: productTable.costPriceInCents,
+                })
+                .from(productTable)
+                .where(eq(productTable.id, it.productId));
+              if (!productRow) {
+                throw new Error(`Produto ${it.productId} sumiu durante a tx.`);
+              }
+
+              // Estoque AGREGADO do produto. Quando o produto tem variantes
+              // ativas SEM variant_id no purchase_item, isso é incomum mas
+              // pode ocorrer (compra "geral"). Soma das variantes.
+              const variantStockRows = await innerTx
+                .select({
+                  stockQuantity: productVariantTable.stockQuantity,
+                })
+                .from(productVariantTable)
+                .where(
+                  and(
+                    eq(productVariantTable.productId, it.productId),
+                    eq(productVariantTable.storeId, ctx.store.id),
+                    eq(productVariantTable.trackStock, true),
+                  ),
+                );
+              const variantStockSum = variantStockRows.reduce(
+                (acc, r) => acc + (r.stockQuantity ?? 0),
+                0,
+              );
+              const aggregateStock =
+                variantStockRows.length > 0
+                  ? variantStockSum
+                  : (productRow.stockQuantity ?? 0);
+
+              const currentCost = productRow.costPriceInCents ?? 0;
+              const newQty = it.quantity;
+              const newCost = it.unitCostInCents;
+              const totalQty = aggregateStock + newQty;
+              const weightedCost =
+                currentCost === 0 || aggregateStock === 0
+                  ? newCost
+                  : Math.round(
+                      (aggregateStock * currentCost + newQty * newCost) /
+                        totalQty,
+                    );
+
+              await innerTx
+                .update(productTable)
+                .set({
+                  costPriceInCents: weightedCost,
+                  updatedAt: new Date(),
+                })
+                .where(
+                  and(
+                    eq(productTable.id, it.productId),
+                    eq(productTable.storeId, ctx.store.id),
+                  ),
+                );
             }
-
-            // Soma estoque de TODAS variantes ativas do produto (pra WAC).
-            const variantStockRows = await innerTx
-              .select({
-                stockQuantity: productVariantTable.stockQuantity,
-              })
-              .from(productVariantTable)
-              .where(
-                and(
-                  eq(productVariantTable.productId, it.productId),
-                  eq(productVariantTable.storeId, ctx.store.id),
-                  eq(productVariantTable.trackStock, true),
-                ),
-              );
-            const variantStockSum = variantStockRows.reduce(
-              (acc, r) => acc + (r.stockQuantity ?? 0),
-              0,
-            );
-            const aggregateStock =
-              variantStockRows.length > 0
-                ? variantStockSum
-                : (productRow.stockQuantity ?? 0);
-
-            // 3. WAC
-            const currentCost = productRow.costPriceInCents ?? 0;
-            const newQty = it.quantity;
-            const newCost = it.unitCostInCents;
-            const totalQty = aggregateStock + newQty;
-            const weightedCost =
-              currentCost === 0 || aggregateStock === 0
-                ? newCost
-                : Math.round(
-                    (aggregateStock * currentCost + newQty * newCost) /
-                      totalQty,
-                  );
-
-            // 4. UPDATE product.cost_price_in_cents (sempre — mesmo se
-            //    trackStock=false, lojista precisa do custo pra margem).
-            await innerTx
-              .update(productTable)
-              .set({
-                costPriceInCents: weightedCost,
-                updatedAt: new Date(),
-              })
-              .where(
-                and(
-                  eq(productTable.id, it.productId),
-                  eq(productTable.storeId, ctx.store.id),
-                ),
-              );
 
             // 5. UPDATE stock_quantity (incrementa). Alvo:
             //    - Se variant.trackStock: incrementa na VARIANTE
