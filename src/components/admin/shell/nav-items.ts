@@ -1,6 +1,7 @@
 // Estrutura de navegação do admin — Início + 4 grupos colapsáveis (accordion).
 // soon:true → renderizado como disabled com badge "em breve" pelo sidebar-content.
 import {
+  AlertTriangleIcon,
   ArrowLeftRightIcon,
   BarChart2Icon,
   BookOpenIcon,
@@ -110,11 +111,8 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
     icon: TrendingUpIcon,
     items: [
       { k: "relatorios",    label: "Relatórios",     icon: BarChart2Icon,     href: "/admin/relatorios"        },
-      // "Estoque baixo" removido do menu em 2026-05-24 — duplicava /admin/estoque.
-      // Acesso à lista de "para repor" segue por: (a) card do dashboard, (b) chip
-      // "Para repor" dentro de /admin/estoque. Consolidação completa em 4 abas
-      // (Saldo / Movimentações / Alertas / Relatório) entra na Onda 1.4.
-      // { k: "estoque-baixo", label: "Estoque baixo",  icon: AlertTriangleIcon, href: "/admin/estoque/relatorio" },
+      // S3.6 (2026-05-26) — capital empatado em produto que nao vende ha 60d+.
+      { k: "estoque-parado", label: "Estoque parado", icon: AlertTriangleIcon, href: "/admin/estoque/parado"   },
       { k: "compras",       label: "Compras",        icon: ShoppingCartIcon,  href: "/admin/compras"           },
       { k: "custos",        label: "Custo & margem", icon: CalculatorIcon,    href: "/admin/produtos/custos"   },
     ],
