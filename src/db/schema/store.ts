@@ -172,6 +172,15 @@ export const storeTable = pgTable(
     paymentMethodsNote: text("payment_methods_note"),
 
     // =================================================================
+    // Quotas (S1.3 do Plano de Endurecimento, 2026-05-26)
+    // =================================================================
+    // Limites hard por loja. Default conservador (Free). Plano Pago futuro
+    // sobe via UPDATE. CHECK range no SQL 73.
+    // Enforcement em src/actions/product/create.ts + product-image/upload.ts.
+    maxProductsCount: integer("max_products_count").notNull().default(1000),
+    maxImageMb: integer("max_image_mb").notNull().default(2),
+
+    // =================================================================
     // Horários de funcionamento (ADR-0023)
     // jsonb 7 dias × até 2 turnos. NULL = não configurado.
     // Validação estrutural via CHECK no SQL 30; semântica via Zod.

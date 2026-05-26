@@ -96,6 +96,17 @@ export async function uploadProductImage(
     return { ok: false, error: "Loja não encontrada." };
   }
 
+  // S1.3 (2026-05-26): quota tamanho de imagem por loja. validateImageInput
+  // checa limite genérico (4MB do bodySizeLimit), mas quota da loja pode
+  // ser menor (default 2MB Free). Server-side enforcement.
+  const maxBytes = store.maxImageMb * 1024 * 1024;
+  if (file.size > maxBytes) {
+    return {
+      ok: false,
+      error: `Imagem ultrapassa o limite de ${store.maxImageMb} MB do seu plano.`,
+    };
+  }
+
   // 6. Verifica que produto pertence à loja (sob withTenant — RLS via GUC)
   const product = await withTenant(store.id, userId, async (tx) =>
     tx.query.productTable.findFirst({

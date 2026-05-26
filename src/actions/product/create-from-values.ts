@@ -1,5 +1,6 @@
 "use server";
 
+import { eq, sql } from "drizzle-orm";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { headers } from "next/headers";
 
@@ -61,6 +62,19 @@ export async function createProductFromValues(
 
   try {
     const row = await withTenant(store.id, userId, async (tx) => {
+      // S1.3 (2026-05-26): quota de produtos por loja. Check ANTES do insert
+      // pra evitar falha tardia. count() é cheap (index scan em store_id).
+      const [countRow] = await tx
+        .select({ count: sql<number>`count(*)::int` })
+        .from(productTable)
+        .where(eq(productTable.storeId, store.id));
+      const currentCount = countRow?.count ?? 0;
+      if (currentCount >= store.maxProductsCount) {
+        throw new Error(
+          `Limite de ${store.maxProductsCount} produtos atingido no seu plano. Apague produtos antigos ou contate o suporte.`,
+        );
+      }
+
       const slug = await generateUniqueProductSlug({
         storeId: store.id,
         name: data.name,
