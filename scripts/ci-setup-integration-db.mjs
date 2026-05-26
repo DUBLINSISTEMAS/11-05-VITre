@@ -180,7 +180,19 @@ async function run() {
     }
   }
 
-  // ---- 7. Seed
+  // ---- 7. GRANT em TODAS as tabelas pra vitre_app
+  // SQL 09 dá GRANT explícito apenas em 6 tabelas + DEFAULT PRIVILEGES pra
+  // FUTURAS. Mas no CI a ordem é: Drizzle export cria todas tabelas →
+  // SQL 09 cria role + grants. As tabelas Drizzle ficam sem grant.
+  // Solução: GRANT ALL TABLES após SQLs aplicarem.
+  await step("GRANT em todas tabelas pra vitre_app", async () => {
+    await client2.query(`
+      GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO vitre_app;
+      GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO vitre_app;
+    `);
+  });
+
+  // ---- 8. Seed
   await step("Seed mínimo (2 users + 2 stores)", async () => {
     // store.owner_id é FK pra user.id (Better Auth schema). Cria 2 users
     // fake antes do store pra FK passar.

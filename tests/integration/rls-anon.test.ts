@@ -6,7 +6,13 @@ import { config } from "dotenv";
 
 config({ path: ".env.local" });
 
-const skip = process.env.RUN_INTEGRATION !== "1";
+// rls-anon precisa de Supabase REAL (anon key) — não funciona em Postgres
+// ephemeral (CI). Skip quando NEXT_PUBLIC_SUPABASE_URL não tá setado, mesmo
+// com RUN_INTEGRATION=1. CI roda rls-cross-tenant (que usa pg direto).
+const skip =
+  process.env.RUN_INTEGRATION !== "1" ||
+  !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 const sensitiveTables = [
   "user",
