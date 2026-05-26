@@ -183,10 +183,10 @@ async function run() {
   // ---- 7. Seed
   await step("Seed mínimo (2 stores)", async () => {
     await client2.query(`
-      INSERT INTO store (slug, name, owner_user_id, is_active)
+      INSERT INTO store (slug, name, owner_id, is_active)
       VALUES
-        ('ci-test-loja-a', 'CI Test Loja A', gen_random_uuid(), true),
-        ('ci-test-loja-b', 'CI Test Loja B', gen_random_uuid(), true)
+        ('ci-test-loja-a', 'CI Test Loja A', gen_random_uuid()::text, true),
+        ('ci-test-loja-b', 'CI Test Loja B', gen_random_uuid()::text, true)
       ON CONFLICT (slug) DO NOTHING
     `);
   });
