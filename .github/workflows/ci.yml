@@ -14,7 +14,12 @@
 #   - `next build`: requer env vars de prod (DATABASE_URL, BETTER_AUTH_SECRET,
 #     UPSTASH_*, RESEND_*). Adicionar quando staging existir + secrets
 #     forem replicados em GitHub Actions secrets.
-#   - integration tests com DB real: Tier 2.
+#
+# Job `integration` (S0.2 do PLANO-ENDURECIMENTO.md):
+#   Sobe Postgres 16 ephemeral, aplica schema Drizzle + supabase/sql/*,
+#   roda os 40 testes RLS cross-tenant. Garante que próximo PR vazando
+#   cross-tenant FALHE no merge — exatamente o cinto que pegou o
+#   vazamento de `lead_anon_insert` em SQL 58.
 #
 # Ref: production-readiness-tier1 / T1-4.
 name: CI
@@ -63,3 +68,59 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+  integration:
+    name: RLS integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Roda em paralelo com `validate`. Não bloqueia merge se schema-only PR
+    # passa em unit mas integration ainda não está estável — confiamos no
+    # gate de PR review pra esses casos. Falha sempre indica regressão real.
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      POSTGRES_URL: postgres://postgres:postgres@localhost:5432/postgres
+      VITRE_APP_PASSWORD: ci-test-only-not-secret-32chars
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup integration DB
+        id: setup_db
+        run: node scripts/ci-setup-integration-db.mjs
+
+      - name: Run integration tests
+        env:
+          RUN_INTEGRATION: "1"
+          DATABASE_URL: ${{ steps.setup_db.outputs.database_url }}
+          DIRECT_URL: ${{ steps.setup_db.outputs.direct_url }}
+        run: pnpm run test:integration

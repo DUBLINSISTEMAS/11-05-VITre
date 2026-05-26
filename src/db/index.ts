@@ -39,21 +39,35 @@ declare global {
   var _vitreServicePool: Pool | undefined;
 }
 
-// max:3 — Vercel serverless × Supabase Free (60 conn ceiling).
-// Cada warm lambda mantém o pool; 3 × N lambdas concorrentes >> 10 × N.
-// Pooler do Supabase (PgBouncer transaction mode) faz o multiplex real.
+// Capacity planning Sprint 0 (S0.1):
+//
+//   Supabase Free ceiling = 60 conexões. Plano Pro = 200.
+//   Target: 10-15 lojas operando todo dia, com tráfego storefront público
+//   + admin de cada loja + crons + crawlers (Google).
+//
+//   `db` (RLS-bound, role vitre_app): caminho quente. Cada warm lambda
+//   da Vercel mantém o pool. Com max:5 e 4-6 lambdas warm em pico, são
+//   20-30 conexões reservadas — folga até o teto. Bumpar pra Supabase
+//   Pro quando passar de 30 lojas (gate Fase 3).
+//
+//   `serviceDb` (BYPASSRLS, role postgres): uso raríssimo (sitemap,
+//   resolver slug→store antes de saber tenant, crons). max:1 basta —
+//   PgBouncer fila o resto, latência aceitável.
+//
+//   Se ver `error: sorry, too many clients already`: PRIMEIRA ação é
+//   medir lambdas warm via Vercel Observability, NÃO bumpar max cegamente.
 const pool =
   global._vitrePool ??
   new Pool({
     connectionString: env.DATABASE_URL,
-    max: 3,
+    max: 5,
   });
 
 const servicePool =
   global._vitreServicePool ??
   new Pool({
     connectionString: env.DIRECT_URL,
-    max: 3,
+    max: 1,
   });
 
 if (env.NODE_ENV !== "production") {
