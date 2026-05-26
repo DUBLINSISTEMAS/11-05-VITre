@@ -113,6 +113,8 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
       { k: "relatorios",    label: "Relatórios",     icon: BarChart2Icon,     href: "/admin/relatorios"        },
       // S3.6 (2026-05-26) — capital empatado em produto que nao vende ha 60d+.
       { k: "estoque-parado", label: "Estoque parado", icon: AlertTriangleIcon, href: "/admin/estoque/parado"   },
+      // S3.4 (2026-05-26) — lotes vencendo (perfumaria/cosmetico).
+      { k: "estoque-vencendo", label: "Estoque vencendo", icon: ClockIcon, href: "/admin/estoque/vencendo" },
       { k: "compras",       label: "Compras",        icon: ShoppingCartIcon,  href: "/admin/compras"           },
       { k: "custos",        label: "Custo & margem", icon: CalculatorIcon,    href: "/admin/produtos/custos"   },
     ],

@@ -55,6 +55,7 @@ function mockCategory(name: string, position: number): CategoryNode {
     position,
     isActive: true,
     imageUrl: null,
+    tracksBatch: false,
     createdAt: NOW,
   };
   return { ...base, children: [] };

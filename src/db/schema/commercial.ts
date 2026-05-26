@@ -297,6 +297,14 @@ export const purchaseItemTable = pgTable(
      */
     totalCostInCents: integer("total_cost_in_cents").notNull(),
 
+    /**
+     * S3.4 (2026-05-26) — lote + validade pra perfumaria/cosmético.
+     * NULL = produto sem rastreamento. Index parcial em expires_at IS NOT
+     * NULL otimiza dashboard "Vencendo em 60d". CHECK batch <= 60 (SQL 79).
+     */
+    batchNumber: text("batch_number"),
+    expiresAt: date("expires_at"),
+
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => ({

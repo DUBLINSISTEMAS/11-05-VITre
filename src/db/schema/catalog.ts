@@ -47,6 +47,13 @@ export const categoryTable = pgTable(
     imageUrl: text("image_url"),
     position: integer("position").notNull().default(0),
     isActive: boolean("is_active").notNull().default(true),
+    /**
+     * S3.4 (2026-05-26) — opt-in pra rastreamento de lote+validade. UI
+     * de compra exibe batch_number + expires_at obrigatórios pra produtos
+     * desta categoria. Default false (joalheria, roupa não precisam).
+     * Perfumaria/cosmético/medicamento marca true.
+     */
+    tracksBatch: boolean("tracks_batch").notNull().default(false),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => ({
