@@ -9,9 +9,9 @@ import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
 import {
-  listExpensesSchema,
   type ExpenseCategory,
   type ListExpensesInput,
+  listExpensesSchema,
 } from "./schema";
 
 export interface ExpenseRow {

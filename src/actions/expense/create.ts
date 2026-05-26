@@ -15,7 +15,7 @@ import { safeUserMessage } from "@/lib/safe-error";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
-import { createExpenseSchema, type CreateExpenseInput } from "./schema";
+import { type CreateExpenseInput,createExpenseSchema } from "./schema";
 
 export type CreateExpenseResult =
   | { ok: true; expenseId: string | string[] }

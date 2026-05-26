@@ -86,6 +86,8 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
       // histórico de movimentações) então o label antigo não cabe.
       { k: "estoque",  label: "Estoque",                 icon: ArrowLeftRightIcon, href: "/admin/estoque",   exact: true },
       { k: "receber",  label: "A receber",               icon: ClockIcon,          href: "/admin/financeiro/receber"    },
+      // S2.2 (2026-05-26) — Contas a pagar destrava DRE honesto.
+      { k: "pagar",    label: "A pagar",                 icon: ClockIcon,          href: "/admin/financeiro/pagar"      },
       { k: "contatos", label: "Recados do site",         icon: InboxIcon,          href: "/admin/contatos"              },
     ],
   },
