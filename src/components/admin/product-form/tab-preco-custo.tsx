@@ -250,20 +250,48 @@ export function TabPrecoCusto({
             title="Código fiscal (NCM)"
             description="Só preencha se sua contabilidade ou Bling/Tiny pediu. Não influencia em nada na venda."
           >
-            <div className="space-y-1.5 max-w-[220px]">
-              <Label htmlFor="product-ncm">NCM</Label>
-              <Input
-                id="product-ncm"
-                {...register("ncm")}
-                placeholder="Ex: 71131900"
-                disabled={isPending}
-                maxLength={8}
-                aria-invalid={!!errors.ncm}
-                inputMode="numeric"
-              />
-              {errors.ncm?.message ? (
-                <p className="text-destructive text-xs">{errors.ncm.message}</p>
-              ) : null}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="product-ncm">NCM</Label>
+                <Input
+                  id="product-ncm"
+                  {...register("ncm")}
+                  placeholder="Ex: 71131900"
+                  disabled={isPending}
+                  maxLength={8}
+                  aria-invalid={!!errors.ncm}
+                  inputMode="numeric"
+                />
+                {errors.ncm?.message ? (
+                  <p className="text-destructive text-xs">{errors.ncm.message}</p>
+                ) : null}
+              </div>
+              {/* S2.7 (2026-05-26) — peso em gramas pra reprecificação por
+                  metal em joalheria. Nullable. */}
+              <div className="space-y-1.5">
+                <Label htmlFor="product-weight-grams">Peso (g)</Label>
+                <Input
+                  id="product-weight-grams"
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  max="100000"
+                  {...register("weightGrams", { valueAsNumber: true })}
+                  placeholder="Ex: 4.200"
+                  disabled={isPending}
+                  aria-invalid={!!errors.weightGrams}
+                  inputMode="decimal"
+                />
+                {errors.weightGrams?.message ? (
+                  <p className="text-destructive text-xs">
+                    {errors.weightGrams.message}
+                  </p>
+                ) : (
+                  <p className="text-ink-4 text-[11px]">
+                    Joalheria: peso em gramas pra recálculo quando metal subir.
+                  </p>
+                )}
+              </div>
             </div>
           </SubCard>
         </>

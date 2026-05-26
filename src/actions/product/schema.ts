@@ -323,6 +323,26 @@ const productFormFieldsSchema = z.object({
    * dígitos. Mangos Pay NÃO valida tabela TIPI nem calcula imposto (ADR-0033).
    */
   ncm: optionalNcm,
+  /**
+   * S2.7 (2026-05-26) — peso em gramas. 3 casas decimais.
+   * Joalheria reprecifica por grama. Range 0..100000g.
+   * Drizzle numeric() = string ao ler; aceita number no input pra UX.
+   */
+  weightGrams: z
+    .union([z.number(), z.string(), z.null()])
+    .nullish()
+    .transform((v) => {
+      if (v === null || v === undefined || v === "") return null;
+      const n = typeof v === "string" ? parseFloat(v) : v;
+      return Number.isFinite(n) ? n : null;
+    })
+    .pipe(
+      z
+        .number()
+        .min(0, "Peso não pode ser negativo.")
+        .max(100000, "Peso acima do máximo (100kg).")
+        .nullable(),
+    ),
 });
 
 // ⚠️ MANTENHA SINCRONIZADO: estes 4 refines aparecem em

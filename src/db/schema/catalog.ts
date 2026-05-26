@@ -9,6 +9,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   primaryKey,
@@ -204,6 +205,13 @@ export const productTable = pgTable(
      * contador disser.
      */
     ncm: text("ncm"),
+    /**
+     * S2.7 (2026-05-26) — peso em gramas (precisão 3 casas decimais).
+     * Joalheria de ouro/prata reprecifica por grama quando metal sobe.
+     * Range 0..100000g via CHECK no SQL 74. Nullable — só joalheria preenche.
+     * Drizzle pgcore não tem `decimal` tipado; usa `numeric()` que vira string.
+     */
+    weightGrams: numeric("weight_grams", { precision: 10, scale: 3 }),
 
     // Override do max-parcelas APENAS deste produto. null = usa
     // store.cardMaxInstallments. Range 1..12 (CHECK no SQL 17).

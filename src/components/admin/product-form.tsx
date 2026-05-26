@@ -120,6 +120,8 @@ export interface ProductFormInitialData {
   internalCode: string | null;
   defaultCommissionBps: number | null;
   ncm: string | null;
+  /** S2.7 — peso em gramas. Numeric do Postgres vira string ao ler. */
+  weightGrams: string | number | null;
   variants: VariantData[];
   images: ProductImageData[];
 }
@@ -278,6 +280,12 @@ export function ProductForm({
       internalCode: initialData.internalCode ?? "",
       defaultCommissionBps: initialData.defaultCommissionBps,
       ncm: initialData.ncm ?? "",
+      weightGrams:
+        initialData.weightGrams === null || initialData.weightGrams === undefined
+          ? null
+          : typeof initialData.weightGrams === "string"
+            ? parseFloat(initialData.weightGrams) || null
+            : initialData.weightGrams,
       variants: initialData.variants.map((v) => ({
         id: v.id,
         name: v.name,

@@ -233,6 +233,7 @@ export async function updateProduct(
           internalCode: data.internalCode,
           defaultCommissionBps: data.defaultCommissionBps,
           ncm: data.ncm,
+          weightGrams: data.weightGrams === null ? null : String(data.weightGrams),
           updatedAt: new Date(),
         })
         .where(

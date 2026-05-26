@@ -190,6 +190,7 @@ export async function loadProductFormData(
         internalCode: product.internalCode,
         defaultCommissionBps: product.defaultCommissionBps,
         ncm: product.ncm,
+        weightGrams: product.weightGrams,
         variants: variants.map((v) => ({
           id: v.id,
           name: v.name,
@@ -246,6 +247,7 @@ function emptyInitialData(): ProductFormInitialData {
     internalCode: null,
     defaultCommissionBps: null,
     ncm: null,
+    weightGrams: null,
     variants: [],
     images: [],
   };

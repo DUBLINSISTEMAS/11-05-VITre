@@ -133,6 +133,7 @@ export async function createProductFromValues(
           internalCode: data.internalCode,
           defaultCommissionBps: data.defaultCommissionBps,
           ncm: data.ncm,
+          weightGrams: data.weightGrams === null ? null : String(data.weightGrams),
         })
         .returning({ id: productTable.id });
 

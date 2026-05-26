@@ -68,12 +68,17 @@ export async function loadMarginReport(
       inArray(orderTable.status, COUNTABLE_STATUSES),
     );
 
+    // S2.5 (2026-05-26): receita LÍQUIDA por item = (price × qty) - discount.
+    // Antes calculava price × qty sem subtrair order_item.discount_in_cents,
+    // inflando a margem sistematicamente. Exemplo: produto R$ 200, desconto
+    // R$ 50, custo R$ 100, qty 1 → margem REAL é R$ 50 (sobre R$ 150), não
+    // R$ 100 (sobre R$ 200) como o relatório mostrava.
     const agg = await tx
       .select({
         productId: orderItemTable.productId,
         productName: orderItemTable.productNameSnapshot,
         quantitySold: sql<number>`coalesce(sum(${orderItemTable.quantity}), 0)::int`,
-        revenueInCents: sql<number>`coalesce(sum(${orderItemTable.priceInCentsSnapshot} * ${orderItemTable.quantity}), 0)::int`,
+        revenueInCents: sql<number>`coalesce(sum(${orderItemTable.priceInCentsSnapshot} * ${orderItemTable.quantity} - coalesce(${orderItemTable.discountInCents}, 0)), 0)::int`,
         // Soma custo APENAS dos itens com snapshot preenchido. Itens com
         // unit_cost_snapshot=NULL não entram aqui (CMV ignora).
         totalCostInCents: sql<number>`coalesce(sum(${orderItemTable.unitCostSnapshotInCents} * ${orderItemTable.quantity}) filter (where ${orderItemTable.unitCostSnapshotInCents} is not null), 0)::int`,
@@ -85,7 +90,7 @@ export async function loadMarginReport(
       .where(baseCond)
       .groupBy(orderItemTable.productId, orderItemTable.productNameSnapshot)
       .orderBy(
-        sql`coalesce(sum(${orderItemTable.priceInCentsSnapshot} * ${orderItemTable.quantity}) - sum(${orderItemTable.unitCostSnapshotInCents} * ${orderItemTable.quantity}) filter (where ${orderItemTable.unitCostSnapshotInCents} is not null), 0) DESC`,
+        sql`coalesce(sum(${orderItemTable.priceInCentsSnapshot} * ${orderItemTable.quantity} - coalesce(${orderItemTable.discountInCents}, 0)) - sum(${orderItemTable.unitCostSnapshotInCents} * ${orderItemTable.quantity}) filter (where ${orderItemTable.unitCostSnapshotInCents} is not null), 0) DESC`,
       )
       .limit(500);
 
