@@ -32,8 +32,10 @@ import { COUNTABLE_STATUSES } from "@/actions/order/constants";
 import {
   expenseTable,
   orderItemTable,
+  orderPaymentTable,
   orderReturnItemTable,
   orderTable,
+  storeTable,
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getCurrentStore } from "@/lib/store-context";
@@ -134,10 +136,68 @@ export async function loadDreSimple(
       )
       .groupBy(expenseTable.category);
 
-    const operatingExpensesByCategory = expenseRows.map((r) => ({
+    // 5) S2.4 — TAXA REAL da maquininha. Lojista vende R$ 1000 no cartão
+    //    12x, Stone fica com ~12%. order.surcharge é o que cliente PAGOU,
+    //    a taxa real é o que o adquirente cobra DO LOJISTA. CALCULA cá:
+    //
+    //      debit          → amount × store.debit_bps / 10000
+    //      credit 1x      → amount × store.credit_1x_bps / 10000
+    //      credit 2-6x    → amount × store.credit_2to6x_bps / 10000
+    //      credit 7-12x   → amount × store.credit_7to12x_bps / 10000
+    //
+    //    Vira linha 'card_fees' no operatingExpensesByCategory pra
+    //    integrar ao operationalProfit.
+    const [storeFees] = await tx
+      .select({
+        debit: storeTable.cardRealFeeBpsDebit,
+        c1: storeTable.cardRealFeeBpsCredit1x,
+        c2to6: storeTable.cardRealFeeBpsCredit2xTo6x,
+        c7to12: storeTable.cardRealFeeBpsCredit7xTo12x,
+      })
+      .from(storeTable)
+      .where(eq(storeTable.id, store.id));
+
+    const [cardFeesAgg] = await tx
+      .select({
+        feeInCents: sql<number>`coalesce(sum(
+          case
+            when ${orderPaymentTable.method} = 'debit'
+              then ${orderPaymentTable.amountInCents} * ${storeFees?.debit ?? 199} / 10000
+            when ${orderPaymentTable.method} = 'credit' and coalesce(${orderPaymentTable.installments}, 1) = 1
+              then ${orderPaymentTable.amountInCents} * ${storeFees?.c1 ?? 350} / 10000
+            when ${orderPaymentTable.method} = 'credit' and coalesce(${orderPaymentTable.installments}, 1) between 2 and 6
+              then ${orderPaymentTable.amountInCents} * ${storeFees?.c2to6 ?? 599} / 10000
+            when ${orderPaymentTable.method} = 'credit' and coalesce(${orderPaymentTable.installments}, 1) between 7 and 12
+              then ${orderPaymentTable.amountInCents} * ${storeFees?.c7to12 ?? 1199} / 10000
+            else 0
+          end
+        ), 0)::int`,
+      })
+      .from(orderPaymentTable)
+      .innerJoin(orderTable, eq(orderTable.id, orderPaymentTable.orderId))
+      .where(orderCond);
+
+    const cardFeesInCents = cardFeesAgg?.feeInCents ?? 0;
+
+    // Merge da linha card_fees no breakdown. Se já existe 'card_fees'
+    // cadastrado manualmente em expense, SOMA (lojista pode ter lançado
+    // taxa de outro adquirente que não passa por order_payment).
+    const expenseByCategory = expenseRows.map((r) => ({
       category: r.category,
       amountInCents: r.amountInCents,
     }));
+    if (cardFeesInCents > 0) {
+      const existing = expenseByCategory.find((r) => r.category === "card_fees");
+      if (existing) {
+        existing.amountInCents += cardFeesInCents;
+      } else {
+        expenseByCategory.push({
+          category: "card_fees",
+          amountInCents: cardFeesInCents,
+        });
+      }
+    }
+    const operatingExpensesByCategory = expenseByCategory;
     const operatingExpensesInCents = operatingExpensesByCategory.reduce(
       (sum, r) => sum + r.amountInCents,
       0,

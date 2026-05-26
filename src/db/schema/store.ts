@@ -172,6 +172,25 @@ export const storeTable = pgTable(
     paymentMethodsNote: text("payment_methods_note"),
 
     // =================================================================
+    // Taxa REAL da maquininha (S2.4 do Plano de Endurecimento, 2026-05-26)
+    // =================================================================
+    // Em bps (0.01%). Default = média Stone/Cielo/Rede 2025. Lojista
+    // ajusta no /admin/pagamento conforme contrato. DRE deduz dessas
+    // taxas pra mostrar lucro REAL. SQL 76, CHECK 0..9999.
+    cardRealFeeBpsDebit: integer("card_real_fee_bps_debit")
+      .notNull()
+      .default(199),
+    cardRealFeeBpsCredit1x: integer("card_real_fee_bps_credit_1x")
+      .notNull()
+      .default(350),
+    cardRealFeeBpsCredit2xTo6x: integer("card_real_fee_bps_credit_2x_to_6x")
+      .notNull()
+      .default(599),
+    cardRealFeeBpsCredit7xTo12x: integer("card_real_fee_bps_credit_7x_to_12x")
+      .notNull()
+      .default(1199),
+
+    // =================================================================
     // Quotas (S1.3 do Plano de Endurecimento, 2026-05-26)
     // =================================================================
     // Limites hard por loja. Default conservador (Free). Plano Pago futuro
