@@ -58,10 +58,41 @@ export const closeCashSessionSchema = z
   });
 export type CloseCashSessionInput = z.input<typeof closeCashSessionSchema>;
 
+// S3.5 (2026-05-26) — schema cash_adjustment_type tem 6 valores;
+// UI antes só expunha 2. Agora todos os 6 são tipáveis.
+export const ADJUSTMENT_TYPES = [
+  "sangria",
+  "reinforcement",
+  "pay_supplier",
+  "pay_bill",
+  "other_in",
+  "other_out",
+] as const;
+export type AdjustmentType = (typeof ADJUSTMENT_TYPES)[number];
+
+export const ADJUSTMENT_LABEL_BR: Record<AdjustmentType, string> = {
+  sangria: "Sangria",
+  reinforcement: "Reforço",
+  pay_supplier: "Pagamento de fornecedor",
+  pay_bill: "Pagamento de conta",
+  other_in: "Outra entrada",
+  other_out: "Outra saída",
+};
+
+/** true = saída de caixa (vermelho), false = entrada (verde). UI usa pra cor + sinal. */
+export const ADJUSTMENT_IS_OUT: Record<AdjustmentType, boolean> = {
+  sangria: true,
+  reinforcement: false,
+  pay_supplier: true,
+  pay_bill: true,
+  other_in: false,
+  other_out: true,
+};
+
 export const recordAdjustmentSchema = z.object({
   sessionId: z.string().uuid("Identificador inválido."),
-  type: z.enum(["sangria", "reinforcement"], {
-    message: "Tipo inválido. Use sangria ou reinforcement.",
+  type: z.enum(ADJUSTMENT_TYPES, {
+    message: "Tipo de movimentação inválido.",
   }),
   amountInCents: z
     .number()
