@@ -106,6 +106,7 @@ const PRIVATE_TABLES = [
   "lead",
   "coupon",
   "expense",
+  "parked_sale",
 ] as const;
 
 /**

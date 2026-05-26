@@ -13,6 +13,7 @@ export * from "./customer";
 export * from "./inventory";
 export * from "./lead";
 export * from "./order";
+export * from "./parked-sale";
 export * from "./store";
 export * from "./storefront-collection";
 export * from "./team";
