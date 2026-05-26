@@ -40,6 +40,10 @@ test("product_related RLS SQL keeps public read tenant-scoped instead of USING t
 
 
 test("attachPrimaryImage fetches only primary image rows", () => {
-  assert.match(sharedLoader, /eq\(productImageTable\.position, 0\)/);
+  // S1.5 (2026-05-26) — migrado de `eq(position, 0)` pra DISTINCT ON com
+  // ORDER BY position ASC. Resolve edge case "imagem position 0 deletada,
+  // ficou só 1,2,3 — produto sem imagem na home".
+  assert.match(sharedLoader, /DISTINCT ON \(product_id\)/);
+  assert.match(sharedLoader, /ORDER BY product_id, position ASC/);
   assert.doesNotMatch(sharedLoader, /orderBy\(asc\(productImageTable\.position\)\)/);
 });
