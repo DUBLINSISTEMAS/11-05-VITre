@@ -181,12 +181,21 @@ async function run() {
   }
 
   // ---- 7. Seed
-  await step("Seed mínimo (2 stores)", async () => {
+  await step("Seed mínimo (2 users + 2 stores)", async () => {
+    // store.owner_id é FK pra user.id (Better Auth schema). Cria 2 users
+    // fake antes do store pra FK passar.
+    await client2.query(`
+      INSERT INTO "user" (id, email, name, email_verified, created_at, updated_at)
+      VALUES
+        ('ci-test-user-a', 'ci-a@test.local', 'CI Test User A', true, now(), now()),
+        ('ci-test-user-b', 'ci-b@test.local', 'CI Test User B', true, now(), now())
+      ON CONFLICT (id) DO NOTHING
+    `);
     await client2.query(`
       INSERT INTO store (slug, name, owner_id, whatsapp_number, whatsapp_display, is_active)
       VALUES
-        ('ci-test-loja-a', 'CI Test Loja A', gen_random_uuid()::text, '+5511000000001', '(11) 0000-0001', true),
-        ('ci-test-loja-b', 'CI Test Loja B', gen_random_uuid()::text, '+5511000000002', '(11) 0000-0002', true)
+        ('ci-test-loja-a', 'CI Test Loja A', 'ci-test-user-a', '+5511000000001', '(11) 0000-0001', true),
+        ('ci-test-loja-b', 'CI Test Loja B', 'ci-test-user-b', '+5511000000002', '(11) 0000-0002', true)
       ON CONFLICT (slug) DO NOTHING
     `);
   });
