@@ -118,7 +118,7 @@ export function SacolaDrawer({
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
           side="right"
-          className="bg-background flex w-full max-w-sm flex-col gap-0 p-0"
+          className="bg-background flex w-full max-w-sm flex-col gap-0 p-0 rounded-l-2xl overflow-hidden shadow-2xl"
           style={brandStyle}
         >
           {/*

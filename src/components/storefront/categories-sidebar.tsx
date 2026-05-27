@@ -137,10 +137,15 @@ export function CategoriesSidebar({
                   </div>
                 )}
                 <div>
-                  <SheetTitle className="text-[15px] font-semibold text-left text-foreground">
+                  {/* Onda 25 (2026-05-27): tipografia alinhada às seções
+                      canônicas da home (Categorias, Em destaque, Vitrines)
+                      e ao header da página de categoria (Onda 20) —
+                      17/20px semibold tracking-[-0.4/-0.5px]. Sistema
+                      tipográfico coerente em todo storefront. */}
+                  <SheetTitle className="text-left text-[17px] font-semibold tracking-[-0.4px] text-foreground lg:text-[20px] lg:tracking-[-0.5px]">
                     {store.name}
                   </SheetTitle>
-                  <SheetDescription className="text-xs text-muted-foreground text-left mt-0.5">
+                  <SheetDescription className="text-muted-foreground mt-0.5 text-left text-[11.5px] font-medium">
                     {drilledRoot ? drilledRoot.name : "Navegar categorias"}
                   </SheetDescription>
                 </div>
