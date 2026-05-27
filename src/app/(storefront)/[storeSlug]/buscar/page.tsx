@@ -99,26 +99,20 @@ export default async function SearchPage({
             <h1 className="text-lg font-semibold flex-1">Explorar</h1>
           </div>
 
-          {/* Search bar — Onda 6 (2026-05-27): input substituído por
-              <SearchTypeahead> com combobox ARIA + debounce 200ms + dropdown
-              de 6 sugestões. Submit do form preservado: Enter sem item
-              selecionado continua indo pra /buscar?q= (listagem cheia).
-              Botão de submit mantido pra fallback sem JS / hábito tactil. */}
+          {/* Search bar — Onda 11 (2026-05-27): input agora é pill alinhado
+              ao trigger da home (mesmo bg-muted + rounded-full). Botão
+              submit separado removido — o input pill já tem ícone Search
+              dentro (left) e Enter dispara o form. Padrão Shopee/Shein/
+              Aritzia mobile: barra única, sem botão extra. Form action
+              preservado pra Enter sem item selecionado ir pra /buscar?q=
+              (listagem cheia) e pra fallback sem JS. */}
           <form
             action={`/${store.slug}/buscar`}
             method="get"
             role="search"
-            className="flex items-center gap-3"
+            className="flex items-center"
           >
             <SearchTypeahead storeSlug={store.slug} initialQuery={q} />
-
-            <button
-              type="submit"
-              className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-foreground text-background outline-none transition-colors transition-transform hover:bg-foreground/90 hover:scale-105 active:scale-95 focus-visible:ring-2 focus-visible:ring-ring"
-              aria-label="Buscar"
-            >
-              <SearchIcon className="size-5" strokeWidth={2} />
-            </button>
           </form>
         </div>
 

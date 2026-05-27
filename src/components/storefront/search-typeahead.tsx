@@ -212,11 +212,15 @@ export function SearchTypeahead({ storeSlug, initialQuery = "" }: SearchTypeahea
 
   return (
     <div ref={wrapperRef} className="relative flex-1">
+      {/* Onda 11 (2026-05-27): barra alinhada ao trigger pill da home —
+          rounded-full + bg-muted, ícone Search size-[18px] strokeWidth 1.8.
+          Pill premium e-commerce mobile (Shopee/Shein/Aritzia). h-11 = 44px
+          touch target Apple HIG; text-base evita zoom auto do iOS. */}
       <SearchIcon
-        className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
+        className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground"
+        strokeWidth={1.8}
         aria-hidden
       />
-      {/* text-base no mobile evita zoom auto do iOS Safari. */}
       <input
         ref={inputRef}
         type="search"
@@ -231,8 +235,8 @@ export function SearchTypeahead({ storeSlug, initialQuery = "" }: SearchTypeahea
           if (trimmed.length >= MIN_CHARS) setOpen(true);
         }}
         onKeyDown={handleKeyDown}
-        placeholder="Buscar produtos..."
-        className="h-12 w-full rounded-xl bg-gray-100 pl-12 pr-10 text-base outline-none transition-colors placeholder:text-muted-foreground focus:bg-gray-200/80 focus:ring-2 focus:ring-ring md:text-sm"
+        placeholder="Buscar produtos"
+        className="h-11 w-full rounded-full bg-muted pl-11 pr-10 text-base font-medium text-foreground outline-none transition-colors placeholder:font-medium placeholder:text-muted-foreground hover:bg-muted/80 focus:bg-muted/70 focus:ring-2 focus:ring-ring md:text-sm"
         aria-label="Buscar produtos"
         autoComplete="off"
         enterKeyHint="search"
@@ -246,10 +250,10 @@ export function SearchTypeahead({ storeSlug, initialQuery = "" }: SearchTypeahea
         <button
           type="button"
           onClick={handleClear}
-          className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+          className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
           aria-label="Limpar busca"
         >
-          <X className="size-4" />
+          <X className="size-3.5" />
         </button>
       )}
 
