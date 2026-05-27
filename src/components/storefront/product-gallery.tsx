@@ -174,12 +174,13 @@ export function ProductGallery({
                 sizes="(max-width: 1024px) 100vw, 50vw"
                 priority={idx === 0}
                 quality={90}
-                // object-contain (não cover) preserva enquadramento
-                // original — crítico pra joalheria, perfumaria e calçado
-                // do ICP do Mangos Pay onde "cortar a foto" descaracteriza
-                // o produto. Background bg-gray-50 do container preenche
-                // o espaço sobrando em fotos não-quadradas.
-                className="h-auto w-full object-contain"
+                // Onda 8 (2026-05-27 — founder review): object-cover preenche
+                // 100% do frame. Padrão Shopee/Shein/Zara — foto domina a
+                // primeira dobra mobile sem bordas cinza laterais. Trade-off
+                // conhecido: foto não-quadrada é cropada nas pontas; lojista
+                // é responsável por subir foto quadrada ou aceitar crop
+                // centrado (Onda C do redesign storefront → guia no admin).
+                className="size-full object-cover"
               />
             </figure>
           ))}

@@ -35,7 +35,7 @@
  * stepper (qty=1 implícito; cliente ajusta na sacola), sem share, sem
  * descrição colapsável (canvas mostra completa), sem framer-motion.
  */
-import { ChevronRight, MessageCircleIcon } from "lucide-react";
+import { CircleAlert, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
@@ -87,13 +87,6 @@ export interface ProductPurchasePanelProps {
   selectedVariantId?: string | null;
   onSelectVariant?: (variantId: string | null) => void;
   /**
-   * Número do WhatsApp da loja (E.164: +5599...) — usado pelo CTA
-   * "Tirar dúvida no WhatsApp" na sticky bar. Passo 16 redesign.
-   */
-  whatsappNumber: string;
-  /** Nome da loja — usado na mensagem pré-preenchida do WhatsApp. */
-  storeName: string;
-  /**
    * Trilha categoria-pai → categoria-folha (Onda 5). Renderizada acima
    * do título como breadcrumb sutil — orientação espacial. Vazio/null
    * = breadcrumb não aparece.
@@ -116,8 +109,6 @@ export function ProductPurchasePanel({
   paymentMethodsNote,
   selectedVariantId: controlledVariantId,
   onSelectVariant,
-  whatsappNumber,
-  storeName,
   breadcrumb,
 }: ProductPurchasePanelProps) {
   const router = useRouter();
@@ -191,6 +182,22 @@ export function ProductPurchasePanel({
     priceState.effectivePriceInCents,
     effectiveCashDiscountBps,
   );
+
+  // Onda 8 (2026-05-27): urgência "Últimas X unidades" — padrão Shopee/
+  // Shein/Booking. Renderiza só quando estoque é rastreado E quantidade
+  // disponível está entre 1 e 3 (limiar conservador pra evitar fadiga).
+  // Regras:
+  //  - Produto sem variantes: usa stock do produto.
+  //  - Produto com variantes + variante selecionada: usa stock da variante.
+  //  - Produto com variantes mas nada selecionado: NÃO mostra (qual número?).
+  //  - trackStock=false (serviço sob demanda, consignado): NÃO mostra.
+  const lowStockCount = useMemo<number | null>(() => {
+    const entity = hasVariants ? selectedVariant : product;
+    if (!entity || !entity.trackStock) return null;
+    const qty = entity.stockQuantity ?? 0;
+    if (qty < 1 || qty > 3) return null;
+    return qty;
+  }, [hasVariants, selectedVariant, product]);
 
   // Meta grid só renderiza se pelo menos 1 dos 4 campos tem valor.
   const metaPairs = useMemo(() => {
@@ -351,6 +358,23 @@ export function ProductPurchasePanel({
               {cashDiscount.label}
             </div>
           )}
+          {/* Onda 8 — urgência sutil "Últimas X unidades" estilo Shopee/
+              Shein. Linha discreta laranja-warning, font-medium pra puxar
+              atenção sem ser pushy. Não usa caps lock / exclamation. */}
+          {lowStockCount !== null && (
+            <div className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-medium text-warning">
+              <CircleAlert
+                className="size-3.5 shrink-0"
+                strokeWidth={2}
+                aria-hidden
+              />
+              <span>
+                {lowStockCount === 1
+                  ? "Última unidade disponível"
+                  : `Apenas ${lowStockCount} unidades disponíveis`}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Size selector — canvas linhas 273-298 */}
@@ -493,28 +517,25 @@ export function ProductPurchasePanel({
         )}
       </div>
 
-      {/* Sticky CTA — Onda 2 (2026-05-27) — Heart saiu pro overlay da
-          gallery (Fitts: CTA principal não pode dividir alvo com microação
-          rara). "Adicionar e voltar" removido (régua funciona-ou-esconde —
-          micro otimização não justificava 32px de altura sub-touch-target).
-          "Tirar dúvida" PROMOVIDO de link 11.5px pra CTA secundário pleno
-          h-11 com cor whatsapp (canal próprio, identidade clara) — agora
-          alvo legítimo de Fitts e comunica explicitamente o moat (loja +
-          WhatsApp) ao cliente em dúvida pré-compra. */}
+      {/* Sticky CTA — Onda 8 (2026-05-27 — founder review): voltou a ser
+          mono-CTA. "Tirar dúvida WhatsApp" (Onda 2) saiu — competia visualmente
+          com o add-to-cart sem servir fluxo principal (cliente em dúvida ainda
+          tem o tab WhatsApp do bottom-nav + footer + tab WhatsApp da home).
+          Sticky agora é alvo de Fitts puro: o produto inteiro converge nesse
+          botão. Padrão Shopee/Shein/Aritzia — uma decisão clara no rodapé. */}
       <div
         className={cn(
-          "fixed inset-x-0 bottom-0 z-30 flex flex-col gap-2 border-t border-border bg-background px-3.5 py-3",
+          "fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-background px-3.5 py-3",
           "lg:relative lg:px-0 lg:py-4",
         )}
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
-        {/* Add-to-cart pleno full-width */}
         <button
           type="button"
           onClick={handleAddToCart}
           disabled={ctaDisabled && !recentlyAdded}
           className={cn(
-            "inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-[12px] border-0 text-[14px] font-semibold outline-none transition-colors",
+            "inline-flex h-12 w-full items-center justify-center gap-1.5 rounded-[12px] border-0 text-[14px] font-semibold outline-none transition-colors",
             "focus-visible:ring-2 focus-visible:ring-ring",
             ctaDisabled && !recentlyAdded
               ? "cursor-not-allowed bg-gray-200 text-gray-400"
@@ -525,20 +546,6 @@ export function ProductPurchasePanel({
         >
           {ctaLabel}
         </button>
-
-        {/* CTA secundário "Tirar dúvida no WhatsApp" — h-10 ghost com
-            tint whatsapp. Não compete com o primário (visualmente claro
-            que é alternativa pra cliente em dúvida) mas é alvo legítimo. */}
-        <a
-          href={`https://wa.me/${whatsappNumber.replace(/^\+/, "")}?text=${encodeURIComponent(`Oi! Vi este produto na ${storeName} e queria tirar uma dúvida: ${product.name}`)}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-[12px] border border-whatsapp/40 bg-whatsapp/10 text-whatsapp text-[13px] font-semibold outline-none transition-colors hover:bg-whatsapp/15 active:bg-whatsapp/20 focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="Tirar dúvida sobre este produto no WhatsApp"
-        >
-          <MessageCircleIcon className="size-4" strokeWidth={1.8} aria-hidden />
-          Tirar dúvida no WhatsApp
-        </a>
       </div>
     </>
   );

@@ -14,9 +14,11 @@
  * usamos valores menores direto. Botões "voltar" usam router.back() com
  * fallback opcional via prop `backHref` (SSR-safe pra cold-loads).
  */
-import { ArrowLeft, Heart, Search, ShoppingBag, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, Heart, Search, Share2, ShoppingBag, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import { useCategoriesSidebarTrigger } from "@/components/storefront/categories-sidebar";
 import { useSacolaDrawerTrigger } from "@/components/storefront/sacola-drawer";
@@ -34,6 +36,13 @@ type PdpFloatingProps = {
   store: Store;
   /** Fallback se window.history vazio. Default: /{storeSlug}. */
   backHref?: string;
+  /**
+   * Onda 8 (2026-05-27): renderiza botão Share entre Search e Sacola.
+   * `title` é o nome do produto (vira label/share-sheet). URL é derivada
+   * automaticamente de `window.location.href` no client. Sem isso, o
+   * botão não aparece (telas que não compartilham produto).
+   */
+  shareInfo?: { title: string };
 };
 
 type StickyTitleProps = {
@@ -226,7 +235,7 @@ function SacolaButton({ variant = "solid" }: { variant?: "solid" | "floating" })
    pra home. Toast some, sacola fica acessível.
 */
 
-function PdpFloatingVariant({ store, backHref }: PdpFloatingProps) {
+function PdpFloatingVariant({ store, backHref, shareInfo }: PdpFloatingProps) {
   const fallback = backHref ?? `/${store.slug}`;
 
   return (
@@ -241,9 +250,76 @@ function PdpFloatingVariant({ store, backHref }: PdpFloatingProps) {
         >
           <Search className="size-5" strokeWidth={1.6} />
         </Link>
+        {shareInfo && <ShareFloatingButton title={shareInfo.title} />}
         <SacolaButton variant="floating" />
       </div>
     </div>
+  );
+}
+
+/**
+ * Botão Share flutuante — Onda 8 (2026-05-27). Pattern Insta/Shopee/TikTok:
+ * cliente compartilha o produto pra alguém via menu nativo do device
+ * (Instagram DM, WhatsApp pra mãe, Telegram, etc).
+ *
+ * Cascata:
+ *  - Mobile com `navigator.share` (iOS/Android moderno) → sheet nativo
+ *  - Desktop / sem share API → copia link no clipboard + toast Sonner
+ *  - Sem clipboard (contexto não-secure, raro) → fallback execCommand
+ *
+ * Visual idêntico aos outros ícones floating (white/85 backdrop-blur).
+ */
+function ShareFloatingButton({ title }: { title: string }) {
+  const [hasShare, setHasShare] = useState(false);
+
+  useEffect(() => {
+    setHasShare(
+      typeof navigator !== "undefined" && typeof navigator.share === "function",
+    );
+  }, []);
+
+  async function handleClick() {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    if (hasShare) {
+      try {
+        await navigator.share({ title, url });
+        return;
+      } catch (err) {
+        // AbortError = usuário cancelou o sheet → silencioso
+        if (err instanceof Error && err.name === "AbortError") return;
+        // Erro real → cai pro clipboard
+      }
+    }
+
+    // Clipboard fallback (desktop + mobile sem share)
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      toast.success("Link copiado", { description: title });
+    } catch {
+      toast.error("Não foi possível compartilhar");
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      aria-label={hasShare ? "Compartilhar produto" : "Copiar link do produto"}
+      className="inline-flex size-9 items-center justify-center rounded-full border-0 bg-white/85 text-foreground backdrop-blur-md outline-none transition-colors hover:bg-white focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <Share2 className="size-5" strokeWidth={1.6} />
+    </button>
   );
 }
 

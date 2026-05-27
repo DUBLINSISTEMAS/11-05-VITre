@@ -116,13 +116,10 @@ export function ProductDetailView({
     // shell-content.tsx hasOwnLayout). Não precisa de `-mx-*` pra
     // compensar; o `<article>` é o próprio container da página.
     <article>
-      {/* Mobile layout. `pb-28` (112px) reserva safe-zone abaixo do
-          conteúdo pra que a CTA sticky `fixed bottom-0` (~88px com
-          safe-area-inset-bottom no iPhone) não cubra o último item
-          visível. Substitui o `pb-24` que ficava no panel + `pb-32`
-          que ficava no wrapper relatedSection — antes os dois somavam
-          com o `mt-10` da section gerando ~150px de espaço branco. */}
-      <div className="flex flex-col pb-28 lg:hidden lg:pb-0">
+      {/* Mobile layout. Onda 8 (2026-05-27): pb-28 → pb-24 (96px) pq sticky
+          CTA voltou a mono-botão h-12 (Onda 8) — ~80px total com safe-area.
+          Antes pb-28 cobria 2 botões empilhados (Onda 2). */}
+      <div className="flex flex-col pb-24 lg:hidden lg:pb-0">
         {/* Gallery + floating header + favorite overlay (Onda 2) */}
         <div className="relative">
           <ProductGallery
@@ -134,6 +131,7 @@ export function ProductDetailView({
             variant="pdp-floating"
             store={store}
             backHref={`/${store.slug}`}
+            shareInfo={{ title: product.name }}
           />
           <FavoriteButton
             product={favoriteInput}
@@ -150,8 +148,6 @@ export function ProductDetailView({
           paymentMethodsNote={store.paymentMethodsNote}
           selectedVariantId={selectedVariantId}
           onSelectVariant={setSelectedVariantId}
-          whatsappNumber={store.whatsappNumber}
-          storeName={store.name}
           breadcrumb={breadcrumb}
         />
 
@@ -159,7 +155,7 @@ export function ProductDetailView({
             do PDP, antes da CTA sticky. A section interna controla
             o próprio mt-4 + border-t + pt-5 (16+20px de respiro
             apertado estilo loja online). Safe-zone pra CTA mora no
-            flex-col pai (pb-28) — sem dupla margem. */}
+            flex-col pai (pb-24) — sem dupla margem. */}
         {relatedSection}
       </div>
 
@@ -188,8 +184,6 @@ export function ProductDetailView({
             paymentMethodsNote={store.paymentMethodsNote}
             selectedVariantId={selectedVariantId}
             onSelectVariant={setSelectedVariantId}
-            whatsappNumber={store.whatsappNumber}
-            storeName={store.name}
           />
         </div>
       </div>
