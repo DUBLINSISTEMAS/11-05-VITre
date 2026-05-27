@@ -2675,3 +2675,151 @@
     content: counter(page);
   }
 }
+
+/* ========================================================
+ * AnimatedAuthButton (.aab-*) — Onda 35 (2026-05-27)
+ * ========================================================
+ * CTA premium pras telas auth (/entrar, /criar-loja, /recuperar).
+ * Adaptado do "Lab Botton" do Uiverse pras cores do brand Mangos Pay.
+ *
+ * Camadas (z-index ↑):
+ *   0. base: gradient mangos-green-700 → 800 + radial overlay claro topo
+ *   1. ::before — overlay hover que faz wipe da esquerda pra direita
+ *      (scaleX 0 → 1 em 800ms) com gradient mais claro
+ *   2. ::after — shimmer (faixa branca translúcida) percorrendo o botão
+ *      a cada 5s (loop ease-in-out)
+ *   3. .aab-points — 10 pontinhos brancos subindo do fundo (efeito de
+ *      "energia") em loop com delays distintos pra dar organicidade
+ *   4. .aab-inner — texto + ícone com transição de cor pro escuro no hover
+ *
+ * Reduced motion: zera animações pra usuário que pediu (WCAG).
+ */
+.aab-root {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 48px;
+  padding: 0 18px;
+  border: none;
+  outline: none;
+  border-radius: 10px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.18s ease, box-shadow 0.25s ease;
+  background:
+    radial-gradient(65.28% 65.28% at 50% 100%,
+      rgba(255, 255, 255, 0.25) 0%,
+      rgba(255, 255, 255, 0) 100%),
+    linear-gradient(180deg, var(--mangos-green-700), var(--mangos-green-800));
+  box-shadow: 0 4px 15px rgba(23, 77, 68, 0.25);
+}
+.aab-root:focus-visible {
+  outline: 2px solid var(--mangos-green-700);
+  outline-offset: 2px;
+}
+.aab-root:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+.aab-root::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--mangos-green-700) 55%, white),
+    var(--mangos-green-700)
+  );
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1;
+}
+.aab-root:hover:not(:disabled)::before {
+  transform: scaleX(1);
+}
+.aab-root::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -150%;
+  width: 120px;
+  height: 200%;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(255, 255, 255, 0.15),
+    transparent
+  );
+  transform: skewX(-20deg);
+  z-index: 2;
+  pointer-events: none;
+  animation: aab-shinery 5s infinite ease-in-out;
+}
+@keyframes aab-shinery {
+  0% { left: -150%; opacity: 0; }
+  20% { opacity: 0.55; }
+  40% { left: 150%; opacity: 0; }
+  100% { left: 150%; opacity: 0; }
+}
+.aab-root:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.aab-points {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 3;
+}
+.aab-point {
+  position: absolute;
+  bottom: -10px;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.85);
+  animation: aab-floating-points infinite ease-in-out;
+}
+@keyframes aab-floating-points {
+  0% { transform: translateY(0); opacity: 1; }
+  85% { opacity: 0; }
+  100% { transform: translateY(-50px); opacity: 0; }
+}
+.aab-point:nth-child(1)  { left: 10%; animation-duration: 2s;   animation-delay: 0.1s; }
+.aab-point:nth-child(2)  { left: 30%; animation-duration: 2.2s; animation-delay: 0.4s; }
+.aab-point:nth-child(3)  { left: 25%; animation-duration: 1.8s; }
+.aab-point:nth-child(4)  { left: 44%; animation-duration: 2.1s; animation-delay: 0.2s; }
+.aab-point:nth-child(5)  { left: 60%; animation-duration: 1.9s; }
+.aab-point:nth-child(6)  { left: 75%; animation-duration: 2.3s; animation-delay: 0.5s; }
+.aab-point:nth-child(7)  { left: 88%; animation-duration: 2s; }
+.aab-point:nth-child(8)  { left: 58%; animation-duration: 2.2s; animation-delay: 0.3s; }
+.aab-point:nth-child(9)  { left: 95%; animation-duration: 2.5s; }
+.aab-point:nth-child(10) { left: 15%; animation-duration: 1.7s; animation-delay: 0.2s; }
+.aab-inner {
+  position: relative;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  transition: color 0.4s ease;
+}
+.aab-root:hover:not(:disabled) .aab-inner {
+  color: var(--mangos-green-800);
+}
+@media (prefers-reduced-motion: reduce) {
+  .aab-root::before,
+  .aab-root::after,
+  .aab-point {
+    animation: none !important;
+    transition: none !important;
+  }
+}

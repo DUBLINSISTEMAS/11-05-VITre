@@ -10,6 +10,7 @@ import { toast } from "sonner";
 
 import { type SignInInput, signInSchema } from "@/actions/auth/schema";
 import { signInWithEmail } from "@/actions/auth/sign-in";
+import { AnimatedAuthButton } from "@/components/auth/animated-auth-button";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { cn } from "@/lib/utils";
 
@@ -155,12 +156,7 @@ function EntrarContent() {
           </Link>
         </div>
 
-        <button
-          type="submit"
-          className="b3-btn b3-btn--cta w-full justify-center"
-          style={{ height: 48, fontSize: 14, fontWeight: 700 }}
-          disabled={isPending}
-        >
+        <AnimatedAuthButton type="submit" disabled={isPending}>
           {isPending ? (
             <>
               <Loader2 className="size-4 animate-spin" /> Entrando…
@@ -170,7 +166,7 @@ function EntrarContent() {
               Entrar <ArrowRight className="size-4" />
             </>
           )}
-        </button>
+        </AnimatedAuthButton>
       </form>
     </AuthShell>
   );
