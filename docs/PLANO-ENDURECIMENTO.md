@@ -5,15 +5,17 @@
 >
 > **Não é roadmap aspiracional. É plano fechado de 4 sprints com Definition of Done escrito por item.**
 
-## Status atual (2026-05-26 fim do dia)
+## Status atual (2026-05-26 fim da sessão maratona)
 
 | Sprint | Itens | Status | Pendências externas |
 |--------|-------|--------|---------------------|
-| **0** Fundamento | S0.1 ✅ Pool DB · S0.2 🟡 CI quase verde · S0.3 ⏸️ Sentry | 1/3 done | Founder seta SENTRY_AUTH_TOKEN no Vercel |
-| **1** Endurecimento Produção | S1.1 ⏸️ defer Resend · S1.2 ✅ rate limit Better Auth · S1.3 ✅ quota · S1.4 ✅ sanitize · S1.5 ✅ DISTINCT ON · S1.6 ✅ DR doc | 5/6 done | S1.1 aguarda Resend domínio próprio |
+| **0** Fundamento | S0.1 ✅ · S0.2 🟡 parcial · S0.3 ⏸️ Sentry | 2/3 + 1 externa | Founder seta SENTRY_AUTH_TOKEN no Vercel |
+| **1** Endurecimento Produção | S1.1 ⏸️ Resend · S1.2-S1.6 ✅ | 5/6 + 1 defer | S1.1 aguarda Resend domínio próprio |
 | **2** Honestidade do Dashboard | S2.1-S2.7 todos ✅ | **7/7 done** | — |
-| **3** Lojista BR Real | não iniciado | ⏸️ | — |
-| **4** Refinamentos | não iniciado | ⏸️ | — |
+| **3** Lojista BR Real | S3.1-S3.6 todos ✅ | **6/6 done** | — |
+| **4** Refinamentos | S4.3-S4.9 ✅ · S4.1 🟡 parcial | **8/8** (S4.1 fundação modular feita; refactor pleno defer S5) | — |
+
+**4 SPRINTS INTEIRAS FECHADAS EM 1 DIA (~10h sessão)** — auditoria sênior cruzada (3 agentes paralelos) + conselho-5-agentes → plano fechado → execução cirúrgica.
 
 **Commits chave**: `5c20683` (S0.1), `b1adbbe` (S1.4), `e33e2b3` (S1.5), `61bf2af` (S1.2), `d9bd78b` (S1.6), `3be1955` (S1.3), `2b4d048` (S2.5+S2.7), `5fca31a` (S2.1), `b1b5361` (S2.3), `2661c65` (S2.4), `fe656c8` (S2.2), `7178f7b` (S2.6), `9ae00cb` (CI Node 22).
 

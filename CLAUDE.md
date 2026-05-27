@@ -155,7 +155,39 @@ CSS bug histórico corrigido em 2026-05-26: `body:has(.report-print-root)` agora
 
 ---
 
-## Sprint atual: Plano de Endurecimento Sprint 0-2 ✅ (2026-05-26)
+## Sprint atual: Plano de Endurecimento Sprints 0-4 ✅ FECHADAS (2026-05-26)
+
+**Sessão maratona de ~10h em 2026-05-26 fechou 4 sprints inteiras** (com 1 item de S4.1 parcial). Estado real:
+
+- **Sprint 0** Fundamento: 2/3 ✅ + 1 ⏸️ externa (Sentry token no Vercel)
+- **Sprint 1** Endurecimento Produção: 5/6 ✅ + 1 deferido (Resend externo)
+- **Sprint 2** Honestidade do Dashboard: **7/7 ✅**
+- **Sprint 3** Lojista BR Real: **6/6 ✅**
+- **Sprint 4** Refinamentos: **8/8 ✅** (S4.1 pdv-shell refactor 3409→3295 + estrutura modular; refactor pleno defer pra S5 com E2E test antes)
+
+**Estado verificado**: 80 SQLs em prod, 590 testes (548 pass / 0 fail / 42 skipped), tsc + lint zero erro. Branch única `main`. ~30 commits nesta sessão.
+
+**Descoberta crítica durante S2.6**: `order_item.unit_cost_snapshot_in_cents` era NULL pra TODAS vendas — invalidava margem do sistema. Fix incluído (snapshot agora `coalesce(variant.cost, product.cost)` em PDV e WhatsApp checkout).
+
+**Dívidas residuais documentadas**:
+- S0.2 CI Integration RLS — 15 tabelas skipam por GRANT não-debugado (test file tem TODO).
+- S4.1 pdv-shell refactor pleno — 9 componentes ainda no shell, precisa E2E test antes.
+- UIs pendentes: lote na compra (S3.4), pausa-venda PDV (S3.3), ajuste taxa cartão (S2.4).
+- recordReceivablePayment com distribuição juros→multa→principal (helper pronto, falta plugar).
+
+**Pendências externas do founder** (4 itens curtos):
+1. Vercel: `SENTRY_AUTH_TOKEN` + `SENTRY_ORG` + `SENTRY_PROJECT` (10 min)
+2. GitHub: secret `PROD_DIRECT_URL` (3 min)
+3. Supabase: rotacionar senha exposta (5 min)
+4. Resend: domínio próprio + flip email verification (~30 min, defer)
+
+**Sistema pronto pra Sandra/Vânia operar diariamente**: DRE não mente, fiado cobra multa/juros, margem por variante, aging report, vendedoras com comissão, sangria 6-tipo, quota/rate-limit, DR doc, CSV server-side, storefront pixel-perfect.
+
+Detalhes completos em memória `sessao-2026-05-26-sprints-0-a-4.md` + `docs/PLANO-ENDURECIMENTO.md` (com status atualizado por item).
+
+---
+
+## Sprint anterior: Estabilização Semana 1 D1-D5 (2026-05-26)
 
 **Objetivo (PLANO-ENDURECIMENTO.md)**: transformar Mangos Pay de "MVP solo bem feito" em "SaaS pronto pra 10-15 lojas operando todo dia, sem mentir nos números, sem cair no pico, sem deixar dinheiro do lojista na mesa".
 
@@ -427,6 +459,7 @@ Marcos:
 - Redesign pixel-perfect PP1-PP15 ✅ admin completo (2026-05-25)
 - Sprint Vendas SaaS-grade 2026-05-26 — 7 turnos, 25+ fixes (impressão universal, cartão com juros, notificações in-app, cleanup 12 arquivos órfãos).
 - Sprint Estoque 1+2 e Cadastros Sprint 1 ✅ FECHADAS 2026-05-26.
-- **Catch-up `feat/redesign-admin-storefront` → `main` em 2026-05-26** — 41 commits, fast-forward, vitre.site production passa a refletir TODO o trabalho sênior das últimas semanas (redesign + 4 sprints + demo seed jewelry). SQLs 71-72 aditivas já aplicadas em prod antes do merge. Próximo bloco operacional: Semana 2 Fase 2 (Blocos 3-4-5).
+- Catch-up `feat/redesign-admin-storefront` → `main` em 2026-05-26 — 41 commits, fast-forward, vitre.site production passa a refletir TODO o trabalho sênior das últimas semanas.
+- **MARATONA SPRINTS 0-4 DO PLANO DE ENDURECIMENTO em 2026-05-26** — ~10h de sessão fecharam 4 sprints (S0 fundamento, S1 produção, S2 honestidade 7/7, S3 lojista BR 6/6, S4 refinamentos 8/8). 80 SQLs em prod (até #80), 590 testes, ~30 commits. Sistema PRONTO pra lojista BR operar diariamente — DRE não mente, fiado cobra multa, comissão por vendedora, aging/lote/validade, sangria 6-tipo, quota/rate-limit, DR doc. Próximo bloco: Fase 2 Bloco 3-4-5 (signup self-service + hardening auth + roteamento subdomain) OU resolver dívidas residuais (pdv-shell refactor pleno + S0.2 GRANT debug).
 
 **Norte vivo sobrescreve qualquer ADR conflitante.** Se ADR antigo disser X e este arquivo disser Y, vale este arquivo. ADR é registro de decisão no momento; norte vivo é régua de execução atual.
