@@ -34,8 +34,20 @@ export function StoreFooter({ store }: StoreFooterProps) {
   const igHandle = store.instagramHandle?.replace(/^@/, "");
 
   return (
-    <footer className="border-border/60 bg-muted/30 mt-12 border-t">
-      <div className="mx-auto w-full max-w-screen-xl space-y-6 px-4 py-8">
+    <footer className="relative overflow-hidden border-border/60 bg-muted/30 mt-12 border-t">
+      {/* Onda 17 (2026-05-27): watermark da manga no canto inferior direito.
+          Mesmo pattern do auth-shell admin (favicon.svg + opacity-[0.07] +
+          posição negativa pra "vazar" do canto). Identidade Mangos Pay
+          discreta no rodapé sem competir com o conteúdo da loja. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/logos/favicon.svg"
+        alt=""
+        aria-hidden
+        draggable={false}
+        className="pointer-events-none absolute -right-10 -bottom-12 h-[180px] w-[180px] opacity-[0.06] sm:-right-16 sm:-bottom-16 sm:h-[240px] sm:w-[240px] lg:-right-20 lg:-bottom-20 lg:h-[300px] lg:w-[300px]"
+      />
+      <div className="relative mx-auto w-full max-w-screen-xl space-y-6 px-4 py-8">
         <div className="grid gap-6 sm:grid-cols-2">
           <div className="space-y-2">
             <h2 className="text-foreground text-base font-semibold">
