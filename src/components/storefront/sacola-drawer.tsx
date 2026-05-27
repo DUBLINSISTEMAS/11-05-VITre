@@ -20,7 +20,7 @@
  * Diferença vs versão drawer-completo: ações destrutivas e checkout
  * movidos pra `/sacola`. Drawer só comunica "tem isso aqui, quer ir?".
  */
-import { ShoppingBasketIcon } from "lucide-react";
+import { ShoppingBasketIcon, Trash2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -72,7 +72,7 @@ export function SacolaDrawer({
 }: SacolaDrawerProps) {
   const [open, setOpen] = useState(false);
   const [recentLineKey, setRecentLineKey] = useState<string | null>(null);
-  const { state, count, subtotalCents, isHydrated } = useCart();
+  const { state, count, subtotalCents, isHydrated, removeItem } = useCart();
 
   const value = useMemo<DrawerContextValue>(
     () => ({ open: () => setOpen(true), close: () => setOpen(false) }),
@@ -152,7 +152,13 @@ export function SacolaDrawer({
                         key={key}
                         className="py-3 first:pt-0 last:pb-0"
                       >
-                        <PreviewRow item={item} highlighted={recentLineKey === key} />
+                        <PreviewRow
+                          item={item}
+                          highlighted={recentLineKey === key}
+                          onRemove={() =>
+                            removeItem(item.productId, item.variantId)
+                          }
+                        />
                       </li>
                     );
                   })}
@@ -195,9 +201,12 @@ export function SacolaDrawer({
 interface PreviewRowProps {
   item: import("@/lib/cart/types").CartItem;
   highlighted?: boolean;
+  /** Onda 27 (2026-05-27): permite remover item direto do drawer
+   *  (antes cliente precisava ir pra /sacola pra remover). */
+  onRemove: () => void;
 }
 
-function PreviewRow({ item, highlighted = false }: PreviewRowProps) {
+function PreviewRow({ item, highlighted = false, onRemove }: PreviewRowProps) {
   const lineTotal = item.cachedPriceCents * item.quantity;
 
   return (
@@ -237,13 +246,23 @@ function PreviewRow({ item, highlighted = false }: PreviewRowProps) {
           </span>
         ) : null}
       </div>
-      <div className="flex shrink-0 flex-col items-end gap-1">
-        <span className="text-muted-foreground font-mono text-[10px]">
-          ×{item.quantity}
-        </span>
-        <span className="text-[12.5px] font-semibold tabular-nums">
-          {formatBRL(lineTotal)}
-        </span>
+      <div className="flex shrink-0 flex-col items-end justify-between gap-1">
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Remover ${item.productName}`}
+          className="text-muted-foreground hocus:text-destructive -m-1 p-1 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+        >
+          <Trash2 className="size-[14px]" aria-hidden />
+        </button>
+        <div className="flex flex-col items-end gap-0.5">
+          <span className="text-muted-foreground font-mono text-[10px]">
+            ×{item.quantity}
+          </span>
+          <span className="text-[12.5px] font-semibold tabular-nums">
+            {formatBRL(lineTotal)}
+          </span>
+        </div>
       </div>
     </div>
   );
