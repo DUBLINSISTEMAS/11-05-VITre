@@ -6,6 +6,7 @@
   "description": "Mangos Pay — SaaS de loja online com checkout WhatsApp",
   "//": "TODO: migrar next lint para ESLint CLI antes do Next 16. Ver docs/issues/next16-eslint-cli.md",
   "scripts": {
+    "//dev": "Em Windows com path c/ espaços, `node --max-old-space-size=N ./node_modules/...` quebra (spawn UNKNOWN). Se aparecer OOM 'MemoryChunk allocation failed' no Turbopack worker (FATAL 2026-05-27), rodar PowerShell antes: $env:NODE_OPTIONS = '--max-old-space-size=4096'; npm run dev",
     "dev": "next dev --turbopack",
     "prebuild": "node scripts/stamp-sw.mjs",
     "build": "next build",

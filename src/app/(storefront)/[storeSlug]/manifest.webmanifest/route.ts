@@ -18,6 +18,16 @@ import { NextResponse } from "next/server";
 
 import { getStoreBySlug } from "@/lib/storefront/store-loader";
 
+/**
+ * Força runtime dinâmico — sem isso, Next/Turbopack tenta gerar
+ * `generateStaticParams` em build/dev e estoura memória do Jest worker
+ * (OOM "MemoryChunk allocation failed during deserialization" capturado
+ * em 2026-05-27). Cada loja é único — manifest dinâmico por slug,
+ * cache HTTP curto via `Cache-Control: max-age=300` cobre performance.
+ */
+export const dynamic = "force-dynamic";
+export const revalidate = 300;
+
 interface ManifestIcon {
   src: string;
   sizes: string;
