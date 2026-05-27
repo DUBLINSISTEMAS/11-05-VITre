@@ -256,8 +256,11 @@ function EmptyState({
   storeSlug: string;
   onClose: () => void;
 }) {
+  // Onda 26 (2026-05-27): h-full no wrapper pra justify-center funcionar
+  // (precisa de altura definida pra centralizar vertical). Antes ficava
+  // empilhado no topo do scroll container do drawer, fundo vazio embaixo.
   return (
-    <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
+    <div className="flex h-full flex-col items-center justify-center px-4 py-8 text-center">
       <div className="bg-muted mb-6 flex size-20 items-center justify-center rounded-full">
         <ShoppingBasketIcon
           className="text-muted-foreground size-10"
