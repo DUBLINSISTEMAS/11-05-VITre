@@ -31,12 +31,6 @@ interface PageParams {
   collectionSlug: string;
 }
 
-function formatPiecesCounter(total: number): string {
-  if (total === 0) return "0 PEÇAS";
-  if (total === 1) return "1 PEÇA";
-  return `${total} PEÇAS`;
-}
-
 export async function generateMetadata({
   params,
 }: {
@@ -82,12 +76,13 @@ export default async function CollectionPage({
 
   return (
     <>
+      {/* Onda 19 (2026-05-27): counter "X PEÇAS" removido — header limpo,
+          coleção respira sem competição visual. */}
       <StoreHeader
         variant="category"
         store={store}
         kicker="COLEÇÃO"
         title={collection.name}
-        counter={formatPiecesCounter(collection.items.length)}
       />
 
       {/* pb-44 mobile reserva safe-zone pro MiniCartBar (h-14) +

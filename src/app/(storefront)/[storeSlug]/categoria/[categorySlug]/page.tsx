@@ -62,12 +62,6 @@ const categoriaSearchSchema = z.object({
     .catch(null),
 });
 
-function formatPiecesCounter(total: number): string {
-  if (total === 0) return "0 PEÇAS";
-  if (total === 1) return "1 PEÇA";
-  return `${total} PEÇAS`;
-}
-
 export async function generateMetadata({
   params,
   searchParams,
@@ -168,12 +162,14 @@ export default async function CategoryPage({
 
   return (
     <>
+      {/* Onda 19 (2026-05-27): counter "X PEÇAS" removido — informação
+          redundante (grid abaixo já mostra os produtos visualmente) e
+          o header fica mais limpo, deixando o nome da categoria respirar. */}
       <StoreHeader
         variant="category"
         store={store}
         kicker="CATEGORIA"
         title={category.name}
-        counter={formatPiecesCounter(result.total)}
       />
 
       <CategoryFilterChips basePath={basePath} attributes={attributes} />
