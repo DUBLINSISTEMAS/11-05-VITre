@@ -106,7 +106,7 @@ function HomeVariant({ store }: { store: Store }) {
           </span>
         </Link>
 
-        <SacolaButton />
+        <SacolaButton variant="solid" />
       </div>
     </header>
   );
@@ -136,10 +136,24 @@ function CategoriesButton() {
  * Botão sticky de sacola no header — atalho rápido sem precisar rolar
  * até o bottom-nav. Funciona em mobile e desktop. Click abre o drawer
  * de preview da sacola.
+ *
+ * Onda 2 (2026-05-27): `variant` controla o estilo visual.
+ *   - "solid" (default): bg-muted opaco dentro de header sólido (home).
+ *   - "floating": bg-white/85 backdrop-blur pra sobrepor imagem da
+ *     galeria no PDP (consistente com BackButton floating + Search).
+ *
+ * Justificativa: cliente no PDP que adiciona e perde o toast (2s) tinha
+ * que voltar pra home pra ver bottom-nav e acessar sacola. Agora a sacola
+ * é alcançável de qualquer ponto do PDP em 1 toque.
  */
-function SacolaButton() {
+function SacolaButton({ variant = "solid" }: { variant?: "solid" | "floating" }) {
   const drawer = useSacolaDrawerTrigger();
   const { count, isHydrated } = useCart();
+
+  const visualClass =
+    variant === "floating"
+      ? "bg-white/85 text-foreground backdrop-blur-md hover:bg-white"
+      : "bg-muted text-foreground hover:bg-gray-200";
 
   return (
     <button
@@ -148,7 +162,7 @@ function SacolaButton() {
       aria-label={
         count > 0 ? `Sacola com ${count} ${count === 1 ? "item" : "itens"}` : "Sacola"
       }
-      className="relative inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-foreground outline-none transition-colors hover:bg-gray-200 focus-visible:ring-2 focus-visible:ring-ring"
+      className={`relative inline-flex size-9 shrink-0 items-center justify-center rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring ${visualClass}`}
     >
       <ShoppingBag className="size-5" strokeWidth={1.6} />
       {isHydrated && count > 0 ? (
@@ -163,22 +177,30 @@ function SacolaButton() {
   );
 }
 
-/* ───────────────────── pdp-floating ───────────────────── */
+/* ───────────────────── pdp-floating ─────────────────────
+   Onda 2 (2026-05-27): além de Back + Search, ganha SacolaButton
+   floating. Justificativa: cliente que adiciona produto e perde
+   o toast (2s) precisa de caminho de 1 toque pra sacola sem voltar
+   pra home. Toast some, sacola fica acessível.
+*/
 
 function PdpFloatingVariant({ store, backHref }: PdpFloatingProps) {
   const fallback = backHref ?? `/${store.slug}`;
 
   return (
-    <div className="pointer-events-none absolute inset-x-3 top-3 z-30 flex items-center justify-between">
+    <div className="pointer-events-none absolute inset-x-3 top-3 z-30 flex items-center">
       <BackButton size={36} fallback={fallback} className="pointer-events-auto" floating />
-      <Link
-        href={`/${store.slug}/buscar`}
-        prefetch={false}
-        aria-label="Buscar produtos"
-        className="pointer-events-auto inline-flex size-9 items-center justify-center rounded-full border-0 bg-white/85 text-foreground backdrop-blur-md outline-none transition-colors hover:bg-white focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <Search className="size-5" strokeWidth={1.6} />
-      </Link>
+      <div className="pointer-events-auto ml-auto flex items-center gap-2">
+        <Link
+          href={`/${store.slug}/buscar`}
+          prefetch={false}
+          aria-label="Buscar produtos"
+          className="inline-flex size-9 items-center justify-center rounded-full border-0 bg-white/85 text-foreground backdrop-blur-md outline-none transition-colors hover:bg-white focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Search className="size-5" strokeWidth={1.6} />
+        </Link>
+        <SacolaButton variant="floating" />
+      </div>
     </div>
   );
 }

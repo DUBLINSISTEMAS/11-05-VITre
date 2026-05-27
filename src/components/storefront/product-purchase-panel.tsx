@@ -35,13 +35,12 @@
  * stepper (qty=1 implícito; cliente ajusta na sacola), sem share, sem
  * descrição colapsável (canvas mostra completa), sem framer-motion.
  */
-import { Heart, MessageCircleIcon } from "lucide-react";
+import { MessageCircleIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 
 import { useToast } from "@/components/storefront/toast";
 import { useCart } from "@/hooks/use-cart";
-import { useFavorites } from "@/hooks/use-favorites";
 import {
   buildAddToCartSnapshot,
   isVariantSoldOut,
@@ -52,7 +51,6 @@ import {
   formatBRL,
   formatCashDiscount,
   formatInstallments,
-  getEffectivePrice,
   type PaymentConfig,
   resolveCashDiscountBps,
 } from "@/lib/pricing";
@@ -131,7 +129,6 @@ export function ProductPurchasePanel({
 
   const { addItem } = useCart();
   const { addToast } = useToast();
-  const { isFavorite, toggleFavorite, isHydrated } = useFavorites();
 
   // Separa variantes por eixo. Lote 2 trata size/color como mutuamente
   // exclusivos por produto — se admin criou ambos, renderiza ambos blocos
@@ -166,7 +163,6 @@ export function ProductPurchasePanel({
   const ctaDisabled =
     productIsSoldOut || selectionRequired || selectedVariantSoldOut || recentlyAdded;
 
-  const ctaPrice = getEffectivePrice(product, now); // preço de catálogo (sem variant) pro label do CTA
   const ctaPriceWithVariant = priceState.effectivePriceInCents;
 
   const discountPercent = priceState.isOnPromo
@@ -234,26 +230,6 @@ export function ProductPurchasePanel({
     setRecentlyAdded(true);
     setTimeout(() => setRecentlyAdded(false), 1500);
   }, [addItem, addToast, ctaDisabled, product, router, selectedVariant, storeSlug]);
-
-  // "Adicionar e voltar pra loja": atalho pra quem está comprando vários
-  // itens e quer manter o fluxo de descoberta sem ficar preso no PDP.
-  const handleAddAndContinue = useCallback(() => {
-    if (ctaDisabled) return;
-    handleAddToCart();
-    router.push(`/${storeSlug}`);
-  }, [ctaDisabled, handleAddToCart, router, storeSlug]);
-
-  const isFav = isHydrated && isFavorite(product.id);
-
-  const handleToggleFavorite = useCallback(() => {
-    toggleFavorite({
-      productId: product.id,
-      productSlug: product.slug,
-      productName: product.name,
-      imageUrl: product.images[0]?.url ?? null,
-      priceCents: ctaPrice,
-    });
-  }, [toggleFavorite, product, ctaPrice]);
 
   const ctaLabel = useMemo(() => {
     if (productIsSoldOut || selectedVariantSoldOut) return "Esgotado";
@@ -461,79 +437,52 @@ export function ProductPurchasePanel({
         )}
       </div>
 
-      {/* Sticky CTA — canvas linhas 342-353 */}
+      {/* Sticky CTA — Onda 2 (2026-05-27) — Heart saiu pro overlay da
+          gallery (Fitts: CTA principal não pode dividir alvo com microação
+          rara). "Adicionar e voltar" removido (régua funciona-ou-esconde —
+          micro otimização não justificava 32px de altura sub-touch-target).
+          "Tirar dúvida" PROMOVIDO de link 11.5px pra CTA secundário pleno
+          h-11 com cor whatsapp (canal próprio, identidade clara) — agora
+          alvo legítimo de Fitts e comunica explicitamente o moat (loja +
+          WhatsApp) ao cliente em dúvida pré-compra. */}
       <div
         className={cn(
-          "fixed inset-x-0 bottom-0 z-30 flex flex-col gap-1.5 border-t border-border bg-background px-3.5 py-3",
+          "fixed inset-x-0 bottom-0 z-30 flex flex-col gap-2 border-t border-border bg-background px-3.5 py-3",
           "lg:relative lg:px-0 lg:py-4",
         )}
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
-        <div className="flex items-center gap-2">
-          {/* Heart button 44×44 rounded-12 (canvas é "save" mas reuso favoritos) */}
-          <button
-            type="button"
-            onClick={handleToggleFavorite}
-            aria-label={isFav ? "Remover dos favoritos" : "Adicionar aos favoritos"}
-            aria-pressed={isFav}
-            className="inline-flex size-11 shrink-0 items-center justify-center rounded-[12px] border border-border bg-background text-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <Heart
-              className={cn("size-5", isFav && "fill-rose-500 text-rose-500")}
-              strokeWidth={1.6}
-            />
-          </button>
+        {/* Add-to-cart pleno full-width */}
+        <button
+          type="button"
+          onClick={handleAddToCart}
+          disabled={ctaDisabled && !recentlyAdded}
+          className={cn(
+            "inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-[12px] border-0 text-[14px] font-semibold outline-none transition-colors",
+            "focus-visible:ring-2 focus-visible:ring-ring",
+            ctaDisabled && !recentlyAdded
+              ? "cursor-not-allowed bg-gray-200 text-gray-400"
+              : recentlyAdded
+                ? "bg-success text-success-foreground"
+                : "bg-foreground text-background hover:bg-foreground/90 active:bg-foreground/85",
+          )}
+        >
+          {ctaLabel}
+        </button>
 
-          {/* Add-to-cart 44 rounded-12 bg-foreground */}
-          <button
-            type="button"
-            onClick={handleAddToCart}
-            disabled={ctaDisabled && !recentlyAdded}
-            className={cn(
-              "inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-[12px] border-0 text-[13.5px] font-semibold outline-none transition-colors",
-              "focus-visible:ring-2 focus-visible:ring-ring",
-              ctaDisabled && !recentlyAdded
-                ? "cursor-not-allowed bg-gray-200 text-gray-400"
-                : recentlyAdded
-                  ? "bg-success text-success-foreground"
-                  : "bg-foreground text-background hover:bg-foreground/90 active:bg-foreground/85",
-            )}
-          >
-            {ctaLabel}
-          </button>
-        </div>
-
-        {/* Linha secundária: "Adicionar e voltar pra loja" + "Tirar
-            dúvida no WhatsApp" — handoff Passo 16. Cliente que chega da
-            indicação no zap muitas vezes prefere perguntar antes de
-            finalizar; sem essa CTA, abandonava o PDP pra abrir o WA
-            manualmente. Régua "moat" — o storefront diferencia o produto. */}
-        <div className="flex items-center justify-between gap-3 text-[11.5px]">
-          <button
-            type="button"
-            onClick={handleAddAndContinue}
-            disabled={ctaDisabled && !recentlyAdded}
-            className={cn(
-              "h-8 rounded-md font-medium outline-none transition-colors",
-              "focus-visible:ring-2 focus-visible:ring-ring",
-              ctaDisabled && !recentlyAdded
-                ? "cursor-not-allowed text-gray-300"
-                : "text-muted-foreground hocus:text-foreground hocus:underline",
-            )}
-          >
-            Adicionar e voltar
-          </button>
-          <a
-            href={`https://wa.me/${whatsappNumber.replace(/^\+/, "")}?text=${encodeURIComponent(`Oi, tudo bem? Vi este produto na ${storeName} e queria tirar uma dúvida: ${product.name}`)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-md font-medium text-[var(--brand-store)] outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label="Tirar dúvida sobre este produto no WhatsApp"
-          >
-            <MessageCircleIcon className="size-3.5" aria-hidden />
-            Tirar dúvida
-          </a>
-        </div>
+        {/* CTA secundário "Tirar dúvida no WhatsApp" — h-10 ghost com
+            tint whatsapp. Não compete com o primário (visualmente claro
+            que é alternativa pra cliente em dúvida) mas é alvo legítimo. */}
+        <a
+          href={`https://wa.me/${whatsappNumber.replace(/^\+/, "")}?text=${encodeURIComponent(`Oi! Vi este produto na ${storeName} e queria tirar uma dúvida: ${product.name}`)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-[12px] border border-whatsapp/40 bg-whatsapp/10 text-whatsapp text-[13px] font-semibold outline-none transition-colors hover:bg-whatsapp/15 active:bg-whatsapp/20 focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Tirar dúvida sobre este produto no WhatsApp"
+        >
+          <MessageCircleIcon className="size-4" strokeWidth={1.8} aria-hidden />
+          Tirar dúvida no WhatsApp
+        </a>
       </div>
     </>
   );

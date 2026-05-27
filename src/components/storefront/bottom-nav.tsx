@@ -1,36 +1,35 @@
 "use client";
 
 /**
- * BottomNav — 5 tabs alinhadas à referência Dribbble 1 (2026-05-27):
+ * BottomNav — 4 tabs (Onda 2 — 2026-05-27, análise sênior):
  *
- *   Início · Buscar · Sacola · Favoritos · Mais
+ *   Início · Buscar · Sacola · WhatsApp
  *
- * "Mais" abre um bottom-sheet (MoreSheet) com Sobre, Contato e WhatsApp
- * direto da loja. Categorias saiu da bottom-nav: o CategoryStrip da
- * home + drilldown no header já cobrem (decisão founder review).
+ * Princípio 10 do CLAUDE.md ("funciona ou esconde") aplicado:
+ *  - Favoritos saiu — ICP do interior com 50-100 SKUs raramente usa lista
+ *    de favoritos (Insta não tem, modelo mental do cliente não tem).
+ *    Rota /favoritos permanece viva por URL.
+ *  - Mais saiu — abria sheet com Sobre/Contato/WhatsApp; Sobre/Contato já
+ *    estão no StoreFooter (rolagem natural cobre); WhatsApp PROMOVIDO pra
+ *    tab própria que comunica o moat do produto (loja + WhatsApp direto).
  *
- * Cores: active state usa `--primary` (verde Mangos Pay storefront —
- * scopado pelo StoreShell). Badge contador da sacola mantém
- * `--brand-store` (toque sutil de personalização por loja).
+ * WhatsApp tab = `kind: "external"` — abre wa.me em nova aba. Mensagem
+ * pré-preenchida genérica ("Oi! Vi sua loja online"). Aba não tem state
+ * "active" (sempre não-active).
  *
- * 3 variants espelham VTBottomNav do canvas:
+ * Cores: active state usa `--primary` (verde Mangos Pay storefront).
+ * Badge contador da sacola mantém `--brand-store`.
  *
- *   "pill" (default) — pill atrás do ícone da aba ativa, capsule
- *   56×26px. Label embaixo. Estilo ref Dribbble 1.
+ * 3 variants:
+ *   "pill" (default) — pill atrás do ícone ativo, label embaixo.
+ *   "rule" — barra com indicador top 2px, ícone tinge em --primary.
+ *   "glass" — capsule flutuante bg-foreground, sem labels.
  *
- *   "rule" — barra full-width com indicador top de 2px. Ícone tinge
- *   em `text-primary` quando ativo.
- *
- *   "glass" — capsule flutuante centralizada, bg-foreground com
- *   ícones em background. Sem labels (só ícones).
- *
- * Sem Framer Motion — CSS transitions puras + tw-animate-css pra
- * o pulse do badge.
+ * Sem Framer Motion — CSS puro + tw-animate-css pro pulse do badge.
  */
 import {
-  Heart,
   Home,
-  MoreHorizontal,
+  MessageCircle,
   Search,
   ShoppingBag,
 } from "lucide-react";
@@ -38,7 +37,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { MoreSheet } from "@/components/storefront/more-sheet";
 import type { Store } from "@/db/schema";
 import { useCart } from "@/hooks/use-cart";
 import { cn } from "@/lib/utils";
@@ -50,7 +48,7 @@ export interface BottomNavProps {
   variant?: BottomNavVariant;
 }
 
-type TabId = "home" | "srch" | "bag" | "fav" | "more";
+type TabId = "home" | "srch" | "bag" | "wa";
 
 type TabConfig =
   | {
@@ -62,19 +60,16 @@ type TabConfig =
     }
   | {
       id: TabId;
-      kind: "action";
+      kind: "external";
       icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
       label: string;
-      onClick: () => void;
+      href: string;
     };
 
 export function BottomNav({ store, variant = "pill" }: BottomNavProps) {
   const { count: cartCount, isHydrated } = useCart();
   const pathname = usePathname();
   const baseHref = `/${store.slug}`;
-
-  // Bottom-sheet "Mais" — abre via tab.
-  const [moreOpen, setMoreOpen] = useState(false);
 
   // Badge pulsante quando produto é adicionado à sacola. Incrementa
   // `pulseSeed` a cada `Mangos Pay:cart-added` — usar como `key` no span do
@@ -88,11 +83,24 @@ export function BottomNav({ store, variant = "pill" }: BottomNavProps) {
     return () => window.removeEventListener("Mangos Pay:cart-added", handler);
   }, []);
 
-  // Ordem das tabs alinhada à ref Dribbble 1: Home / Search / Bag (centro
-  // de gravidade) / Favs / More. Sacola no meio dá destaque ao item de
-  // ação principal — heurística Fitts (alvo grande no caminho do polegar).
-  const tabs: TabConfig[] = useMemo(
-    () => [
+  // WhatsApp URL com mensagem pré-preenchida genérica. Cliente que toca
+  // na tab já entra no chat com texto inicial — fricção zero pra abrir
+  // conversa direta com a loja. E.164 sem "+" (formato wa.me).
+  const whatsappHref = useMemo(() => {
+    const number = (store.whatsappNumber ?? "").replace(/^\+/, "");
+    if (!number) return null;
+    const text = encodeURIComponent(
+      `Olá ${store.name}! Vi sua loja online e gostaria de tirar uma dúvida.`,
+    );
+    return `https://wa.me/${number}?text=${text}`;
+  }, [store.whatsappNumber, store.name]);
+
+  // Ordem das tabs (Onda 2): Home / Buscar / Sacola (centro de gravidade,
+  // Fitts) / WhatsApp. Sacola no meio = ação principal. WhatsApp à direita
+  // = canal natural quando cliente quer perguntar ao invés de comprar
+  // self-service.
+  const tabs: TabConfig[] = useMemo(() => {
+    const base: TabConfig[] = [
       {
         id: "home",
         kind: "link",
@@ -114,28 +122,24 @@ export function BottomNav({ store, variant = "pill" }: BottomNavProps) {
         label: "Sacola",
         href: `${baseHref}/sacola`,
       },
-      {
-        id: "fav",
-        kind: "link",
-        icon: Heart,
-        label: "Favoritos",
-        href: `${baseHref}/favoritos`,
-      },
-      {
-        id: "more",
-        kind: "action",
-        icon: MoreHorizontal,
-        label: "Mais",
-        onClick: () => setMoreOpen(true),
-      },
-    ],
-    [baseHref],
-  );
+    ];
+    // WhatsApp tab só renderiza se a loja tem número configurado.
+    // Sem isso o link seria quebrado (wa.me/undefined).
+    if (whatsappHref) {
+      base.push({
+        id: "wa",
+        kind: "external",
+        icon: MessageCircle,
+        label: "WhatsApp",
+        href: whatsappHref,
+      });
+    }
+    return base;
+  }, [baseHref, whatsappHref]);
 
   const activeTab = useMemo((): TabId => {
     if (pathname === baseHref || pathname === `${baseHref}/`) return "home";
     if (pathname.startsWith(`${baseHref}/sacola`)) return "bag";
-    if (pathname.startsWith(`${baseHref}/favoritos`)) return "fav";
     if (pathname.startsWith(`${baseHref}/buscar`)) return "srch";
     return "home";
   }, [pathname, baseHref]);
@@ -149,18 +153,9 @@ export function BottomNav({ store, variant = "pill" }: BottomNavProps) {
     pulseSeed,
   };
 
-  return (
-    <>
-      {variant === "rule" ? (
-        <RuleNav {...variantProps} />
-      ) : variant === "glass" ? (
-        <GlassNav {...variantProps} />
-      ) : (
-        <PillNav {...variantProps} />
-      )}
-      <MoreSheet store={store} open={moreOpen} onOpenChange={setMoreOpen} />
-    </>
-  );
+  if (variant === "rule") return <RuleNav {...variantProps} />;
+  if (variant === "glass") return <GlassNav {...variantProps} />;
+  return <PillNav {...variantProps} />;
 }
 
 interface VariantProps {
@@ -247,17 +242,17 @@ function PillItem({
     </>
   );
 
-  if (tab.kind === "action") {
+  if (tab.kind === "external") {
     return (
-      <button
-        type="button"
-        onClick={tab.onClick}
-        aria-current={isActive ? "page" : undefined}
+      <a
+        href={tab.href}
+        target="_blank"
+        rel="noopener noreferrer"
         aria-label={tab.label}
         className={itemClassName}
       >
         {content}
-      </button>
+      </a>
     );
   }
 
@@ -330,18 +325,18 @@ function RuleNav({ tabs, activeTab, cartBadge, pulseSeed }: VariantProps) {
           </>
         );
 
-        if (tab.kind === "action") {
+        if (tab.kind === "external") {
           return (
-            <button
+            <a
               key={tab.id}
-              type="button"
-              onClick={tab.onClick}
-              aria-current={isActive ? "page" : undefined}
+              href={tab.href}
+              target="_blank"
+              rel="noopener noreferrer"
               aria-label={tab.label}
               className={itemClass}
             >
               {inner}
-            </button>
+            </a>
           );
         }
 
@@ -406,18 +401,18 @@ function GlassNav({ tabs, activeTab, cartBadge, pulseSeed }: VariantProps) {
             </>
           );
 
-          if (tab.kind === "action") {
+          if (tab.kind === "external") {
             return (
-              <button
+              <a
                 key={tab.id}
-                type="button"
-                onClick={tab.onClick}
-                aria-current={isActive ? "page" : undefined}
+                href={tab.href}
+                target="_blank"
+                rel="noopener noreferrer"
                 aria-label={tab.label}
                 className={itemClass}
               >
                 {inner}
-              </button>
+              </a>
             );
           }
 

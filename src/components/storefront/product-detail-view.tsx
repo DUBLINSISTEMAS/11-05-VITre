@@ -29,10 +29,12 @@
  */
 import { useMemo, useState } from "react";
 
+import { FavoriteButton } from "@/components/storefront/favorite-button";
 import { ProductGallery } from "@/components/storefront/product-gallery";
 import { ProductPurchasePanel } from "@/components/storefront/product-purchase-panel";
 import { StoreHeader } from "@/components/storefront/store-header";
 import type { Store } from "@/db/schema";
+import { getEffectivePrice } from "@/lib/pricing";
 import type { ProductDetail } from "@/lib/storefront/products-loader";
 
 export interface ProductDetailViewProps {
@@ -65,6 +67,21 @@ export function ProductDetailView({
     return v?.featuredImageId ?? null;
   }, [selectedVariantId, product.variants]);
 
+  // Onda 2 (2026-05-27): favoritar saiu do sticky CTA pra um overlay no
+  // canto inferior direito da galeria. Heart no CTA dividia o alvo
+  // principal (Fitts) — favoritar é microação rara. Pattern Zara/Aritzia:
+  // botão flutuante sobre a foto, longe do fluxo de compra.
+  const favoriteInput = useMemo(
+    () => ({
+      productId: product.id,
+      productSlug: product.slug,
+      productName: product.name,
+      imageUrl: product.images[0]?.url ?? null,
+      priceCents: getEffectivePrice(product, new Date()),
+    }),
+    [product],
+  );
+
   // Pagamento (Fase 2 — ADR-0013): subset usado pelo panel renderizar
   // a label de parcelamento. Derivado do `store` carregado pelo loader.
   const storePayment = useMemo(
@@ -94,7 +111,7 @@ export function ProductDetailView({
           que ficava no wrapper relatedSection — antes os dois somavam
           com o `mt-10` da section gerando ~150px de espaço branco. */}
       <div className="flex flex-col pb-28 lg:hidden lg:pb-0">
-        {/* Gallery + floating header */}
+        {/* Gallery + floating header + favorite overlay (Onda 2) */}
         <div className="relative">
           <ProductGallery
             images={product.images}
@@ -105,6 +122,11 @@ export function ProductDetailView({
             variant="pdp-floating"
             store={store}
             backHref={`/${store.slug}`}
+          />
+          <FavoriteButton
+            product={favoriteInput}
+            className="absolute bottom-3 right-3 z-20"
+            size="md"
           />
         </div>
 
@@ -131,11 +153,18 @@ export function ProductDetailView({
       {/* Desktop layout */}
       <div className="mx-auto hidden max-w-screen-xl gap-10 px-4 lg:grid lg:grid-cols-2">
         <div className="sticky top-20 self-start">
-          <ProductGallery
-            images={product.images}
-            productName={product.name}
-            activeFeaturedImageId={activeFeaturedImageId}
-          />
+          <div className="relative">
+            <ProductGallery
+              images={product.images}
+              productName={product.name}
+              activeFeaturedImageId={activeFeaturedImageId}
+            />
+            <FavoriteButton
+              product={favoriteInput}
+              className="absolute bottom-3 right-3 z-20"
+              size="md"
+            />
+          </div>
         </div>
         <div className="relative flex flex-col py-4">
           <ProductPurchasePanel
