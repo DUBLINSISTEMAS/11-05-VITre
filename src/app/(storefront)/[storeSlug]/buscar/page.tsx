@@ -17,6 +17,10 @@ import { Pagination } from "@/components/common/pagination";
 import { CategoryStrip } from "@/components/storefront/category-strip";
 import { ProductGrid } from "@/components/storefront/product-grid";
 import { SearchTypeahead } from "@/components/storefront/search-typeahead";
+import {
+  FavoritesButton,
+  SacolaButton,
+} from "@/components/storefront/store-header";
 import { Button } from "@/components/ui/button";
 import {
   pageNumberSchema,
@@ -84,8 +88,10 @@ export default async function SearchPage({
       {/* Header fixo com busca */}
       <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-lg border-b border-gray-100">
         <div className="px-4 py-3">
-          {/* Top row: back + title */}
-          <div className="flex items-center gap-3 mb-3">
+          {/* Top row: back + title + favorites/sacola (Onda 12 — paridade
+              com a home: Heart + Sacola sempre acessíveis no canto direito,
+              tanto durante exploração quanto na vitrine principal). */}
+          <div className="flex items-center gap-2.5 mb-3">
             <Link href={baseHref}>
               <Button
                 variant="ghost"
@@ -97,6 +103,8 @@ export default async function SearchPage({
               </Button>
             </Link>
             <h1 className="text-lg font-semibold flex-1">Explorar</h1>
+            <FavoritesButton storeSlug={store.slug} />
+            <SacolaButton variant="solid" />
           </div>
 
           {/* Search bar — Onda 11 (2026-05-27): input agora é pill alinhado
@@ -116,12 +124,11 @@ export default async function SearchPage({
           </form>
         </div>
 
-        {/* Onda 10 (2026-05-27): substituiu CategoryPills (texto-only) por
-            CategoryStrip pra paridade visual com a home — tiles 76×76 com
-            imagem + nome. Mesma forma (shape) configurada pra loja. Cliente
-            que abre /buscar vê o mesmo "ritmo visual" da home, sem quebra
-            de identidade entre telas. */}
-        <div className="px-4 pb-3">
+        {/* Onda 10 — CategoryStrip pra paridade visual com a home.
+            Onda 12 (2026-05-27): pt-2 explícito adiciona ~8px de respiro
+            entre a pill de busca e os tiles. Antes o py-3 do wrapper acima
+            colava a pill no topo dos tiles sem ritmo claro. */}
+        <div className="px-4 pt-2 pb-3">
           <CategoryStrip
             storeSlug={store.slug}
             categories={categoryTree}

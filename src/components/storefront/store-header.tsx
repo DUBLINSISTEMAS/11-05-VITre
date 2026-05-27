@@ -134,8 +134,11 @@ function HomeVariant({ store }: { store: Store }) {
  * FavoritesButton mobile — espelha o DesktopHeader IconButton heart.
  * Badge mono com count (igual SacolaButton) só aparece após hidratação
  * do localStorage. Onda 7 (2026-05-27).
+ *
+ * Exportado na Onda 12 (2026-05-27) pra reutilização em /buscar — pareando
+ * com SacolaButton no canto superior direito pra paridade com a home.
  */
-function FavoritesButton({ storeSlug }: { storeSlug: string }) {
+export function FavoritesButton({ storeSlug }: { storeSlug: string }) {
   const { count, isHydrated } = useFavorites();
   const showBadge = isHydrated && count > 0;
 
@@ -196,8 +199,11 @@ function CategoriesButton() {
  * Justificativa: cliente no PDP que adiciona e perde o toast (2s) tinha
  * que voltar pra home pra ver bottom-nav e acessar sacola. Agora a sacola
  * é alcançável de qualquer ponto do PDP em 1 toque.
+ *
+ * Exportado na Onda 12 (2026-05-27) pra reutilização em /buscar — pareando
+ * com FavoritesButton no canto superior direito pra paridade com a home.
  */
-function SacolaButton({ variant = "solid" }: { variant?: "solid" | "floating" }) {
+export function SacolaButton({ variant = "solid" }: { variant?: "solid" | "floating" }) {
   const drawer = useSacolaDrawerTrigger();
   const { count, isHydrated } = useCart();
 
