@@ -78,23 +78,25 @@ export function HeroCardSkeleton({ className }: { className?: string }) {
 }
 
 /**
- * Category pills skeleton
+ * Category strip skeleton — Onda 10 (2026-05-27). Substitui o antigo
+ * CategoryPillsSkeleton porque o storefront agora usa CategoryStrip
+ * (tiles 76×76 com imagem + nome) tanto em /home quanto em /buscar.
+ * Skeleton bate o aspect e radius pra evitar CLS visível.
  */
-export function CategoryPillsSkeleton({ 
-  count = 5,
-  className 
-}: { 
+export function CategoryStripSkeleton({
+  count = 6,
+  className,
+}: {
   count?: number;
   className?: string;
 }) {
   return (
-    <div className={cn("flex gap-2 overflow-hidden", className)}>
+    <div className={cn("flex gap-2.5 overflow-hidden pb-1", className)}>
       {Array.from({ length: count }).map((_, i) => (
-        <Skeleton 
-          key={i} 
-          className="h-9 shrink-0 rounded-full" 
-          style={{ width: `${60 + Math.random() * 40}px` }}
-        />
+        <div key={i} className="flex w-[76px] shrink-0 flex-col gap-1.5">
+          <Skeleton className="aspect-square w-full rounded-[10px]" />
+          <Skeleton className="mx-auto h-3 w-3/4" />
+        </div>
       ))}
     </div>
   );

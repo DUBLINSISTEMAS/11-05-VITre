@@ -127,13 +127,29 @@ export function StoreFooter({ store }: StoreFooterProps) {
             © {new Date().getFullYear()} {store.name}. Todos os direitos
             reservados.
           </span>
+          {/* Onda 10 (2026-05-27): "Powered by" texto puro virou logo da
+              manga + texto inline. Identidade Mangos Pay sutil no rodapé —
+              padrão Shopify/WooCommerce/Tiny. Logo 16px (vetorial, sem
+              quality loss). Usa <img> puro (não next/image) porque SVG
+              local não precisa do optimizer e o Next exigiria
+              dangerouslyAllowSVG=true. aria-hidden pq o texto adjacente
+              já cumpre o role de label. */}
           <a
             href="https://vitre.site"
             target="_blank"
             rel="noopener noreferrer"
-            className="hocus:text-foreground transition-colors"
+            className="hocus:text-foreground inline-flex items-center gap-1.5 transition-colors"
           >
-            Powered by Mangos Pay
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logos/logo.svg"
+              alt=""
+              width={16}
+              height={16}
+              aria-hidden
+              className="shrink-0"
+            />
+            <span>Powered by Mangos Pay</span>
           </a>
         </div>
       </div>

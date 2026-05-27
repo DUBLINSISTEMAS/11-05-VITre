@@ -14,7 +14,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { Pagination } from "@/components/common/pagination";
-import { CategoryPills } from "@/components/storefront/category-pills";
+import { CategoryStrip } from "@/components/storefront/category-strip";
 import { ProductGrid } from "@/components/storefront/product-grid";
 import { SearchTypeahead } from "@/components/storefront/search-typeahead";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,10 @@ import {
 import { getCategoryTree } from "@/lib/storefront/categories-loader";
 import { searchProducts } from "@/lib/storefront/search-loader";
 import { getStoreBySlug } from "@/lib/storefront/store-loader";
-import type { ProductCardVariant } from "@/lib/storefront/themes";
+import type {
+  CategoryShape,
+  ProductCardVariant,
+} from "@/lib/storefront/themes";
 
 const PAGE_SIZE = 24;
 
@@ -119,9 +122,17 @@ export default async function SearchPage({
           </form>
         </div>
 
-        {/* Category pills */}
+        {/* Onda 10 (2026-05-27): substituiu CategoryPills (texto-only) por
+            CategoryStrip pra paridade visual com a home — tiles 76×76 com
+            imagem + nome. Mesma forma (shape) configurada pra loja. Cliente
+            que abre /buscar vê o mesmo "ritmo visual" da home, sem quebra
+            de identidade entre telas. */}
         <div className="px-4 pb-3">
-          <CategoryPills storeSlug={store.slug} categories={categoryTree} />
+          <CategoryStrip
+            storeSlug={store.slug}
+            categories={categoryTree}
+            shape={store.categoryShape as CategoryShape}
+          />
         </div>
       </header>
 

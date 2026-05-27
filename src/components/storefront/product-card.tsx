@@ -137,7 +137,6 @@ export function ProductCard({
       >
         <Link
           href={`/${storeSlug}/produto/${product.slug}`}
-          prefetch={false}
           aria-label={product.name}
           className="relative block outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
@@ -159,7 +158,6 @@ export function ProductCard({
 
         <Link
           href={`/${storeSlug}/produto/${product.slug}`}
-          prefetch={false}
           className="flex flex-col gap-1 p-2.5 outline-none"
         >
           <h3 className={cn("line-clamp-2", tokens.nameClassCard)}>
@@ -198,7 +196,6 @@ export function ProductCard({
     >
       <Link
         href={`/${storeSlug}/produto/${product.slug}`}
-        prefetch={false}
         aria-label={product.name}
         className="relative block outline-none focus-visible:rounded-[10px] focus-visible:ring-2 focus-visible:ring-ring"
       >
@@ -220,7 +217,6 @@ export function ProductCard({
 
       <Link
         href={`/${storeSlug}/produto/${product.slug}`}
-        prefetch={false}
         className="block outline-none"
       >
         <h3 className={cn("line-clamp-2", tokens.nameClass)}>{product.name}</h3>

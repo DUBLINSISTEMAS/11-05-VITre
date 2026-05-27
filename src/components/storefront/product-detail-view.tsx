@@ -27,7 +27,7 @@
  *   coordenem. Quando o cliente seleciona uma variante com
  *   `featuredImageId`, a gallery rola pra essa foto.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { FavoriteButton } from "@/components/storefront/favorite-button";
 import { ProductGallery } from "@/components/storefront/product-gallery";
@@ -69,6 +69,17 @@ export function ProductDetailView({
   relatedSection,
 }: ProductDetailViewProps) {
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+
+  // Onda 10 (2026-05-27): scroll-to-top defensivo em navegação PDP→PDP via
+  // "Você pode gostar". Next 15 App Router faz scroll automático em Link
+  // entre rotas distintas, mas quando o cliente navega entre dois produtos
+  // (mesma rota dinâmica /[productSlug], só param diferente), em alguns
+  // browsers o scroll position é preservado — cliente cai no meio da
+  // gallery do PDP novo. Effect com dep em product.id garante topo sempre.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, [product.id]);
 
   // Resolve qual imagem destacar com base na variante selecionada.
   // Se a variante não tem `featuredImageId` (ou nenhuma variante selecionada),
