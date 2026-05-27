@@ -25,8 +25,8 @@
  *    etc — typeahead não precisa, e payload menor = mais rápido.
  */
 import { and, count, desc, eq, ilike } from "drizzle-orm";
-import { headers } from "next/headers";
 import { unstable_cache } from "next/cache";
+import { headers } from "next/headers";
 
 import { productTable } from "@/db/schema";
 import { logger } from "@/lib/logger";

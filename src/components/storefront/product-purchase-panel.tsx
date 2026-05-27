@@ -35,7 +35,7 @@
  * stepper (qty=1 implícito; cliente ajusta na sacola), sem share, sem
  * descrição colapsável (canvas mostra completa), sem framer-motion.
  */
-import { CircleAlert, ChevronRight } from "lucide-react";
+import { ChevronRight, CircleAlert } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";

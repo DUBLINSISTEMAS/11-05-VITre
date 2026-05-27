@@ -34,7 +34,7 @@
  *  pra 127.0.0.1). Ex: `http://dublin-sistemas.localtest.me:3000`
  *  funciona sem mexer em /etc/hosts.
  */
-import { NextResponse, type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 import { env } from "@/lib/env";
 import { RESERVED_SLUGS } from "@/lib/slug";

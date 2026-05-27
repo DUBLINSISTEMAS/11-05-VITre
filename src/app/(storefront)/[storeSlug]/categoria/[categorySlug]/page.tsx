@@ -23,8 +23,8 @@ import { ProductGrid } from "@/components/storefront/product-grid";
 import { StoreHeader } from "@/components/storefront/store-header";
 import { buildStorefrontUrl } from "@/lib/storefront/canonical-url";
 import {
-  getCategoryTree,
   type CategoryNode,
+  getCategoryTree,
 } from "@/lib/storefront/categories-loader";
 import { listProducts } from "@/lib/storefront/products-loader";
 import { getStoreBySlug } from "@/lib/storefront/store-loader";

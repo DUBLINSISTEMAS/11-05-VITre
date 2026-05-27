@@ -5,9 +5,9 @@
  * são funções uncached (sem `unstable_cache`) e tipos cuja API é interna.
  * O loader público correspondente envolve estes helpers com cache.
  */
-import { and, eq, inArray, asc } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 
-import { productImageTable, type Product } from "@/db/schema";
+import { type Product, productImageTable } from "@/db/schema";
 import type { Tx } from "@/lib/tenant";
 
 export interface ProductCardData

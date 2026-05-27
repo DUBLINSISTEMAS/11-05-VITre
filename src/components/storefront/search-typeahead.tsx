@@ -276,7 +276,7 @@ export function SearchTypeahead({ storeSlug, initialQuery = "" }: SearchTypeahea
             </DropdownStatus>
           ) : state.items.length === 0 ? (
             <DropdownStatus>
-              <span>Nenhum produto encontrado para "{trimmed}".</span>
+              <span>Nenhum produto encontrado para &ldquo;{trimmed}&rdquo;.</span>
             </DropdownStatus>
           ) : (
             <>

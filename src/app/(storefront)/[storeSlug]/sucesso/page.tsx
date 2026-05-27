@@ -20,8 +20,8 @@
  */
 import { MapPin } from "lucide-react";
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
 import Image from "next/image";
+import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 
 import { CopyCodeButton } from "@/components/storefront/copy-code-button";
