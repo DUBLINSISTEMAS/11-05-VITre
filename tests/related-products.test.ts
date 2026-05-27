@@ -43,7 +43,19 @@ test("attachPrimaryImage fetches only primary image rows", () => {
   // S1.5 (2026-05-26) — migrado de `eq(position, 0)` pra DISTINCT ON com
   // ORDER BY position ASC. Resolve edge case "imagem position 0 deletada,
   // ficou só 1,2,3 — produto sem imagem na home".
-  assert.match(sharedLoader, /DISTINCT ON \(product_id\)/);
-  assert.match(sharedLoader, /ORDER BY product_id, position ASC/);
-  assert.doesNotMatch(sharedLoader, /orderBy\(asc\(productImageTable\.position\)\)/);
+  //
+  // 2026-05-27 (bugfix Sentry "Failed query ... ANY($2,$3,...)") — refator
+  // de template-tag sql`...` pra query builder Drizzle: `selectDistinctOn`
+  // + `inArray` parametriza array como `$1::uuid[]` (antes virava tupla
+  // que o Postgres rejeitava com `parse_oper.c make_scalar_array_op`).
+  // Semântica idêntica: DISTINCT ON (product_id) ORDER BY product_id,
+  // position ASC, mas sem string literal SQL no código.
+  assert.match(sharedLoader, /selectDistinctOn\(\[productImageTable\.productId\]/);
+  assert.match(sharedLoader, /inArray\(productImageTable\.productId, productIds\)/);
+  assert.match(sharedLoader, /asc\(productImageTable\.productId\)/);
+  assert.match(sharedLoader, /asc\(productImageTable\.position\)/);
+  // Garantia anti-regressão: NÃO voltar pro template-tag bugado (sql`...
+  // ANY(${productIds})` aninhado dentro de tx.execute). Olha pelo
+  // marcador `tx.execute(sql` que só aparece se voltar o padrão antigo.
+  assert.doesNotMatch(sharedLoader, /tx\.execute\(sql`/);
 });

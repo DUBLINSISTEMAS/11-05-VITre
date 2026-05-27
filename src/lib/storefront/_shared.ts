@@ -5,9 +5,9 @@
  * são funções uncached (sem `unstable_cache`) e tipos cuja API é interna.
  * O loader público correspondente envolve estes helpers com cache.
  */
-import { sql } from "drizzle-orm";
+import { and, eq, inArray, asc } from "drizzle-orm";
 
-import type { Product } from "@/db/schema";
+import { productImageTable, type Product } from "@/db/schema";
 import type { Tx } from "@/lib/tenant";
 
 export interface ProductCardData
@@ -36,11 +36,16 @@ export interface ProductCardData
  * imagem na home. Migrado pra `DISTINCT ON (product_id) ORDER BY position`
  * que sempre pega a primeira disponível.
  *
- * Performance: DISTINCT ON é index-friendly via `product_image_product_position_unique`
- * que cobre (product_id, position). Single index seek + filter por store_id.
+ * Bugfix 2026-05-27 — a versão template-tag (sql`... ANY(${productIds})`)
+ * expandia o array como TUPLA (`ANY($2, $3, ..., $7)`), o que o Postgres
+ * rejeita com `parse_oper.c make_scalar_array_op` quando vários produtos
+ * vinham na home (qualquer storefront com 2+ produtos). Refator pra usar
+ * `selectDistinctOn` + `inArray` do query builder do Drizzle — parametriza
+ * o array como `$1::uuid[]` corretamente, IN-list serializado pelo
+ * node-postgres.
  *
- * Drizzle ORM não tem builder pra DISTINCT ON, então usa template tag `sql`.
- * Parametrizado contra SQL injection (productIds via placeholder).
+ * Performance: DISTINCT ON segue usando o index
+ * `product_image_product_position_unique` que cobre (product_id, position).
  */
 export async function attachPrimaryImage(
   tx: Tx,
@@ -50,22 +55,24 @@ export async function attachPrimaryImage(
   if (rows.length === 0) return [];
 
   const productIds = rows.map((r) => r.id);
-  const result = await tx.execute<{
-    product_id: string;
-    url: string;
-    alt: string | null;
-  }>(sql`
-    SELECT DISTINCT ON (product_id)
-      product_id, url, alt
-    FROM product_image
-    WHERE store_id = ${storeId}
-      AND product_id = ANY(${productIds})
-    ORDER BY product_id, position ASC
-  `);
+  const images = await tx
+    .selectDistinctOn([productImageTable.productId], {
+      productId: productImageTable.productId,
+      url: productImageTable.url,
+      alt: productImageTable.alt,
+    })
+    .from(productImageTable)
+    .where(
+      and(
+        eq(productImageTable.storeId, storeId),
+        inArray(productImageTable.productId, productIds),
+      ),
+    )
+    .orderBy(asc(productImageTable.productId), asc(productImageTable.position));
 
   const firstByProduct = new Map<string, { url: string; alt: string | null }>();
-  for (const img of result.rows) {
-    firstByProduct.set(img.product_id, { url: img.url, alt: img.alt });
+  for (const img of images) {
+    firstByProduct.set(img.productId, { url: img.url, alt: img.alt });
   }
 
   return rows.map((p) => {
