@@ -369,19 +369,30 @@ function CategoryVariant({ store, kicker, title, counter, backHref }: CategoryPr
   const fallback = backHref ?? `/${store.slug}`;
 
   return (
-    <header className="sticky top-0 z-30 rounded-b-2xl border-b border-border/40 bg-background">
-      <div className="mx-auto flex w-full max-w-screen-xl items-center gap-2.5 px-4 pt-2.5 pb-2">
+    // Onda 20 (2026-05-27): border-b removida — header sticky de categoria/
+    // coleção fica visualmente "flutuante" sobre o conteúdo, leveza Apple.
+    // O rounded-b-2xl + bg-background sólido já definem o limite sem linha.
+    <header className="sticky top-0 z-30 rounded-b-2xl bg-background">
+      <div className="mx-auto flex w-full max-w-screen-xl items-center gap-2.5 px-4 py-2.5">
         <BackButton size={32} fallback={fallback} />
-        <span className="min-w-0 flex-1">
+        {/* Onda 20: kicker+título separados (mono 9.5px + semibold 18px)
+            unificados em um único <h1> usando a MESMA fonte das seções da
+            home (Categorias, Em destaque, Vitrines): 17px mobile / 20px lg
+            semibold tracking-[-0.4/-0.5px]. Sistema tipográfico coerente
+            entre listagens do storefront. Formato "Categoria / {nome}" com
+            o kicker em muted pra hierarquia visual sem precisar trocar
+            tamanho/peso. */}
+        <h1 className="min-w-0 flex-1 truncate text-[17px] font-semibold tracking-[-0.4px] text-foreground lg:text-[20px] lg:tracking-[-0.5px]">
           {kicker ? (
-            <span className="block font-mono text-[9.5px] uppercase leading-none tracking-[0.5px] text-gray-500">
-              {kicker}
-            </span>
+            <>
+              <span className="text-muted-foreground font-medium">
+                {kicker.charAt(0) + kicker.slice(1).toLowerCase()}{" "}
+                <span className="text-muted-foreground/50">/</span>
+              </span>{" "}
+            </>
           ) : null}
-          <span className="mt-1 block truncate text-[18px] font-semibold leading-[1.1] tracking-[-0.4px] text-foreground">
-            {title}
-          </span>
-        </span>
+          {title}
+        </h1>
         {counter ? (
           <span className="ml-auto shrink-0 font-mono text-[10px] uppercase tracking-[0.5px] text-gray-500">
             {counter}
