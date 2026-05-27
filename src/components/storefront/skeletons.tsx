@@ -61,16 +61,16 @@ export function ProductGridSkeleton({
 }
 
 /**
- * Hero card skeleton — alinhado com hero-card.tsx (Onda 3.1 2026-05-27):
- * mobile full-bleed 4:5 sem rounded, desktop 3:1 com rounded+border.
- * Skeleton precisa bater EXATAMENTE com o aspect final, senão há layout
- * shift visível (CLS) entre placeholder e conteúdo.
+ * Hero card skeleton — alinhado com hero-card.tsx.
+ * Onda 1 (2026-05-27): aspect 4/3 mobile + 3/1 desktop, rounded em ambas
+ * breakpoints (card editorial). Skeleton bate o aspect e rounded final
+ * pra evitar CLS visível entre placeholder e conteúdo.
  */
 export function HeroCardSkeleton({ className }: { className?: string }) {
   return (
     <Skeleton
       className={cn(
-        "aspect-[4/5] w-full rounded-none lg:aspect-[3/1] lg:rounded-[14px]",
+        "aspect-[4/3] w-full rounded-[22px] lg:aspect-[3/1] lg:rounded-[24px]",
         className,
       )}
     />

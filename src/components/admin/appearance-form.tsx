@@ -137,29 +137,40 @@ export function AppearanceForm({ initialData }: AppearanceFormProps) {
           <Controller
             name="bannerRotationSec"
             control={control}
-            render={({ field }) => (
-              <Select
-                value={String(field.value)}
-                onValueChange={(v) => field.onChange(Number(v))}
-                disabled={isPending}
-              >
-                <SelectTrigger
-                  id="banner-rotation"
-                  className="w-full sm:max-w-xs"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">
-                    Desligado (mostrar só o primeiro)
-                  </SelectItem>
-                  <SelectItem value="3">3 segundos</SelectItem>
-                  <SelectItem value="5">5 segundos (recomendado)</SelectItem>
-                  <SelectItem value="8">8 segundos</SelectItem>
-                  <SelectItem value="12">12 segundos</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
+            render={({ field }) => {
+              const isTooFast = field.value > 0 && field.value < 6;
+              return (
+                <>
+                  <Select
+                    value={String(field.value)}
+                    onValueChange={(v) => field.onChange(Number(v))}
+                    disabled={isPending}
+                  >
+                    <SelectTrigger
+                      id="banner-rotation"
+                      className="w-full sm:max-w-xs"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">
+                        Desligado (mostrar só o primeiro)
+                      </SelectItem>
+                      <SelectItem value="5">5 segundos</SelectItem>
+                      <SelectItem value="7">7 segundos (recomendado)</SelectItem>
+                      <SelectItem value="10">10 segundos</SelectItem>
+                      <SelectItem value="15">15 segundos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {isTooFast && (
+                    <p className="text-warning text-xs">
+                      Menos de 6 segundos pode confundir o cliente — ele ainda
+                      está lendo quando o banner troca. Considere 7s ou mais.
+                    </p>
+                  )}
+                </>
+              );
+            }}
           />
           <p className="text-ink-4 text-xs">
             Quanto tempo cada banner aparece antes de trocar pro próximo. Só

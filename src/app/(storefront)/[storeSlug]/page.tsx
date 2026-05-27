@@ -108,12 +108,25 @@ export default async function StoreHomePage({
       : null;
 
   return (
-    // Mobile: 18px entre seções (canvas-v1 denso).
-    // Desktop ≥1024: 48px — telas grandes precisam de respiração entre
-    // blocos visuais. 18px em desktop colava tudo e parecia "mobile
-    // esticado". 48px é o sweet spot dos templates de moda premium
-    // (Aritzia, ZARA, COS) — separação clara sem espaço vazio.
-    <div className="space-y-[18px] lg:space-y-12">
+    // Mobile: 28px entre seções (Onda 1 — 2026-05-27 análise sênior).
+    // Antes 18px colava demais e parecia "mobile-first sem polimento";
+    // 28 é o respiro de catálogos premium em mobile sem cair em "espaço
+    // vazio". Desktop ≥1024: 48px (sweet spot Aritzia/ZARA/COS).
+    //
+    // Ordem da home (Onda 1 — hierarquia voltada à conversão):
+    //   1. Banner          → identidade da loja na primeira dobra
+    //   2. Em destaque     → produto entra na primeira dobra (vital pro
+    //                        cliente que veio do WhatsApp curioso)
+    //   3. PromoStrip      → call-out de promoção logo depois do produto
+    //   4. Categorias      → discovery secundária pra quem quer navegar
+    //   5. Vitrines        → coleções editoriais (opcional, abaixo)
+    //   6. More            → grid contínuo sem header
+    //
+    // Antes: Banner → Vitrines → Categorias → Em destaque → Promo → More.
+    // Empurrava o primeiro produto pra ~900-1100px de scroll — barreira
+    // alta de descoberta. Agora cliente vê banner + 2 produtos no first
+    // viewport iPhone 13.
+    <div className="space-y-7 lg:space-y-12">
       {hasBanner && (
         // 2026-05-27 (founder review): banner volta a respeitar o
         // container em mobile também, como na ref Dribbble 1 tela 1
@@ -128,35 +141,6 @@ export default async function StoreHomePage({
           rotationSec={store.bannerRotationSec}
           heroVariant={store.heroStyle as HeroVariant}
         />
-      )}
-
-      {/* Sprint 5.3 — vitrines (coleções) entre banner e categorias.
-          Aparece SE o lojista criou coleção(s) com showInHome=true e
-          que tenham ao menos 1 produto. */}
-      {collections.length > 0 && (
-        <section className="space-y-2">
-          <header>
-            <h2 className="text-[17px] font-semibold tracking-[-0.4px] text-foreground lg:text-[20px] lg:tracking-[-0.5px]">
-              Vitrines
-            </h2>
-          </header>
-          <CollectionStrip storeSlug={store.slug} collections={collections} />
-        </section>
-      )}
-
-      {categoryTree.length > 0 && (
-        <section className="space-y-2">
-          <header>
-            <h2 className="text-[17px] font-semibold tracking-[-0.4px] text-foreground lg:text-[20px] lg:tracking-[-0.5px]">
-              Categorias
-            </h2>
-          </header>
-          <CategoryStrip
-            storeSlug={store.slug}
-            categories={categoryTree}
-            shape={store.categoryShape as CategoryShape}
-          />
-        </section>
       )}
 
       {featuredBlock.length > 0 && (
@@ -178,6 +162,36 @@ export default async function StoreHomePage({
           count={promoCount}
           nearestEndsAt={nearestEndsAt}
         />
+      )}
+
+      {categoryTree.length > 0 && (
+        <section className="space-y-2">
+          <header>
+            <h2 className="text-[17px] font-semibold tracking-[-0.4px] text-foreground lg:text-[20px] lg:tracking-[-0.5px]">
+              Categorias
+            </h2>
+          </header>
+          <CategoryStrip
+            storeSlug={store.slug}
+            categories={categoryTree}
+            shape={store.categoryShape as CategoryShape}
+          />
+        </section>
+      )}
+
+      {/* Sprint 5.3 — vitrines (coleções). Aparece SE o lojista criou
+          coleção(s) com showInHome=true e que tenham ao menos 1 produto.
+          Onda 1 (2026-05-27): movida pra DEPOIS de Categorias — vitrines
+          são curadoria editorial opcional, descoberta secundária. */}
+      {collections.length > 0 && (
+        <section className="space-y-2">
+          <header>
+            <h2 className="text-[17px] font-semibold tracking-[-0.4px] text-foreground lg:text-[20px] lg:tracking-[-0.5px]">
+              Vitrines
+            </h2>
+          </header>
+          <CollectionStrip storeSlug={store.slug} collections={collections} />
+        </section>
       )}
 
       {moreBlock.length > 0 && (

@@ -166,16 +166,16 @@ function HeroCover({
       aria-label="Destaque editorial"
       className={cn(
         "relative overflow-hidden",
-        // Card elegante em todas as breakpoints (founder review
-        // 2026-05-27 sobre ref Dribbble 1):
-        //  - Mobile: aspect 4:5 vertical (~Instagram), rounded-[22px],
-        //    border subtle + shadow elevada — "card editorial" estilo
-        //    ref 1 tela 1, não sangra os 16px do container.
-        //  - Desktop: aspect 3:1 panorâmico, rounded-[24px], border+
-        //    shadow ainda mais elevadas — sensação magazine.
-        // Drop-shadow tinted preto a 8% pra não competir com a foto
-        // mas dar a percepção de "elevação acima da página".
-        "aspect-[4/5] rounded-[22px] border border-border/70 shadow-[0_18px_40px_-22px_rgba(15,15,15,0.35)]",
+        // Card elegante em todas as breakpoints.
+        // Onda 1 (2026-05-27 — análise sênior): mobile baixou de
+        // `aspect-[4/5]` (450px @360w, dominava primeira dobra) pra
+        // `aspect-[4/3]` (~270px @360w, -40% de altura). Permite "Em
+        // destaque" entrar na primeira dobra junto com o banner. Ainda
+        // mantém vertical+editorial — `aspect-[16/10]` ficaria muito
+        // landscape pra produto premium em vitrine de moda.
+        // Desktop: aspect-[3/1] panorâmico inalterado.
+        // Drop-shadow tinted preto a 8% — elevação acima da página.
+        "aspect-[4/3] rounded-[22px] border border-border/70 shadow-[0_18px_40px_-22px_rgba(15,15,15,0.35)]",
         "lg:aspect-[3/1] lg:rounded-[24px] lg:shadow-[0_24px_60px_-30px_rgba(15,15,15,0.4)]",
         className,
       )}
@@ -325,7 +325,7 @@ function HeroSplit({
       )}
     >
       <div
-        className="relative aspect-[4/5] lg:aspect-square"
+        className="relative aspect-[4/3] lg:aspect-square"
         style={imageUrl ? undefined : { background: HERO_GRADIENT }}
       >
         {imageUrl && (
@@ -399,8 +399,9 @@ function HeroMinimal({
       aria-label="Destaque editorial"
       className={cn(
         "relative flex flex-col items-center justify-center overflow-hidden px-4 text-center",
-        // Card unificado em todas as breakpoints (2026-05-27).
-        "aspect-[4/5] rounded-[22px] border border-border/70 shadow-[0_18px_40px_-22px_rgba(15,15,15,0.35)]",
+        // Card unificado em todas as breakpoints.
+        // Onda 1 (2026-05-27): aspect-[4/3] mobile alinhado às demais variantes.
+        "aspect-[4/3] rounded-[22px] border border-border/70 shadow-[0_18px_40px_-22px_rgba(15,15,15,0.35)]",
         "lg:aspect-[3/1] lg:rounded-[24px] lg:shadow-[0_24px_60px_-30px_rgba(15,15,15,0.4)]",
         className,
       )}

@@ -27,7 +27,9 @@
  */
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  ChevronDown,
   Loader2,
+  MessageCircle,
   Minus,
   Plus,
   ShoppingBag,
@@ -89,9 +91,13 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
 
   // Sprint 5.1 — estado do cupom. couponInput é o texto digitado;
   // applied é o cupom validado (com discount). null = nada aplicado.
+  // Onda 1 (2026-05-27): cupom virou collapsable dentro do totals card.
+  // `couponExpanded` controla se o input + botão estão abertos. Default
+  // false — 95% dos clientes não têm cupom, esconder reduz friction.
   const [couponInput, setCouponInput] = useState("");
   const [applyingCoupon, setApplyingCoupon] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponExpanded, setCouponExpanded] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<{
     code: string;
     discountInCents: number;
@@ -160,6 +166,7 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
         discountInCents: res.discountInCents,
       });
       setCouponInput("");
+      setCouponExpanded(false);
       toast.success(
         `Cupom ${res.code} aplicado · −${formatBRL(res.discountInCents)}`,
       );
@@ -305,14 +312,16 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
   return (
     <>
       {/*
-        Removido `counter="{N} ITENS"` em 2026-05-13 — founder
-        considerou ruidoso. O total no footer + badge no botão da sacola
-        já comunicam quantidade.
+        Onda 1 (2026-05-27): subtitle com nome da loja preserva contexto
+        de identidade. Cliente que veio do link da "Joias Dublin" agora
+        vê "Sua sacola · Joias Dublin" em vez de só "Sua sacola" descontextualizado.
+        Counter "{N} ITENS" foi removido em 2026-05-13 (founder ruidoso).
       */}
       <StoreHeader
         variant="sticky-title"
         store={store}
         title="Sua sacola"
+        subtitle={store.name}
       />
 
       <form
@@ -341,9 +350,132 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
           ))}
         </ul>
 
-        {/* Form Seus dados — bloco mínimo entre lista e totals (não-canvas
-            mas necessário pro WhatsApp prefill). */}
-        <section className="mt-6 space-y-3">
+        {/*
+          Onda 1 (2026-05-27) — fluxo reordenado pro padrão e-commerce:
+            1. Lista de itens
+            2. Totals card (cupom collapsable embutido)
+            3. Form "Seus dados"
+            4. Aviso brand-tinted WhatsApp
+            5. CTA
+
+          Antes: itens → form → cupom → totals → aviso. Cliente preenchia
+          dados antes de ver o total, friction máxima. Agora vê total ANTES
+          de decidir preencher — heurística "ver o preço antes de dar dados".
+
+          Cupom virou collapsable atrás de "Tem código promocional?". 95%
+          dos clientes não tem cupom; esconder reduz ruído visual e
+          alivia o cognitive load no momento de fechamento.
+        */}
+        <div className="border-border bg-muted/40 mt-5 space-y-2 rounded-xl border p-3.5">
+          <Row label="Subtotal" value={formatBRL(subtotalCents)} mono />
+          {appliedCoupon ? (
+            <Row
+              label={`Cupom ${appliedCoupon.code}`}
+              value={`−${formatBRL(discountInCents)}`}
+              mono
+            />
+          ) : null}
+          <Row label="Frete" value="A combinar" />
+
+          {/* Cupom collapsable embutido dentro do totals card */}
+          <div className="pt-1">
+            {appliedCoupon ? (
+              <div className="border-state-ok/30 bg-state-ok/10 flex items-center justify-between rounded-md border px-2.5 py-1.5">
+                <span className="text-state-ok text-[11px] font-medium">
+                  ✓ Cupom {appliedCoupon.code} aplicado
+                </span>
+                <button
+                  type="button"
+                  onClick={removeCoupon}
+                  className="text-muted-foreground hover:text-foreground text-[11px] underline-offset-2 hover:underline"
+                >
+                  Remover
+                </button>
+              </div>
+            ) : couponExpanded ? (
+              <div className="space-y-1.5">
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    value={couponInput}
+                    onChange={(e) => {
+                      setCouponInput(e.target.value);
+                      if (couponError) setCouponError(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        void applyCoupon();
+                      }
+                    }}
+                    placeholder="Ex: MAIO10"
+                    maxLength={40}
+                    className="h-9 flex-1 uppercase"
+                    aria-label="Código de desconto"
+                    disabled={applyingCoupon}
+                    autoFocus
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="default"
+                    onClick={() => void applyCoupon()}
+                    disabled={
+                      applyingCoupon || couponInput.trim().length === 0
+                    }
+                    className="h-9"
+                  >
+                    {applyingCoupon ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      "Aplicar"
+                    )}
+                  </Button>
+                </div>
+                {couponError ? (
+                  <p
+                    role="alert"
+                    className="text-destructive text-[11px] font-medium"
+                  >
+                    {couponError}
+                  </p>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCouponExpanded(false);
+                    setCouponInput("");
+                    setCouponError(null);
+                  }}
+                  className="text-muted-foreground hover:text-foreground text-[11px] underline-offset-2 hover:underline"
+                >
+                  Cancelar
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setCouponExpanded(true)}
+                className="flex items-center gap-1 text-muted-foreground hover:text-foreground text-[11.5px] font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+              >
+                <ChevronDown className="size-3.5" aria-hidden />
+                Tem código promocional?
+              </button>
+            )}
+          </div>
+
+          <hr className="border-border my-2" />
+          <div className="flex items-baseline justify-between">
+            <span className="text-[12.5px] font-semibold">Total</span>
+            <span className="text-[18px] font-semibold tabular-nums tracking-tight">
+              {formatBRL(totalAfterCoupon)}
+            </span>
+          </div>
+        </div>
+
+        {/* Form Seus dados — agora DEPOIS do totals (Onda 1). Bloco mínimo
+            necessário pro createOrderFromCart preencher o WhatsApp. */}
+        <section className="mt-5 space-y-3">
           <h2 className="text-muted-foreground font-mono text-[9.5px] uppercase tracking-[0.5px]">
             Seus dados
           </h2>
@@ -402,105 +534,28 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
           </div>
         </section>
 
-        {/* Sprint 5.1 — campo de cupom. Quando aplicado, mostra
-            badge com desconto + botão Remover. Quando vazio, mostra
-            input + Aplicar. Erros aparecem inline. */}
-        <section className="mt-5 space-y-2">
-          <h2 className="text-muted-foreground font-mono text-[9.5px] uppercase tracking-[0.5px]">
-            Código de desconto
-          </h2>
-          {appliedCoupon ? (
-            <div className="border-state-ok/30 bg-state-ok/10 flex items-center justify-between rounded-[10px] border p-2.5 text-[12.5px]">
-              <div>
-                <p className="text-state-ok font-semibold">
-                  ✓ Cupom {appliedCoupon.code}
-                </p>
-                <p className="text-muted-foreground font-mono text-[11px] tabular-nums">
-                  −{formatBRL(appliedCoupon.discountInCents)}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={removeCoupon}
-                className="text-muted-foreground hover:text-foreground text-[11px] underline-offset-2 hover:underline"
-              >
-                Remover
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="flex gap-2">
-                <Input
-                  type="text"
-                  value={couponInput}
-                  onChange={(e) => {
-                    setCouponInput(e.target.value);
-                    if (couponError) setCouponError(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      void applyCoupon();
-                    }
-                  }}
-                  placeholder="Ex: MAIO10"
-                  maxLength={40}
-                  className="h-10 flex-1 uppercase"
-                  aria-label="Código de desconto"
-                  disabled={applyingCoupon}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="default"
-                  onClick={() => void applyCoupon()}
-                  disabled={applyingCoupon || couponInput.trim().length === 0}
-                  className="h-10"
-                >
-                  {applyingCoupon ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    "Aplicar"
-                  )}
-                </Button>
-              </div>
-              {couponError ? (
-                <p
-                  role="alert"
-                  className="text-destructive text-[11px] font-medium"
-                >
-                  {couponError}
-                </p>
-              ) : null}
-            </>
-          )}
-        </section>
-
-        {/* Totals card */}
-        <div className="border-border bg-muted/40 mt-5 space-y-2 rounded-xl border p-3.5">
-          <Row label="Subtotal" value={formatBRL(subtotalCents)} mono />
-          {appliedCoupon ? (
-            <Row
-              label={`Cupom ${appliedCoupon.code}`}
-              value={`−${formatBRL(discountInCents)}`}
-              mono
-            />
-          ) : null}
-          <Row label="Frete" value="A combinar" />
-          <hr className="border-border my-2" />
-          <div className="flex items-baseline justify-between">
-            <span className="text-[12.5px] font-semibold">Total</span>
-            <span className="text-[18px] font-semibold tabular-nums tracking-tight">
-              {formatBRL(totalAfterCoupon)}
-            </span>
-          </div>
+        {/*
+          Onda 1 (2026-05-27) — aviso WhatsApp PROMOVIDO de letra miúda
+          (dashed border cinza) pra bloco brand-tinted positivo. Antes
+          parecia "termo legal pequeno"; agora comunica o DIFERENCIAL da
+          Mangos Pay (WhatsApp-checkout sem cadastro) como vantagem.
+          Ícone MessageCircle reforça canal.
+        */}
+        <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-whatsapp/30 bg-whatsapp/10 p-3.5">
+          <MessageCircle
+            className="text-whatsapp size-5 shrink-0"
+            strokeWidth={1.8}
+            aria-hidden
+          />
+          <p className="text-foreground/85 text-[12.5px] leading-[1.5]">
+            Sua compra é confirmada direto com{" "}
+            <span className="text-foreground font-semibold">
+              {storeFirstName}
+            </span>{" "}
+            pelo WhatsApp — frete e pagamento combinados na hora, sem
+            cadastro.
+          </p>
         </div>
-
-        {/* Aviso dashed */}
-        <p className="border-border text-muted-foreground mt-3.5 rounded-[10px] border border-dashed p-3 text-[11px] leading-[1.5]">
-          O pedido é finalizado pelo WhatsApp da loja. Frete e formas de
-          pagamento são combinados diretamente com {storeFirstName}.
-        </p>
       </form>
 
       {/* Sticky CTA WA */}

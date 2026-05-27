@@ -14,11 +14,11 @@
  * usamos valores menores direto. Botões "voltar" usam router.back() com
  * fallback opcional via prop `backHref` (SSR-safe pra cold-loads).
  */
-import { ArrowLeft, Search, ShoppingBag } from "lucide-react";
-import Image from "next/image";
+import { ArrowLeft, Search, ShoppingBag, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { useCategoriesSidebarTrigger } from "@/components/storefront/categories-sidebar";
 import { useSacolaDrawerTrigger } from "@/components/storefront/sacola-drawer";
 import type { Store } from "@/db/schema";
 import { useCart } from "@/hooks/use-cart";
@@ -39,6 +39,13 @@ type StickyTitleProps = {
   variant: "sticky-title";
   store: Store;
   title: string;
+  /**
+   * Subtítulo opcional em 11.5px gray abaixo do título. Onda 1 — usado em
+   * /sacola pra preservar identidade da loja ("Sua sacola · Joias Dublin")
+   * sem comer espaço horizontal. Quando ausente, o título mantém presença
+   * sozinho (caso /sucesso "Resumo do pedido").
+   */
+  subtitle?: string;
   /** Ex: "2 ITENS". */
   counter?: string;
   backHref?: string;
@@ -70,82 +77,58 @@ export function StoreHeader(props: StoreHeaderProps) {
 }
 
 /* ─────────────────────────── home ───────────────────────────
-   Redesenho 2026-05-27 alinhado à ref Dribbble 1:
-   - Top row: "Olá, {Loja} 👋" + handle/saudação + botão sacola
-   - Bottom row: search bar pill grande clicável → /buscar
-   O search bar grande é o vetor principal de navegação dos refs
-   modernos (clientes mobile esperam buscar visualmente, não através
-   de ícone discreto). Estilo Fitts: alvo de tap gigante na primeira
-   dobra, sempre acessível pelo polegar.
+   Redesenho 2026-05-27: linha única — marca Mangos Pay (manga) +
+   barra de busca (flex-1) + carrinho. Sem saudação, sem logo da
+   loja (storefront é a vitrine; quem assina o produto é a Mangos
+   Pay). Layout caber em viewport 360px sem quebra.
 */
 
 function HomeVariant({ store }: { store: Store }) {
   const baseHref = `/${store.slug}`;
-  const initial = store.name.charAt(0).toUpperCase();
 
   return (
     <header className="sticky top-0 z-30 border-b border-border/60 bg-background/95 backdrop-blur-sm">
-      <div className="mx-auto w-full max-w-screen-xl px-4 pt-4 pb-3">
-        {/* Top row: saudação + sacola */}
-        <div className="flex items-center gap-3">
-          <Link
-            href={baseHref}
-            prefetch
-            className="flex min-w-0 flex-1 items-center gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            aria-label={`Início — ${store.name}`}
-          >
-            {store.logoUrl ? (
-              <span
-                aria-hidden
-                className="relative inline-block size-10 shrink-0 overflow-hidden rounded-full bg-muted ring-1 ring-border"
-              >
-                <Image
-                  src={store.logoUrl}
-                  alt=""
-                  fill
-                  sizes="40px"
-                  className="object-cover"
-                />
-              </span>
-            ) : (
-              <span
-                aria-hidden
-                className="inline-flex size-10 shrink-0 items-center justify-center rounded-full text-[15px] font-semibold tracking-[-0.4px] text-white"
-                style={{ background: store.primaryColor }}
-              >
-                {initial}
-              </span>
-            )}
-            <span className="min-w-0 flex-1">
-              <span className="block text-[11px] font-medium tracking-[0.1px] text-gray-500">
-                Olá 👋
-              </span>
-              <span className="mt-0.5 block truncate text-[15px] font-semibold leading-[1.1] tracking-[-0.3px] text-foreground">
-                {store.name}
-              </span>
-            </span>
-          </Link>
+      <div className="mx-auto flex w-full max-w-screen-xl items-center gap-2.5 px-4 py-3">
+        <CategoriesButton />
 
-          <SacolaButton />
-        </div>
-
-        {/* Search bar pill grande — ref 1 style.
-            Renderiza como Link em vez de input pra evitar duplo input
-            (tem página /buscar com input real). Aqui é só o "trigger"
-            visual: clica → navega pra busca. */}
+        {/* Barra de busca — trigger visual (renderiza como Link, não
+            input, pra evitar duplicação com /buscar). flex-1 + min-w-0
+            garante encolhimento até caber em 360px sem empurrar o cart. */}
         <Link
           href={`${baseHref}/buscar`}
           prefetch={false}
           aria-label="Buscar produtos"
-          className="mt-3.5 flex h-11 items-center gap-2.5 rounded-full bg-muted/80 px-4 text-muted-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full bg-muted/80 px-3.5 text-muted-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <Search className="size-[18px] shrink-0" strokeWidth={1.8} aria-hidden />
-          <span className="truncate text-[13.5px] font-medium tracking-[-0.1px]">
-            Buscar em {store.name}
+          <Search className="size-[17px] shrink-0" strokeWidth={1.8} aria-hidden />
+          <span className="truncate text-[13px] font-medium tracking-[-0.1px]">
+            Buscar produtos
           </span>
         </Link>
+
+        <SacolaButton />
       </div>
     </header>
+  );
+}
+
+/**
+ * Botão "categorias" no slot esquerdo do header. Abre o Sheet
+ * `CategoriesSidebar` que envolve o ShellContent (provider já está
+ * acima na árvore via StoreShell). Usa o mesmo ícone que aparece ao
+ * lado da busca em /buscar (SlidersHorizontal) pra consistência visual.
+ */
+function CategoriesButton() {
+  const sidebar = useCategoriesSidebarTrigger();
+  return (
+    <button
+      type="button"
+      onClick={sidebar.open}
+      aria-label="Abrir categorias"
+      className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground outline-none transition-colors hover:bg-gray-200 focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <SlidersHorizontal className="size-5" strokeWidth={1.8} aria-hidden />
+    </button>
   );
 }
 
@@ -202,16 +185,28 @@ function PdpFloatingVariant({ store, backHref }: PdpFloatingProps) {
 
 /* ───────────────────── sticky-title ───────────────────── */
 
-function StickyTitleVariant({ store, title, counter, backHref }: StickyTitleProps) {
+function StickyTitleVariant({ store, title, subtitle, counter, backHref }: StickyTitleProps) {
   const fallback = backHref ?? `/${store.slug}`;
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background">
       <div className="mx-auto flex w-full max-w-screen-xl items-center gap-2.5 px-4 py-3">
         <BackButton size={36} fallback={fallback} />
-        <span className="min-w-0 flex-1 truncate text-[18px] font-semibold leading-tight tracking-[-0.4px] text-foreground">
-          {title}
-        </span>
+        <div className="min-w-0 flex-1">
+          {/* Onda 1 (2026-05-27): título cai de 18px pra 17px pra abrir
+              espaço pro subtítulo opcional logo abaixo. Sem subtítulo,
+              a diferença de 1px é imperceptível (caso /sucesso "Resumo
+              do pedido"). Com subtítulo, hierarquia clara: título forte
+              + contexto da loja em cinza fininho. */}
+          <span className="block truncate text-[17px] font-semibold leading-[1.15] tracking-[-0.4px] text-foreground">
+            {title}
+          </span>
+          {subtitle ? (
+            <span className="mt-px block truncate text-[11.5px] font-medium text-muted-foreground">
+              {subtitle}
+            </span>
+          ) : null}
+        </div>
         {counter ? (
           <span className="ml-auto shrink-0 font-mono text-[10px] uppercase tracking-[0.5px] text-gray-500">
             {counter}

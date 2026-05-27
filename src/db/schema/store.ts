@@ -98,8 +98,14 @@ export const storeTable = pgTable(
 
     // Intervalo (em segundos) de rotação automática do carrossel de
     // banners no storefront. 0 = rotação desligada (mostra só o primeiro).
-    // Range válido (validado em Zod): 0 ou 3-60s. Default 5s.
-    bannerRotationSec: integer("banner_rotation_sec").notNull().default(5),
+    // Range válido (validado em Zod): 0 ou 3-60s.
+    //
+    // Default subiu de 5s pra 7s em 2026-05-27 (Onda 1): cliente sênior
+    // do ICP (cidade do interior, leitura mais devagar) não terminava
+    // de ler título+subtítulo+CTA em 5s. 7s é o sweet spot — confortável
+    // sem ser lento. Lojas existentes mantêm o valor que já está gravado;
+    // o novo default só vale pra novos signups.
+    bannerRotationSec: integer("banner_rotation_sec").notNull().default(7),
 
     // Eixos de tema (Onda C / Themes v1). Valores válidos:
     //   categoryShape: "rounded" (default) | "square" | "circle"
