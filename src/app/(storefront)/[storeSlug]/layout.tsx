@@ -24,6 +24,28 @@ import { StoreShell } from "@/components/storefront/store-shell";
 import { getCategoryTree } from "@/lib/storefront/categories-loader";
 import { getStoreBySlug } from "@/lib/storefront/store-loader";
 
+/**
+ * Força runtime dinâmico pra TODAS as pages do storefront público.
+ *
+ * Sem isso, Next 15 + Turbopack tenta gerar `generateStaticParams` em
+ * background (pre-render worker) pra rotas com `[storeSlug]` /
+ * `[productSlug]` / `[categorySlug]`, e estoura memória do Jest worker
+ * com "Failed to generate static paths" → "MemoryChunk allocation
+ * failed during deserialization" (capturado pelo Monitor em
+ * 2026-05-27, várias rotas).
+ *
+ * Storefront público é dinâmico por natureza: slug da loja, categoria,
+ * produto vêm da URL, dependem do DB e mudam em tempo real (cliente
+ * adiciona produto → revalidateTag invalida). Pré-render estático
+ * nunca foi a estratégia — `unstable_cache` no loader + revalidate
+ * 300s já provê o cache que importa.
+ *
+ * Aplicado no layout porque cascateia pra todo o subtree
+ * `(storefront)/[storeSlug]/**`. Cada page filha herda — sem precisar
+ * declarar 11 vezes.
+ */
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({
   params,
 }: {
