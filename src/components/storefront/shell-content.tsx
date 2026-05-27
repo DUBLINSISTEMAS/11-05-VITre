@@ -119,7 +119,7 @@ export function ShellContent({
       {!hideBottomNav && (
         <div className="lg:hidden">
           <BottomNav
-            storeSlug={store.slug}
+            store={store}
             variant={store.bottomNavStyle as BottomNavVariant}
           />
         </div>

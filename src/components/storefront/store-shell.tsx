@@ -33,16 +33,28 @@ export interface StoreShellProps {
 }
 
 export function StoreShell({ store, categoryTree, children }: StoreShellProps) {
-  // Inline style server-side: injeta a cor da loja como `--brand-store`
-  // no escopo deste wrapper. Escopo restrito a bottom-nav e badge da
-  // sacola (ADR-0011) — não afeta CTAs, promo, focus rings nem links.
+  // Inline style server-side com 2 camadas de tema:
   //
-  // IMPORTANTE: shadcn Dialog/Sheet/Popover usam Portal — o conteúdo é
-  // renderizado em document.body, FORA deste div. Componentes que abrem
-  // overlays e precisam da cor da loja devem re-injetar `brandStyle` no
-  // SheetContent/PopoverContent. Hoje os overlays não consomem brand —
-  // mantemos o style propagado preventivamente.
+  // 1. `--primary` luminoso `#1B7A4F` SCOPADO ao storefront (ref Dribbble 1
+  //    2026-05-27). Substitui o `--brand` escuro do admin pra CTAs do
+  //    storefront ganharem presença premium (Add to cart, Finalizar pelo
+  //    WhatsApp, bottom-nav active state). Admin continua com `--brand`
+  //    `#174D44` original — apenas o subtree dentro deste wrapper recebe
+  //    a versão mais vibrante.
+  //
+  // 2. `--brand-store` continua sendo a cor da MARCA da loja (ADR-0011).
+  //    Escopo agora ainda mais reduzido: só o badge contador da sacola
+  //    no bottom-nav — toque sutil de personalização sem dominar a UI.
+  //    Bottom-nav active state foi migrado pra `--primary` pra dar
+  //    identidade Mangos Pay consistente.
+  //
+  // shadcn Dialog/Sheet/Popover usam Portal — o conteúdo renderiza fora
+  // deste div. Overlays que precisem da cor da loja devem re-injetar
+  // `brandStyle` no SheetContent/PopoverContent.
   const brandStyle = {
+    "--primary": "#1B7A4F",
+    "--primary-foreground": "#FFFFFF",
+    "--ring": "#1B7A4F",
     "--brand-store": store.primaryColor,
   } as CSSProperties;
 

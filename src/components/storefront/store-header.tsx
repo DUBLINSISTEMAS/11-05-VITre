@@ -69,64 +69,81 @@ export function StoreHeader(props: StoreHeaderProps) {
   return <CategoryVariant {...(props as CategoryProps)} />;
 }
 
-/* ─────────────────────────── home ─────────────────────────── */
+/* ─────────────────────────── home ───────────────────────────
+   Redesenho 2026-05-27 alinhado à ref Dribbble 1:
+   - Top row: "Olá, {Loja} 👋" + handle/saudação + botão sacola
+   - Bottom row: search bar pill grande clicável → /buscar
+   O search bar grande é o vetor principal de navegação dos refs
+   modernos (clientes mobile esperam buscar visualmente, não através
+   de ícone discreto). Estilo Fitts: alvo de tap gigante na primeira
+   dobra, sempre acessível pelo polegar.
+*/
 
 function HomeVariant({ store }: { store: Store }) {
   const baseHref = `/${store.slug}`;
   const initial = store.name.charAt(0).toUpperCase();
-  const handle = store.instagramHandle ?? store.slug;
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-background">
-      <div className="mx-auto flex w-full max-w-screen-xl items-center gap-2.5 px-4 py-3">
-        <Link
-          href={baseHref}
-          prefetch
-          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          aria-label={`Início — ${store.name}`}
-        >
-          {store.logoUrl ? (
-            <span
-              aria-hidden
-              className="relative inline-block size-8 shrink-0 overflow-hidden rounded-lg bg-muted"
-            >
-              <Image
-                src={store.logoUrl}
-                alt=""
-                fill
-                sizes="32px"
-                className="object-cover"
-              />
+    <header className="sticky top-0 z-30 border-b border-border/60 bg-background/95 backdrop-blur-sm">
+      <div className="mx-auto w-full max-w-screen-xl px-4 pt-4 pb-3">
+        {/* Top row: saudação + sacola */}
+        <div className="flex items-center gap-3">
+          <Link
+            href={baseHref}
+            prefetch
+            className="flex min-w-0 flex-1 items-center gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            aria-label={`Início — ${store.name}`}
+          >
+            {store.logoUrl ? (
+              <span
+                aria-hidden
+                className="relative inline-block size-10 shrink-0 overflow-hidden rounded-full bg-muted ring-1 ring-border"
+              >
+                <Image
+                  src={store.logoUrl}
+                  alt=""
+                  fill
+                  sizes="40px"
+                  className="object-cover"
+                />
+              </span>
+            ) : (
+              <span
+                aria-hidden
+                className="inline-flex size-10 shrink-0 items-center justify-center rounded-full text-[15px] font-semibold tracking-[-0.4px] text-white"
+                style={{ background: store.primaryColor }}
+              >
+                {initial}
+              </span>
+            )}
+            <span className="min-w-0 flex-1">
+              <span className="block text-[11px] font-medium tracking-[0.1px] text-gray-500">
+                Olá 👋
+              </span>
+              <span className="mt-0.5 block truncate text-[15px] font-semibold leading-[1.1] tracking-[-0.3px] text-foreground">
+                {store.name}
+              </span>
             </span>
-          ) : (
-            <span
-              aria-hidden
-              className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[14px] font-semibold tracking-[-0.4px] text-white"
-              style={{ background: store.primaryColor }}
-            >
-              {initial}
-            </span>
-          )}
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[14px] font-semibold leading-[1.1] tracking-[-0.3px] text-foreground">
-              {store.name}
-            </span>
-            <span className="mt-0.5 block truncate font-mono text-[10px] text-gray-500">
-              @{handle}
-            </span>
-          </span>
-        </Link>
+          </Link>
 
+          <SacolaButton />
+        </div>
+
+        {/* Search bar pill grande — ref 1 style.
+            Renderiza como Link em vez de input pra evitar duplo input
+            (tem página /buscar com input real). Aqui é só o "trigger"
+            visual: clica → navega pra busca. */}
         <Link
           href={`${baseHref}/buscar`}
           prefetch={false}
           aria-label="Buscar produtos"
-          className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-foreground outline-none transition-colors hover:bg-gray-200 focus-visible:ring-2 focus-visible:ring-ring"
+          className="mt-3.5 flex h-11 items-center gap-2.5 rounded-full bg-muted/80 px-4 text-muted-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <Search className="size-5" strokeWidth={1.6} />
+          <Search className="size-[18px] shrink-0" strokeWidth={1.8} aria-hidden />
+          <span className="truncate text-[13.5px] font-medium tracking-[-0.1px]">
+            Buscar em {store.name}
+          </span>
         </Link>
-
-        <SacolaButton />
       </div>
     </header>
   );
