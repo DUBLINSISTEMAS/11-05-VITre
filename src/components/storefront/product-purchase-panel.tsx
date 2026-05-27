@@ -35,7 +35,8 @@
  * stepper (qty=1 implícito; cliente ajusta na sacola), sem share, sem
  * descrição colapsável (canvas mostra completa), sem framer-motion.
  */
-import { MessageCircleIcon } from "lucide-react";
+import { ChevronRight, MessageCircleIcon } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 
@@ -92,6 +93,12 @@ export interface ProductPurchasePanelProps {
   whatsappNumber: string;
   /** Nome da loja — usado na mensagem pré-preenchida do WhatsApp. */
   storeName: string;
+  /**
+   * Trilha categoria-pai → categoria-folha (Onda 5). Renderizada acima
+   * do título como breadcrumb sutil — orientação espacial. Vazio/null
+   * = breadcrumb não aparece.
+   */
+  breadcrumb?: Array<{ slug: string; name: string }>;
 }
 
 const META_FIELDS = [
@@ -111,6 +118,7 @@ export function ProductPurchasePanel({
   onSelectVariant,
   whatsappNumber,
   storeName,
+  breadcrumb,
 }: ProductPurchasePanelProps) {
   const router = useRouter();
   const [internalVariantId, setInternalVariantId] = useState<string | null>(null);
@@ -270,6 +278,46 @@ export function ProductPurchasePanel({
             "mobile esticado". Tracking mais apertado em desktop pra
             compensar o peso visual maior. */}
         <div className="px-4 pt-4 lg:pt-2">
+          {/* Breadcrumb Onda 5 — sutil, font-mono pra parecer "rotulagem
+              técnica" e não competir com o título. ChevronRight separa
+              níveis. Folha (último item) não-clicável; outros são Links. */}
+          {breadcrumb && breadcrumb.length > 0 && (
+            <nav
+              aria-label="Trilha de categorias"
+              className="text-muted-foreground mb-2 flex flex-wrap items-center gap-x-1.5 font-mono text-[10.5px] uppercase tracking-[0.4px]"
+            >
+              {breadcrumb.map((crumb, idx) => {
+                const isLast = idx === breadcrumb.length - 1;
+                return (
+                  <span key={crumb.slug} className="inline-flex items-center gap-x-1.5">
+                    {idx > 0 && (
+                      <ChevronRight
+                        className="size-3 opacity-60"
+                        strokeWidth={2}
+                        aria-hidden
+                      />
+                    )}
+                    {isLast ? (
+                      <span
+                        aria-current="page"
+                        className="text-foreground/80 truncate"
+                      >
+                        {crumb.name}
+                      </span>
+                    ) : (
+                      <Link
+                        href={`/${storeSlug}/categoria/${crumb.slug}`}
+                        prefetch={false}
+                        className="hover:text-foreground truncate outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring rounded"
+                      >
+                        {crumb.name}
+                      </Link>
+                    )}
+                  </span>
+                );
+              })}
+            </nav>
+          )}
           <h1 className="text-[22px] font-semibold leading-[1.15] tracking-[-0.5px] text-foreground [text-wrap:pretty] lg:text-[30px] lg:leading-[1.1] lg:tracking-[-0.8px]">
             {product.name}
           </h1>

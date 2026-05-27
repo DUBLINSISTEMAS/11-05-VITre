@@ -6,6 +6,37 @@
  *
  * - Página de produto: esconde header (usa header próprio) e footer
  * - Outras páginas: mostra header e footer normalmente
+ *
+ * ─────────────────────────────────────────────────────────────────────
+ * Tabela canônica de safe-zones (Onda 5 — 2026-05-27 análise sênior):
+ *
+ * Cada contexto reserva `pb-*` mobile baseado no que existe FIXED bottom.
+ * Estas são as referências autoritativas pra não voltar a aparecer
+ * "último item coberto pelo CTA" em revisões futuras.
+ *
+ *   pb-24 (96px)  = bottom-nav (~76) + safe-area inset (~14-20)
+ *                   Aplicado em: páginas de listagem sem mini-cart.
+ *
+ *   pb-44 (176px) = mini-cart (h-14 + gap) + bottom-nav + safe-area
+ *                   Aplicado em: páginas de listagem COM mini-cart
+ *                   (categoria, /buscar, /destaques, /colecao/*).
+ *                   Sem isso, último card fica coberto pelo overlay duplo.
+ *
+ *   pb-28 (112px) = sticky CTA h-11 + 2nd CTA h-10 + gap + safe-area
+ *                   Aplicado em: PDP (product-detail-view.tsx mobile).
+ *                   Não tem bottom-nav (PDP esconde via hideBottomNav).
+ *
+ *   pb-32 (128px) = sticky CTA h-12 + safe-area
+ *                   Aplicado em: /sacola (checkout-panel.tsx form).
+ *                   Bottom-nav escondido (canvas-v1).
+ *
+ *   pb-32 (128px) = SuccessCtas (h-46 + h-46 + gap) + safe-area
+ *                   Aplicado em: /sucesso. Sem bottom-nav.
+ *
+ * Cleanup pra CSS var --sf-bottom-pb (cleanup arquitetural) deferred —
+ * envolve refator de 5+ páginas com risco vs benefício ruim (não-user-facing).
+ * Documentado aqui ao invés de centralizado.
+ * ─────────────────────────────────────────────────────────────────────
  */
 import { usePathname } from "next/navigation";
 import type { CSSProperties } from "react";

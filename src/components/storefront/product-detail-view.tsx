@@ -37,9 +37,20 @@ import type { Store } from "@/db/schema";
 import { getEffectivePrice } from "@/lib/pricing";
 import type { ProductDetail } from "@/lib/storefront/products-loader";
 
+export interface BreadcrumbCrumb {
+  slug: string;
+  name: string;
+}
+
 export interface ProductDetailViewProps {
   product: ProductDetail;
   store: Store;
+  /**
+   * Trilha categoria-pai → categoria-folha. Onda 5 (2026-05-27) — renderizada
+   * acima do título do produto pra orientação espacial ("estou em Joias →
+   * Anéis"). Array vazio = sem categoria, breadcrumb não aparece.
+   */
+  breadcrumb?: BreadcrumbCrumb[];
   /**
    * "Você pode gostar também" — recebida como ReactNode pra que o
    * mobile renderize ANTES da CTA sticky (rola junto com o conteúdo,
@@ -54,6 +65,7 @@ export interface ProductDetailViewProps {
 export function ProductDetailView({
   product,
   store,
+  breadcrumb,
   relatedSection,
 }: ProductDetailViewProps) {
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
@@ -140,6 +152,7 @@ export function ProductDetailView({
           onSelectVariant={setSelectedVariantId}
           whatsappNumber={store.whatsappNumber}
           storeName={store.name}
+          breadcrumb={breadcrumb}
         />
 
         {/* Mobile: "Você pode gostar também" entra DENTRO do flex-col

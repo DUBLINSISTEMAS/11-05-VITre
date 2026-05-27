@@ -29,7 +29,7 @@
  *   - PromoStrip: PP15 (brand-store wash + Sparkle icon + ArrowRight)
  *   - StoreHeader (home variant): avatar + name + handle + Search + Bag
  */
-import { Plus, Sparkles } from "lucide-react";
+import { MessageCircle, Plus, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -212,7 +212,11 @@ export default async function StoreHomePage({
       )}
 
       {isCatalogEmpty && (
-        <EmptyCatalog isOwner={isOwner} storeName={store.name} />
+        <EmptyCatalog
+          isOwner={isOwner}
+          storeName={store.name}
+          whatsappNumber={store.whatsappNumber}
+        />
       )}
     </div>
   );
@@ -221,9 +225,11 @@ export default async function StoreHomePage({
 function EmptyCatalog({
   isOwner,
   storeName,
+  whatsappNumber,
 }: {
   isOwner: boolean;
   storeName: string;
+  whatsappNumber: string;
 }) {
   if (isOwner) {
     return (
@@ -251,8 +257,18 @@ function EmptyCatalog({
     );
   }
 
+  // Onda 5 (2026-05-27): cliente final em loja sem catálogo agora tem
+  // caminho concreto pra puxar atendimento — antes só via "Em breve"
+  // passivo e fechava a aba. WhatsApp da loja é obrigatório no schema
+  // (notNull), então o CTA sempre renderiza pro cliente.
+  const waNumber = whatsappNumber.replace(/^\+/, "");
+  const waMessage = encodeURIComponent(
+    `Olá ${storeName}! Vi sua loja online e gostaria de saber mais sobre os produtos.`,
+  );
+  const waHref = `https://wa.me/${waNumber}?text=${waMessage}`;
+
   return (
-    <div className="rounded-2xl border border-border bg-card px-6 py-20 text-center">
+    <div className="rounded-2xl border border-border bg-card px-6 py-16 text-center">
       <div className="mx-auto mb-5 flex size-20 items-center justify-center rounded-full bg-muted">
         <Sparkles className="size-9 text-muted-foreground" />
       </div>
@@ -262,9 +278,16 @@ function EmptyCatalog({
       <h2 className="mt-1 text-lg font-semibold text-foreground">
         Vitrine em construção
       </h2>
-      <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">
-        Em breve você verá os produtos da {storeName} aqui.
+      <p className="text-muted-foreground mx-auto mt-2 max-w-xs text-sm leading-relaxed">
+        A {storeName} ainda está organizando o catálogo. Fale com a gente
+        no WhatsApp pra conhecer o que está disponível.
       </p>
+      <Button asChild className="bg-whatsapp hover:bg-whatsapp-hover mt-6 gap-2 text-white">
+        <a href={waHref} target="_blank" rel="noopener noreferrer">
+          <MessageCircle className="size-4" strokeWidth={2} />
+          Falar pelo WhatsApp
+        </a>
+      </Button>
     </div>
   );
 }

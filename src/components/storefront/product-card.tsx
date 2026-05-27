@@ -130,7 +130,7 @@ export function ProductCard({
     return (
       <article
         className={cn(
-          "group relative flex flex-col overflow-hidden rounded-xl bg-background",
+          "group relative flex flex-col overflow-hidden rounded-xl bg-background transition-transform duration-150 active:scale-[0.98] lg:active:scale-100",
           tokens.cardRingClass,
           className,
         )}
@@ -183,10 +183,14 @@ export function ProductCard({
   }
 
   // overlay (default canvas)
+  // Onda 5 (2026-05-27): adiciona feedback de tap mobile (active:scale-[0.98])
+  // + transição suave. Hover desktop continua via group-hover scale-105 na
+  // ImageBox (movido pra lg: pra não disparar em touch puro — mobile hybrid
+  // como iPad com Magic Keyboard dispara hover sem precisão de mouse).
   return (
     <article
       className={cn(
-        "group relative flex flex-col gap-1.5",
+        "group relative flex flex-col gap-1.5 transition-transform duration-150 active:scale-[0.98] lg:active:scale-100",
         tokens.overlayRingClass &&
           cn("rounded-[10px] p-1", tokens.overlayRingClass),
         className,
@@ -301,8 +305,11 @@ function ImageBox({
           // grid ficar uniforme. Lojista é orientado a subir fotos com
           // enquadramento adequado pra card. PDP usa contain pra
           // preservar enquadramento original (decisão diferente por
-          // contexto). Hover scale 1.05 sinaliza interatividade.
-          className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+          // contexto).
+          // Onda 5 (2026-05-27): hover scale apenas em lg: — touch puro
+          // (mobile/tablet sem mouse) não dispara hover; o feedback de
+          // tap fica por conta do active:scale-[0.98] no <article> pai.
+          className="object-cover transition-transform duration-500 ease-out lg:group-hover:scale-105"
         />
       ) : (
         <div className="flex h-full items-center justify-center text-xs text-muted-foreground/60">

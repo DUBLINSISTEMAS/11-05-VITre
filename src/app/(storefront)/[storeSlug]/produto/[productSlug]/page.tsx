@@ -12,10 +12,43 @@ import { ProductCard } from "@/components/storefront/product-card";
 import { ProductDetailView } from "@/components/storefront/product-detail-view";
 import { env } from "@/lib/env";
 import { getEffectivePrice } from "@/lib/pricing";
+import { getCategoryTree } from "@/lib/storefront/categories-loader";
 import { getProductBySlug } from "@/lib/storefront/products-loader";
 import { getRelatedProducts } from "@/lib/storefront/related-products-loader";
 import { getStoreBySlug } from "@/lib/storefront/store-loader";
 import type { ProductCardVariant } from "@/lib/storefront/themes";
+
+interface BreadcrumbCrumb {
+  slug: string;
+  name: string;
+}
+
+/**
+ * Resolve a trilha categoria-pai → categoria-folha do produto, lendo
+ * o `categoryTree` já cached (sem custo extra de DB). Onda 5 — usado pra
+ * breadcrumb sutil no PDP.
+ */
+async function resolveCategoryBreadcrumb(
+  storeId: string,
+  storeSlug: string,
+  productCategoryId: string | null,
+): Promise<BreadcrumbCrumb[]> {
+  if (!productCategoryId) return [];
+  const tree = await getCategoryTree(storeId, storeSlug);
+  for (const root of tree) {
+    if (root.id === productCategoryId) {
+      return [{ slug: root.slug, name: root.name }];
+    }
+    const child = root.children.find((c) => c.id === productCategoryId);
+    if (child) {
+      return [
+        { slug: root.slug, name: root.name },
+        { slug: child.slug, name: child.name },
+      ];
+    }
+  }
+  return [];
+}
 
 interface PageParams {
   storeSlug: string;
@@ -114,13 +147,10 @@ export default async function ProductPage({
     "<\\/script",
   );
 
-  const related = await getRelatedProducts(
-    store.id,
-    store.slug,
-    product.id,
-    product.categoryId,
-    6,
-  );
+  const [related, breadcrumb] = await Promise.all([
+    getRelatedProducts(store.id, store.slug, product.id, product.categoryId, 6),
+    resolveCategoryBreadcrumb(store.id, store.slug, product.categoryId),
+  ]);
 
   const relatedSection =
     related.length > 0 ? (
@@ -164,6 +194,7 @@ export default async function ProductPage({
       <ProductDetailView
         product={product}
         store={store}
+        breadcrumb={breadcrumb}
         relatedSection={relatedSection}
       />
     </>
