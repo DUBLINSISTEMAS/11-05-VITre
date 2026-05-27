@@ -140,7 +140,7 @@ export default async function StoreHomePage({
       {collections.length > 0 && (
         <section className="space-y-2">
           <header>
-            <h2 className="text-sm font-semibold tracking-[-0.3px] text-foreground">
+            <h2 className="text-[17px] font-semibold tracking-[-0.4px] text-foreground lg:text-[20px] lg:tracking-[-0.5px]">
               Vitrines
             </h2>
           </header>
@@ -151,7 +151,7 @@ export default async function StoreHomePage({
       {categoryTree.length > 0 && (
         <section className="space-y-2">
           <header>
-            <h2 className="text-sm font-semibold tracking-[-0.3px] text-foreground">
+            <h2 className="text-[17px] font-semibold tracking-[-0.4px] text-foreground lg:text-[20px] lg:tracking-[-0.5px]">
               Categorias
             </h2>
           </header>
