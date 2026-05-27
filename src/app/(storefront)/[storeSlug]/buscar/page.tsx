@@ -85,61 +85,52 @@ export default async function SearchPage({
 
   return (
     <div className="flex flex-col min-h-screen -mx-4 -mt-4">
-      {/* Header fixo com busca */}
-      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-lg border-b border-gray-100">
-        <div className="px-4 py-3">
-          {/* Top row: back + title + favorites/sacola (Onda 12 — paridade
-              com a home: Heart + Sacola sempre acessíveis no canto direito,
-              tanto durante exploração quanto na vitrine principal). */}
-          <div className="flex items-center gap-2.5 mb-3">
-            <Link href={baseHref}>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-10 rounded-full shrink-0"
-              >
-                <ArrowLeft className="size-5" />
-                <span className="sr-only">Voltar</span>
-              </Button>
-            </Link>
-            <h1 className="text-lg font-semibold flex-1">Explorar</h1>
-            <FavoritesButton storeSlug={store.slug} />
-            <SacolaButton variant="solid" />
-          </div>
+      {/* Onda 13 (2026-05-27) — auditoria de viewport real-state.
+          STICKY MÍNIMO: 1 linha com [Back] [Pill] [♥] [🛍] = ~64px,
+          mesmo padrão de altura do StoreHeader home. Antes o sticky
+          tinha 3 linhas (back+título + pill + CategoryStrip) ocupando
+          ~220px = 33% do viewport iPhone — cliente perdia área útil
+          de produto ao scrollar.
+          O título "Explorar" foi removido (pill ativo já comunica que
+          a tela é de busca). CategoryStrip e contador "X resultados"
+          foram pro conteúdo scrollável abaixo. */}
+      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border/60">
+        <div className="mx-auto flex w-full max-w-screen-xl items-center gap-2.5 px-4 py-3">
+          <Link href={baseHref} aria-label="Voltar">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-10 rounded-full shrink-0"
+            >
+              <ArrowLeft className="size-5" />
+              <span className="sr-only">Voltar</span>
+            </Button>
+          </Link>
 
-          {/* Search bar — Onda 11 (2026-05-27): input agora é pill alinhado
-              ao trigger da home (mesmo bg-muted + rounded-full). Botão
-              submit separado removido — o input pill já tem ícone Search
-              dentro (left) e Enter dispara o form. Padrão Shopee/Shein/
-              Aritzia mobile: barra única, sem botão extra. Form action
-              preservado pra Enter sem item selecionado ir pra /buscar?q=
-              (listagem cheia) e pra fallback sem JS. */}
           <form
             action={`/${store.slug}/buscar`}
             method="get"
             role="search"
-            className="flex items-center"
+            className="flex min-w-0 flex-1 items-center"
           >
             <SearchTypeahead storeSlug={store.slug} initialQuery={q} />
           </form>
-        </div>
 
-        {/* Onda 10 — CategoryStrip pra paridade visual com a home.
-            Onda 12 (2026-05-27): pt-2 explícito adiciona ~8px de respiro
-            entre a pill de busca e os tiles. Antes o py-3 do wrapper acima
-            colava a pill no topo dos tiles sem ritmo claro. */}
-        <div className="px-4 pt-2 pb-3">
-          <CategoryStrip
-            storeSlug={store.slug}
-            categories={categoryTree}
-            shape={store.categoryShape as CategoryShape}
-          />
+          <FavoritesButton storeSlug={store.slug} />
+          <SacolaButton variant="solid" />
         </div>
       </header>
 
-      {/* Content */}
-      <div className="flex-1 px-4 py-4 space-y-4">
-        {/* Results info */}
+      {/* Content — CategoryStrip e título de resultados scrollam junto.
+          Cliente vê as categorias na primeira dobra; ao rolar pra ver
+          produtos, sticky compacto libera ~150px de viewport extra. */}
+      <div className="flex-1 px-4 pt-3 pb-4 space-y-4">
+        <CategoryStrip
+          storeSlug={store.slug}
+          categories={categoryTree}
+          shape={store.categoryShape as CategoryShape}
+        />
+
         {q && (
           <p className="text-sm text-muted-foreground">
             {result.total === 0
@@ -161,7 +152,6 @@ export default async function SearchPage({
           </div>
         )}
 
-        {/* Products grid */}
         {result.items.length > 0 ? (
           <>
             <ProductGrid
