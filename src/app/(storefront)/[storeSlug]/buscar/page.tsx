@@ -94,7 +94,7 @@ export default async function SearchPage({
           O título "Explorar" foi removido (pill ativo já comunica que
           a tela é de busca). CategoryStrip e contador "X resultados"
           foram pro conteúdo scrollável abaixo. */}
-      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border/60">
+      <header className="sticky top-0 z-30 rounded-b-2xl bg-background/95 backdrop-blur-sm border-b border-border/60">
         <div className="mx-auto flex w-full max-w-screen-xl items-center gap-2.5 px-4 py-3">
           <Link href={baseHref} aria-label="Voltar">
             <Button

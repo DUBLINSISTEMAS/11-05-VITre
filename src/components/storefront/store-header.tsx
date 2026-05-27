@@ -97,7 +97,7 @@ function HomeVariant({ store }: { store: Store }) {
   const baseHref = `/${store.slug}`;
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border/60 bg-background/95 backdrop-blur-sm">
+    <header className="sticky top-0 z-30 rounded-b-2xl border-b border-border/60 bg-background/95 backdrop-blur-sm">
       <div className="mx-auto flex w-full max-w-screen-xl items-center gap-2.5 px-4 py-3">
         <CategoriesButton />
 
@@ -335,7 +335,7 @@ function StickyTitleVariant({ store, title, subtitle, counter, backHref }: Stick
   const fallback = backHref ?? `/${store.slug}`;
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-background">
+    <header className="sticky top-0 z-30 rounded-b-2xl border-b border-border bg-background">
       <div className="mx-auto flex w-full max-w-screen-xl items-center gap-2.5 px-4 py-3">
         <BackButton size={36} fallback={fallback} />
         <div className="min-w-0 flex-1">
@@ -369,7 +369,7 @@ function CategoryVariant({ store, kicker, title, counter, backHref }: CategoryPr
   const fallback = backHref ?? `/${store.slug}`;
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-background">
+    <header className="sticky top-0 z-30 rounded-b-2xl border-b border-border bg-background">
       <div className="mx-auto flex w-full max-w-screen-xl items-center gap-2.5 px-4 pt-3 pb-2.5">
         <BackButton size={32} fallback={fallback} />
         <span className="min-w-0 flex-1">
