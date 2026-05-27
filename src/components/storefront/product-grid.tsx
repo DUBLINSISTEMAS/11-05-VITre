@@ -61,11 +61,15 @@ export function ProductGrid({
   const showHeader = sectionTitle || seeAllHref || count !== undefined;
 
   return (
-    <section className={cn("space-y-3", className)}>
+    <section className={cn("space-y-3 lg:space-y-5", className)}>
       {showHeader && (
         <header className="flex items-baseline justify-between gap-3">
           {sectionTitle && (
-            <h2 className="text-sm font-semibold tracking-[-0.3px] text-foreground">
+            // Mobile: 14px (canvas-v1, denso).
+            // Desktop: 18px — título de seção precisa de presença
+            // numa tela grande; canvas mobile fica pequeno e amador
+            // se reaproveitado direto em desktop.
+            <h2 className="text-sm font-semibold tracking-[-0.3px] text-foreground lg:text-[18px] lg:tracking-[-0.4px]">
               {sectionTitle}
             </h2>
           )}
@@ -73,12 +77,12 @@ export function ProductGrid({
             <Link
               href={seeAllHref}
               prefetch={false}
-              className="shrink-0 text-[11px] font-medium text-brand-store outline-none focus-visible:underline"
+              className="shrink-0 text-[11px] font-medium text-brand-store outline-none focus-visible:underline lg:text-[13px]"
             >
               Ver todos →
             </Link>
           ) : count !== undefined ? (
-            <span className="shrink-0 font-mono text-[9.5px] text-gray-500">
+            <span className="shrink-0 font-mono text-[9.5px] text-gray-500 lg:text-[11px]">
               {count}
             </span>
           ) : null}
@@ -91,9 +95,10 @@ export function ProductGrid({
           "grid grid-cols-2 gap-x-[14px] gap-y-[18px]",
           // desktop scaling
           "sm:grid-cols-3 sm:gap-x-4 sm:gap-y-5",
-          "lg:grid-cols-4 lg:gap-x-5 lg:gap-y-6",
+          "lg:grid-cols-4 lg:gap-x-6 lg:gap-y-8",
           // wide desktop: 5 cols (Onda 6 — aproveita tela full HD+).
-          "xl:grid-cols-5",
+          // Gaps maiores em xl pra cards respirarem (sensação premium).
+          "xl:grid-cols-5 xl:gap-x-8 xl:gap-y-10",
         )}
       >
         {products.map((product, idx) => (

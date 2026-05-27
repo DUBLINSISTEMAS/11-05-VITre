@@ -67,7 +67,16 @@ const servicePool =
   global._vitreServicePool ??
   new Pool({
     connectionString: env.DIRECT_URL,
-    max: 1,
+    // max:2 (era 1) — Onda 4 redesign storefront 2026-05-26.
+    // Storefront público resolve slug→store via serviceDb a CADA
+    // request (`getStoreBySlug` em layout + page + metadata). Com
+    // max:1, picos de tráfego (2+ visitas concorrentes na mesma
+    // lambda warm) filam no Pool e podem timeoutar → error boundary
+    // "não conseguimos carregar a loja". max:2 dá folga sem
+    // pressionar o teto (10-15 lambdas warm × 2 = 30 conexões, ainda
+    // dentro do budget Free de 60). Bumpar pra 3-4 quando passar de
+    // 20 lojas.
+    max: 2,
   });
 
 if (env.NODE_ENV !== "production") {

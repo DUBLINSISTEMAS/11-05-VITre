@@ -103,57 +103,113 @@ export function ProductGallery({
   }
 
   return (
-    <div className="relative">
-      {/* Carrossel scroll-snap */}
-      <div
-        ref={containerRef}
-        className="flex aspect-square w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden bg-gray-50 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        role="region"
-        aria-roledescription="carrossel"
-        aria-label={`Imagens de ${productName}`}
-      >
-        {images.map((img, idx) => (
-          <figure
-            key={img.id}
-            ref={(el) => {
-              slideRefs.current[idx] = el;
-            }}
-            data-slide-index={idx}
-            className="relative aspect-square w-full shrink-0 snap-start"
-          >
-            <Image
-              src={img.url}
-              alt={img.alt ?? productName}
-              fill
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              priority={idx === 0}
-              className="h-auto w-full object-cover"
-            />
-          </figure>
-        ))}
-      </div>
-
-      {/* Dots — canvas linhas 254-258 */}
+    // Mobile: galeria simples em coluna única (scroll horizontal + dots).
+    // Desktop ≥lg: coluna de thumbnails verticais à esquerda + imagem
+    // principal grande à direita. Premium feel estilo Aritzia/Zara —
+    // cliente vê todas as fotos de relance e troca com click sem swipe.
+    <div className="relative lg:flex lg:gap-3">
+      {/* Thumbnails verticais — desktop only.
+          Justificativa UX (Fitts): em desktop o cursor é preciso, então
+          alvo de 64px é confortável. Mobile usa scroll natural do dedo
+          que é mais ergonômico que tap em thumbs pequenas. */}
       {images.length > 1 && (
-        <div className="absolute inset-x-0 bottom-3.5 flex items-center justify-center gap-1.5">
+        <div
+          className="hidden flex-col gap-2 lg:flex lg:w-[68px] lg:shrink-0"
+          role="tablist"
+          aria-label={`Miniaturas de ${productName}`}
+        >
           {images.map((img, idx) => {
             const active = idx === activeIndex;
             return (
               <button
                 key={img.id}
                 type="button"
+                role="tab"
+                aria-selected={active}
                 onClick={() => scrollTo(idx)}
                 aria-label={`Ver imagem ${idx + 1} de ${images.length}`}
                 className={cn(
-                  "h-1.5 rounded-[3px] outline-none transition-[width,background-color] duration-200",
+                  "relative aspect-square overflow-hidden rounded-md bg-gray-50 outline-none transition-all",
                   "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                  active ? "w-[18px] bg-foreground" : "w-1.5 bg-black/25 hover:bg-black/40",
+                  active
+                    ? "ring-2 ring-foreground"
+                    : "opacity-65 hover:opacity-100",
                 )}
-              />
+              >
+                <Image
+                  src={img.url}
+                  alt=""
+                  fill
+                  sizes="68px"
+                  className="object-cover"
+                />
+              </button>
             );
           })}
         </div>
       )}
+
+      {/* Carrossel scroll-snap (principal) */}
+      <div className="relative flex-1">
+        <div
+          ref={containerRef}
+          className="flex aspect-square w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden bg-gray-50 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:rounded-lg"
+          role="region"
+          aria-roledescription="carrossel"
+          aria-label={`Imagens de ${productName}`}
+        >
+          {images.map((img, idx) => (
+            <figure
+              key={img.id}
+              ref={(el) => {
+                slideRefs.current[idx] = el;
+              }}
+              data-slide-index={idx}
+              className="relative aspect-square w-full shrink-0 snap-start"
+            >
+              <Image
+                src={img.url}
+                alt={img.alt ?? productName}
+                fill
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                priority={idx === 0}
+                quality={90}
+                // object-contain (não cover) preserva enquadramento
+                // original — crítico pra joalheria, perfumaria e calçado
+                // do ICP do Mangos Pay onde "cortar a foto" descaracteriza
+                // o produto. Background bg-gray-50 do container preenche
+                // o espaço sobrando em fotos não-quadradas.
+                className="h-auto w-full object-contain"
+              />
+            </figure>
+          ))}
+        </div>
+
+        {/* Dots — canvas linhas 254-258. Em desktop ficam escondidos
+            (thumbnails verticais já dão essa função de forma melhor). */}
+        {images.length > 1 && (
+          <div className="absolute inset-x-0 bottom-3.5 flex items-center justify-center gap-1.5 lg:hidden">
+            {images.map((img, idx) => {
+              const active = idx === activeIndex;
+              return (
+                <button
+                  key={img.id}
+                  type="button"
+                  onClick={() => scrollTo(idx)}
+                  aria-label={`Ver imagem ${idx + 1} de ${images.length}`}
+                  className={cn(
+                    "h-1.5 rounded-[3px] outline-none transition-[width,background-color] duration-200",
+                    "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    active
+                      ? "w-[18px] bg-foreground"
+                      : "w-1.5 bg-black/25 hover:bg-black/40",
+                  )}
+                />
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

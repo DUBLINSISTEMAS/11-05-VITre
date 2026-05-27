@@ -122,37 +122,39 @@ export default async function ProductPage({
     6,
   );
 
+  const relatedSection =
+    related.length > 0 ? (
+      <section className="mx-auto mt-10 w-full max-w-screen-xl px-4 pb-10 lg:px-0">
+        <h2 className="text-[15px] font-semibold tracking-[-0.3px] text-foreground">
+          Você pode gostar também
+        </h2>
+        {/* Mobile: scroll horizontal · Desktop: grid responsivo. */}
+        <div className="-mx-4 mt-4 flex gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible lg:px-0 lg:pb-0 xl:grid-cols-6">
+          {related.map((p) => (
+            <div key={p.id} className="w-[150px] shrink-0 lg:w-auto">
+              <ProductCard
+                product={p}
+                storeSlug={store.slug}
+                layout="overlay"
+                variant={store.productCardStyle as ProductCardVariant}
+              />
+            </div>
+          ))}
+        </div>
+      </section>
+    ) : null;
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString }}
       />
-      <ProductDetailView product={product} store={store} />
-
-      {related.length > 0 ? (
-        <section className="mx-auto mt-10 w-full max-w-screen-xl px-4 pb-10 lg:px-0">
-          <h2 className="text-[15px] font-semibold tracking-[-0.3px] text-foreground">
-            Você pode gostar também
-          </h2>
-          {/* Mobile: scroll horizontal · Desktop: grid responsivo. */}
-          <div className="-mx-4 mt-4 flex gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible lg:px-0 lg:pb-0 xl:grid-cols-6">
-            {related.map((p) => (
-              <div
-                key={p.id}
-                className="w-[150px] shrink-0 lg:w-auto"
-              >
-                <ProductCard
-                  product={p}
-                  storeSlug={store.slug}
-                  layout="overlay"
-                  variant={store.productCardStyle as ProductCardVariant}
-                />
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
+      <ProductDetailView
+        product={product}
+        store={store}
+        relatedSection={relatedSection}
+      />
     </>
   );
 }

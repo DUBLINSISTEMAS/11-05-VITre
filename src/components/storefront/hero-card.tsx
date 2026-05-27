@@ -156,8 +156,14 @@ function HeroCover({
     <section
       aria-label="Destaque editorial"
       className={cn(
-        "relative overflow-hidden rounded-[14px] border border-border",
-        "aspect-[16/9]",
+        "relative overflow-hidden",
+        // Mobile: full-bleed (sem border/rounded), aspect 4:5 vertical
+        // — formato Instagram-friendly, equilibra impacto visual sem
+        // dominar a fold (469px num iPhone 375px).
+        // Desktop (lg+): container com border+rounded, aspect 3:1
+        // magazine cinematográfico — discreto, 400px em 1200px, deixa
+        // espaço pro grid de produtos na primeira dobra.
+        "aspect-[4/5] lg:aspect-[3/1] lg:rounded-[14px] lg:border lg:border-border",
         className,
       )}
       style={imageUrl ? undefined : { background: HERO_GRADIENT }}
@@ -169,7 +175,11 @@ function HeroCover({
             alt={imageAlt}
             fill
             priority={priority}
-            sizes="(max-width: 640px) 100vw, 100vw"
+            // Mobile: imagem cobre 100vw (full-bleed).
+            // Desktop ≥1024px: largura limitada pelo container (max
+            // 1200px com px-4) → reduz bytes baixados em telas grandes.
+            sizes="(max-width: 1024px) 100vw, 1200px"
+            quality={90}
             className="object-cover"
           />
           {hasAnyText && (
@@ -268,12 +278,15 @@ function HeroSplit({
     <section
       aria-label="Destaque editorial"
       className={cn(
-        "relative grid grid-cols-2 overflow-hidden rounded-[14px] border border-border bg-background",
+        // Mobile: stack vertical (imagem topo, texto bottom).
+        // Desktop: 50/50 grid horizontal com container.
+        "relative grid grid-cols-1 overflow-hidden bg-background",
+        "lg:grid-cols-2 lg:rounded-[14px] lg:border lg:border-border",
         className,
       )}
     >
       <div
-        className="relative aspect-square"
+        className="relative aspect-[4/5] lg:aspect-square"
         style={imageUrl ? undefined : { background: HERO_GRADIENT }}
       >
         {imageUrl && (
@@ -282,7 +295,8 @@ function HeroSplit({
             alt={imageAlt}
             fill
             priority={priority}
-            sizes="(max-width: 640px) 50vw, 50vw"
+            sizes="(max-width: 1024px) 100vw, 600px"
+            quality={90}
             className="object-cover"
           />
         )}
@@ -345,7 +359,10 @@ function HeroMinimal({
     <section
       aria-label="Destaque editorial"
       className={cn(
-        "relative flex aspect-[16/9] flex-col items-center justify-center overflow-hidden rounded-[14px] border border-border px-4 text-center",
+        "relative flex flex-col items-center justify-center overflow-hidden px-4 text-center",
+        // Mesma régua dos outros variants: full-bleed mobile 4:5,
+        // container desktop 3:1.
+        "aspect-[4/5] lg:aspect-[3/1] lg:rounded-[14px] lg:border lg:border-border",
         className,
       )}
       style={{ background: HERO_GRADIENT }}

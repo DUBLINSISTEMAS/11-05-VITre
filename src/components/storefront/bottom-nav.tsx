@@ -26,7 +26,7 @@
 import { Grid2x2, Heart, Home, Search, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useCategoriesSidebarTrigger } from "@/components/storefront/categories-sidebar";
 import { useCart } from "@/hooks/use-cart";
@@ -67,6 +67,20 @@ export function BottomNav({ storeSlug, variant = "pill" }: BottomNavProps) {
   const { open: openCategoriesSidebar } = useCategoriesSidebarTrigger();
   const pathname = usePathname();
   const baseHref = `/${storeSlug}`;
+
+  // Badge pulsante quando produto é adicionado à sacola. Incrementa
+  // `pulseSeed` a cada evento `Mangos Pay:cart-added` — usar como `key` no
+  // span do badge remonta o nó e dispara `animate-in zoom-in-50` (CSS,
+  // tw-animate-css). Esse é o feedback visual que substitui o drawer
+  // auto-open (Onda 2 2026-05-26).
+  const [pulseSeed, setPulseSeed] = useState(0);
+  useEffect(() => {
+    function handler() {
+      setPulseSeed((s) => s + 1);
+    }
+    window.addEventListener("Mangos Pay:cart-added", handler);
+    return () => window.removeEventListener("Mangos Pay:cart-added", handler);
+  }, []);
 
   const tabs: TabConfig[] = useMemo(
     () => [
@@ -117,16 +131,40 @@ export function BottomNav({ storeSlug, variant = "pill" }: BottomNavProps) {
   const cartBadge = isHydrated ? cartCount : 0;
 
   if (variant === "rule")
-    return <RuleNav tabs={tabs} activeTab={activeTab} cartBadge={cartBadge} />;
+    return (
+      <RuleNav
+        tabs={tabs}
+        activeTab={activeTab}
+        cartBadge={cartBadge}
+        pulseSeed={pulseSeed}
+      />
+    );
   if (variant === "glass")
-    return <GlassNav tabs={tabs} activeTab={activeTab} cartBadge={cartBadge} />;
-  return <PillNav tabs={tabs} activeTab={activeTab} cartBadge={cartBadge} />;
+    return (
+      <GlassNav
+        tabs={tabs}
+        activeTab={activeTab}
+        cartBadge={cartBadge}
+        pulseSeed={pulseSeed}
+      />
+    );
+  return (
+    <PillNav
+      tabs={tabs}
+      activeTab={activeTab}
+      cartBadge={cartBadge}
+      pulseSeed={pulseSeed}
+    />
+  );
 }
 
 interface VariantProps {
   tabs: TabConfig[];
   activeTab: TabId;
   cartBadge: number;
+  /** Muda a cada add-to-cart — usar como key no badge pra disparar
+   *  animação CSS de pulse. */
+  pulseSeed: number;
 }
 
 /* ─── pill (canvas default) ───────────────────────────────────────────
@@ -135,7 +173,7 @@ interface VariantProps {
    30% white por trás do ícone, label foreground semibold. Inativo =
    ícone gray-500, label gray-500 medium.
 */
-function PillNav({ tabs, activeTab, cartBadge }: VariantProps) {
+function PillNav({ tabs, activeTab, cartBadge, pulseSeed }: VariantProps) {
   return (
     <nav
       aria-label="Navegação principal"
@@ -148,6 +186,7 @@ function PillNav({ tabs, activeTab, cartBadge }: VariantProps) {
           tab={tab}
           isActive={activeTab === tab.id}
           badge={tab.id === "bag" ? cartBadge : 0}
+          pulseSeed={tab.id === "bag" ? pulseSeed : 0}
         />
       ))}
     </nav>
@@ -158,10 +197,12 @@ function PillItem({
   tab,
   isActive,
   badge,
+  pulseSeed,
 }: {
   tab: TabConfig;
   isActive: boolean;
   badge: number;
+  pulseSeed: number;
 }) {
   const Icon = tab.icon;
   const itemClassName =
@@ -180,8 +221,9 @@ function PillItem({
         <Icon className="size-5" strokeWidth={1.6} />
         {badge > 0 && (
           <span
+            key={pulseSeed}
             aria-hidden
-            className="absolute -top-0.5 right-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-store px-1 text-[10px] font-semibold text-brand-store-foreground"
+            className="absolute -top-0.5 right-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-store px-1 text-[10px] font-semibold text-brand-store-foreground animate-in zoom-in-50 duration-300"
           >
             {badge > 99 ? "99+" : badge}
           </span>
@@ -229,7 +271,7 @@ function PillItem({
    Indicador top: rule 28×2px na cor da loja (escala de 0 → 28 quando
    ativa). Ícone + label embaixo. Padding 8px top / 4px bottom.
 */
-function RuleNav({ tabs, activeTab, cartBadge }: VariantProps) {
+function RuleNav({ tabs, activeTab, cartBadge, pulseSeed }: VariantProps) {
   return (
     <nav
       aria-label="Navegação principal"
@@ -240,6 +282,7 @@ function RuleNav({ tabs, activeTab, cartBadge }: VariantProps) {
         const isActive = activeTab === tab.id;
         const Icon = tab.icon;
         const badge = tab.id === "bag" ? cartBadge : 0;
+        const seed = tab.id === "bag" ? pulseSeed : 0;
         const itemClass =
           "relative flex flex-1 flex-col items-center justify-center gap-1 px-2.5 outline-none focus-visible:bg-accent";
         const inner = (
@@ -260,8 +303,9 @@ function RuleNav({ tabs, activeTab, cartBadge }: VariantProps) {
               <Icon className="size-5" strokeWidth={1.6} />
               {badge > 0 && (
                 <span
+                  key={seed}
                   aria-hidden
-                  className="absolute -top-[3px] -right-[7px] inline-flex h-[14px] min-w-[14px] items-center justify-center rounded-full bg-brand-store px-[3px] text-[9.5px] font-semibold text-brand-store-foreground"
+                  className="absolute -top-[3px] -right-[7px] inline-flex h-[14px] min-w-[14px] items-center justify-center rounded-full bg-brand-store px-[3px] text-[9.5px] font-semibold text-brand-store-foreground animate-in zoom-in-50 duration-300"
                 >
                   {badge > 99 ? "99+" : badge}
                 </span>
@@ -315,7 +359,7 @@ function RuleNav({ tabs, activeTab, cartBadge }: VariantProps) {
    background. Aba ativa = pill bg-brand-store sobre o ícone. Sem
    labels (só ícones). Hit-area 44px.
 */
-function GlassNav({ tabs, activeTab, cartBadge }: VariantProps) {
+function GlassNav({ tabs, activeTab, cartBadge, pulseSeed }: VariantProps) {
   return (
     <nav
       aria-label="Navegação principal"
@@ -327,6 +371,7 @@ function GlassNav({ tabs, activeTab, cartBadge }: VariantProps) {
           const isActive = activeTab === tab.id;
           const Icon = tab.icon;
           const badge = tab.id === "bag" ? cartBadge : 0;
+          const seed = tab.id === "bag" ? pulseSeed : 0;
           const itemClass = cn(
             "relative grid size-11 place-items-center rounded-full outline-none transition-colors",
             "focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-foreground",
@@ -343,8 +388,9 @@ function GlassNav({ tabs, activeTab, cartBadge }: VariantProps) {
               />
               {badge > 0 && !isActive && (
                 <span
+                  key={seed}
                   aria-hidden
-                  className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-store px-1 text-[10px] font-semibold text-brand-store-foreground ring-2 ring-foreground"
+                  className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-store px-1 text-[10px] font-semibold text-brand-store-foreground ring-2 ring-foreground animate-in zoom-in-50 duration-300"
                 >
                   {badge > 99 ? "99+" : badge}
                 </span>

@@ -3,13 +3,24 @@
  *
  * Pipeline (na ordem):
  *  1. Auto-rotate via EXIF — fotos do iPhone vêm rotacionadas; sem isso saem deitadas.
- *  2. Resize para max 800x800 (fit:inside, sem enlarge) — alvo do free tier.
- *  3. Convert para WebP 75% — bom balanço qualidade/tamanho. Resultado ~80-180 KB.
+ *  2. Resize para max 1600x1600 (fit:inside, sem enlarge).
+ *  3. Convert para WebP 82% — qualidade premium pra retina/desktop sem
+ *     explodir bytes. Resultado ~250-500 KB.
  *  4. Strip EXIF/metadata — privacidade. Fotos de iPhone vêm com GPS!
  *
  * Aceita HEIC do iPhone (libvips embutido em sharp suporta).
  *
  * Decisões em ADR-0003 e ADR-0005 (limites do free tier).
+ *
+ * Mudança 2026-05-26 (Onda 3.2 redesign storefront):
+ *   - 800×800 q75 → 1600×1600 q82. Justificativa: storefront em telas
+ *     retina/desktop 4K mostrava produtos perceptivelmente borrados;
+ *     800px ficava upscaled pelo browser. 1600px cobre DPR=2 em telas
+ *     até ~800px de largura efetiva (galeria PDP desktop) sem upscale.
+ *     Next.js loader gera variants intermediárias do srcset
+ *     automaticamente — não há custo extra de banda em mobile.
+ *   - Imagens antigas (800px) continuam funcionando — migration
+ *     silenciosa, re-upload é opt-in pelo lojista.
  */
 import sharp from "sharp";
 
@@ -19,11 +30,11 @@ import sharp from "sharp";
  * Pipeline em duas camadas:
  *   1. browser-image-compression no client comprime arquivo bruto (até 25 MB)
  *      pra WebP ~2 MB antes do FormData (otimização de transporte).
- *   2. sharp 800x800 WebP 75% no server (gate de qualidade + EXIF strip).
+ *   2. sharp 1600x1600 WebP 82% no server (gate de qualidade + EXIF strip).
  *
  * Server recebe sempre ≤4 MB — se algo subir maior, o body limit do Next
  * rejeita com 413 antes da action executar. Output do sharp é sempre
- * WebP ~100-200 KB.
+ * WebP ~250-500 KB.
  */
 export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 
@@ -46,8 +57,8 @@ export const ALLOWED_INPUT_MIMES: ReadonlyArray<string> = [
   "image/avif",
 ];
 
-export const COMPRESSED_TARGET_SIZE = 800;
-export const COMPRESSED_QUALITY = 75;
+export const COMPRESSED_TARGET_SIZE = 1600;
+export const COMPRESSED_QUALITY = 82;
 
 export interface CompressedImage {
   buffer: Buffer;
@@ -56,7 +67,7 @@ export interface CompressedImage {
 }
 
 /**
- * Comprime e normaliza uma imagem para WebP 800x800.
+ * Comprime e normaliza uma imagem para WebP 1600x1600.
  * Throw se sharp falhar (formato corrompido / não suportado).
  *
  * `failOn: "truncated"` (não `"error"`): libvips dispara warnings em fotos

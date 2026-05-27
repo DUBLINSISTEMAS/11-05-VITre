@@ -79,20 +79,35 @@ export function SacolaDrawer({
     [],
   );
 
-  // Auto-open on addItem: escuta evento global do use-cart e abre o drawer.
-  // Padrão Shopify/Nuvemshop — cliente vê confirmação visual imediata.
+  // Highlight da linha recém-adicionada quando o cliente JÁ está com o
+  // drawer aberto e adiciona outro produto (cenário raro mas existe via
+  // navegação). 2026-05-26: REMOVIDO o auto-open do drawer em
+  // `Mangos Pay:cart-added`. Justificativa UX:
+  //
+  //  - Nielsen #2 "User control and freedom": drawer auto-open rouba
+  //    o controle de quem queria adicionar 2-3 itens em fluxo.
+  //  - Padrão mobile-native (Shein, Mercado Livre, Magalu) usa toast +
+  //    badge animado, NÃO drawer. Drawer auto-open é convenção Shopify
+  //    desktop herdada por reflexo no mobile.
+  //  - Substituído pelo combo: toast com ação "Ver sacola" + badge
+  //    pulsante no bottom-nav (feedback visual sem interromper o
+  //    fluxo de compra contínua).
+  //
+  // Drawer continua disponível por tap explícito no ícone do header
+  // (DesktopHeader) ou pelo botão "Ver sacola" no toast.
   useEffect(() => {
     function handler(e: Event) {
+      // Mantém o highlight pra cenário "drawer já aberto + add via
+      // page navigation" (raro). Mas NÃO abre o drawer.
+      if (!open) return;
       const detail = (e as CustomEvent<{ lineKey?: string }>).detail;
       const key = detail?.lineKey ?? null;
-      setOpen(true);
       setRecentLineKey(key);
-      // Highlight desaparece após 1.5s (alinhado com toast).
       window.setTimeout(() => setRecentLineKey(null), 1500);
     }
     window.addEventListener("Mangos Pay:cart-added", handler);
     return () => window.removeEventListener("Mangos Pay:cart-added", handler);
-  }, []);
+  }, [open]);
 
   const checkoutHref = `/${storeSlug}/sacola`;
   const isEmpty = isHydrated && count === 0;

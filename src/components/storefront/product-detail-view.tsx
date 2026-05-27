@@ -38,9 +38,22 @@ import type { ProductDetail } from "@/lib/storefront/products-loader";
 export interface ProductDetailViewProps {
   product: ProductDetail;
   store: Store;
+  /**
+   * "Você pode gostar também" — recebida como ReactNode pra que o
+   * mobile renderize ANTES da CTA sticky (rola junto com o conteúdo,
+   * vira parte do funil de descoberta sem cliente precisar passar
+   * por baixo da CTA) e o desktop renderize abaixo do bloco principal
+   * em largura inteira. Mesma section renderizada em dois lugares
+   * controlados por `lg:hidden` / `hidden lg:block`.
+   */
+  relatedSection?: React.ReactNode;
 }
 
-export function ProductDetailView({ product, store }: ProductDetailViewProps) {
+export function ProductDetailView({
+  product,
+  store,
+  relatedSection,
+}: ProductDetailViewProps) {
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
 
   // Resolve qual imagem destacar com base na variante selecionada.
@@ -70,7 +83,10 @@ export function ProductDetailView({ product, store }: ProductDetailViewProps) {
   );
 
   return (
-    <article className="-mx-4 lg:mx-0">
+    // PDP é full-bleed (sem padding do shell desde 2026-05-26 — ver
+    // shell-content.tsx hasOwnLayout). Não precisa de `-mx-*` pra
+    // compensar; o `<article>` é o próprio container da página.
+    <article>
       {/* Mobile layout */}
       <div className="flex flex-col lg:hidden">
         {/* Gallery + floating header */}
@@ -98,6 +114,16 @@ export function ProductDetailView({ product, store }: ProductDetailViewProps) {
           whatsappNumber={store.whatsappNumber}
           storeName={store.name}
         />
+
+        {/* Mobile: "Você pode gostar também" entra DENTRO do flex-col
+            do PDP, antes da CTA sticky (fixed bottom-0 do panel).
+            pb-32 garante que o último card não fique atrás da CTA
+            (que mede ~88px com safe-area). Antes ficava depois do
+            </article> e ninguém via sem rolar até o fim, escondida
+            pela CTA. */}
+        {relatedSection ? (
+          <div className="mt-2 pb-32">{relatedSection}</div>
+        ) : null}
       </div>
 
       {/* Desktop layout */}
@@ -123,6 +149,12 @@ export function ProductDetailView({ product, store }: ProductDetailViewProps) {
           />
         </div>
       </div>
+
+      {/* Desktop: "Você pode gostar também" abaixo do bloco principal,
+          largura inteira (max-w-screen-xl da própria section). */}
+      {relatedSection ? (
+        <div className="hidden lg:block">{relatedSection}</div>
+      ) : null}
     </article>
   );
 }

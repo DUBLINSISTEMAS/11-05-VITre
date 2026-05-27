@@ -6,6 +6,14 @@
  * Migrado de framer-motion → CSS (tw-animate-css `animate-in`) na Onda 4 da
  * auditoria 2026-05-10. Exit animation foi simplificado — toast some sem
  * fade-out (escolha consciente do founder pra remover a dep).
+ *
+ * Atualizado 2026-05-26 (Onda 2 redesign storefront):
+ *  - Duration default reduzido pra 2000ms (era 3000) — feedback ágil
+ *    estilo app nativo. Justificativa UX: toast é informação ambient,
+ *    se persiste >2s vira poluição visual no caminho do dedo.
+ *  - Suporte a `action` clicável (ex.: "Ver sacola" dentro do toast de
+ *    add-to-cart, substituindo o drawer auto-open). Action fecha o
+ *    toast ao clicar.
  */
 import { Check, Heart, ShoppingBag, X } from "lucide-react";
 import Image from "next/image";
@@ -21,6 +29,11 @@ import { cn } from "@/lib/utils";
 
 export type ToastType = "success" | "error" | "cart" | "favorite";
 
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 export interface Toast {
   id: string;
   type: ToastType;
@@ -28,6 +41,7 @@ export interface Toast {
   description?: string;
   image?: string;
   duration?: number;
+  action?: ToastAction;
 }
 
 interface ToastContextValue {
@@ -103,6 +117,22 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) 
         )}
       </div>
 
+      {/* Action button (ex.: "Ver sacola"). Fecha o toast ao clicar.
+          Posicionada antes do X pra ficar mais próxima do polegar e
+          mais visível que o close. */}
+      {toast.action ? (
+        <button
+          type="button"
+          onClick={() => {
+            toast.action?.onClick();
+            onRemove();
+          }}
+          className="shrink-0 rounded-full bg-foreground px-3 py-1.5 text-[11.5px] font-semibold text-background transition-opacity hover:opacity-90 active:opacity-80"
+        >
+          {toast.action.label}
+        </button>
+      ) : null}
+
       {/* Close button */}
       <button
         type="button"
@@ -125,8 +155,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     
     setToasts((prev) => [...prev, newToast]);
 
-    // Auto remove after duration
-    const duration = toast.duration ?? 3000;
+    // Auto remove after duration (default 2000ms — feedback ágil de app
+    // nativo, contra 3000 anterior que percebia-se "persistente").
+    const duration = toast.duration ?? 2000;
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, duration);

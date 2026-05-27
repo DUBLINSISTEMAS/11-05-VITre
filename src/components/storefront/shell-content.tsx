@@ -73,12 +73,26 @@ export function ShellContent({
   // e canal de contato sempre visível.
   const hideFooter = isProductPage || isSacolaPage || isSucessoPage;
 
-  // Padding do main: páginas com layout próprio (sacola/sucesso/categoria)
+  // Padding do main: páginas com layout próprio (sacola/sucesso/categoria/produto)
   // não precisam do padding genérico do shell — elas controlam o próprio.
-  const mainClass =
-    isSacolaPage || isSucessoPage || isCategoriaPage
-      ? "mx-auto w-full max-w-screen-xl flex-1"
-      : "mx-auto w-full max-w-screen-xl flex-1 px-4 pb-24 pt-4 lg:pb-12 lg:pt-6";
+  //
+  // PDP entra aqui (2026-05-26): a galeria full-bleed precisa encostar no
+  // topo do viewport (sem `pt-4` criando margem branca acima da imagem) e
+  // a CTA sticky controla o `pb-*` próprio. Antes, o `pt-4`/`lg:pt-6` do
+  // shell deixava 16-24px de fundo entre o topo da tela e a foto do
+  // produto, dando aspecto de "site genérico" em vez de app.
+  //
+  // PDP DESKTOP (Onda 6): em desktop existe DesktopHeader sticky, e o
+  // layout 2-col da PDP precisa de respiração do topo — não pode encostar.
+  // `lg:pt-8` (32px) volta a respiração desktop sem afetar mobile (que
+  // segue full-bleed).
+  const hasOwnLayout =
+    isSacolaPage || isSucessoPage || isCategoriaPage || isProductPage;
+  const mainClass = hasOwnLayout
+    ? isProductPage
+      ? "mx-auto w-full max-w-screen-xl flex-1 lg:pt-8"
+      : "mx-auto w-full max-w-screen-xl flex-1"
+    : "mx-auto w-full max-w-screen-xl flex-1 px-4 pb-24 pt-4 lg:pb-12 lg:pt-6";
 
   return (
     <CategoriesSidebar

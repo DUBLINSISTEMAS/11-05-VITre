@@ -92,6 +92,18 @@ const nextConfig: NextConfig = {
         hostname: "*.supabase.co",
       },
     ],
+    // AVIF primeiro (até 50% menor que WebP em fotos de produto/banner),
+    // WebP como fallback. Browsers sem suporte (raros em 2026) ainda
+    // recebem o original JPEG/PNG via content-negotiation do Next.
+    // Sequência importa: Next loader negocia na ordem declarada.
+    formats: ["image/avif", "image/webp"],
+    // Tamanhos de breakpoint pro responsive srcset. Default tem 640/750/828
+    // mas adicionamos 1080/1200/1920 pra retina + desktop large. O Next
+    // só gera o tamanho mais próximo (e ≥) do `sizes` calculado.
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    // Qualidade padrão um pouco mais agressiva pra equilibrar quality e
+    // bytes. Override per-image via prop `quality` quando precisar 90+.
+    minimumCacheTTL: 60 * 60 * 24 * 30, // 30 dias — imagens versionadas via URL
   },
   experimental: {
     serverActions: {

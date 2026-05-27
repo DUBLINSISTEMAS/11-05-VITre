@@ -382,6 +382,30 @@
     text-rendering: optimizeLegibility;
   }
   /*
+   * Sensação de "app nativo" sem desabilitar zoom (WCAG 1.4.4/2.5.4
+   * mantido — `maximumScale` continua omitido no viewport).
+   *
+   * - `touch-action: manipulation`: permite pan e pinch-zoom mas
+   *   ELIMINA o delay de ~300ms do double-tap-zoom em mobile. CTA
+   *   responde no primeiro toque, igual app nativo.
+   * - `-webkit-tap-highlight-color: transparent`: remove o flash
+   *   cinza do iOS/Android ao tocar (substituído por nossos
+   *   :active/:hocus que já são consistentes com o tema).
+   *
+   * Aplicado em todo elemento clicável (button/a/role=button) —
+   * inclui admin que também se beneficia.
+   */
+  button,
+  a,
+  [role="button"],
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  summary {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /*
    * prefers-reduced-motion: reduce — usuário pediu pra desligar animações
    * (Windows "Mostrar animações", macOS "Reduzir movimento"). Zerando aqui
    * globalmente cobre 100% dos componentes (Dialog, Sheet, drawer categorias)

@@ -221,6 +221,10 @@ export function ProductPurchasePanel({
       now: new Date(),
     });
     addItem(snapshot);
+    // Toast com ação "Ver sacola" substitui o drawer auto-open
+    // (Onda 2 redesign 2026-05-26). Cliente que quer continuar comprando
+    // simplesmente ignora — toast some em 2s. Cliente que quer revisar
+    // toca em "Ver sacola" e navega para /sacola.
     addToast({
       type: "cart",
       title: "Adicionado à sacola",
@@ -228,10 +232,14 @@ export function ProductPurchasePanel({
         ? `${product.name} — ${selectedVariant.name}`
         : product.name,
       image: product.images[0]?.url,
+      action: {
+        label: "Ver sacola",
+        onClick: () => router.push(`/${storeSlug}/sacola`),
+      },
     });
     setRecentlyAdded(true);
     setTimeout(() => setRecentlyAdded(false), 1500);
-  }, [addItem, addToast, ctaDisabled, product, selectedVariant]);
+  }, [addItem, addToast, ctaDisabled, product, router, selectedVariant, storeSlug]);
 
   // "Adicionar e voltar pra loja": atalho pra quem está comprando vários
   // itens e quer manter o fluxo de descoberta sem ficar preso no PDP.
@@ -276,13 +284,18 @@ export function ProductPurchasePanel({
     <>
       {/* Scrollable content */}
       <div className="pb-24 lg:pb-0">
-        {/* Title block — canvas linhas 261-271 */}
-        <div className="px-4 pt-4">
-          <h1 className="text-[22px] font-semibold leading-[1.15] tracking-[-0.5px] text-foreground [text-wrap:pretty]">
+        {/* Title block — canvas linhas 261-271.
+            Desktop scaling 2026-05-26 (Onda 6): mobile mantém canvas
+            22px; desktop sobe pra 30px (h1) e 26px (preço) — produto
+            premium precisa de presença em tela grande, 22px parece
+            "mobile esticado". Tracking mais apertado em desktop pra
+            compensar o peso visual maior. */}
+        <div className="px-4 pt-4 lg:pt-2">
+          <h1 className="text-[22px] font-semibold leading-[1.15] tracking-[-0.5px] text-foreground [text-wrap:pretty] lg:text-[30px] lg:leading-[1.1] lg:tracking-[-0.8px]">
             {product.name}
           </h1>
-          <div className="mt-2.5 flex flex-wrap items-baseline gap-2">
-            <span className="font-mono text-[22px] font-semibold tracking-[-0.5px] tabular-nums text-foreground">
+          <div className="mt-2.5 flex flex-wrap items-baseline gap-2 lg:mt-4 lg:gap-3">
+            <span className="font-mono text-[22px] font-semibold tracking-[-0.5px] tabular-nums text-foreground lg:text-[26px] lg:tracking-[-0.6px]">
               {formatBRL(priceState.effectivePriceInCents)}
             </span>
             {priceState.isOnPromo && (

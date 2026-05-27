@@ -290,6 +290,13 @@ function ImageBox({
           fill
           sizes={CARD_IMAGE_SIZES}
           priority={priority}
+          quality={85}
+          // object-cover mantido aqui (não contain como na galeria PDP):
+          // cards pequenos em grid precisam preencher o aspect-3/4 pra
+          // grid ficar uniforme. Lojista é orientado a subir fotos com
+          // enquadramento adequado pra card. PDP usa contain pra
+          // preservar enquadramento original (decisão diferente por
+          // contexto). Hover scale 1.05 sinaliza interatividade.
           className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
         />
       ) : (

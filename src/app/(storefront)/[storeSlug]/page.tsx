@@ -108,15 +108,30 @@ export default async function StoreHomePage({
       : null;
 
   return (
-    <div className="space-y-[18px]">
+    // Mobile: 18px entre seções (canvas-v1 denso).
+    // Desktop ≥1024: 48px — telas grandes precisam de respiração entre
+    // blocos visuais. 18px em desktop colava tudo e parecia "mobile
+    // esticado". 48px é o sweet spot dos templates de moda premium
+    // (Aritzia, ZARA, COS) — separação clara sem espaço vazio.
+    <div className="space-y-[18px] lg:space-y-12">
       {hasBanner && (
-        <BannerCarousel
-          banners={banners}
-          storeSlug={store.slug}
-          storeName={store.name}
-          rotationSec={store.bannerRotationSec}
-          heroVariant={store.heroStyle as HeroVariant}
-        />
+        // Mobile: `-mx-4` cancela o `px-4` do <main> pra que o banner
+        // sangre edge-to-edge (full-bleed). Desktop (lg+): respeita o
+        // container e o border+rounded do HeroCard.
+        // Justificativa UX: mobile é tela pequena → full-bleed maximiza
+        // o impacto visual sem desperdiçar pixels com margem lateral.
+        // Desktop tem real estate sobrando → container respira e cria
+        // hierarquia (Fitts: alvo de tap maior em mobile = mais
+        // conversão; espaço em desktop = mais elegância).
+        <div className="-mx-4 lg:mx-0">
+          <BannerCarousel
+            banners={banners}
+            storeSlug={store.slug}
+            storeName={store.name}
+            rotationSec={store.bannerRotationSec}
+            heroVariant={store.heroStyle as HeroVariant}
+          />
+        </div>
       )}
 
       {/* Sprint 5.3 — vitrines (coleções) entre banner e categorias.

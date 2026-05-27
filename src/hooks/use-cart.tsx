@@ -109,13 +109,36 @@ export function CartProvider({ storeSlug, children }: CartProviderProps) {
 
   const removeItem = useCallback(
     (productId: string, variantId: string | null) => {
-      setState((prev) => ({
-        ...prev,
-        items: prev.items.filter(
+      setState((prev) => {
+        const nextItems = prev.items.filter(
           (it) => !sameCartLine(it, { productId, variantId }),
-        ),
-        savedAt: new Date().toISOString(),
-      }));
+        );
+        // Telemetria temporária 2026-05-26 — founder reportou bug de
+        // "não consigo remover item quando tem 2+ produtos". Reducer
+        // e sameCartLine estão corretos no código; precisa repro pra
+        // entender. Log no console permite diagnóstico em produção
+        // sem precisar abrir Sentry. Remover após confirmação ou repro.
+        if (typeof window !== "undefined") {
+          console.debug("[cart] removeItem", {
+            productId,
+            variantId,
+            beforeCount: prev.items.length,
+            afterCount: nextItems.length,
+            removedSomething: nextItems.length < prev.items.length,
+            allItems: prev.items.map((it) => ({
+              productId: it.productId,
+              variantId: it.variantId,
+              productName: it.productName,
+              quantity: it.quantity,
+            })),
+          });
+        }
+        return {
+          ...prev,
+          items: nextItems,
+          savedAt: new Date().toISOString(),
+        };
+      });
     },
     [],
   );
