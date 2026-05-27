@@ -1,0 +1,13 @@
+-- Bloco 4 Fase 2 (Onda 32 — 2026-05-27): grandfathering de email verification.
+--
+-- Quando flip `EMAIL_VERIFICATION_REQUIRED=true` na prod, Better Auth bloqueia
+-- sessões de usuários com `email_verified=false`. Lojistas que entraram ANTES
+-- desse flip (founder + lojistas pré-Fase 2) ficariam sem acesso ao /admin.
+--
+-- Esta migration marca TODOS os users existentes como verified — pragmaticamente
+-- "grandfather" da política antiga (signup sem verification). Lojistas NOVOS
+-- (criados após a migration) continuam com email_verified=false até clicarem
+-- no link do email, conforme política nova.
+--
+-- Idempotente: rodar 2x não causa dano (UPDATE só toca rows ainda false).
+UPDATE "user" SET "email_verified" = true WHERE "email_verified" = false;

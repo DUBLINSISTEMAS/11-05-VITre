@@ -360,8 +360,8 @@ Lojista BR de joalheria/perfumaria/roupa em cidade do interior consegue:
 **Fase 2 Multi-tenant Pleno** — Semana 2, GATE DE PRODUÇÃO:
 - Bloco 1 ✅ Isolamento real (role `vitre_app`, FORCE RLS em 32+ tabelas)
 - Bloco 2 ✅ Validação automatizada (`tests/integration/rls-cross-tenant.test.ts`)
-- **Bloco 3** ❌ Signup self-service — tela `/cadastro` cria user + loja em transação atômica, wizard pós-signup. Sem isso, lojista real entra só via seed.
-- **Bloco 4** ❌ Hardening de auth — email verification ON, rate limit em `/api/auth/*`, domínio próprio no Resend, senha mínima, revogação de sessão.
+- **Bloco 3** ✅ Signup self-service — fluxo `/criar-loja/{conta,identidade,tipo-negocio,bem-vindo}` 4 passos. signUpStoreOwner (Better Auth + rate limit) → createStore (RLS-aware + slug check + categorias seed em UMA transação). Admin layout guard: sem sessão → /entrar; sem store → /criar-loja/identidade. Idempotência: user com store existente → /admin. Persistência entre passos via sessionStorage. Validado em 2026-05-27 (Onda 32).
+- **Bloco 4** 🟡 Hardening de auth — INFRA pronta (Onda 32 — 2026-05-27): página `/verificar-email` com reenvio cooldown 60s, action `resendVerification` rate-limited, SQL 0034 grandfathering de users existentes, signUpStoreOwner com redirect condicional. Rate limit catch-all em `/api/auth/*` (Sprint 1.2) + senha mínima 8 chars + `revokeSessionsOnPasswordReset: true`. ATIVAÇÃO aguarda: (1) Resend domain DKIM/SPF/DMARC + (2) rodar migration 0034 em prod + (3) flip `EMAIL_VERIFICATION_REQUIRED=true` no env Vercel.
 - **Bloco 5** ❌ Roteamento multi-tenant — middleware Next pra `{slug}.vitre.site` ou CNAME do lojista.
 
 Esforço total Fase 2 restante: ~5-7 dias. **Gate absoluto pra qualquer lojista real entrar em produção.**
@@ -461,5 +461,7 @@ Marcos:
 - Sprint Estoque 1+2 e Cadastros Sprint 1 ✅ FECHADAS 2026-05-26.
 - Catch-up `feat/redesign-admin-storefront` → `main` em 2026-05-26 — 41 commits, fast-forward, vitre.site production passa a refletir TODO o trabalho sênior das últimas semanas.
 - **MARATONA SPRINTS 0-4 DO PLANO DE ENDURECIMENTO em 2026-05-26** — ~10h de sessão fecharam 4 sprints (S0 fundamento, S1 produção, S2 honestidade 7/7, S3 lojista BR 6/6, S4 refinamentos 8/8). 80 SQLs em prod (até #80), 590 testes, ~30 commits. Sistema PRONTO pra lojista BR operar diariamente — DRE não mente, fiado cobra multa, comissão por vendedora, aging/lote/validade, sangria 6-tipo, quota/rate-limit, DR doc. Próximo bloco: Fase 2 Bloco 3-4-5 (signup self-service + hardening auth + roteamento subdomain) OU resolver dívidas residuais (pdv-shell refactor pleno + S0.2 GRANT debug).
+- **Storefront — Ondas 1-31 em 2026-05-26/27** — 31 ondas de polimento sênior: hierarquia conversão, PDP cirúrgico (×2), trust + share API, search typeahead, favoritos mobile, fade transitions, sistema tipográfico canônico, cantos Apple-style, sticky compact, paridade carrinho ↔ sidebar, Onda 31 resiliência (6 bugs + 3 atenções: telemetria removida, idempotency persistente, timeout 20s, cap stockQty, debounce cupom, regex nome).
+- **Fase 2 Bloco 3 ✅ + Bloco 4 🟡 INFRA em 2026-05-27 (Onda 32)** — Bloco 3 já estava substancialmente pronto (auditoria revelou), só faltava sync docs. Bloco 4: página `/verificar-email`, action `resendVerification` rate-limited, SQL 0034 grandfathering, flag `EMAIL_VERIFICATION_REQUIRED` no env. Aguarda Resend domain pra flip em prod. Próximo: Bloco 5 (subdomain routing).
 
 **Norte vivo sobrescreve qualquer ADR conflitante.** Se ADR antigo disser X e este arquivo disser Y, vale este arquivo. ADR é registro de decisão no momento; norte vivo é régua de execução atual.

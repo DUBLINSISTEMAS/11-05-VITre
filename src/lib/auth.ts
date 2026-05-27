@@ -59,10 +59,12 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
-    // BLOQUEADO em false ate /verificar-email + Resend domain (T1-7). Ver
-    // header do arquivo para plano de ativacao em 3 passos. Trocar para
-    // true quebra signup -> protegida ("sessao expirada").
-    requireEmailVerification: false,
+    // Bloco 4 Fase 2 (Onda 32 — 2026-05-27): infra pronta (página
+    // /verificar-email + action de reenvio + grandfathering 0034). Flag
+    // controlado por env `EMAIL_VERIFICATION_REQUIRED` — default false
+    // em dev pra não exigir Resend domain. Ativar em PROD quando founder
+    // configurar domínio Resend + aplicar migration 0034.
+    requireEmailVerification: env.EMAIL_VERIFICATION_REQUIRED,
     /**
      * S2 da auditoria 2026-05-19: ao concluir reset, Better Auth invalida
      * TODAS as sessoes ativas do usuario via `internalAdapter.deleteSessions`.
@@ -87,7 +89,10 @@ export const auth = betterAuth({
         name: user.name,
       });
     },
-    sendOnSignUp: false, // ligar quando trocar requireEmailVerification.
+    // Espelha o flag de `requireEmailVerification` — se obrigatório,
+    // signup envia automaticamente. Se opcional, lojista pode pedir
+    // o reenvio manual via `/verificar-email`.
+    sendOnSignUp: env.EMAIL_VERIFICATION_REQUIRED,
   },
 
   user: {

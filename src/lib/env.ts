@@ -49,6 +49,24 @@ const envSchema = z.object({
   // Resend
   RESEND_API_KEY: z.string().min(1),
   RESEND_FROM_EMAIL: z.string().email(),
+  /**
+   * Bloco 4 Fase 2 — flag pra ativar email verification obrigatório no
+   * Better Auth. Default false em dev (não exige Resend domain). Ativar
+   * em PROD quando:
+   *   1. Resend domain verificado (DKIM/SPF/DMARC) — sem isso, lojistas
+   *      com email fora do dono da conta Resend NÃO recebem
+   *   2. Migration 0034 aplicada (grandfathering de usuários existentes)
+   *   3. Página /verificar-email testada manualmente
+   * Aceita "true"/"1"/"yes" (case-insensitive). Vazio/qualquer outro = false.
+   */
+  EMAIL_VERIFICATION_REQUIRED: z
+    .preprocess(
+      (v) =>
+        typeof v === "string" &&
+        ["true", "1", "yes"].includes(v.trim().toLowerCase()),
+      z.boolean(),
+    )
+    .default(false),
   /** Destinatário do widget de feedback flutuante. Default em código:
       suporte@mangospay.app (Passo 14 redesign). */
   FEEDBACK_TO_EMAIL: optionalString,

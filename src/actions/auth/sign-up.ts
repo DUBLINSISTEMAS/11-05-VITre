@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
+import { env } from "@/lib/env";
 import { checkRateLimit, getClientIp, RateLimitError,rateLimits } from "@/lib/rate-limit";
 
 import { extractAuthErrorCode, translateAuthError } from "./_translate-error";
@@ -16,8 +17,12 @@ export type SignUpResult =
  * Cria conta de lojista (role `store_owner` por default da coluna).
  * - Valida via Zod
  * - Rate limit por IP (rateLimits.auth)
- * - Better Auth signUpEmail (cria session + cookie automaticamente)
- * - Redireciona para `/criar-loja/identidade` (Bloco D do onboarding)
+ * - Better Auth signUpEmail (cria session + cookie automaticamente quando
+ *   `requireEmailVerification=false`; quando true, cria user mas sem session
+ *   até verificação)
+ * - Redirect condicional:
+ *     - sem email verification → `/criar-loja/identidade` (fluxo direto)
+ *     - com email verification → `/verificar-email?email={email}` (espera click)
  */
 export async function signUpStoreOwner(input: SignUpInput): Promise<SignUpResult> {
   let parsed: SignUpInput;
@@ -42,10 +47,17 @@ export async function signUpStoreOwner(input: SignUpInput): Promise<SignUpResult
         email: parsed.email,
         password: parsed.password,
         name: parsed.name,
+        // Bloco 4 Fase 2 (Onda 32): quando verification obrigatória,
+        // o link do email leva direto pro próximo passo do onboarding.
+        callbackURL: "/criar-loja/identidade",
       },
       headers: requestHeaders,
     });
-    return { ok: true, redirectTo: "/criar-loja/identidade" };
+    // Bloco 4 Fase 2: redirect condicional baseado no flag.
+    const redirectTo = env.EMAIL_VERIFICATION_REQUIRED
+      ? `/verificar-email?email=${encodeURIComponent(parsed.email)}`
+      : "/criar-loja/identidade";
+    return { ok: true, redirectTo };
   } catch (e: unknown) {
     return { ok: false, error: translateAuthError(extractAuthErrorCode(e)) };
   }
