@@ -112,7 +112,11 @@ export function BottomNav({ store, variant = "pill" }: BottomNavProps) {
         id: "srch",
         kind: "link",
         icon: Search,
-        label: "Buscar",
+        // Onda 23 (2026-05-27): label "Buscar" → "Explorar". A rota
+        // /buscar abre uma página de exploração (categorias visuais +
+        // busca + listagem), não só um campo de input. "Explorar"
+        // comunica melhor o que cliente encontra ao tocar.
+        label: "Explorar",
         href: `${baseHref}/buscar`,
       },
       {

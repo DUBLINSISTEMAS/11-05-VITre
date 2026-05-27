@@ -171,8 +171,12 @@ export function FavoritesButton({ storeSlug }: { storeSlug: string }) {
  * `CategoriesSidebar` que envolve o ShellContent (provider já está
  * acima na árvore via StoreShell). Usa o mesmo ícone que aparece ao
  * lado da busca em /buscar (SlidersHorizontal) pra consistência visual.
+ *
+ * Exportado na Onda 23 (2026-05-27) pra reutilização no header da
+ * /buscar (substituindo o Back arrow) — cliente acessa categorias
+ * de qualquer ponto do scroll.
  */
-function CategoriesButton() {
+export function CategoriesButton() {
   const sidebar = useCategoriesSidebarTrigger();
   return (
     <button

@@ -7,9 +7,8 @@
  * - Filtra produtos quando usuário digita
  * - Design limpo e moderno estilo app de moda
  */
-import { ArrowLeft, Search as SearchIcon } from "lucide-react";
+import { Search as SearchIcon } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
@@ -18,10 +17,10 @@ import { CategoryStrip } from "@/components/storefront/category-strip";
 import { ProductGrid } from "@/components/storefront/product-grid";
 import { SearchTypeahead } from "@/components/storefront/search-typeahead";
 import {
+  CategoriesButton,
   FavoritesButton,
   SacolaButton,
 } from "@/components/storefront/store-header";
-import { Button } from "@/components/ui/button";
 import {
   pageNumberSchema,
   searchTextSchema,
@@ -61,7 +60,6 @@ export default async function SearchPage({
   if (!store) notFound();
 
   const { q, page } = buscarSearchSchema.parse(sp);
-  const baseHref = `/${store.slug}`;
 
   // Carrega categorias para os pills
   const categoryTree = await getCategoryTree(store.id, store.slug);
@@ -96,16 +94,12 @@ export default async function SearchPage({
           foram pro conteúdo scrollável abaixo. */}
       <header className="sticky top-0 z-30 rounded-b-2xl bg-background/95 backdrop-blur-sm border-b border-border/40">
         <div className="mx-auto flex w-full max-w-screen-xl items-center gap-2.5 px-4 py-2.5">
-          <Link href={baseHref} aria-label="Voltar">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-10 rounded-full shrink-0"
-            >
-              <ArrowLeft className="size-5" />
-              <span className="sr-only">Voltar</span>
-            </Button>
-          </Link>
+          {/* Onda 23 (2026-05-27): Back arrow → CategoriesButton (mesmo
+              do header da home). Cliente acessa o sidebar de categorias
+              de QUALQUER ponto da página, mesmo após scrollar pra baixo
+              (CategoryStrip do conteúdo some). Pra voltar pra home,
+              usa o tab "Início" no bottom-nav (sempre visível). */}
+          <CategoriesButton />
 
           <form
             action={`/${store.slug}/buscar`}
