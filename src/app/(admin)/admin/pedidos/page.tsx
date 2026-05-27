@@ -413,7 +413,7 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <PrintPageButton label="Imprimir lista" />
-          <OrdersExportCsvButton storeSlug={store.slug} />
+          <OrdersExportCsvButton />
         </div>
       </div>
 

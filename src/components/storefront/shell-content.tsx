@@ -49,7 +49,6 @@ import { StoreFooter } from "@/components/storefront/store-footer";
 import { StoreHeader } from "@/components/storefront/store-header";
 import type { Store } from "@/db/schema";
 import type { CategoryNode } from "@/lib/storefront/categories-loader";
-import { cn } from "@/lib/utils";
 
 export interface ShellContentProps {
   store: Store;
@@ -180,19 +179,17 @@ export function ShellContent({
         {!hideShellHeader && <StoreHeader store={store} />}
       </div>
 
-      {/* Onda 21 (2026-05-27): key={pathname} + fade-in animation suavizam
-          a "quebra" visual ao navegar entre rotas com layouts diferentes
-          (home com header sticky → produto com header floating sobre galeria).
-          O Next App Router re-renderiza o segmento, mas sem transição
-          o conteúdo "salta" — adicionar key + animate-in faz o cliente
-          ver um fade leve (160ms) que dá sensação de app nativo polido.
-          Providers acima no StoreShell não desmontam (cart/favoritos
-          preservados). */}
-      <main
-        id="main"
-        key={pathname}
-        className={cn(mainClass, "animate-in fade-in duration-150")}
-      >
+      {/* Onda 35 (2026-05-27): revertido `key={pathname}` + `animate-in
+          fade-in duration-150` da Onda 21. Founder reportou em uso real:
+          banner+conteúdo "sumiam e voltavam alguns segundos" no scroll
+          entre seções e em navegações (pattern visível em conexão móvel).
+          Diagnóstico: `key={pathname}` força DESMONTE+REMONTE do <main>
+          em cada navegação soft; combinado com fade-in 150ms, cliente
+          via piscada no conteúdo enquanto footer/bottom-nav permaneciam
+          (esses estão fora do main). A "polidez" prometida da Onda 21
+          virou ruído visual. Next App Router já transiciona suavemente
+          via RSC streaming. */}
+      <main id="main" className={mainClass}>
         {children}
       </main>
 

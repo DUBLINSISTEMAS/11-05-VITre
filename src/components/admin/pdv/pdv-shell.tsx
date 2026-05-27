@@ -18,16 +18,13 @@
 //   vendidos" ainda — placeholder vazio ou omitir)
 
 import {
-  BanknoteIcon,
   ChevronDownIcon,
-  CreditCardIcon,
   HandCoinsIcon,
   LockKeyholeIcon,
   MinusIcon,
   PackageIcon,
   PercentIcon,
   PlusIcon,
-  ReceiptIcon,
   ScanBarcodeIcon,
   SearchIcon,
   ShoppingBagIcon,
@@ -39,7 +36,6 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  forwardRef,
   useCallback,
   useEffect,
   useMemo,
@@ -110,7 +106,6 @@ import type {
   CartItem,
   LastSale,
   PaymentLineState,
-  PaymentMethodOption,
 } from "./types";
 
 function nextPaymentLineId(): string {

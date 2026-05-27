@@ -212,11 +212,13 @@ export function SearchTypeahead({ storeSlug, initialQuery = "" }: SearchTypeahea
 
   return (
     <div ref={wrapperRef} className="relative flex-1">
-      {/* Onda 18 (2026-05-27): texto do input agora bate EXATAMENTE com o
-          trigger da home — text-[13px] font-medium tracking-[-0.1px].
-          Antes era text-base (16px) mobile pra evitar zoom iOS no focus.
-          Aceitamos o trade-off do zoom: paridade visual > micro-incomodo
-          do zoom (cliente raramente digita; usa categorias visuais). */}
+      {/* Onda 35 (2026-05-27): mobile 16px (sem zoom iOS) + desktop 13px
+          (paridade visual com trigger da home preservada). iOS Safari força
+          zoom no focus quando font-size < 16px — UX horrível pra cliente
+          em mobile que vai justamente DIGITAR. Onda 18 tinha aceito o
+          trade-off "paridade visual > zoom"; founder reverteu (2026-05-27)
+          porque cliente real reportou. Em desktop o input mantém text-[13px]
+          casando com o trigger da home; em mobile fica 16px e zoom some. */}
       <SearchIcon
         className="pointer-events-none absolute left-3.5 top-1/2 size-[17px] -translate-y-1/2 text-muted-foreground"
         strokeWidth={1.8}
@@ -237,7 +239,7 @@ export function SearchTypeahead({ storeSlug, initialQuery = "" }: SearchTypeahea
         }}
         onKeyDown={handleKeyDown}
         placeholder="Buscar produtos"
-        className="h-10 w-full rounded-full bg-muted pl-10 pr-10 text-[13px] font-medium tracking-[-0.1px] text-foreground outline-none transition-colors placeholder:font-medium placeholder:text-muted-foreground hover:bg-muted/80 focus:bg-muted/70 focus:ring-2 focus:ring-ring"
+        className="h-10 w-full rounded-full bg-muted pl-10 pr-10 text-[16px] font-medium tracking-[-0.1px] text-foreground outline-none transition-colors placeholder:font-medium placeholder:text-muted-foreground hover:bg-muted/80 focus:bg-muted/70 focus:ring-2 focus:ring-ring md:text-[13px]"
         aria-label="Buscar produtos"
         autoComplete="off"
         enterKeyHint="search"

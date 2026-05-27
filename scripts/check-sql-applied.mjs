@@ -5,8 +5,9 @@
  * Lê DIRECT_URL de .env.local. Nunca escreve no banco.
  * Uso: pnpm exec tsx scripts/check-sql-applied.mjs
  *
- * Cobertura: SQLs 11–56 (estruturais). SQLs 01–10 são bootstrap inicial
+ * Cobertura: SQLs 11–79 + 81 (estruturais). SQLs 01–10 são bootstrap inicial
  * e SQL 17_cleanup / 99_cleanup são one-shot DELETE — sem auditoria.
+ * SQL 80 (parked_sale) foi removido em 2026-05-27; SQL 81 valida o drop.
  */
 import { config } from "dotenv";
 config({ path: ".env.local" });
@@ -105,6 +106,25 @@ const checks = [
   // PP5 (handoff pixel-perfect 2026-05-25) — storefront_collection ganha kicker + bg_color.
   { id: "71a", desc: "storefront_collection.kicker + bg_color columns (PP5)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='storefront_collection' AND column_name IN ('kicker','bg_color') HAVING count(*) = 2" },
   { id: "71b", desc: "storefront_collection kicker_length + bg_color_format CHECKs", q: "SELECT 1 FROM pg_constraint WHERE conname IN ('storefront_collection_kicker_length','storefront_collection_bg_color_format') HAVING count(*) = 2" },
+  // Maratona Sprints 0-4 do Plano de Endurecimento (2026-05-26) — SQLs 72-79.
+  // SQL 80 (parked_sale) e SQL 81 (drop) deliberadamente sem sentinela:
+  // tabela foi removida em 2026-05-27 (founder cleanup); ver supabase/sql/81_drop_parked_sale.sql.
+  { id: "72",  desc: "store.card_interest_free_up_to column + range CHECK (Sprint 3 PDV juros)", q: "SELECT 1 FROM pg_constraint WHERE conname='store_card_interest_free_up_to_range'" },
+  { id: "73a", desc: "store.max_products_count + max_image_mb columns (S1.3 quota)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='store' AND column_name IN ('max_products_count','max_image_mb') HAVING count(*) = 2" },
+  { id: "73b", desc: "store quota CHECKs positivos", q: "SELECT 1 FROM pg_constraint WHERE conname IN ('store_max_products_count_positive','store_max_image_mb_positive') HAVING count(*) = 2" },
+  { id: "74",  desc: "product.weight_grams column + CHECK range (S2.7 joalheria-por-grama)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='product' AND column_name='weight_grams'" },
+  { id: "75a", desc: "expense table existe com RLS forced (S2.1 DRE com despesas)", q: "SELECT 1 FROM pg_class WHERE relname='expense' AND relrowsecurity=true AND relforcerowsecurity=true" },
+  { id: "75b", desc: "expense_category enum populado (S2.1)", q: "SELECT 1 FROM pg_type WHERE typname='expense_category'" },
+  { id: "75c", desc: "expense RLS policy tenant_isolation", q: "SELECT 1 FROM pg_policies WHERE tablename='expense'" },
+  { id: "76a", desc: "store fees columns (debit/credit_1x/2_6x/7_12x) (S2.4 taxa cartão real)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='store' AND column_name IN ('card_fee_debit_bps','card_fee_credit_1x_bps','card_fee_credit_2x_to_6x_bps','card_fee_credit_7x_to_12x_bps') HAVING count(*) = 4" },
+  { id: "76b", desc: "store card fee CHECKs range 0..9999", q: "SELECT 1 FROM pg_constraint WHERE conname LIKE 'store_card_fee%_range' HAVING count(*) >= 4" },
+  { id: "77",  desc: "product_variant.cost_price_in_cents column + nonneg CHECK (S2.6)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='product_variant' AND column_name='cost_price_in_cents'" },
+  { id: "78a", desc: "receivable late_fee_bps + interest_per_month_bps columns (S3.2 fiado)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='receivable' AND column_name IN ('late_fee_bps','interest_per_month_bps') HAVING count(*) = 2" },
+  { id: "78b", desc: "store receivable_default_late_fee_bps + default_interest_bps", q: "SELECT 1 FROM information_schema.columns WHERE table_name='store' AND column_name IN ('receivable_default_late_fee_bps','receivable_default_interest_bps') HAVING count(*) = 2" },
+  { id: "79a", desc: "purchase_item.batch_number + expires_at (S3.4 lote/validade)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='purchase_item' AND column_name IN ('batch_number','expires_at') HAVING count(*) = 2" },
+  { id: "79b", desc: "category.tracks_batch opt-in", q: "SELECT 1 FROM information_schema.columns WHERE table_name='category' AND column_name='tracks_batch'" },
+  // SQL 81 (2026-05-27) — drop parked_sale (cleanup founder); valida que a tabela NÃO existe mais.
+  { id: "81",  desc: "parked_sale tabela DROPADA (cleanup 2026-05-27)", q: "SELECT 1 FROM pg_class WHERE relname='parked_sale'", expectEmpty: true },
 ];
 
 const url = process.env.DIRECT_URL;

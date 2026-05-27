@@ -10,7 +10,7 @@
  * FEFO (First-Expired-First-Out): ordena por expires_at asc.
  * Saldo restante via subquery em stock_movement.purchase_item_id (SQL 52).
  */
-import { and, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
+import { and, eq, isNotNull, lte } from "drizzle-orm";
 import { headers } from "next/headers";
 
 import {

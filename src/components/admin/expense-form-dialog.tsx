@@ -21,7 +21,6 @@ import type { ExpenseRow } from "@/actions/expense/load";
 import {
   CATEGORY_LABEL_BR,
   EXPENSE_CATEGORIES,
-  type ExpenseCategory,
 } from "@/actions/expense/schema";
 import { updateExpense } from "@/actions/expense/update";
 import { Button } from "@/components/ui/button";

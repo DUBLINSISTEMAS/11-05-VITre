@@ -25,7 +25,7 @@ O projeto usa **duas pastas de schema** em paralelo. Não é bagunça — é dec
   - **GRANTs** por role (vitre_app vs anon vs postgres)
   - **Indexes especiais** (gin_trgm pra busca, parciais com WHERE, etc)
   - Backfills idempotentes
-- Numeração sequencial (`11_*.sql`, `12_*.sql`…). Hoje vai até **68** (Sprint 5.4).
+- Numeração sequencial (`11_*.sql`, `12_*.sql`…). Hoje vai até **81** (cleanup 2026-05-27). O #80 (parked_sale) foi DROPADO no #81 — feature nunca foi entregue UI e founder removeu na auditoria de dead code.
 - Cada nova SQL tem 2 obrigações:
   1. **Idempotente** — `IF NOT EXISTS`, `DROP CONSTRAINT IF EXISTS`, `DO $$ ... IF NOT EXISTS THEN ...`. Roda 2× = mesmo resultado.
   2. **Sentinelada** em `scripts/check-sql-applied.mjs` — um SELECT que retorna 1 linha se aplicada.
@@ -84,7 +84,7 @@ Regra inquebrável: **toda SQL criada é aplicada na hora.** Sem deixar pendente
 
 ## Verificação contínua
 
-- **`scripts/check-sql-applied.mjs`** — sentinela read-only. Roda antes de cada deploy crítico. Cobre 11 → 68 (69 checks).
+- **`scripts/check-sql-applied.mjs`** — sentinela read-only. Roda antes de cada deploy crítico. Cobre 11 → 81 (~85 checks). Não cobre `drizzle/0034_email_verified_grandfathering.sql` que fica **deferred até Resend domain + flip `EMAIL_VERIFICATION_REQUIRED=true`** (Bloco 4 da Fase 2). Sequência exigida: (1) Resend domain DKIM/SPF/DMARC → (2) `psql $DIRECT_URL -f drizzle/0034_*.sql` → (3) smoke `/verificar-email` → (4) flip env Vercel → (5) redeploy.
 - **`scripts/smoke-idor.mjs`** — smoke manual de cross-tenant SELECT/INSERT/UPDATE. Roda quando mexer em RLS.
 - **`RUN_INTEGRATION=1 npm run test:integration`** — 39 testes automatizados contra DB real (role `vitre_app`). Gate pré-merge quando tocar schema / RLS / withTenant.
 - **CI hoje só faz unit** (`npm test`). Integration roda local — sem DB ephemeral na pipeline ainda. Defer pra Sprint pós-#1.

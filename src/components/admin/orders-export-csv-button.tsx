@@ -17,12 +17,7 @@ import { exportOrdersCsv } from "@/actions/order/export-csv";
 import { Button } from "@/components/ui/button";
 import { downloadCsv } from "@/lib/csv";
 
-interface OrdersExportCsvButtonProps {
-  /** Mantido pra compat com chamadores; nome do arquivo vem do server. */
-  storeSlug?: string;
-}
-
-export function OrdersExportCsvButton(_props: OrdersExportCsvButtonProps) {
+export function OrdersExportCsvButton() {
   const params = useSearchParams();
   const [isPending, startTransition] = useTransition();
 

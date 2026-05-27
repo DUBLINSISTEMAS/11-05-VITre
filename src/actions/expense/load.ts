@@ -1,6 +1,6 @@
 "use server";
 
-import { and, desc, eq, gte, isNotNull, isNull, lte, sql } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 
 import { expenseTable } from "@/db/schema";

@@ -1,0 +1,21 @@
+-- =====================================================================
+-- Mangos Pay — Drop parked_sale (2026-05-27)
+-- =====================================================================
+-- CONTEXTO
+-- SQL 80 criou parked_sale pra suportar pausa-venda no PDV (S3.3 do
+-- Plano de Endurecimento). A UI nunca foi entregue — schema, action
+-- e tabela ficaram zumbis. Auditoria de dead code 2026-05-27 com
+-- aprovação do founder removeu action + schema TS; este SQL drop
+-- finaliza a remoção no DB.
+--
+-- Se pausa-venda voltar ao roadmap, recriar do zero (referência:
+-- supabase/sql/80_parked_sale.sql no histórico git).
+--
+-- SEGURANÇA
+-- Idempotente. DROP TABLE IF EXISTS + CASCADE pra cobrir índices/policies
+-- na mesma operação. Em prod com dados (improvável — feature não foi
+-- usada), o DROP perde tudo. Aceitável: zero clientes operando em prod
+-- até aplicar este SQL.
+-- =====================================================================
+
+DROP TABLE IF EXISTS parked_sale CASCADE;

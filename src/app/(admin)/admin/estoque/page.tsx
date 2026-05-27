@@ -459,7 +459,6 @@ async function FeedView({
   });
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const hasFilters = q.trim() !== "" || typeFilter !== null;
   const offset = (page - 1) * PAGE_SIZE;
   const rangeStart = total === 0 ? 0 : offset + 1;
   const rangeEnd = Math.min(offset + PAGE_SIZE, total);
