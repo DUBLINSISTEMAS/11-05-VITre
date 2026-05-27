@@ -49,6 +49,7 @@ import { StoreFooter } from "@/components/storefront/store-footer";
 import { StoreHeader } from "@/components/storefront/store-header";
 import type { Store } from "@/db/schema";
 import type { CategoryNode } from "@/lib/storefront/categories-loader";
+import { cn } from "@/lib/utils";
 
 export interface ShellContentProps {
   store: Store;
@@ -179,7 +180,19 @@ export function ShellContent({
         {!hideShellHeader && <StoreHeader store={store} />}
       </div>
 
-      <main id="main" className={mainClass}>
+      {/* Onda 21 (2026-05-27): key={pathname} + fade-in animation suavizam
+          a "quebra" visual ao navegar entre rotas com layouts diferentes
+          (home com header sticky → produto com header floating sobre galeria).
+          O Next App Router re-renderiza o segmento, mas sem transição
+          o conteúdo "salta" — adicionar key + animate-in faz o cliente
+          ver um fade leve (160ms) que dá sensação de app nativo polido.
+          Providers acima no StoreShell não desmontam (cart/favoritos
+          preservados). */}
+      <main
+        id="main"
+        key={pathname}
+        className={cn(mainClass, "animate-in fade-in duration-150")}
+      >
         {children}
       </main>
 

@@ -40,13 +40,17 @@ export function StoreFooter({ store }: StoreFooterProps) {
           negativos pra logo aparecer mais (antes ficava tão afundada
           que só uma fatia era visível). Tamanho compacto + posicionamento
           quase no canto exato dão aquele efeito "assinatura discreta". */}
+      {/* Onda 17 / 18 / 21 (2026-05-27): watermark da manga. Onda 21:
+          subiu pra ficar centralizado no footer (não cortada pelo bottom-nav
+          mobile fixed) e levemente menor pra não dominar. Posição muda de
+          "afundada" pra "ancorada no canto direito do footer". */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/logos/favicon.svg"
         alt=""
         aria-hidden
         draggable={false}
-        className="pointer-events-none absolute -right-4 bottom-2 h-[140px] w-[140px] opacity-[0.07] sm:-right-6 sm:bottom-4 sm:h-[200px] sm:w-[200px] lg:-right-8 lg:bottom-6 lg:h-[260px] lg:w-[260px]"
+        className="pointer-events-none absolute right-2 top-1/2 h-[120px] w-[120px] -translate-y-1/2 opacity-[0.07] sm:right-4 sm:h-[160px] sm:w-[160px] lg:right-6 lg:h-[200px] lg:w-[200px]"
       />
       {/* Onda 18: pb-28 mobile (~112px) absorve safe-zone do bottom-nav
           (~76px) + folga. Antes o main mobile tinha pb-24 e o footer só
@@ -145,25 +149,23 @@ export function StoreFooter({ store }: StoreFooterProps) {
             © {new Date().getFullYear()} {store.name}. Todos os direitos
             reservados.
           </span>
-          {/* Onda 10 (2026-05-27): "Powered by" texto puro virou logo da
-              manga + texto inline. Identidade Mangos Pay sutil no rodapé —
-              padrão Shopify/WooCommerce/Tiny. Logo 16px (vetorial, sem
-              quality loss). Usa <img> puro (não next/image) porque SVG
-              local não precisa do optimizer e o Next exigiria
-              dangerouslyAllowSVG=true. aria-hidden pq o texto adjacente
-              já cumpre o role de label. */}
+          {/* Onda 10 / 21 (2026-05-27): logo da manga + texto. Onda 21:
+              tamanho aumentado de 16px → 22px pra ficar visualmente
+              proporcional ao texto adjacente. <img> puro (não next/image)
+              porque SVG local não exige dangerouslyAllowSVG. aria-hidden
+              pq o texto cumpre o role de label. */}
           <a
             href="https://vitre.site"
             target="_blank"
             rel="noopener noreferrer"
-            className="hocus:text-foreground inline-flex items-center gap-1.5 transition-colors"
+            className="hocus:text-foreground inline-flex items-center gap-2 transition-colors"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logos/logo.svg"
               alt=""
-              width={16}
-              height={16}
+              width={22}
+              height={22}
               aria-hidden
               className="shrink-0"
             />
