@@ -145,6 +145,7 @@ export default async function SuccessPage({
         variant="sticky-title"
         store={store}
         title="Resumo do pedido"
+        subtitle={store.name}
       />
 
       <div className="mx-auto w-full max-w-screen-md px-4 pb-32 pt-3 lg:px-0">
@@ -288,16 +289,16 @@ export default async function SuccessPage({
           </div>
         </section>
 
-        {/* Aviso brand-tint com ação concreta de copiar (Onda 3 — antes
-            era passivo "salve seu código", agora cliente leigo copia
-            num toque sem precisar decorar/screenshot). */}
+        {/* Aviso brand-tint com ação concreta de copiar (Onda 3 → 28).
+            Onda 28: copy mais curta — "Use o código #X pra acompanhar
+            depois" é direto, sem patronizar com "mesmo sem cadastro". */}
         <div className="mt-4 flex items-center justify-between gap-3 rounded-[14px] bg-brand-tint px-3.5 py-3">
           <p className="text-foreground/85 text-[11.5px] leading-snug">
-            Salve seu código{" "}
+            Use o código{" "}
             <span className="text-foreground font-mono font-semibold">
               #{order.shortCode}
             </span>{" "}
-            pra acompanhar este pedido mesmo sem cadastro.
+            pra acompanhar este pedido depois.
           </p>
           <CopyCodeButton code={order.shortCode} />
         </div>

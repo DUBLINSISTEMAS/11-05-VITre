@@ -62,7 +62,7 @@ export function SuccessCtas({ publicToken, whatsappUrl, storeSlug }: SuccessCtas
         className="inline-flex h-[46px] w-full items-center justify-center gap-2 rounded-[12px] border-0 bg-whatsapp text-[13.5px] font-semibold text-white outline-none transition-colors hover:bg-whatsapp-hover focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-70"
       >
         <MessageCircle className="size-4" aria-hidden strokeWidth={2} />
-        {isOpening ? "Abrindo..." : "Voltar para o WhatsApp"}
+        {isOpening ? "Abrindo..." : "Continuar no WhatsApp"}
       </button>
 
       <Link
