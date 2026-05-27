@@ -25,6 +25,13 @@ export interface CategoryStripProps {
   categories: CategoryNode[];
   /** Eixo de tema. Default "rounded" (canvas-v1). */
   shape?: CategoryShape;
+  /**
+   * Slug da categoria ativa — tile ganha ring + texto bold pra indicar
+   * "você está aqui". Onda 22 (2026-05-27) — usado em /categoria/[slug]
+   * quando renderiza siblings: cliente vê onde está dentro do conjunto
+   * de subcategorias.
+   */
+  activeSlug?: string;
   className?: string;
 }
 
@@ -38,6 +45,7 @@ export function CategoryStrip({
   storeSlug,
   categories,
   shape = "rounded",
+  activeSlug,
   className,
 }: CategoryStripProps) {
   if (categories.length === 0) return null;
@@ -58,6 +66,7 @@ export function CategoryStrip({
             category={cat}
             storeSlug={storeSlug}
             shape={shape}
+            isActive={cat.slug === activeSlug}
           />
         ))}
       </div>
@@ -69,10 +78,12 @@ function CategoryTile({
   category,
   storeSlug,
   shape,
+  isActive,
 }: {
   category: CategoryNode;
   storeSlug: string;
   shape: CategoryShape;
+  isActive: boolean;
 }) {
   const imageUrl = (category as CategoryNode & { imageUrl?: string | null })
     .imageUrl;
@@ -83,12 +94,17 @@ function CategoryTile({
     <Link
       href={`/${storeSlug}/categoria/${category.slug}`}
       prefetch={false}
+      aria-current={isActive ? "page" : undefined}
       className="group flex w-[76px] shrink-0 snap-start flex-col gap-1.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       <div
         className={cn(
-          "relative aspect-square w-full overflow-hidden bg-gray-100 ring-1 ring-border/60 transition-transform duration-200 group-hover:scale-[1.02] group-active:scale-95",
+          "relative aspect-square w-full overflow-hidden bg-gray-100 transition-transform duration-200 group-hover:scale-[1.02] group-active:scale-95",
           radiusClass,
+          // Onda 22: tile ativo ganha ring forte (foreground), inativo ring suave.
+          isActive
+            ? "ring-2 ring-foreground"
+            : "ring-1 ring-border/60",
         )}
       >
         {imageUrl ? (
@@ -105,7 +121,14 @@ function CategoryTile({
           </div>
         )}
       </div>
-      <span className="line-clamp-1 text-center text-[10.5px] font-medium leading-tight text-foreground transition-colors group-hover:text-brand-store">
+      <span
+        className={cn(
+          "line-clamp-1 text-center text-[10.5px] leading-tight transition-colors",
+          isActive
+            ? "font-semibold text-foreground"
+            : "font-medium text-foreground group-hover:text-brand-store",
+        )}
+      >
         {category.name}
       </span>
     </Link>

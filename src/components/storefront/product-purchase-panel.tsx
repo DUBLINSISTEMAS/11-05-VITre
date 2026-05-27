@@ -162,8 +162,6 @@ export function ProductPurchasePanel({
   const ctaDisabled =
     productIsSoldOut || selectionRequired || selectedVariantSoldOut || recentlyAdded;
 
-  const ctaPriceWithVariant = priceState.effectivePriceInCents;
-
   const discountPercent = priceState.isOnPromo
     ? Math.round((1 - priceState.effectivePriceInCents / priceState.basePriceInCents) * 100)
     : null;
@@ -254,7 +252,11 @@ export function ProductPurchasePanel({
       return "Selecione uma cor";
     }
     if (recentlyAdded) return "Adicionado!";
-    return `Adicionar à sacola · ${formatBRL(ctaPriceWithVariant)}`;
+    // Onda 22 (2026-05-27): label sem preço — preço já está em destaque
+    // acima no panel (text-22/26px tabular-nums). Duplicar no botão era
+    // ruído e quebrava o foco na ação ("o que vai acontecer ao tocar?").
+    // Padrão Shopee/Aritzia: CTA verbal puro.
+    return "Adicionar à sacola";
   }, [
     productIsSoldOut,
     selectedVariantSoldOut,
@@ -262,7 +264,6 @@ export function ProductPurchasePanel({
     sizeVariants.length,
     colorVariants.length,
     recentlyAdded,
-    ctaPriceWithVariant,
   ]);
 
   return (

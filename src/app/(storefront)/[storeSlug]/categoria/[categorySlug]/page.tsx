@@ -1,38 +1,37 @@
 /**
- * Página de categoria — listagem paginada de produtos com chips de filtro.
+ * Página de categoria — listagem paginada de produtos.
+ *
+ * Onda 22 (2026-05-27): substituiu CategoryFilterChips por CategoryStrip
+ * de subcategorias (children se raiz; siblings se folha). Cliente que
+ * entra em "Joias" vê tiles visuais de "Anéis", "Brincos", "Colares" no
+ * mesmo formato/tamanho da home — sistema tipográfico e visual coerente.
+ * Filtros Sheet (preço/sort/promo/atributos) removidos: cliente que
+ * precisar de filtro avançado pode usar /buscar (typeahead + sheet).
  *
  * Server Component:
- *  - Resolve store + categoria. 404 se categoria não existe.
- *  - Lista produtos via `listProducts` (categoria pai inclui filhas).
- *  - Filtros (preço/sort/promoOnly) lidos da URL via searchParams.
- *  - Header próprio `<StoreHeader variant="category">` (canvas VTCategoria).
- *  - Chips horizontais 3 fixos (Tudo / Em promoção / Novidades) — Lote 2.
- *  - Paginação simples (?page=N) reusando o componente comum.
+ *  - Resolve store + categoria via getCategoryTree (cached).
+ *  - Lista produtos via listProducts (categoria pai inclui filhas).
+ *  - Paginação simples (?page=N).
  */
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { Pagination } from "@/components/common/pagination";
-import { CategoryFilterChips } from "@/components/storefront/category-filter-chips";
+import { CategoryStrip } from "@/components/storefront/category-strip";
 import { ProductGrid } from "@/components/storefront/product-grid";
 import { StoreHeader } from "@/components/storefront/store-header";
 import { env } from "@/lib/env";
-import { logger } from "@/lib/logger";
 import {
-  boolFlagSchema,
-  enumWithDefault,
-  pageNumberSchema,
-  priceCentsSchema,
-} from "@/lib/page-search-params";
-import { loadActiveAttributesForStore } from "@/lib/storefront/attributes-loader";
-import { getCategoryBySlug } from "@/lib/storefront/categories-loader";
-import {
-  listProducts,
-  type ProductSort,
-} from "@/lib/storefront/products-loader";
+  getCategoryTree,
+  type CategoryNode,
+} from "@/lib/storefront/categories-loader";
+import { listProducts } from "@/lib/storefront/products-loader";
 import { getStoreBySlug } from "@/lib/storefront/store-loader";
-import type { ProductCardVariant } from "@/lib/storefront/themes";
+import type {
+  CategoryShape,
+  ProductCardVariant,
+} from "@/lib/storefront/themes";
 
 interface PageParams {
   storeSlug: string;
@@ -40,26 +39,9 @@ interface PageParams {
 }
 
 const PAGE_SIZE = 24;
-const VALID_SORTS = [
-  "relevance",
-  "price_asc",
-  "price_desc",
-  "newest",
-] as const satisfies readonly ProductSort[];
 
 const categoriaSearchSchema = z.object({
-  page: pageNumberSchema,
-  priceMin: priceCentsSchema,
-  priceMax: priceCentsSchema,
-  sort: enumWithDefault(VALID_SORTS, "relevance"),
-  promo: boolFlagSchema,
-  // Sprint 5.5 — filtro por attribute_value (single UUID).
-  attr: z
-    .string()
-    .uuid()
-    .optional()
-    .nullable()
-    .catch(null),
+  page: z.coerce.number().int().positive().catch(1),
 });
 
 export async function generateMetadata({
@@ -75,11 +57,11 @@ export async function generateMetadata({
   ]);
   const store = await getStoreBySlug(storeSlug);
   if (!store) return { title: "Não encontrado" };
-  const category = await getCategoryBySlug(store.id, store.slug, categorySlug);
+
+  const tree = await getCategoryTree(store.id, store.slug);
+  const { current: category } = findCategoryWithSiblings(tree, categorySlug);
   if (!category) return { title: "Categoria não encontrada" };
 
-  // Canonical aponta sempre pra página 1, sem filtros — evita duplicate
-  // content por paginação/sort/promo (Google rebaixaria as variantes).
   const baseUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
   const canonical = `${baseUrl}/${storeSlug}/categoria/${categorySlug}`;
   const { page } = categoriaSearchSchema.parse(sp);
@@ -88,9 +70,41 @@ export async function generateMetadata({
     title: category.name,
     description: `Produtos de ${category.name} — ${store.name}.`,
     alternates: { canonical },
-    // Página >1 sem valor SEO próprio — evita índice paginado infinito.
     robots: page > 1 ? { index: false, follow: true } : undefined,
   };
+}
+
+/**
+ * Resolve categoria atual + categorias pra renderizar no strip:
+ *  - Se atual é raiz: retorna seus children
+ *  - Se atual é folha: retorna seus siblings (children do parent)
+ *  - Se atual não tem children E não tem siblings: retorna []
+ */
+function findCategoryWithSiblings(
+  tree: CategoryNode[],
+  slug: string,
+): { current: CategoryNode | null; navCategories: CategoryNode[] } {
+  // Tentar como raiz
+  const root = tree.find((r) => r.slug === slug);
+  if (root) {
+    return {
+      current: root,
+      navCategories: root.children.map((c) => ({ ...c, children: [] })),
+    };
+  }
+  // Tentar como folha — procurar parent
+  for (const r of tree) {
+    const child = r.children.find((c) => c.slug === slug);
+    if (child) {
+      return {
+        current: { ...child, children: [] },
+        // Siblings = todos os children do parent (inclui a atual; CategoryStrip
+        // marca a ativa com activeSlug).
+        navCategories: r.children.map((c) => ({ ...c, children: [] })),
+      };
+    }
+  }
+  return { current: null, navCategories: [] };
 }
 
 export default async function CategoryPage({
@@ -104,57 +118,31 @@ export default async function CategoryPage({
     params,
     searchParams,
   ]);
-  const {
-    page,
-    sort,
-    priceMin: priceMinCents,
-    priceMax: priceMaxCents,
-    promo: promoOnly,
-    attr: attributeValueId,
-  } = categoriaSearchSchema.parse(sp);
+  const { page } = categoriaSearchSchema.parse(sp);
 
   const store = await getStoreBySlug(storeSlug);
   if (!store) notFound();
 
-  const category = await getCategoryBySlug(store.id, store.slug, categorySlug);
+  const tree = await getCategoryTree(store.id, store.slug);
+  const { current: category, navCategories } = findCategoryWithSiblings(
+    tree,
+    categorySlug,
+  );
   if (!category) notFound();
 
-  const [result, attributes] = await Promise.all([
-    listProducts({
-      storeId: store.id,
-      storeSlug: store.slug,
-      categorySlug,
-      page,
-      limit: PAGE_SIZE,
-      sort,
-      priceMinCents,
-      priceMaxCents,
-      promoOnly,
-      attributeValueId: attributeValueId ?? undefined,
-    }),
-    loadActiveAttributesForStore(store.id, store.slug).catch((err) => {
-      logger.error("storefront.category.attributes_load_failed", {
-        err,
-        storeId: store.id,
-        categorySlug,
-      });
-      return [];
-    }),
-  ]);
+  const result = await listProducts({
+    storeId: store.id,
+    storeSlug: store.slug,
+    categorySlug,
+    page,
+    limit: PAGE_SIZE,
+    sort: "relevance",
+  });
   if (!result) notFound();
 
-  const basePath = `/${store.slug}/categoria/${category.slug}`;
-
-  // buildHref: preserva todos os filtros, só atualiza page.
+  // buildHref: só preserva page (sem filtros agora).
   const buildHref = (p: number) => {
     const usp = new URLSearchParams();
-    if (priceMinCents !== undefined)
-      usp.set("priceMin", String(priceMinCents));
-    if (priceMaxCents !== undefined)
-      usp.set("priceMax", String(priceMaxCents));
-    if (sort !== "relevance") usp.set("sort", sort);
-    if (promoOnly) usp.set("promo", "1");
-    if (attributeValueId) usp.set("attr", attributeValueId);
     if (p > 1) usp.set("page", String(p));
     const qs = usp.toString();
     return qs ? `?${qs}` : "?";
@@ -162,9 +150,6 @@ export default async function CategoryPage({
 
   return (
     <>
-      {/* Onda 19 (2026-05-27): counter "X PEÇAS" removido — informação
-          redundante (grid abaixo já mostra os produtos visualmente) e
-          o header fica mais limpo, deixando o nome da categoria respirar. */}
       <StoreHeader
         variant="category"
         store={store}
@@ -172,20 +157,32 @@ export default async function CategoryPage({
         title={category.name}
       />
 
-      <CategoryFilterChips basePath={basePath} attributes={attributes} />
+      {/* Onda 22 (2026-05-27): CategoryStrip de subcategorias (children
+          ou siblings) substitui o antigo CategoryFilterChips. Mesmo
+          formato visual da home — coerência cross-tela. Categoria atual
+          marcada com ring forte via activeSlug. */}
+      {navCategories.length > 0 && (
+        <div className="px-4 pt-3 pb-1">
+          <CategoryStrip
+            storeSlug={store.slug}
+            categories={navCategories}
+            shape={store.categoryShape as CategoryShape}
+            activeSlug={category.slug}
+          />
+        </div>
+      )}
 
-      {/* pb-44 mobile (176px) reserva safe-zone pra MiniCartBar (h-14)
-          + BottomNav (~76px) quando empilhados. Desktop volta pra pb-12
-          pois não tem mini-cart. Sem isso, o último produto da grid
-          fica coberto pelo overlay. */}
-      <div className="px-4 pb-44 pt-1 lg:pb-12">
+      {/* pb-20 mobile reserva safe-zone pra MiniCartBar; footer cobre
+          bottom-nav (Onda 18). pt-3 quando há strip de subcategorias,
+          pt-1 quando não. */}
+      <div
+        className={`${navCategories.length > 0 ? "pt-3" : "pt-1"} px-4 pb-20 lg:pb-12`}
+      >
         {result.items.length === 0 ? (
           <div className="text-muted-foreground bg-muted/30 rounded-2xl px-6 py-12 text-center text-sm">
             <p className="text-base font-medium">Nenhum produto encontrado</p>
             <p className="text-muted-foreground/80 mt-1">
-              {promoOnly
-                ? "Sem promoções ativas no momento."
-                : "Tente remover filtros."}
+              Esta categoria ainda não tem produtos.
             </p>
           </div>
         ) : (

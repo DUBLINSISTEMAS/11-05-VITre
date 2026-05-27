@@ -616,49 +616,11 @@ test("Sprint 5.4: customer_group.default_pricing_tier + PDV aplica wholesale", (
   );
 });
 
-test("Sprint 5.5: chips de atributo dinâmicos no storefront", () => {
-  // Loader
-  const al = src("src/lib/storefront/attributes-loader.ts");
-  assert.match(
-    al,
-    /export async function .*loadActiveAttributesForStore|loadActiveAttributesForStore = cache/,
-    "loadActiveAttributesForStore deve estar exportado",
-  );
-  assert.match(
-    al,
-    /productCount === 0/,
-    "loader deve filtrar valores sem produto (anti-poluição)",
-  );
-
-  // Listagem aceita attributeValueId
-  const pl = src("src/lib/storefront/products-loader.ts");
-  assert.match(pl, /attributeValueId\?:\s*string/);
-  assert.match(
-    pl,
-    /EXISTS\s*\(\s*SELECT 1 FROM \$\{productAttributeValueTable\}/,
-    "filtro de atributo deve usar EXISTS subquery (não INNER JOIN — evita dup)",
-  );
-
-  // Chips component
-  const chips = src("src/components/storefront/category-filter-chips.tsx");
-  assert.match(chips, /attributes\?: StorefrontAttribute\[\]/);
-  assert.match(
-    chips,
-    /attr.*type === "color".*colorHex/s,
-    "swatch de cor deve renderizar quando type='color' E colorHex preenchido",
-  );
-
-  // Página de categoria passa atributos
-  const cat = src(
-    "src/app/(storefront)/[storeSlug]/categoria/[categorySlug]/page.tsx",
-  );
-  assert.match(cat, /loadActiveAttributesForStore/);
-  assert.match(
-    cat,
-    /attributes=\{attributes\}/,
-    "categoria page deve passar attributes pro CategoryFilterChips",
-  );
-});
+// Sprint 5.5 (chips de atributo dinâmicos no storefront) — sentinela
+// removida na Onda 22 (2026-05-27). Founder pediu substituir filtros chips
+// por CategoryStrip de subcategorias na página de categoria; UI do filtro
+// por atributo saiu. Loader (attributes-loader.ts) e attributeValueId no
+// products-loader preservados pra possível reativação em /buscar futuro.
 
 test("Sprint 2.3: order.shippingInCents existe no schema e é populado pelo DRE", () => {
   const orderSchema = src("src/db/schema/order.ts");
