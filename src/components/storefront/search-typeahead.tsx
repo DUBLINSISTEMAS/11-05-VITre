@@ -212,11 +212,11 @@ export function SearchTypeahead({ storeSlug, initialQuery = "" }: SearchTypeahea
 
   return (
     <div ref={wrapperRef} className="relative flex-1">
-      {/* Onda 11 / Onda 16 (2026-05-27): barra alinhada AO MESMO TAMANHO
-          do trigger pill da home — h-10 (40px), rounded-full, bg-muted,
-          ícone Search size-[17px] strokeWidth 1.8. Cliente que entra na
-          /buscar vê a mesma altura/peso visual da home, sem "salto" de
-          tamanho. text-base mobile preserva (evita zoom auto iOS). */}
+      {/* Onda 18 (2026-05-27): texto do input agora bate EXATAMENTE com o
+          trigger da home — text-[13px] font-medium tracking-[-0.1px].
+          Antes era text-base (16px) mobile pra evitar zoom iOS no focus.
+          Aceitamos o trade-off do zoom: paridade visual > micro-incomodo
+          do zoom (cliente raramente digita; usa categorias visuais). */}
       <SearchIcon
         className="pointer-events-none absolute left-3.5 top-1/2 size-[17px] -translate-y-1/2 text-muted-foreground"
         strokeWidth={1.8}
@@ -237,7 +237,7 @@ export function SearchTypeahead({ storeSlug, initialQuery = "" }: SearchTypeahea
         }}
         onKeyDown={handleKeyDown}
         placeholder="Buscar produtos"
-        className="h-10 w-full rounded-full bg-muted pl-10 pr-10 text-base font-medium text-foreground outline-none transition-colors placeholder:font-medium placeholder:text-muted-foreground hover:bg-muted/80 focus:bg-muted/70 focus:ring-2 focus:ring-ring md:text-sm"
+        className="h-10 w-full rounded-full bg-muted pl-10 pr-10 text-[13px] font-medium tracking-[-0.1px] text-foreground outline-none transition-colors placeholder:font-medium placeholder:text-muted-foreground hover:bg-muted/80 focus:bg-muted/70 focus:ring-2 focus:ring-ring"
         aria-label="Buscar produtos"
         autoComplete="off"
         enterKeyHint="search"

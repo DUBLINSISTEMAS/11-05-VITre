@@ -34,20 +34,26 @@ export function StoreFooter({ store }: StoreFooterProps) {
   const igHandle = store.instagramHandle?.replace(/^@/, "");
 
   return (
-    <footer className="relative overflow-hidden border-border/60 bg-muted/30 mt-12 border-t">
-      {/* Onda 17 (2026-05-27): watermark da manga no canto inferior direito.
-          Mesmo pattern do auth-shell admin (favicon.svg + opacity-[0.07] +
-          posição negativa pra "vazar" do canto). Identidade Mangos Pay
-          discreta no rodapé sem competir com o conteúdo da loja. */}
+    <footer className="relative overflow-hidden border-border/60 bg-muted/30 mt-6 border-t">
+      {/* Onda 17 / Onda 18 (2026-05-27): watermark da manga no canto
+          inferior direito. Pattern do auth-shell admin. Onda 18 reduz
+          negativos pra logo aparecer mais (antes ficava tão afundada
+          que só uma fatia era visível). Tamanho compacto + posicionamento
+          quase no canto exato dão aquele efeito "assinatura discreta". */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/logos/favicon.svg"
         alt=""
         aria-hidden
         draggable={false}
-        className="pointer-events-none absolute -right-10 -bottom-12 h-[180px] w-[180px] opacity-[0.06] sm:-right-16 sm:-bottom-16 sm:h-[240px] sm:w-[240px] lg:-right-20 lg:-bottom-20 lg:h-[300px] lg:w-[300px]"
+        className="pointer-events-none absolute -right-4 bottom-2 h-[140px] w-[140px] opacity-[0.07] sm:-right-6 sm:bottom-4 sm:h-[200px] sm:w-[200px] lg:-right-8 lg:bottom-6 lg:h-[260px] lg:w-[260px]"
       />
-      <div className="relative mx-auto w-full max-w-screen-xl space-y-6 px-4 py-8">
+      {/* Onda 18: pb-28 mobile (~112px) absorve safe-zone do bottom-nav
+          (~76px) + folga. Antes o main mobile tinha pb-24 e o footer só
+          py-8 — gerava margem branca de ~144px entre conteúdo e footer
+          (pb-24 + mt-12). Agora main não precisa de pb extra; footer
+          absorve toda a safe-zone. */}
+      <div className="relative mx-auto w-full max-w-screen-xl space-y-6 px-4 pt-8 pb-28 lg:pb-8">
         <div className="grid gap-6 sm:grid-cols-2">
           <div className="space-y-2">
             <h2 className="text-foreground text-base font-semibold">

@@ -142,12 +142,23 @@ export function ShellContent({
     isCategoriaPage ||
     isProductPage ||
     isFavoritosPage;
-  // Páginas de listagem com mini-cart visível precisam de pb extra pra
-  // o último card não ficar embaixo do mini-cart (h-14) empilhado
-  // ACIMA do bottom-nav (~76px). pb-44 (176px) cobre os dois com folga.
-  // Quando carrinho vazio, mini-cart some — mas mantém pb-44 pra evitar
-  // jank visual no momento de adicionar item (layout não pula).
-  const listingPbClass = showMiniCart ? "pb-44 lg:pb-12" : "pb-24 lg:pb-12";
+  // Onda 18 (2026-05-27): main NÃO precisa mais reservar safe-zone pro
+  // bottom-nav quando há footer — o próprio footer absorve via pb-28
+  // interno. Antes pb-24 do main + mt-12 do footer somavam ~144px de
+  // "branco" visível entre o último item de conteúdo e o footer real.
+  //
+  // Regras:
+  //  - hasFooter (home, busca, categoria, coleção, destaques, favoritos,
+  //    sobre, contato): main pb mínimo (pb-2), footer cobre bottom-nav
+  //  - !hasFooter (produto, sacola, sucesso): hasOwnLayout cuida do pb
+  //  - showMiniCart (listings): pb-20 cobre a barra (h-14 + gap),
+  //    footer cobre o bottom-nav
+  const hasFooter = !hideFooter;
+  const listingPbClass = showMiniCart
+    ? "pb-20 lg:pb-6"
+    : hasFooter
+      ? "pb-2 lg:pb-6"
+      : "pb-24 lg:pb-12";
   const mainClass = hasOwnLayout
     ? isProductPage
       ? "mx-auto w-full max-w-screen-xl flex-1 lg:pt-8"
