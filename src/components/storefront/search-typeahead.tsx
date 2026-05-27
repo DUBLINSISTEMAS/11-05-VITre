@@ -212,12 +212,13 @@ export function SearchTypeahead({ storeSlug, initialQuery = "" }: SearchTypeahea
 
   return (
     <div ref={wrapperRef} className="relative flex-1">
-      {/* Onda 11 (2026-05-27): barra alinhada ao trigger pill da home —
-          rounded-full + bg-muted, ícone Search size-[18px] strokeWidth 1.8.
-          Pill premium e-commerce mobile (Shopee/Shein/Aritzia). h-11 = 44px
-          touch target Apple HIG; text-base evita zoom auto do iOS. */}
+      {/* Onda 11 / Onda 16 (2026-05-27): barra alinhada AO MESMO TAMANHO
+          do trigger pill da home — h-10 (40px), rounded-full, bg-muted,
+          ícone Search size-[17px] strokeWidth 1.8. Cliente que entra na
+          /buscar vê a mesma altura/peso visual da home, sem "salto" de
+          tamanho. text-base mobile preserva (evita zoom auto iOS). */}
       <SearchIcon
-        className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground"
+        className="pointer-events-none absolute left-3.5 top-1/2 size-[17px] -translate-y-1/2 text-muted-foreground"
         strokeWidth={1.8}
         aria-hidden
       />
@@ -236,7 +237,7 @@ export function SearchTypeahead({ storeSlug, initialQuery = "" }: SearchTypeahea
         }}
         onKeyDown={handleKeyDown}
         placeholder="Buscar produtos"
-        className="h-11 w-full rounded-full bg-muted pl-11 pr-10 text-base font-medium text-foreground outline-none transition-colors placeholder:font-medium placeholder:text-muted-foreground hover:bg-muted/80 focus:bg-muted/70 focus:ring-2 focus:ring-ring md:text-sm"
+        className="h-10 w-full rounded-full bg-muted pl-10 pr-10 text-base font-medium text-foreground outline-none transition-colors placeholder:font-medium placeholder:text-muted-foreground hover:bg-muted/80 focus:bg-muted/70 focus:ring-2 focus:ring-ring md:text-sm"
         aria-label="Buscar produtos"
         autoComplete="off"
         enterKeyHint="search"
