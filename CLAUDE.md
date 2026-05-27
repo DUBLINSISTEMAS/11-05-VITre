@@ -362,7 +362,9 @@ Lojista BR de joalheria/perfumaria/roupa em cidade do interior consegue:
 - Bloco 2 ✅ Validação automatizada (`tests/integration/rls-cross-tenant.test.ts`)
 - **Bloco 3** ✅ Signup self-service — fluxo `/criar-loja/{conta,identidade,tipo-negocio,bem-vindo}` 4 passos. signUpStoreOwner (Better Auth + rate limit) → createStore (RLS-aware + slug check + categorias seed em UMA transação). Admin layout guard: sem sessão → /entrar; sem store → /criar-loja/identidade. Idempotência: user com store existente → /admin. Persistência entre passos via sessionStorage. Validado em 2026-05-27 (Onda 32).
 - **Bloco 4** 🟡 Hardening de auth — INFRA pronta (Onda 32 — 2026-05-27): página `/verificar-email` com reenvio cooldown 60s, action `resendVerification` rate-limited, SQL 0034 grandfathering de users existentes, signUpStoreOwner com redirect condicional. Rate limit catch-all em `/api/auth/*` (Sprint 1.2) + senha mínima 8 chars + `revokeSessionsOnPasswordReset: true`. ATIVAÇÃO aguarda: (1) Resend domain DKIM/SPF/DMARC + (2) rodar migration 0034 em prod + (3) flip `EMAIL_VERIFICATION_REQUIRED=true` no env Vercel.
-- **Bloco 5** ❌ Roteamento multi-tenant — middleware Next pra `{slug}.vitre.site` ou CNAME do lojista.
+- **Bloco 5a** ✅ Roteamento subdomain — middleware Next (`src/middleware.ts`) suporta `{slug}.vitre.site` via rewrite interno pra `/[slug]/*`. Path-based continua DEFAULT. Subdomínios reservados (admin/api/app/www) redirect 301 pro apex. Cookies não precisam de scope `.vitre.site` (admin permanece no apex). Teste local via `*.localtest.me`. Doc: `docs/multi-tenant-routing.md`, ADR-0035. Pendência externa: founder adicionar `*.vitre.site` como wildcard domain no Vercel + DNS `* CNAME cname.vercel-dns.com`.
+- **Bloco 5b** ❌ SEO canonical pra subdomain + redirect 301 path→subdomain opt-in (futuro próximo).
+- **Bloco 5c** ❌ Custom domain CNAME do lojista (futuro distante — Vercel Domains API + SSL on-demand).
 
 Esforço total Fase 2 restante: ~5-7 dias. **Gate absoluto pra qualquer lojista real entrar em produção.**
 
