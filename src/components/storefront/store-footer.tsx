@@ -149,11 +149,11 @@ export function StoreFooter({ store }: StoreFooterProps) {
             © {new Date().getFullYear()} {store.name}. Todos os direitos
             reservados.
           </span>
-          {/* Onda 10 / 21 (2026-05-27): logo da manga + texto. Onda 21:
-              tamanho aumentado de 16px → 22px pra ficar visualmente
-              proporcional ao texto adjacente. <img> puro (não next/image)
-              porque SVG local não exige dangerouslyAllowSVG. aria-hidden
-              pq o texto cumpre o role de label. */}
+          {/* Onda 10 / 21 / 29 (2026-05-27): identidade Mangos Pay sutil
+              no rodapé. Onda 29: troca logo.svg (ícone+wordmark) por
+              favicon.svg (só a manga) — o "Powered by Mangos Pay" texto
+              ao lado já é o wordmark; ter wordmark + wordmark era redundante.
+              Manga sozinha do lado do texto cria identidade limpa. */}
           <a
             href="https://vitre.site"
             target="_blank"
@@ -162,7 +162,7 @@ export function StoreFooter({ store }: StoreFooterProps) {
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/logos/logo.svg"
+              src="/logos/favicon.svg"
               alt=""
               width={22}
               height={22}

@@ -108,7 +108,11 @@ function HomeVariant({ store }: { store: Store }) {
           href={`${baseHref}/buscar`}
           prefetch={false}
           aria-label="Buscar produtos"
-          className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full bg-muted/80 px-3.5 text-muted-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+          // Onda 29 (2026-05-27): bg-muted/80 → bg-muted pra uniformizar
+          // com os botões redondos (Categorias, Favoritos, Sacola) que
+          // já usam bg-muted sólido. Todos os elementos do header da home
+          // agora compartilham o mesmo tom cinza neutro.
+          className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full bg-muted px-3.5 text-muted-foreground outline-none transition-colors hover:bg-gray-200 focus-visible:ring-2 focus-visible:ring-ring"
         >
           <Search className="size-[17px] shrink-0" strokeWidth={1.8} aria-hidden />
           <span className="truncate text-[13px] font-medium tracking-[-0.1px]">
