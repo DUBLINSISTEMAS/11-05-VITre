@@ -37,11 +37,8 @@ import { BannerCarousel } from "@/components/storefront/banner-carousel";
 import { CategoryStrip } from "@/components/storefront/category-strip";
 import { CollectionStrip } from "@/components/storefront/collection-strip";
 import { ProductGrid } from "@/components/storefront/product-grid";
-import { PromoStrip } from "@/components/storefront/promo-strip";
-import { StoreTrustBar } from "@/components/storefront/store-trust-bar";
 import { Button } from "@/components/ui/button";
 import { getSessionOrNull } from "@/lib/auth-server";
-import { hasActivePromo } from "@/lib/pricing";
 import { getHomePageData } from "@/lib/storefront/home-loader";
 import { getStoreBySlug } from "@/lib/storefront/store-loader";
 import type {
@@ -87,88 +84,30 @@ export default async function StoreHomePage({
     .filter((p) => !featuredIds.has(p.id))
     .slice(0, 2);
 
-  // PromoStrip: deriva count + nearest promoEndsAt do que está carregado.
-  const now = new Date();
-  const allLoaded = [
-    ...featuredBlock,
-    ...moreBlock,
-    ...featured.slice(4),
-    ...recent,
-  ];
-  const promoSet = new Map<string, (typeof allLoaded)[number]>();
-  for (const p of allLoaded) {
-    if (!promoSet.has(p.id) && hasActivePromo(p, now)) promoSet.set(p.id, p);
-  }
-  const promoCount = promoSet.size;
-  const promoEndDates = Array.from(promoSet.values())
-    .map((p) => p.promoEndsAt)
-    .filter((d): d is Date => d != null && d > now);
-  const nearestEndsAt =
-    promoEndDates.length > 0
-      ? new Date(Math.min(...promoEndDates.map((d) => d.getTime())))
-      : null;
-
   return (
-    // Mobile: 28px entre seções (Onda 1 — 2026-05-27 análise sênior).
-    // Antes 18px colava demais e parecia "mobile-first sem polimento";
-    // 28 é o respiro de catálogos premium em mobile sem cair em "espaço
-    // vazio". Desktop ≥1024: 48px (sweet spot Aritzia/ZARA/COS).
+    // Mobile: 28px entre seções; desktop ≥1024: 48px.
     //
-    // Ordem da home (Onda 1 — hierarquia voltada à conversão):
+    // Ordem da home (Onda 7 — 2026-05-27, founder review):
     //   1. Banner          → identidade da loja na primeira dobra
-    //   2. Em destaque     → produto entra na primeira dobra (vital pro
-    //                        cliente que veio do WhatsApp curioso)
-    //   3. PromoStrip      → call-out de promoção logo depois do produto
-    //   4. Categorias      → discovery secundária pra quem quer navegar
-    //   5. Vitrines        → coleções editoriais (opcional, abaixo)
-    //   6. More            → grid contínuo sem header
+    //   2. Categorias      → discovery imediato (subiu de pos 4 → pos 2)
+    //   3. Em destaque     → produtos com curadoria, mesma tipografia
+    //                        de Categorias/Vitrines pra ritmo visual
+    //                        consistente entre seções
+    //   4. Vitrines        → coleções editoriais (opcional)
+    //   5. More            → grid contínuo sem header
     //
-    // Antes: Banner → Vitrines → Categorias → Em destaque → Promo → More.
-    // Empurrava o primeiro produto pra ~900-1100px de scroll — barreira
-    // alta de descoberta. Agora cliente vê banner + 2 produtos no first
-    // viewport iPhone 13.
+    // Removidos (Onda 7): StoreTrustBar e PromoStrip — competiam com
+    // a hierarquia de produto sem fluxo claro. Endereço fica no footer
+    // (já existe), WhatsApp fica no bottom-nav (Onda 2 já promoveu),
+    // promoção fica óbvia no badge do próprio card.
     <div className="space-y-7 lg:space-y-12">
       {hasBanner && (
-        // 2026-05-27 (founder review): banner volta a respeitar o
-        // container em mobile também, como na ref Dribbble 1 tela 1
-        // ("card elegante com respiro lateral"). Full-bleed dava
-        // sensação de site genérico, não app — perdia a sensação de
-        // "card editorial" que define a hierarquia.
-        // HeroCard agora aplica rounded+shadow em todas as breakpoints.
         <BannerCarousel
           banners={banners}
           storeSlug={store.slug}
           storeName={store.name}
           rotationSec={store.bannerRotationSec}
           heroVariant={store.heroStyle as HeroVariant}
-        />
-      )}
-
-      {/* Onda 3 (2026-05-27): trust bar discreta. Cliente que veio do
-          WhatsApp/Insta vê localização física + canal direto antes de
-          rolar o catálogo. Prova de "loja existe de verdade". Some
-          silenciosamente quando lojista não preencheu nem cidade nem
-          WhatsApp (improvável — schema obriga whatsappNumber). */}
-      <StoreTrustBar store={store} />
-
-      {featuredBlock.length > 0 && (
-        <ProductGrid
-          storeSlug={store.slug}
-          products={featuredBlock}
-          sectionTitle="Em destaque"
-          seeAllHref={`/${store.slug}/destaques`}
-          priorityFirst={!hasBanner}
-          priorityCount={2}
-          layout="overlay"
-          variant={store.productCardStyle as ProductCardVariant}
-        />
-      )}
-
-      {promoCount > 0 && (
-        <PromoStrip
-          storeSlug={store.slug}
-          count={promoCount}
-          nearestEndsAt={nearestEndsAt}
         />
       )}
 
@@ -187,10 +126,21 @@ export default async function StoreHomePage({
         </section>
       )}
 
+      {featuredBlock.length > 0 && (
+        <ProductGrid
+          storeSlug={store.slug}
+          products={featuredBlock}
+          sectionTitle="Em destaque"
+          seeAllHref={`/${store.slug}/destaques`}
+          priorityFirst={!hasBanner}
+          priorityCount={2}
+          layout="overlay"
+          variant={store.productCardStyle as ProductCardVariant}
+        />
+      )}
+
       {/* Sprint 5.3 — vitrines (coleções). Aparece SE o lojista criou
-          coleção(s) com showInHome=true e que tenham ao menos 1 produto.
-          Onda 1 (2026-05-27): movida pra DEPOIS de Categorias — vitrines
-          são curadoria editorial opcional, descoberta secundária. */}
+          coleção(s) com showInHome=true e que tenham ao menos 1 produto. */}
       {collections.length > 0 && (
         <section className="space-y-2">
           <header>

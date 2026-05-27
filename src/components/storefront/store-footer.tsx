@@ -7,7 +7,7 @@
  * "Powered by Mangos Pay" sutil — marketing involuntário sem competir com a
  * marca da lojista. Quando virar plano pago (Fase 3), pode ficar opcional.
  */
-import { Instagram, MapPin, MessageCircle } from "lucide-react";
+import { Heart, Instagram, MapPin, MessageCircle } from "lucide-react";
 import Link from "next/link";
 
 import type { Store } from "@/db/schema";
@@ -61,6 +61,17 @@ export function StoreFooter({ store }: StoreFooterProps) {
                 className="text-primary hocus:underline inline-block text-sm font-medium underline-offset-2"
               >
                 Fale conosco
+              </Link>
+              {/* Onda 7 (2026-05-27): descoberta secundária pra favoritos.
+                  Header da home tem ícone Heart (acesso direto); footer
+                  fica como rede de segurança pro cliente que já desceu. */}
+              <Link
+                href={`${baseHref}/favoritos`}
+                prefetch={false}
+                className="text-primary hocus:underline inline-flex items-center gap-1.5 text-sm font-medium underline-offset-2"
+              >
+                <Heart className="size-3.5" aria-hidden />
+                Meus favoritos
               </Link>
             </div>
           </div>

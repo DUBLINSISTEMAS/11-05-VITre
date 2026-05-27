@@ -80,15 +80,23 @@ export function ShellContent({
   // edge-to-edge — controla o próprio padding. Bottom-nav permanece (canvas).
   const isCategoriaPage = pathname.includes("/categoria/");
 
+  // Onda 7 (2026-05-27): /favoritos ganhou StoreHeader sticky-title próprio
+  // ("Favoritos · {storeName}" + counter), mesmo padrão de /sacola. Antes
+  // herdava o header da home dentro de favoritos — visualmente ruim porque
+  // mostrava o input "Buscar produtos" no topo de uma página de lista.
+  const isFavoritosPage = pathname.endsWith("/favoritos");
+
   // Header global do shell esconde em: produto (header próprio flutuante),
   // busca (header próprio com search bar), sacola (sticky-title da page),
-  // sucesso (sem header, layout centralizado), categoria (variant="category").
+  // sucesso (sem header, layout centralizado), categoria (variant="category"),
+  // favoritos (sticky-title da page).
   const hideShellHeader =
     isProductPage ||
     isSearchPage ||
     isSacolaPage ||
     isSucessoPage ||
-    isCategoriaPage;
+    isCategoriaPage ||
+    isFavoritosPage;
 
   // Bottom-nav esconde em: produto (PDP fullscreen exceto pelo CTA sticky
   // — canvas mantém, mas hoje shell já escondia), sacola (canvas omite),
@@ -129,7 +137,11 @@ export function ShellContent({
   // `lg:pt-8` (32px) volta a respiração desktop sem afetar mobile (que
   // segue full-bleed).
   const hasOwnLayout =
-    isSacolaPage || isSucessoPage || isCategoriaPage || isProductPage;
+    isSacolaPage ||
+    isSucessoPage ||
+    isCategoriaPage ||
+    isProductPage ||
+    isFavoritosPage;
   // Páginas de listagem com mini-cart visível precisam de pb extra pra
   // o último card não ficar embaixo do mini-cart (h-14) empilhado
   // ACIMA do bottom-nav (~76px). pb-44 (176px) cobre os dois com folga.

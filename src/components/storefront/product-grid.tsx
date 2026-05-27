@@ -65,11 +65,12 @@ export function ProductGrid({
       {showHeader && (
         <header className="flex items-baseline justify-between gap-3">
           {sectionTitle && (
-            // Mobile: 14px (canvas-v1, denso).
-            // Desktop: 18px — título de seção precisa de presença
-            // numa tela grande; canvas mobile fica pequeno e amador
-            // se reaproveitado direto em desktop.
-            <h2 className="text-sm font-semibold tracking-[-0.3px] text-foreground lg:text-[18px] lg:tracking-[-0.4px]">
+            // Onda 7 (2026-05-27): tipografia alinhada às outras seções
+            // da home (Categorias/Vitrines) — 17/20px semibold. Antes
+            // 14/18px deixava "Em destaque" parecendo subtítulo das
+            // demais; agora todas as seções da home têm o mesmo peso
+            // visual, criando ritmo consistente.
+            <h2 className="text-[17px] font-semibold tracking-[-0.4px] text-foreground lg:text-[20px] lg:tracking-[-0.5px]">
               {sectionTitle}
             </h2>
           )}

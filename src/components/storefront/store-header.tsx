@@ -14,7 +14,7 @@
  * usamos valores menores direto. Botões "voltar" usam router.back() com
  * fallback opcional via prop `backHref` (SSR-safe pra cold-loads).
  */
-import { ArrowLeft, Search, ShoppingBag, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, Heart, Search, ShoppingBag, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -22,6 +22,7 @@ import { useCategoriesSidebarTrigger } from "@/components/storefront/categories-
 import { useSacolaDrawerTrigger } from "@/components/storefront/sacola-drawer";
 import type { Store } from "@/db/schema";
 import { useCart } from "@/hooks/use-cart";
+import { useFavorites } from "@/hooks/use-favorites";
 
 type HomeProps = {
   variant?: "home";
@@ -93,7 +94,7 @@ function HomeVariant({ store }: { store: Store }) {
 
         {/* Barra de busca — trigger visual (renderiza como Link, não
             input, pra evitar duplicação com /buscar). flex-1 + min-w-0
-            garante encolhimento até caber em 360px sem empurrar o cart. */}
+            garante encolhimento até caber em 360px sem empurrar os ícones. */}
         <Link
           href={`${baseHref}/buscar`}
           prefetch={false}
@@ -106,9 +107,50 @@ function HomeVariant({ store }: { store: Store }) {
           </span>
         </Link>
 
+        {/* Onda 7 (2026-05-27): Heart no header mobile fecha o gap de
+            descoberta dos favoritos. Antes só DesktopHeader expunha; mobile
+            tinha favorito no PDP mas zero caminho pra ver a lista. Onda 2
+            tirou favoritos do bottom-nav (4 tabs limpo) — agora vive aqui,
+            entre Search e Sacola, espelhando pattern e-commerce mobile
+            (Zara/Aritzia: wishlist pareado com cart na barra de utilidade). */}
+        <FavoritesButton storeSlug={store.slug} />
+
         <SacolaButton variant="solid" />
       </div>
     </header>
+  );
+}
+
+/**
+ * FavoritesButton mobile — espelha o DesktopHeader IconButton heart.
+ * Badge mono com count (igual SacolaButton) só aparece após hidratação
+ * do localStorage. Onda 7 (2026-05-27).
+ */
+function FavoritesButton({ storeSlug }: { storeSlug: string }) {
+  const { count, isHydrated } = useFavorites();
+  const showBadge = isHydrated && count > 0;
+
+  return (
+    <Link
+      href={`/${storeSlug}/favoritos`}
+      prefetch={false}
+      aria-label={
+        showBadge
+          ? `Favoritos com ${count} ${count === 1 ? "item" : "itens"}`
+          : "Favoritos"
+      }
+      className="relative inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-foreground outline-none transition-colors hover:bg-gray-200 focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <Heart className="size-5" strokeWidth={1.6} />
+      {showBadge ? (
+        <span
+          aria-hidden
+          className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 font-mono text-[9px] font-semibold leading-none text-background"
+        >
+          {count > 99 ? "99+" : count}
+        </span>
+      ) : null}
+    </Link>
   );
 }
 
