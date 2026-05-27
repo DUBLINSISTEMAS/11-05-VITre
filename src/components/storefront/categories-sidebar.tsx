@@ -107,7 +107,7 @@ export function CategoriesSidebar({
       <Sheet open={open} onOpenChange={handleOpenChange}>
         <SheetContent
           side="left"
-          className="w-[85vw] max-w-[340px] flex flex-col gap-0 p-0 bg-white border-r-0 shadow-2xl rounded-r-2xl"
+          className="w-[85vw] max-w-[340px] flex flex-col gap-0 p-0 bg-white border-r-0 shadow-2xl rounded-r-2xl overflow-hidden"
           style={brandStyle}
           aria-describedby={undefined}
           // Level 1 (drilledRoot=null) usa o X automático do SheetContent.
