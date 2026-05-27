@@ -21,3 +21,20 @@ export function getConstraintName(e: unknown): string | undefined {
   if (typeof e !== "object" || e === null) return undefined;
   return (e as { constraint?: string }).constraint;
 }
+
+/**
+ * S4.9 (2026-05-26) — antes detectado via `e.message.includes(...)`,
+ * frágil a upgrade do driver pg. Agora estável via SQLSTATE + constraint
+ * name. Caller usa pra decidir retry com novo shortCode.
+ */
+export function isShortCodeCollision(e: unknown): boolean {
+  if (!isUniqueViolation(e)) return false;
+  const constraint = getConstraintName(e);
+  if (constraint === "order_short_code_unique") return true;
+  // Fallback defensivo: alguns dumps antigos renomeiam o constraint.
+  const msg =
+    typeof e === "object" && e !== null
+      ? ((e as { message?: string }).message ?? "")
+      : "";
+  return /short_code/i.test(msg);
+}

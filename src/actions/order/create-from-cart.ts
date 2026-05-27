@@ -42,6 +42,7 @@ import {
   storeTable,
 } from "@/db/schema";
 import { isStockExhausted, resolveStockState } from "@/lib/cart/stock";
+import { isShortCodeCollision } from "@/lib/db-errors";
 import { env } from "@/lib/env";
 import { recordSaleMovements } from "@/lib/order/record-sale-movements";
 import { resolveVariantPrice } from "@/lib/pricing";
@@ -599,7 +600,7 @@ export async function createOrderFromCart(
             break;
           }
           const msg = err instanceof Error ? err.message : String(err);
-          if (msg.includes("order_short_code_unique") || msg.includes("short_code")) {
+          if (isShortCodeCollision(err)) {
             // Colisão de shortCode — tenta de novo.
             continue;
           }

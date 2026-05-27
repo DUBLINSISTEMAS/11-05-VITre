@@ -46,6 +46,7 @@ import {
 } from "@/db/schema";
 import { recordAuditEvent } from "@/lib/audit";
 import { auth } from "@/lib/auth";
+import { isShortCodeCollision } from "@/lib/db-errors";
 import { logger } from "@/lib/logger";
 import { recordSaleMovements } from "@/lib/order/record-sale-movements";
 import { resolveVariantPrice } from "@/lib/pricing";
@@ -600,11 +601,7 @@ export async function createBalcaoSale(
               break;
             } catch (err: unknown) {
               quoteLastError = err;
-              const msg = err instanceof Error ? err.message : String(err);
-              if (
-                msg.includes("order_short_code_unique") ||
-                msg.includes("short_code")
-              ) {
+              if (isShortCodeCollision(err)) {
                 continue;
               }
               throw err;
@@ -856,11 +853,7 @@ export async function createBalcaoSale(
                 };
                 break;
               }
-              const msg = err instanceof Error ? err.message : String(err);
-              if (
-                msg.includes("order_short_code_unique") ||
-                msg.includes("short_code")
-              ) {
+              if (isShortCodeCollision(err)) {
                 continue;
               }
               throw err;
@@ -1282,11 +1275,7 @@ export async function createBalcaoSale(
               };
               break;
             }
-            const msg = err instanceof Error ? err.message : String(err);
-            if (
-              msg.includes("order_short_code_unique") ||
-              msg.includes("short_code")
-            ) {
+            if (isShortCodeCollision(err)) {
               continue; // retry shortCode
             }
             throw err;
