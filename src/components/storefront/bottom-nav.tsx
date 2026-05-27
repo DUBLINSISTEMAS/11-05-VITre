@@ -174,8 +174,8 @@ function PillNav({ tabs, activeTab, cartBadge, pulseSeed }: VariantProps) {
   return (
     <nav
       aria-label="Navegação principal"
-      className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around rounded-t-2xl border-t border-border bg-background pt-2 lg:hidden"
-      style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 14px)" }}
+      className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around rounded-t-2xl border-t border-border bg-background pt-1.5 lg:hidden"
+      style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 10px)" }}
     >
       {tabs.map((tab) => (
         <PillItem
@@ -276,8 +276,8 @@ function RuleNav({ tabs, activeTab, cartBadge, pulseSeed }: VariantProps) {
   return (
     <nav
       aria-label="Navegação principal"
-      className="fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around rounded-t-2xl border-t border-border bg-background pt-2 pb-1 lg:hidden"
-      style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 4px)" }}
+      className="fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around rounded-t-2xl border-t border-border bg-background pt-1.5 pb-1 lg:hidden"
+      style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 2px)" }}
     >
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
