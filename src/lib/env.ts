@@ -67,6 +67,39 @@ const envSchema = z.object({
       z.boolean(),
     )
     .default(false),
+
+  /**
+   * Bloco 5b Fase 2 — estilo de canonical pras páginas do storefront.
+   *   - "path" (default): canonical aponta pra `vitre.site/{slug}/*`.
+   *     Compat sem requerer wildcard DNS.
+   *   - "subdomain": canonical aponta pra `{slug}.vitre.site/*`. Google
+   *     consolida autoridade no subdomain (1 entidade por loja). EXIGE
+   *     wildcard DNS + SSL Vercel (ver docs/multi-tenant-routing.md).
+   * Path-based middleware (Bloco 5a) continua roteando AMBOS — só
+   * o que muda é o canonical e o sitemap.
+   */
+  STOREFRONT_CANONICAL_HOST_STYLE: z
+    .enum(["path", "subdomain"])
+    .default("path"),
+
+  /**
+   * Bloco 5b Fase 2 — flag pra ativar redirect 301 path→subdomain.
+   *   - false (default): ambos URLs renderizam normalmente
+   *   - true: requests pra `vitre.site/{slug}/*` redirecionam pra
+   *     `{slug}.vitre.site/*` (consolida tráfego no canonical novo)
+   * SÓ ATIVAR depois que CANONICAL_HOST_STYLE=subdomain + DNS wildcard
+   * pronto. Senão, cliente cai em domínio sem SSL.
+   * Não afeta admin (/admin/*), auth (/entrar, /criar-loja/*), apex root,
+   * rotas reservadas — apenas paths que são slug de loja real.
+   */
+  STOREFRONT_REDIRECT_TO_SUBDOMAIN: z
+    .preprocess(
+      (v) =>
+        typeof v === "string" &&
+        ["true", "1", "yes"].includes(v.trim().toLowerCase()),
+      z.boolean(),
+    )
+    .default(false),
   /** Destinatário do widget de feedback flutuante. Default em código:
       suporte@mangospay.app (Passo 14 redesign). */
   FEEDBACK_TO_EMAIL: optionalString,

@@ -19,6 +19,7 @@ import {
 } from "@/db/schema";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
+import { buildStorefrontUrl } from "@/lib/storefront/canonical-url";
 import { withServiceRole } from "@/lib/tenant";
 
 export const revalidate = 3600; // 1h
@@ -108,12 +109,25 @@ async function loadFullSitemap(
       { url: baseUrl, lastModified: new Date(), priority: 1.0 },
     ];
 
+    // Onda 34 (Bloco 5b): URLs do storefront via helper canônico —
+    // respeitam STOREFRONT_CANONICAL_HOST_STYLE (path|subdomain).
     for (const store of stores) {
-      const storeUrl = `${baseUrl}/${store.slug}`;
       entries.push(
-        { url: storeUrl, lastModified: store.updatedAt, priority: 0.9 },
-        { url: `${storeUrl}/sobre`, lastModified: store.updatedAt, priority: 0.5 },
-        { url: `${storeUrl}/buscar`, lastModified: store.updatedAt, priority: 0.4 },
+        {
+          url: buildStorefrontUrl(store.slug, ""),
+          lastModified: store.updatedAt,
+          priority: 0.9,
+        },
+        {
+          url: buildStorefrontUrl(store.slug, "/sobre"),
+          lastModified: store.updatedAt,
+          priority: 0.5,
+        },
+        {
+          url: buildStorefrontUrl(store.slug, "/buscar"),
+          lastModified: store.updatedAt,
+          priority: 0.4,
+        },
       );
     }
 
@@ -121,7 +135,7 @@ async function loadFullSitemap(
       const slug = slugByStoreId.get(cat.storeId);
       if (!slug) continue;
       entries.push({
-        url: `${baseUrl}/${slug}/categoria/${cat.slug}`,
+        url: buildStorefrontUrl(slug, `/categoria/${cat.slug}`),
         priority: 0.7,
       });
     }
@@ -130,7 +144,7 @@ async function loadFullSitemap(
       const slug = slugByStoreId.get(product.storeId);
       if (!slug) continue;
       entries.push({
-        url: `${baseUrl}/${slug}/produto/${product.slug}`,
+        url: buildStorefrontUrl(slug, `/produto/${product.slug}`),
         lastModified: product.updatedAt,
         priority: 0.6,
       });

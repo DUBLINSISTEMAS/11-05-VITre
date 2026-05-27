@@ -36,6 +36,7 @@
  */
 import { NextResponse, type NextRequest } from "next/server";
 
+import { env } from "@/lib/env";
 import { RESERVED_SLUGS } from "@/lib/slug";
 
 const APEX_DOMAINS = new Set<string>([
@@ -76,7 +77,18 @@ export function middleware(request: NextRequest) {
   const isVitreSubdomain = hostname.endsWith(".vitre.site");
 
   if (isApex) {
-    // vitre.site puro — roteamento normal Next, sem rewrite.
+    // vitre.site puro — roteamento normal Next.
+    //
+    // Onda 34 (Bloco 5b): se STOREFRONT_REDIRECT_TO_SUBDOMAIN=true E o
+    // path começa com um slug de loja (não-reservado), redirect 301
+    // pra `{slug}.vitre.site/*`. Consolida tráfego no canonical novo
+    // depois que a infra subdomain estiver pronta. Default false.
+    if (env.STOREFRONT_REDIRECT_TO_SUBDOMAIN) {
+      const redirectUrl = maybeBuildSubdomainRedirect(request, hostname);
+      if (redirectUrl) {
+        return NextResponse.redirect(redirectUrl, { status: 301 });
+      }
+    }
     return NextResponse.next();
   }
 
@@ -130,6 +142,50 @@ export function middleware(request: NextRequest) {
   const url = request.nextUrl.clone();
   url.pathname = `/${subdomain}${url.pathname === "/" ? "" : url.pathname}`;
   return NextResponse.rewrite(url);
+}
+
+/**
+ * Onda 34 (Bloco 5b): se request veio em apex (`vitre.site`) E o primeiro
+ * segmento do path é um slug de loja válido (não-reservado), monta a URL
+ * equivalente no subdomain pra redirect 301.
+ *
+ * Retorna null quando não deve redirecionar:
+ *  - Apex root (`/`) — landing pública
+ *  - Rotas reservadas (admin, criar-loja, api, etc.)
+ *  - Subdomínios proibidos (admin, www, etc.) — não viram subdomain de loja
+ *
+ * Em dev (`localhost`), não redireciona (apex check do caller cobre, mas
+ * defesa adicional aqui — port + host diferentes não fazem subdomain válido).
+ */
+function maybeBuildSubdomainRedirect(
+  request: NextRequest,
+  hostname: string,
+): string | null {
+  // Dev / preview / qualquer apex que não seja vitre.site puro: skip.
+  // (Subdomain redirect só faz sentido com wildcard DNS prod.)
+  if (hostname !== "vitre.site" && hostname !== "www.vitre.site") {
+    return null;
+  }
+
+  const pathname = request.nextUrl.pathname;
+  if (pathname === "/" || pathname === "") return null;
+
+  // Primeiro segmento do path.
+  const segments = pathname.split("/").filter(Boolean);
+  const firstSegment = segments[0];
+  if (!firstSegment) return null;
+
+  // Rota reservada (admin, criar-loja, entrar, etc): NÃO redirecionar.
+  if (RESERVED_SLUGS.has(firstSegment)) return null;
+
+  // Subdomínio proibido (admin.*, www.*): NÃO virar subdomain.
+  if (RESERVED_SUBDOMAINS.has(firstSegment)) return null;
+
+  // Slug válido — monta URL no subdomain mantendo o resto do path/search.
+  const remainingPath = "/" + segments.slice(1).join("/");
+  const search = request.nextUrl.search;
+  const protocol = request.nextUrl.protocol;
+  return `${protocol}//${firstSegment}.vitre.site${remainingPath === "/" ? "" : remainingPath}${search}`;
 }
 
 // Matcher: pula assets estáticos e API routes (não fazem sentido rewritar).

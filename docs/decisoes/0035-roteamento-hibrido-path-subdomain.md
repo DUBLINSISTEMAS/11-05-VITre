@@ -86,11 +86,34 @@ http://admin.localtest.me:3000  →  http://localtest.me:3000/admin
 
 Não precisa mexer em `/etc/hosts`.
 
+## Atualização Bloco 5b (2026-05-27 — Onda 34)
+
+Adicionado controle de canonical/SEO via 2 env vars (default mantém
+estado anterior):
+
+| Env var | Default | Quando flipar |
+|---|---|---|
+| `STOREFRONT_CANONICAL_HOST_STYLE` | `path` | Pra `subdomain` quando wildcard DNS + SSL prontos. Canonical de PDP/categoria/coleção/sitemap aponta pra `{slug}.vitre.site/*` |
+| `STOREFRONT_REDIRECT_TO_SUBDOMAIN` | `false` | Pra `true` SOMENTE após canonical=subdomain — middleware redireciona 301 path→subdomain (consolida tráfego no novo canonical) |
+
+**Ordem de ativação em prod:**
+1. Wildcard DNS + SSL Vercel prontos (Bloco 5a — pendência externa)
+2. Flip `STOREFRONT_CANONICAL_HOST_STYLE=subdomain` → redeploy → Google
+   começa a indexar subdomain como canônico
+3. Aguardar 2-4 semanas (Googlebot reindexar)
+4. Flip `STOREFRONT_REDIRECT_TO_SUBDOMAIN=true` → redeploy → path
+   redireciona pra subdomain via 301 do middleware
+
+Helper centralizado em `src/lib/storefront/canonical-url.ts` —
+`generateMetadata` de todas as páginas usa, sitemap também.
+
 ## Consequências
 
 - ✅ Lojistas premium podem migrar pra subdomain sem perder links antigos
 - ✅ 1 wildcard DNS + 1 wildcard SSL — operacional simples
-- ✅ Migração SEO opt-in (Fase 5b): canonical pode apontar pra subdomain quando founder decidir
+- ✅ Migração SEO controlada por 2 flags (canonical primeiro, depois redirect)
+- ✅ Bloco 5b — fim de gap real: PDP não tinha canonical antes (Google
+  podia indexar variantes `?utm_*` como conteúdo separado)
 - ⚠️ Slug deve continuar único e seguir mesma regex `^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$` (subdomain válido = slug válido)
 - ⚠️ Custom domain (CNAME do lojista, ex: `sandrabrito.com.br`) ainda NÃO suportado — Fase 5c
 

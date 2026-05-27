@@ -10,8 +10,8 @@ import { notFound } from "next/navigation";
 
 import { ProductCard } from "@/components/storefront/product-card";
 import { ProductDetailView } from "@/components/storefront/product-detail-view";
-import { env } from "@/lib/env";
 import { getEffectivePrice } from "@/lib/pricing";
+import { buildStorefrontUrl } from "@/lib/storefront/canonical-url";
 import { getCategoryTree } from "@/lib/storefront/categories-loader";
 import { getProductBySlug } from "@/lib/storefront/products-loader";
 import { getRelatedProducts } from "@/lib/storefront/related-products-loader";
@@ -72,6 +72,12 @@ export async function generateMetadata({
     `${product.name} disponível em ${store.name}. Compre via WhatsApp.`;
 
   const ogImage = product.images[0]?.url;
+  // Onda 34 (Bloco 5b): canonical absoluto via helper — antes PDP NÃO
+  // tinha canonical (gap real, Google podia indexar variantes ?utm_*).
+  const canonical = buildStorefrontUrl(
+    store.slug,
+    `/produto/${product.slug}`,
+  );
 
   // Sprint flash 2026-05-24 — adiciona width/height/type/alt no OG image
   // pra WhatsApp/Facebook conseguirem renderizar preview rico (antes
@@ -81,9 +87,11 @@ export async function generateMetadata({
   return {
     title: product.name,
     description,
+    alternates: { canonical },
     openGraph: {
       title: product.name,
       description,
+      url: canonical,
       images: ogImage
         ? [
             {
@@ -138,7 +146,7 @@ export default async function ProductPage({
       availability: isOutOfStock
         ? "https://schema.org/OutOfStock"
         : "https://schema.org/InStock",
-      url: `${env.NEXT_PUBLIC_APP_URL}/${store.slug}/produto/${product.slug}`,
+      url: buildStorefrontUrl(store.slug, `/produto/${product.slug}`),
     },
   };
 

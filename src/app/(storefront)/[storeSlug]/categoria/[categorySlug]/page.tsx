@@ -21,7 +21,7 @@ import { Pagination } from "@/components/common/pagination";
 import { CategoryStrip } from "@/components/storefront/category-strip";
 import { ProductGrid } from "@/components/storefront/product-grid";
 import { StoreHeader } from "@/components/storefront/store-header";
-import { env } from "@/lib/env";
+import { buildStorefrontUrl } from "@/lib/storefront/canonical-url";
 import {
   getCategoryTree,
   type CategoryNode,
@@ -62,8 +62,12 @@ export async function generateMetadata({
   const { current: category } = findCategoryWithSiblings(tree, categorySlug);
   if (!category) return { title: "Categoria não encontrada" };
 
-  const baseUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
-  const canonical = `${baseUrl}/${storeSlug}/categoria/${categorySlug}`;
+  // Onda 34 (Bloco 5b): canonical via helper centralizado — respeita
+  // STOREFRONT_CANONICAL_HOST_STYLE (path|subdomain).
+  const canonical = buildStorefrontUrl(
+    storeSlug,
+    `/categoria/${categorySlug}`,
+  );
   const { page } = categoriaSearchSchema.parse(sp);
 
   return {

@@ -21,7 +21,7 @@ import { notFound } from "next/navigation";
 
 import { ProductGrid } from "@/components/storefront/product-grid";
 import { StoreHeader } from "@/components/storefront/store-header";
-import { env } from "@/lib/env";
+import { buildStorefrontUrl } from "@/lib/storefront/canonical-url";
 import { loadCollectionBySlug } from "@/lib/storefront/collection-loader";
 import { getStoreBySlug } from "@/lib/storefront/store-loader";
 import type { ProductCardVariant } from "@/lib/storefront/themes";
@@ -46,8 +46,11 @@ export async function generateMetadata({
   );
   if (!collection) return { title: "Coleção não encontrada" };
 
-  const baseUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
-  const canonical = `${baseUrl}/${storeSlug}/colecao/${collectionSlug}`;
+  // Onda 34 (Bloco 5b): canonical via helper centralizado.
+  const canonical = buildStorefrontUrl(
+    storeSlug,
+    `/colecao/${collectionSlug}`,
+  );
 
   return {
     title: collection.name,
