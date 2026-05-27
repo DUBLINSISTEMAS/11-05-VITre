@@ -585,12 +585,11 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
         </div>
       </form>
 
-      {/* Sticky CTA WA — Onda 27 (2026-05-27):
-          - rounded-t-2xl + border-t leve pra paridade Apple com o
-            bottom-nav arredondado (Onda 14/19).
-          - Total INLINE no CTA: cliente que rolou pra cima/baixo no
-            form perde de vista o totals card; ver o valor a pagar
-            colado no botão de ação é padrão Shopee/Shein/Aritzia. */}
+      {/* Sticky CTA WA — Onda 27/30 (2026-05-27):
+          - rounded-t-2xl + border-t leve pra paridade Apple-style
+          - Onda 30: total inline REMOVIDO (founder review). Valor
+            permanece em destaque no totals card acima — duplicação no
+            CTA virava ruído. CTA verbal puro, foco na ação. */}
       <div
         className="border-border/40 bg-background fixed inset-x-0 bottom-0 z-40 rounded-t-2xl border-t px-4 py-3"
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
@@ -610,11 +609,7 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
             ) : (
               <>
                 <WhatsAppIcon className="size-5" />
-                <span>Finalizar no WhatsApp</span>
-                <span aria-hidden className="opacity-60">
-                  ·
-                </span>
-                <span className="tabular-nums">{formatBRL(totalAfterCoupon)}</span>
+                Finalizar no WhatsApp
               </>
             )}
           </Button>
