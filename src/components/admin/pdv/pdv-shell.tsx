@@ -97,78 +97,21 @@ import { logger } from "@/lib/logger";
 import { formatBRL, getEffectivePrice } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
-interface CartItem {
-  productId: string;
-  variantId: string | null;
-  productName: string;
-  variantName: string | null;
-  priceInCents: number;
-  quantity: number;
-  thumbUrl: string | null;
-  trackStock: boolean;
-  stockQuantity: number | null;
-  /**
-   * Desconto por linha em centavos (Fase 4 / 2026-05-21). NULL ou 0 = sem
-   * desconto. Source of truth em cents — % é só UX. Validação server-side
-   * garante `<= priceInCents × quantity`. Persiste em
-   * `order_item.discount_in_cents`.
-   */
-  discountInCents: number | null;
-  /**
-   * Snapshot dos preços do produto pra recalcular quando lojista
-   * vincula cliente atacado COM carrinho já montado (sprint flash
-   * 2026-05-24). basePriceInCents = preço varejo (sem promo);
-   * wholesalePriceInCents = preço atacado quando produto tem (null
-   * quando produto não tem preço atacado cadastrado).
-   */
-  basePriceInCents: number;
-  wholesalePriceInCents: number | null;
-}
-
-interface PaymentMethodOption {
-  value: PaymentMethod;
-  label: string;
-  Icon: typeof BanknoteIcon;
-}
-
-interface LastSale {
-  publicToken: string | null;
-  totalInCents: number;
-}
-
-const PAYMENT_METHODS: PaymentMethodOption[] = [
-  { value: "cash", label: "Dinheiro", Icon: BanknoteIcon },
-  { value: "pix", label: "PIX", Icon: ReceiptIcon },
-  { value: "debit", label: "Cartão débito", Icon: CreditCardIcon },
-  { value: "credit", label: "Cartão crédito", Icon: CreditCardIcon },
-  { value: "other", label: "Outro", Icon: PackageIcon },
-];
-
-const MAX_PAYMENT_LINES = 5;
-
-/**
- * Sprint 1A — uma linha do pagamento dividido no form do PDV.
- * Strings em vez de cents pra acomodar UX de digitação (vírgula, vazio).
- * Conversão pra cents acontece no submit.
- */
-interface PaymentLineState {
-  id: string;
-  method: PaymentMethod;
-  amountInput: string;
-  cashReceivedInput: string;
-  /**
-   * Parcelas do cartão de crédito (1..12 no PDV — limite prático BR).
-   * Só faz sentido > 1 quando method='credit'. Resetado pra 1 ao trocar
-   * de método. Persistido em `order_payment.installments` (SQL 70).
-   * Mangos Pay NÃO calcula juros — só registra a escolha. A maquininha
-   * cobra a taxa do lojista fora do sistema.
-   */
-  installments: number;
-  notes: string;
-}
-
-/** Limite de parcelas oferecido no PDV — padrão varejo BR. */
-const MAX_PDV_INSTALLMENTS = 12;
+// S4.1 (2026-05-26) — tipos + constantes extraídos pra arquivos dedicados.
+// pdv-shell consome via import. Mantém comportamento idêntico.
+import {
+  MAX_PAYMENT_LINES,
+  MAX_PDV_INSTALLMENTS,
+  PAYMENT_METHODS,
+} from "./constants";
+import { FieldText } from "./sections/field-text";
+import { FKeysLegend } from "./sections/fkeys-legend";
+import type {
+  CartItem,
+  LastSale,
+  PaymentLineState,
+  PaymentMethodOption,
+} from "./types";
 
 function nextPaymentLineId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -1704,28 +1647,7 @@ function CreditInstallmentSelector({
   );
 }
 
-function FKeysLegend() {
-  const keys: Array<{ key: string; label: string }> = [
-    { key: "F2", label: "Buscar produto" },
-    { key: "F3", label: "Buscar cliente" },
-    { key: "F4", label: "Finalizar venda" },
-    { key: "F8", label: "Busca avançada" },
-    { key: "F9", label: "Desconto manual" },
-    { key: "ESC", label: "Limpar venda" },
-  ];
-  return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-line pt-3 text-[11px] text-ink-4 lg:px-1">
-      {keys.map((k) => (
-        <span key={k.key} className="inline-flex items-center gap-1.5">
-          <kbd className="mono inline-block rounded border border-line bg-bg-app px-1.5 py-[1px] text-[10.5px] font-semibold text-ink-2">
-            {k.key}
-          </kbd>
-          <span>{k.label}</span>
-        </span>
-      ))}
-    </div>
-  );
-}
+// FKeysLegend extraído pra ./sections/fkeys-legend.tsx (S4.1).
 
 // ---------------------------------------------------------------------
 // Subcomponentes
@@ -3370,40 +3292,4 @@ function FullCustomerCreateDialog({
   );
 }
 
-const FieldText = forwardRef<
-  HTMLInputElement,
-  {
-    label: string;
-    value: string;
-    onChange: (v: string) => void;
-    placeholder?: string;
-    error?: string;
-    required?: boolean;
-    type?: string;
-  }
->(function FieldText(
-  { label, value, onChange, placeholder, error, required, type = "text" },
-  ref,
-) {
-  return (
-    <div>
-      <label className="text-ink-2 mb-1 block text-[12px] font-medium">
-        {label}
-      </label>
-      <input
-        ref={ref}
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        required={required}
-        className={`bg-surface h-10 w-full rounded-[8px] border px-3 text-[13px] outline-none ${
-          error ? "border-red-500" : "border-line focus:border-brand"
-        }`}
-      />
-      {error && (
-        <p className="mt-1 text-[10.5px] text-red-600">{error}</p>
-      )}
-    </div>
-  );
-});
+// FieldText extraído pra ./sections/field-text.tsx (S4.1).
