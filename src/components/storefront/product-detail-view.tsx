@@ -87,8 +87,13 @@ export function ProductDetailView({
     // shell-content.tsx hasOwnLayout). Não precisa de `-mx-*` pra
     // compensar; o `<article>` é o próprio container da página.
     <article>
-      {/* Mobile layout */}
-      <div className="flex flex-col lg:hidden">
+      {/* Mobile layout. `pb-28` (112px) reserva safe-zone abaixo do
+          conteúdo pra que a CTA sticky `fixed bottom-0` (~88px com
+          safe-area-inset-bottom no iPhone) não cubra o último item
+          visível. Substitui o `pb-24` que ficava no panel + `pb-32`
+          que ficava no wrapper relatedSection — antes os dois somavam
+          com o `mt-10` da section gerando ~150px de espaço branco. */}
+      <div className="flex flex-col pb-28 lg:hidden lg:pb-0">
         {/* Gallery + floating header */}
         <div className="relative">
           <ProductGallery
@@ -116,14 +121,11 @@ export function ProductDetailView({
         />
 
         {/* Mobile: "Você pode gostar também" entra DENTRO do flex-col
-            do PDP, antes da CTA sticky (fixed bottom-0 do panel).
-            pb-32 garante que o último card não fique atrás da CTA
-            (que mede ~88px com safe-area). Antes ficava depois do
-            </article> e ninguém via sem rolar até o fim, escondida
-            pela CTA. */}
-        {relatedSection ? (
-          <div className="mt-2 pb-32">{relatedSection}</div>
-        ) : null}
+            do PDP, antes da CTA sticky. A section interna controla
+            o próprio mt-4 + border-t + pt-5 (16+20px de respiro
+            apertado estilo loja online). Safe-zone pra CTA mora no
+            flex-col pai (pb-28) — sem dupla margem. */}
+        {relatedSection}
       </div>
 
       {/* Desktop layout */}

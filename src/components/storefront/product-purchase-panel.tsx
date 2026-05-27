@@ -35,7 +35,7 @@
  * stepper (qty=1 implícito; cliente ajusta na sacola), sem share, sem
  * descrição colapsável (canvas mostra completa), sem framer-motion.
  */
-import { CreditCardIcon, Heart, MessageCircleIcon, TruckIcon } from "lucide-react";
+import { Heart, MessageCircleIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 
@@ -102,12 +102,6 @@ const META_FIELDS = [
   ["FORRO", "lining"],
   ["LAVAGEM", "washing"],
 ] as const;
-
-  const TRUST_ITEMS = [
-    [TruckIcon, "Entrega ou retirada", "Combine direto com a loja."],
-    [CreditCardIcon, "Pagamento combinado", "Sem cobrança pelo site."],
-    [MessageCircleIcon, "Atendimento no WhatsApp", "Tire dúvidas antes de finalizar."],
-  ] as const;
 
 export function ProductPurchasePanel({
   product,
@@ -282,8 +276,17 @@ export function ProductPurchasePanel({
 
   return (
     <>
-      {/* Scrollable content */}
-      <div className="pb-24 lg:pb-0">
+      {/*
+        Scrollable content — sem pb-24 mobile a partir de 2026-05-27
+        (founder review). Antes criava 96px de espaço em branco entre
+        o final do bloco do produto e a section "Você pode gostar"
+        que vem logo abaixo. A safe-zone pra CTA sticky (fixed
+        bottom-0, ~88px de altura) é coberta agora pelo `pb-32`
+        aplicado no wrapper da relatedSection (product-detail-view).
+        Quando NÃO há related, a tela termina no CTA e ninguém vê
+        ausência do safe-zone porque não há conteúdo a esconder.
+      */}
+      <div className="lg:pb-0">
         {/* Title block — canvas linhas 261-271.
             Desktop scaling 2026-05-26 (Onda 6): mobile mantém canvas
             22px; desktop sobe pra 30px (h1) e 26px (preço) — produto
@@ -432,29 +435,21 @@ export function ProductPurchasePanel({
           </div>
         )}
 
-        {/* Trust block */}
-        <div className="px-4 pt-5 pb-6">
-          <div className="grid gap-2 rounded-xl border border-border bg-muted/30 p-3">
-            {TRUST_ITEMS.map(([Icon, title, description]) => (
-              <div key={title} className="flex gap-2.5">
-                <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
-                <div>
-                  <div className="text-[11.5px] font-semibold text-foreground">
-                    {title}
-                  </div>
-                  <div className="text-[10.5px] leading-snug text-muted-foreground">
-                    {description}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+        {/* Trust block REMOVIDO (2026-05-27 — founder review):
+            os 3 cards "Entrega ou retirada", "Pagamento combinado",
+            "Atendimento no WhatsApp" eram ruído ocupando espaço entre
+            o produto e a section de relacionados. A informação já
+            estava implícita no CTA "Comprar pelo WhatsApp" e na seção
+            "Como pagar" da loja (que segue abaixo quando preenchida). */}
 
-          {/* "Como pagar" — paymentMethodsNote da loja (Fase 2 / ADR-0013).
-              Complementa o trust block; não substitui. Renderiza só
-              quando o lojista preencheu o campo em /admin/configuracoes. */}
-          {paymentMethodsNote && paymentMethodsNote.trim() !== "" && (
-            <div className="mt-3 rounded-xl border border-border bg-background p-3">
+        {/* "Como pagar" — paymentMethodsNote da loja (Fase 2 / ADR-0013).
+            Renderiza só quando o lojista preencheu o campo em
+            /admin/configuracoes. Sem o trust block acima agora ele é
+            standalone e respira sozinho com px-4 pb-4 (era pb-6 da
+            soma com o trust). */}
+        {paymentMethodsNote && paymentMethodsNote.trim() !== "" && (
+          <div className="px-4 pt-4 pb-4">
+            <div className="rounded-xl border border-border bg-background p-3">
               <div className="text-[11.5px] font-semibold text-foreground">
                 Como pagar
               </div>
@@ -462,8 +457,8 @@ export function ProductPurchasePanel({
                 {paymentMethodsNote}
               </p>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Sticky CTA — canvas linhas 342-353 */}

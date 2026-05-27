@@ -124,14 +124,25 @@ export default async function ProductPage({
 
   const relatedSection =
     related.length > 0 ? (
-      <section className="mx-auto mt-10 w-full max-w-screen-xl px-4 pb-10 lg:px-0">
-        <h2 className="text-[15px] font-semibold tracking-[-0.3px] text-foreground">
+      // Estrutura premium estilo loja online (Zara/Aritzia):
+      // - `border-t` sutil separa visualmente do bloco do produto sem
+      //   precisar de espaço grande em branco (hierarquia tipográfica
+      //   + linha fina já comunica "seção nova").
+      // - Mobile: `mt-4 pt-5` (16px + 20px) — apertado, sinaliza que
+      //   tem mais conteúdo na próxima dobra logo após o CTA.
+      // - Desktop: `lg:mt-14 lg:pt-10` — respiração generosa,
+      //   "ar" entre as seções.
+      // - Título com tracking ajustado pra parecer editorial.
+      <section className="mx-auto mt-4 w-full max-w-screen-xl border-t border-border/70 px-4 pt-5 pb-10 lg:mt-14 lg:px-0 lg:pt-10">
+        <h2 className="text-[15px] font-semibold tracking-[-0.3px] text-foreground lg:text-[20px] lg:tracking-[-0.5px]">
           Você pode gostar também
         </h2>
-        {/* Mobile: scroll horizontal · Desktop: grid responsivo. */}
-        <div className="-mx-4 mt-4 flex gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible lg:px-0 lg:pb-0 xl:grid-cols-6">
+        {/* Mobile: scroll horizontal denso (gap-2.5) — cards aparecem
+            parcialmente cortados no edge direito sinalizando "tem mais".
+            Desktop: grid responsivo. */}
+        <div className="-mx-4 mt-3 flex gap-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:mt-5 lg:grid lg:grid-cols-3 lg:gap-5 lg:overflow-visible lg:px-0 lg:pb-0 xl:grid-cols-6">
           {related.map((p) => (
-            <div key={p.id} className="w-[150px] shrink-0 lg:w-auto">
+            <div key={p.id} className="w-[148px] shrink-0 lg:w-auto">
               <ProductCard
                 product={p}
                 storeSlug={store.slug}
