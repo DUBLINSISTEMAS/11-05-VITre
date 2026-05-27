@@ -90,7 +90,9 @@ export default async function CollectionPage({
         counter={formatPiecesCounter(collection.items.length)}
       />
 
-      <div className="px-4 pb-24 pt-1 lg:pb-12">
+      {/* pb-44 mobile reserva safe-zone pro MiniCartBar (h-14) +
+          BottomNav (~76px) empilhados. Desktop pb-12 (sem mini-cart). */}
+      <div className="px-4 pb-44 pt-1 lg:pb-12">
         {collection.items.length === 0 ? (
           <div className="text-muted-foreground bg-muted/30 rounded-2xl px-6 py-12 text-center text-sm">
             <p className="text-base font-medium">Coleção vazia</p>

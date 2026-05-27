@@ -178,7 +178,11 @@ export default async function CategoryPage({
 
       <CategoryFilterChips basePath={basePath} attributes={attributes} />
 
-      <div className="px-4 pb-24 pt-1 lg:pb-12">
+      {/* pb-44 mobile (176px) reserva safe-zone pra MiniCartBar (h-14)
+          + BottomNav (~76px) quando empilhados. Desktop volta pra pb-12
+          pois não tem mini-cart. Sem isso, o último produto da grid
+          fica coberto pelo overlay. */}
+      <div className="px-4 pb-44 pt-1 lg:pb-12">
         {result.items.length === 0 ? (
           <div className="text-muted-foreground bg-muted/30 rounded-2xl px-6 py-12 text-center text-sm">
             <p className="text-base font-medium">Nenhum produto encontrado</p>

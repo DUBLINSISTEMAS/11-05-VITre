@@ -13,6 +13,7 @@ import type { CSSProperties } from "react";
 import { BottomNav, type BottomNavVariant } from "@/components/storefront/bottom-nav";
 import { CategoriesSidebar } from "@/components/storefront/categories-sidebar";
 import { DesktopHeader } from "@/components/storefront/desktop-header";
+import { MiniCartBar } from "@/components/storefront/mini-cart-bar";
 import { StoreFooter } from "@/components/storefront/store-footer";
 import { StoreHeader } from "@/components/storefront/store-header";
 import type { Store } from "@/db/schema";
@@ -63,6 +64,16 @@ export function ShellContent({
   // sucesso (canvas omite — fullscreen com 2 CTAs no rodapé).
   const hideBottomNav = isProductPage || isSacolaPage || isSucessoPage;
 
+  // Mini-cart bar — atalho "modo compra" em páginas de listagem. Aparece
+  // SÓ quando o cliente tem 1+ item na sacola (controle interno do
+  // componente via useCart.count). Mobile only. Ref Dribbble 1.
+  const isListingPage =
+    isCategoriaPage ||
+    isSearchPage ||
+    pathname.endsWith("/destaques") ||
+    pathname.includes("/colecao/");
+  const showMiniCart = isListingPage && !hideBottomNav;
+
   // Footer informativo (nome loja + WhatsApp + Instagram + endereço + sobre +
   // contato). Aparece em todas as páginas EXCETO:
   //   - produto: PDP tem CTA sticky "Comprar pelo WhatsApp" + bloco "Tire
@@ -88,11 +99,17 @@ export function ShellContent({
   // segue full-bleed).
   const hasOwnLayout =
     isSacolaPage || isSucessoPage || isCategoriaPage || isProductPage;
+  // Páginas de listagem com mini-cart visível precisam de pb extra pra
+  // o último card não ficar embaixo do mini-cart (h-14) empilhado
+  // ACIMA do bottom-nav (~76px). pb-44 (176px) cobre os dois com folga.
+  // Quando carrinho vazio, mini-cart some — mas mantém pb-44 pra evitar
+  // jank visual no momento de adicionar item (layout não pula).
+  const listingPbClass = showMiniCart ? "pb-44 lg:pb-12" : "pb-24 lg:pb-12";
   const mainClass = hasOwnLayout
     ? isProductPage
       ? "mx-auto w-full max-w-screen-xl flex-1 lg:pt-8"
       : "mx-auto w-full max-w-screen-xl flex-1"
-    : "mx-auto w-full max-w-screen-xl flex-1 px-4 pb-24 pt-4 lg:pb-12 lg:pt-6";
+    : `mx-auto w-full max-w-screen-xl flex-1 px-4 pt-4 lg:pt-6 ${listingPbClass}`;
 
   return (
     <CategoriesSidebar
@@ -114,6 +131,10 @@ export function ShellContent({
 
       {/* Footer informativo da loja — global, ver hideFooter. */}
       {!hideFooter && <StoreFooter store={store} />}
+
+      {/* Mini-cart bar (modo compra): renderiza ACIMA do bottom-nav.
+          Componente decide se mostra baseado em useCart().count > 0. */}
+      {showMiniCart && <MiniCartBar storeSlug={store.slug} />}
 
       {/* Bottom nav: lg:hidden (desktop usa ícones no DesktopHeader). */}
       {!hideBottomNav && (

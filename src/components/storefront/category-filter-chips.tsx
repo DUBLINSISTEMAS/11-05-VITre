@@ -107,7 +107,7 @@ export function CategoryFilterChips({
     <div
       role="tablist"
       aria-label="Filtros da categoria"
-      className="scrollbar-none flex gap-1.5 overflow-x-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className="scrollbar-none flex gap-2 overflow-x-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       {FIXED_CHIPS.map((chip) => {
         const active = chip.key === activeFixed && !activeAttrValueId;
@@ -119,11 +119,16 @@ export function CategoryFilterChips({
             aria-selected={active}
             onClick={() => handleFixedClick(chip.key)}
             className={cn(
-              "inline-flex h-7 shrink-0 items-center rounded-full border px-3 text-[11.5px] font-medium tracking-tight transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              // Chip maior ref Dribbble 1: h-9 (36px), padding 14, text 13px.
+              // Active state: pill primary (verde Mangos Pay) com texto
+              // contrastante. Inactive: outline neutro.
+              "inline-flex h-9 shrink-0 items-center rounded-full border px-3.5 text-[13px] font-semibold tracking-[-0.1px] transition-all outline-none",
+              "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               active
-                ? "border-foreground bg-foreground text-background"
-                : "border-border bg-muted/50 text-foreground/70 hover:bg-muted",
+                ? "border-primary bg-primary text-primary-foreground shadow-[0_2px_8px_-2px_rgba(27,122,79,0.45)]"
+                : "border-border bg-background text-foreground/70 hover:border-foreground/30 hover:text-foreground",
             )}
+            style={{ touchAction: "manipulation" }}
           >
             {chip.label}
           </button>
@@ -142,16 +147,21 @@ export function CategoryFilterChips({
               aria-selected={active}
               onClick={() => handleAttrClick(v.id)}
               className={cn(
-                "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[11.5px] font-medium tracking-tight transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-semibold tracking-[-0.1px] transition-all outline-none",
+                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 active
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border bg-muted/50 text-foreground/70 hover:bg-muted",
+                  ? "border-primary bg-primary text-primary-foreground shadow-[0_2px_8px_-2px_rgba(27,122,79,0.45)]"
+                  : "border-border bg-background text-foreground/70 hover:border-foreground/30 hover:text-foreground",
               )}
               title={`${attr.name}: ${v.label}`}
+              style={{ touchAction: "manipulation" }}
             >
               {attr.type === "color" && v.colorHex ? (
                 <span
-                  className="size-3 shrink-0 rounded-full border border-foreground/10"
+                  className={cn(
+                    "size-3.5 shrink-0 rounded-full border",
+                    active ? "border-white/40" : "border-foreground/10",
+                  )}
                   style={{ background: v.colorHex }}
                   aria-hidden
                 />
