@@ -5,29 +5,25 @@
  * shortCode tem 4 chars (~14M combos) e é adivinhável; atacante adivinha
  * código, abre /sucesso, e captura o publicToken renderizado.
  *
- * Redesign canvas-v1 fiel a `_vitre-storefront.jsx:457-515`:
- *  - Check 88×88 success-soft com SVG strokeWidth 2.4
- *  - Heading 24px display + sub 13px gray-600
- *  - Card resumo: kicker mono "PEDIDO" + #shortCode mono à direita
- *    (display apenas — shortCode continua exibido pra cliente)
- *  - Banner brand-tint inline com #shortCode mono
- *  - 2 CTAs: WhatsApp (verde) + "Continuar comprando" (outline)
- *  - Sem bottom-nav, sem header (controlados em shell-content.tsx)
+ * Redesign 2026-05-27 (Onda D ref Dribbble 1 tela 3): formato "order
+ * summary" com status pill, card de atendimento, lista de itens com
+ * thumbnail e tabela de totais. Substitui o layout antigo de
+ * confirmação simples (check + 2 linhas) — agora o cliente vê o que
+ * pediu, valor total e canal de atendimento numa view só.
  *
  * Server Component:
  *  - Resolve order pelo publicToken (service_role).
  *  - Verifica que pertence à loja do path (defesa contra link cruzado).
- *  - Reconstrói whatsappUrl a partir do snapshot + loja (cliente pode
- *    voltar via histórico mesmo se a tab original foi fechada).
+ *  - Reconstrói whatsappUrl a partir do snapshot + loja.
  *
- * Limpeza do carrinho acontece NO CLIENT (`SuccessClearCart`) — a
- * server action já criou o pedido; client só apaga o localStorage.
- * Idempotência cobre se o cliente clicou 2× e gerou 2x.
+ * Limpeza do carrinho acontece NO CLIENT (`SuccessClearCart`).
  */
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import Image from "next/image";
 import { z } from "zod";
 
+import { StoreHeader } from "@/components/storefront/store-header";
 import { SuccessClearCart } from "@/components/storefront/success-clear-cart";
 import { SuccessCtas } from "@/components/storefront/success-ctas";
 import { WhatsAppAutoHandoff } from "@/components/storefront/whatsapp-auto-handoff";
@@ -37,10 +33,11 @@ import { formatBRL } from "@/lib/pricing";
 import { buildPublicOrderWhatsAppMessage } from "@/lib/public-order";
 import { getOrderByPublicToken } from "@/lib/storefront/order-loader";
 import { getStoreBySlug } from "@/lib/storefront/store-loader";
+import { cn } from "@/lib/utils";
 import { buildWhatsAppUrl } from "@/lib/whatsapp-message";
 
 export const metadata: Metadata = {
-  title: "Pedido enviado",
+  title: "Resumo do pedido",
   robots: { index: false, follow: false },
 };
 
@@ -50,21 +47,35 @@ interface PageParams {
 
 const sucessoSearchSchema = z.object({
   token: searchTextSchema,
-  // `auto=1` chega vindo do checkout — dispara redirect automático
-  // pro WhatsApp após 2.5s. Ausente em links compartilhados / volta
-  // pelo histórico (que só mostram a confirmação).
   auto: boolFlagSchema,
 });
 
-// Mapeamento status → label PT-BR (canvas usa "Aguardando contato"
-// pra awaiting_whatsapp; demais derivamos do enum).
-const STATUS_LABELS: Record<string, string> = {
-  awaiting_whatsapp: "Aguardando contato",
-  confirmed: "Confirmado",
-  fulfilled: "Concluído",
-  canceled: "Cancelado",
-  expired: "Expirado",
+// Status badge: cada status do enum vira pill colorido. Verde =
+// "tudo certo / em andamento". Âmbar = "ação pendente". Vermelho =
+// "ruim". Cinza = "encerrado".
+const STATUS_CONFIG: Record<
+  string,
+  { label: string; tone: "success" | "warning" | "muted" | "destructive" }
+> = {
+  awaiting_whatsapp: { label: "Aguardando contato", tone: "success" },
+  confirmed: { label: "Confirmado", tone: "success" },
+  fulfilled: { label: "Concluído", tone: "muted" },
+  canceled: { label: "Cancelado", tone: "destructive" },
+  expired: { label: "Expirado", tone: "muted" },
 };
+
+const TONE_CLASS: Record<string, string> = {
+  success: "bg-success-soft text-success",
+  warning: "bg-warning-soft text-warning-foreground",
+  muted: "bg-muted text-muted-foreground",
+  destructive: "bg-destructive-soft text-destructive",
+};
+
+const DATE_FORMATTER = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
 
 export default async function SuccessPage({
   params,
@@ -104,89 +115,210 @@ export default async function SuccessPage({
   });
   const whatsappUrl = buildWhatsAppUrl(order.store.whatsappNumber, message);
 
-  const itemCount = order.items.reduce((sum, it) => sum + it.quantity, 0);
-  const itemsLabel = `${itemCount} ${itemCount === 1 ? "item" : "itens"}`;
-  const statusLabel = STATUS_LABELS[order.status] ?? order.status;
+  const subtotalInCents = order.items.reduce(
+    (sum, it) => sum + it.priceInCentsSnapshot * it.quantity,
+    0,
+  );
+  const discountInCents = Math.max(0, subtotalInCents - order.totalInCents);
+
+  const statusCfg =
+    STATUS_CONFIG[order.status] ?? { label: order.status, tone: "muted" as const };
+
+  const orderDate = DATE_FORMATTER.format(new Date(order.createdAt));
+  const storeAddress = formatStoreAddress(order.store);
 
   // Auto-handoff só dispara quando:
-  //  (a) Checkout passou `?auto=1` (não vindo de back/link compartilhado).
-  //  (b) Pedido ainda não foi aberto no WhatsApp — evita re-redirect se
-  //      lojista voltar à página depois.
+  //  (a) Checkout passou `?auto=1`.
+  //  (b) Pedido ainda não foi aberto no WhatsApp.
   const shouldAutoHandoff = auto && !order.whatsappOpenedAt;
 
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-3rem)] w-full max-w-md flex-col px-6 pb-6 pt-[90px]">
-      <SuccessClearCart />
+    <>
+      <StoreHeader
+        variant="sticky-title"
+        store={store}
+        title="Resumo do pedido"
+      />
 
-      {shouldAutoHandoff ? (
-        <WhatsAppAutoHandoff
-          publicToken={order.publicToken}
-          whatsappUrl={whatsappUrl}
-        />
-      ) : null}
+      <div className="mx-auto w-full max-w-screen-md px-4 pb-32 pt-3 lg:px-0">
+        <SuccessClearCart />
 
-      {/* Check icon — 88×88 success-soft */}
-      <span
-        aria-hidden
-        className="mx-auto inline-flex size-[88px] items-center justify-center rounded-full bg-success-soft text-success"
-      >
-        <svg
-          width="44"
-          height="44"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M5 12.5l4.5 4.5L19 7" />
-        </svg>
-      </span>
+        {shouldAutoHandoff ? (
+          <WhatsAppAutoHandoff
+            publicToken={order.publicToken}
+            whatsappUrl={whatsappUrl}
+          />
+        ) : null}
 
-      <h1 className="mt-[22px] text-center text-[24px] font-semibold leading-[1.15] tracking-[-0.5px] text-foreground">
-        Pedido enviado para o WhatsApp
-      </h1>
-      <p className="mt-2 text-center text-[13px] text-gray-600 [text-wrap:pretty]">
-        {order.store.name} já recebeu seu pedido. Continue a conversa pra combinar pagamento e entrega.
-      </p>
+        {/* Status card — ref Dribbble 1 tela 3 (status pill colorido +
+            código de pedido + nome da loja). */}
+        <section className="rounded-[18px] border border-border bg-background p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+          <div className="flex items-start justify-between gap-3">
+            <span
+              className={cn(
+                "inline-flex h-7 items-center rounded-full px-2.5 text-[11.5px] font-semibold uppercase tracking-[0.4px]",
+                TONE_CLASS[statusCfg.tone],
+              )}
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  "mr-1.5 inline-block size-1.5 rounded-full",
+                  statusCfg.tone === "success" ? "bg-success" : "bg-current opacity-60",
+                )}
+              />
+              {statusCfg.label}
+            </span>
+            <span className="text-muted-foreground font-mono text-[12px] font-semibold tracking-[0.4px]">
+              #{order.shortCode}
+            </span>
+          </div>
 
-      {/* Card resumo */}
-      <div className="mt-7 rounded-[14px] border border-border bg-background p-4">
-        <div className="mb-2.5 flex items-baseline justify-between">
-          <span className="font-mono text-[10px] uppercase tracking-[0.5px] text-gray-500">
-            PEDIDO
-          </span>
-          <span className="font-mono text-[12px] font-semibold tracking-[0.5px] text-foreground">
+          <h2 className="mt-3.5 text-[12px] font-medium uppercase tracking-[0.4px] text-muted-foreground">
+            Atendido por
+          </h2>
+          <p className="mt-1 text-[15px] font-semibold tracking-[-0.2px] text-foreground">
+            {order.store.name}
+          </p>
+          {storeAddress ? (
+            <p className="text-muted-foreground mt-0.5 text-[12px] leading-snug">
+              {storeAddress}
+            </p>
+          ) : null}
+        </section>
+
+        {/* Lista de itens — ref 1 mostra produto com foto, nome, size,
+            preço alinhado direita. */}
+        <section className="mt-4 rounded-[18px] border border-border bg-background">
+          <h2 className="border-b border-border/60 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.5px] text-muted-foreground">
+            Seu pedido
+          </h2>
+          <ul role="list" className="divide-y divide-border/60">
+            {order.items.map((item) => (
+              <li key={item.id} className="flex gap-3 p-3.5">
+                <div className="bg-muted relative h-[68px] w-[60px] shrink-0 overflow-hidden rounded-xl">
+                  {item.imageUrlSnapshot ? (
+                    <Image
+                      src={item.imageUrlSnapshot}
+                      alt={item.productNameSnapshot}
+                      fill
+                      sizes="60px"
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="grid size-full place-items-center text-[9px] text-muted-foreground">
+                      sem foto
+                    </div>
+                  )}
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col justify-between">
+                  <div>
+                    <p className="line-clamp-2 text-[13.5px] font-semibold leading-[1.25] tracking-[-0.2px] text-foreground">
+                      {item.productNameSnapshot}
+                    </p>
+                    {item.variantNameSnapshot ? (
+                      <p className="text-muted-foreground mt-1 text-[11.5px]">
+                        {item.variantNameSnapshot}
+                      </p>
+                    ) : null}
+                    <p className="text-muted-foreground mt-0.5 text-[11.5px]">
+                      Qtd: {item.quantity}
+                    </p>
+                  </div>
+                </div>
+                <span className="shrink-0 self-start text-[14px] font-semibold tabular-nums text-foreground">
+                  {formatBRL(item.priceInCentsSnapshot * item.quantity)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* Tabela de totais — ref 1 tela 3 (Order date, Payment, Subtotal,
+            Total). Removido Tax e Shipping (Mangos Pay não calcula —
+            combinado no WhatsApp). */}
+        <section className="mt-4 rounded-[18px] border border-border bg-background p-4">
+          <TotalsRow label="Data do pedido" value={orderDate} />
+          <TotalsRow label="Atendimento" value="WhatsApp" />
+          <TotalsRow
+            label="Subtotal"
+            value={formatBRL(subtotalInCents)}
+            mono
+          />
+          {discountInCents > 0 ? (
+            <TotalsRow
+              label="Desconto"
+              value={`−${formatBRL(discountInCents)}`}
+              tone="success"
+              mono
+            />
+          ) : null}
+          <div className="mt-2 border-t border-border pt-2.5">
+            <div className="flex items-baseline justify-between">
+              <span className="text-[13px] font-semibold text-foreground">
+                Total
+              </span>
+              <span className="font-mono text-[20px] font-bold tabular-nums tracking-[-0.3px] text-foreground">
+                {formatBRL(order.totalInCents)}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* Aviso brand-tint pra reforçar o código do pedido. */}
+        <div className="mt-4 rounded-[14px] bg-brand-tint px-3.5 py-3 text-[11.5px] leading-snug text-foreground/85">
+          Salve seu código{" "}
+          <span className="font-mono font-semibold text-foreground">
             #{order.shortCode}
-          </span>
+          </span>{" "}
+          pra acompanhar este pedido mesmo sem cadastro.
         </div>
-        <SummaryRow label={itemsLabel} value={formatBRL(order.totalInCents)} />
-        <SummaryRow label="Atendido por" value={order.store.name} />
-        <SummaryRow label="Status" value={statusLabel} />
       </div>
 
-      {/* Banner brand-tint */}
-      <div className="mt-[22px] rounded-[12px] bg-brand-tint px-3.5 py-3.5 text-[11.5px] leading-[1.55] text-gray-700">
-        Salve o pedido{" "}
-        <span className="font-mono font-semibold">#{order.shortCode}</span> — você pode usá-lo pra
-        acompanhar status mesmo sem cadastro.
-      </div>
-
+      {/* CTAs fixed bottom — pill grande "Acompanhar pelo WhatsApp" +
+          ghost "Voltar pra loja". Sem bottom-nav nessa página. */}
       <SuccessCtas
         publicToken={order.publicToken}
         whatsappUrl={whatsappUrl}
         storeSlug={storeSlug}
       />
+    </>
+  );
+}
+
+function TotalsRow({
+  label,
+  value,
+  mono = false,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  tone?: "default" | "success";
+}) {
+  return (
+    <div className="flex items-baseline justify-between py-1.5 text-[12.5px]">
+      <span className="text-muted-foreground">{label}</span>
+      <span
+        className={cn(
+          "tabular-nums",
+          mono && "font-mono",
+          tone === "success" ? "font-semibold text-success" : "font-medium text-foreground",
+        )}
+      >
+        {value}
+      </span>
     </div>
   );
 }
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline justify-between py-[5px] text-[12px]">
-      <span className="text-gray-600">{label}</span>
-      <span className="font-medium text-foreground">{value}</span>
-    </div>
-  );
+function formatStoreAddress(store: {
+  addressCity?: string | null;
+  addressState?: string | null;
+}): string | null {
+  const city = store.addressCity?.trim();
+  const state = store.addressState?.trim();
+  if (!city && !state) return null;
+  return [city, state].filter(Boolean).join(" — ");
 }

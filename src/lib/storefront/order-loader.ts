@@ -38,6 +38,8 @@ export interface OrderWithItems extends Order {
     | "whatsappDisplay"
     | "whatsappTemplate"
     | "paymentMethodsNote"
+    | "addressCity"
+    | "addressState"
   >;
 }
 
@@ -65,6 +67,8 @@ async function getOrderByColumn(
         whatsappDisplay: true,
         whatsappTemplate: true,
         paymentMethodsNote: true,
+        addressCity: true,
+        addressState: true,
       },
     });
     const items = await tx
