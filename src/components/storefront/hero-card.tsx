@@ -119,6 +119,7 @@ export function HeroCard({
       }
       priority={priority}
       className={className}
+      storeSlug={storeSlug}
     />
   );
 }
@@ -149,8 +150,16 @@ function HeroCover({
   imageAlt,
   priority,
   className,
-}: CoverProps) {
+  storeSlug,
+}: CoverProps & { storeSlug: string }) {
   const hasAnyText = Boolean(kicker || title || subtitle || ctaLabel);
+  // CTA primary: label do banner ou fallback amigável.
+  const primaryLabel = ctaLabel?.trim() || "Explorar agora";
+  // CTA secondary: aponta pra /destaques. Label fixa "Editor's pick" da
+  // ref Dribbble 1 (sutilmente traduzida) — comunica curadoria sem
+  // depender de a loja ter "vitrines" cadastradas.
+  const secondaryHref = `/${storeSlug}/destaques`;
+  const secondaryLabel = "Mais escolhidos";
 
   return (
     <section
@@ -163,7 +172,7 @@ function HeroCover({
         // Desktop (lg+): container com border+rounded, aspect 3:1
         // magazine cinematográfico — discreto, 400px em 1200px, deixa
         // espaço pro grid de produtos na primeira dobra.
-        "aspect-[4/5] lg:aspect-[3/1] lg:rounded-[14px] lg:border lg:border-border",
+        "aspect-[4/5] lg:aspect-[3/1] lg:rounded-[20px] lg:border lg:border-border",
         className,
       )}
       style={imageUrl ? undefined : { background: HERO_GRADIENT }}
@@ -182,23 +191,26 @@ function HeroCover({
             quality={90}
             className="object-cover"
           />
+          {/* Scrim premium em duas camadas pra contraste de texto sólido
+              mas sem matar a foto. Bottom 70% começa com 60% black e
+              degrada — referência ref Dribbble 1. */}
           {hasAnyText && (
             <div
               aria-hidden
-              className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/55 via-black/25 to-transparent"
+              className="absolute inset-x-0 bottom-0 h-[70%] bg-gradient-to-t from-black/65 via-black/30 to-transparent"
             />
           )}
         </>
       )}
 
       {hasAnyText && (
-        <div className="absolute inset-0 flex flex-col justify-end p-4">
-          <div className="space-y-1">
+        <div className="absolute inset-0 flex flex-col justify-end p-5 lg:p-8">
+          <div className="max-w-md space-y-2 lg:space-y-3">
             {kicker && (
               <p
                 className={cn(
-                  "font-mono text-[9.5px] font-semibold tracking-[0.6px]",
-                  imageUrl ? "text-white/90" : "text-brand-store",
+                  "font-mono text-[10px] font-semibold uppercase tracking-[0.8px]",
+                  imageUrl ? "text-white/85" : "text-primary",
                 )}
               >
                 {kicker}
@@ -207,7 +219,10 @@ function HeroCover({
             {title && (
               <h1
                 className={cn(
-                  "text-[22px] font-semibold leading-[1.05] tracking-[-0.6px]",
+                  // Mobile 28px (ref 1 mede ~24-26 em iPhone 375; subo
+                  // pra 28 pra peso visual). Desktop 40px. Tracking
+                  // apertado pra parecer editorial (Zara/Aritzia).
+                  "text-[28px] font-bold leading-[1.05] tracking-[-0.8px] [text-wrap:balance] lg:text-[40px] lg:leading-[1.0] lg:tracking-[-1.2px]",
                   imageUrl ? "text-white" : "text-foreground",
                 )}
               >
@@ -217,29 +232,49 @@ function HeroCover({
             {subtitle && (
               <p
                 className={cn(
-                  "text-[11.5px] leading-[1.4]",
+                  "text-[13px] leading-[1.4] lg:text-[15px] lg:leading-[1.45]",
                   imageUrl ? "text-white/85" : "text-gray-600",
                 )}
               >
                 {subtitle}
               </p>
             )}
-            {ctaLabel && (
-              <div className="pt-2">
-                <Link
-                  href={ctaHref}
-                  prefetch={false}
-                  className={cn(
-                    "group/cta inline-flex items-center gap-1.5 text-[11.5px] font-medium outline-none",
-                    "focus-visible:underline focus-visible:underline-offset-2",
-                    imageUrl ? "text-white" : "text-brand-store",
-                  )}
-                >
-                  {ctaLabel}
-                  <ArrowRight className="size-3.5 transition-transform group-hover/cta:translate-x-0.5" />
-                </Link>
-              </div>
-            )}
+
+            {/* 2 CTAs ref Dribbble 1:
+                Primary pill verde sólido (--primary) — alvo principal.
+                Secondary pill outlined branco (sobre imagem) — alvo
+                explorador, ghosty. Em fundos sem imagem (variants sem
+                foto), secondary fica outlined neutro. */}
+            <div className="flex flex-wrap items-center gap-2.5 pt-2 lg:pt-3">
+              <Link
+                href={ctaHref}
+                prefetch={false}
+                className={cn(
+                  "group/cta inline-flex h-10 items-center gap-1.5 rounded-full px-4 text-[13px] font-semibold outline-none transition-all",
+                  "bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/85 shadow-[0_4px_14px_rgba(0,0,0,0.15)]",
+                  "focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black/30",
+                )}
+                style={{ touchAction: "manipulation" }}
+              >
+                {primaryLabel}
+                <ArrowRight className="size-3.5 transition-transform group-hover/cta:translate-x-0.5" />
+              </Link>
+
+              <Link
+                href={secondaryHref}
+                prefetch={false}
+                className={cn(
+                  "inline-flex h-10 items-center gap-1.5 rounded-full px-4 text-[13px] font-semibold outline-none transition-colors",
+                  imageUrl
+                    ? "bg-white/15 text-white backdrop-blur-sm ring-1 ring-inset ring-white/40 hover:bg-white/25 active:bg-white/30"
+                    : "bg-background text-foreground ring-1 ring-inset ring-border hover:bg-muted",
+                  "focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black/30",
+                )}
+                style={{ touchAction: "manipulation" }}
+              >
+                {secondaryLabel}
+              </Link>
+            </div>
           </div>
         </div>
       )}
