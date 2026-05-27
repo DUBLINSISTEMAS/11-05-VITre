@@ -38,6 +38,7 @@ import { CategoryStrip } from "@/components/storefront/category-strip";
 import { CollectionStrip } from "@/components/storefront/collection-strip";
 import { ProductGrid } from "@/components/storefront/product-grid";
 import { PromoStrip } from "@/components/storefront/promo-strip";
+import { StoreTrustBar } from "@/components/storefront/store-trust-bar";
 import { Button } from "@/components/ui/button";
 import { getSessionOrNull } from "@/lib/auth-server";
 import { hasActivePromo } from "@/lib/pricing";
@@ -142,6 +143,13 @@ export default async function StoreHomePage({
           heroVariant={store.heroStyle as HeroVariant}
         />
       )}
+
+      {/* Onda 3 (2026-05-27): trust bar discreta. Cliente que veio do
+          WhatsApp/Insta vê localização física + canal direto antes de
+          rolar o catálogo. Prova de "loja existe de verdade". Some
+          silenciosamente quando lojista não preencheu nem cidade nem
+          WhatsApp (improvável — schema obriga whatsappNumber). */}
+      <StoreTrustBar store={store} />
 
       {featuredBlock.length > 0 && (
         <ProductGrid

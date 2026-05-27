@@ -23,6 +23,7 @@ import { notFound, redirect } from "next/navigation";
 import Image from "next/image";
 import { z } from "zod";
 
+import { CopyCodeButton } from "@/components/storefront/copy-code-button";
 import { StoreHeader } from "@/components/storefront/store-header";
 import { SuccessClearCart } from "@/components/storefront/success-clear-cart";
 import { SuccessCtas } from "@/components/storefront/success-ctas";
@@ -265,13 +266,18 @@ export default async function SuccessPage({
           </div>
         </section>
 
-        {/* Aviso brand-tint pra reforçar o código do pedido. */}
-        <div className="mt-4 rounded-[14px] bg-brand-tint px-3.5 py-3 text-[11.5px] leading-snug text-foreground/85">
-          Salve seu código{" "}
-          <span className="font-mono font-semibold text-foreground">
-            #{order.shortCode}
-          </span>{" "}
-          pra acompanhar este pedido mesmo sem cadastro.
+        {/* Aviso brand-tint com ação concreta de copiar (Onda 3 — antes
+            era passivo "salve seu código", agora cliente leigo copia
+            num toque sem precisar decorar/screenshot). */}
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-[14px] bg-brand-tint px-3.5 py-3">
+          <p className="text-foreground/85 text-[11.5px] leading-snug">
+            Salve seu código{" "}
+            <span className="text-foreground font-mono font-semibold">
+              #{order.shortCode}
+            </span>{" "}
+            pra acompanhar este pedido mesmo sem cadastro.
+          </p>
+          <CopyCodeButton code={order.shortCode} />
         </div>
       </div>
 

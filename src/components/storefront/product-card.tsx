@@ -327,18 +327,20 @@ function PriceBlock({
   isOnPromo: boolean;
   size: "sm" | "md";
 }) {
+  // Onda 3 (2026-05-27): preço sai do font-mono (cara de planilha) pra
+  // sans-serif com tabular-nums. Padrão Zara/Aritzia/COS.
   return (
     <div className="flex items-baseline gap-1.5">
       <span
         className={cn(
-          "font-mono font-semibold tabular-nums text-foreground",
+          "font-semibold tabular-nums text-foreground",
           size === "md" ? "text-[13px]" : "text-[12.5px]",
         )}
       >
         {formatBRL(effectivePrice)}
       </span>
       {isOnPromo && (
-        <span className="font-mono text-[10.5px] tabular-nums text-gray-400 line-through">
+        <span className="text-[10.5px] tabular-nums text-gray-400 line-through">
           {formatBRL(basePrice)}
         </span>
       )}

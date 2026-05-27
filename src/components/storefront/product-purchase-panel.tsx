@@ -273,13 +273,18 @@ export function ProductPurchasePanel({
           <h1 className="text-[22px] font-semibold leading-[1.15] tracking-[-0.5px] text-foreground [text-wrap:pretty] lg:text-[30px] lg:leading-[1.1] lg:tracking-[-0.8px]">
             {product.name}
           </h1>
+          {/* Onda 3 (2026-05-27): preço sai do font-mono (cara de planilha
+              financeira) e usa font-sans com tabular-nums. Mantém o
+              alinhamento de dígitos sem o aspecto técnico. Padrão Zara/
+              Aritzia/Mango — nenhuma loja de moda séria usa mono no preço.
+              Discount badge mantém mono porque é label técnico (-25%). */}
           <div className="mt-2.5 flex flex-wrap items-baseline gap-2 lg:mt-4 lg:gap-3">
-            <span className="font-mono text-[22px] font-semibold tracking-[-0.5px] tabular-nums text-foreground lg:text-[26px] lg:tracking-[-0.6px]">
+            <span className="text-[22px] font-semibold tracking-[-0.5px] tabular-nums text-foreground lg:text-[26px] lg:tracking-[-0.6px]">
               {formatBRL(priceState.effectivePriceInCents)}
             </span>
             {priceState.isOnPromo && (
               <>
-                <span className="font-mono text-[13px] tabular-nums text-gray-400 line-through">
+                <span className="text-[13px] tabular-nums text-gray-400 line-through">
                   {formatBRL(priceState.basePriceInCents)}
                 </span>
                 {discountPercent !== null && (

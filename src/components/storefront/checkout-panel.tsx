@@ -103,6 +103,18 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
     discountInCents: number;
   } | null>(null);
 
+  // Onda 3 (2026-05-27): observações virou collapsable. Cliente comum
+  // não usa, e exibir um textarea grande sugeria que era obrigatório.
+  // Default false; se cliente já digitou algo (raro mas possível em
+  // edge cases — autofill do navegador, prefill futuro), mantém aberto.
+  const [notesExpanded, setNotesExpanded] = useState(false);
+  const customerNotesValue = form.watch("customerNotes");
+  useEffect(() => {
+    if (customerNotesValue && customerNotesValue.trim().length > 0) {
+      setNotesExpanded(true);
+    }
+  }, [customerNotesValue]);
+
   // Quando o carrinho mudar, valida de novo o cupom aplicado (subtotal
   // mudou — desconto% precisa ser recalculado, valor mínimo pode
   // deixar de bater).
@@ -516,21 +528,36 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
               />
             </FieldGroup>
 
-            <FieldGroup
-              label="Observações"
-              htmlFor="customerNotes"
-              hint="Tamanho, cor, horário de entrega — opcional"
-              error={form.formState.errors.customerNotes?.message}
-            >
-              <Textarea
-                id="customerNotes"
-                rows={3}
-                placeholder="Ex.: pode entregar na portaria a partir de 14h"
-                className="resize-none"
-                {...form.register("customerNotes")}
-                aria-invalid={!!form.formState.errors.customerNotes}
-              />
-            </FieldGroup>
+            {/* Observações collapsable Onda 3: cliente comum não usa,
+                exibir textarea grande sugeria obrigatoriedade. Default
+                fechado; se houver valor (autofill, edge case), expande. */}
+            {notesExpanded ? (
+              <FieldGroup
+                label="Observações"
+                htmlFor="customerNotes"
+                hint="Tamanho, cor, horário de entrega — opcional"
+                error={form.formState.errors.customerNotes?.message}
+              >
+                <Textarea
+                  id="customerNotes"
+                  rows={3}
+                  placeholder="Ex.: pode entregar na portaria a partir de 14h"
+                  className="resize-none"
+                  autoFocus
+                  {...form.register("customerNotes")}
+                  aria-invalid={!!form.formState.errors.customerNotes}
+                />
+              </FieldGroup>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setNotesExpanded(true)}
+                className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-[12px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring rounded"
+              >
+                <ChevronDown className="size-3.5" aria-hidden />
+                Adicionar instruções (opcional)
+              </button>
+            )}
           </div>
         </section>
 
@@ -709,22 +736,26 @@ function CartItemRow({
         </div>
 
         <div className="mt-auto flex items-end justify-between pt-2">
-          {/* Stepper height 28px border canvas */}
-          <div className="border-border flex h-7 items-center rounded-lg border">
+          {/* Stepper Onda 3 (2026-05-27): h-7 (28px) → h-9 (36px). Antes
+              estava sub-touch-target Apple HIG (44px) e Android (48dp);
+              cliente sênior do ICP errava +/-. 36px é o compromisso entre
+              touch-friendly e densidade do card de item. Ícones Minus/Plus
+              também sobem (size-3 → size-3.5) pra contraste com o botão maior. */}
+          <div className="border-border flex h-9 items-center rounded-lg border">
             <button
               type="button"
               onClick={onDecrement}
               className={cn(
-                "grid size-7 place-items-center rounded-l-lg transition-colors",
+                "grid size-9 place-items-center rounded-l-lg transition-colors",
                 "text-foreground hover:bg-muted",
                 "outline-none focus-visible:ring-2 focus-visible:ring-ring",
               )}
               aria-label={`Diminuir quantidade de ${item.productName}`}
             >
-              <Minus className="size-3" />
+              <Minus className="size-3.5" />
             </button>
             <span
-              className="w-[22px] text-center text-[12px] font-semibold tabular-nums"
+              className="w-7 text-center text-[13px] font-semibold tabular-nums"
               aria-label={`Quantidade: ${item.quantity}`}
             >
               {item.quantity}
@@ -734,14 +765,14 @@ function CartItemRow({
               onClick={onIncrement}
               disabled={!canIncrement}
               className={cn(
-                "grid size-7 place-items-center rounded-r-lg transition-colors",
+                "grid size-9 place-items-center rounded-r-lg transition-colors",
                 "text-foreground hover:bg-muted",
                 "outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 "disabled:opacity-40 disabled:cursor-not-allowed",
               )}
               aria-label={`Aumentar quantidade de ${item.productName}`}
             >
-              <Plus className="size-3" />
+              <Plus className="size-3.5" />
             </button>
           </div>
           <span className="text-foreground text-[13px] font-semibold tabular-nums">

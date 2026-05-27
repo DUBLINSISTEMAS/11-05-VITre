@@ -7,7 +7,7 @@
  * - Filtra produtos quando usuário digita
  * - Design limpo e moderno estilo app de moda
  */
-import { ArrowLeft, Search as SearchIcon, SlidersHorizontal, X } from "lucide-react";
+import { ArrowLeft, Search as SearchIcon, X } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -133,13 +133,18 @@ export default async function SearchPage({
               )}
             </div>
             
-            {/* Filter button - neutral */}
+            {/* Submit button — Onda 3 (2026-05-27): ícone SlidersHorizontal
+                trocado por SearchIcon. O Sliders comunica "filtros" mas
+                aqui é o submit do form de busca. Bug semântico: o header
+                da home usa Sliders pra abrir categorias drawer, então o
+                mesmo ícone fazia duas coisas diferentes em telas distintas.
+                Agora a lupa comunica corretamente "buscar". */}
             <button
               type="submit"
-              className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground outline-none transition-colors transition-transform hover:bg-gray-200 hover:text-foreground hover:scale-105 active:scale-95 focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-foreground text-background outline-none transition-colors transition-transform hover:bg-foreground/90 hover:scale-105 active:scale-95 focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Buscar"
             >
-              <SlidersHorizontal className="size-5" />
+              <SearchIcon className="size-5" strokeWidth={2} />
             </button>
           </form>
         </div>
