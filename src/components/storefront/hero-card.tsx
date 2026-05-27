@@ -166,13 +166,17 @@ function HeroCover({
       aria-label="Destaque editorial"
       className={cn(
         "relative overflow-hidden",
-        // Mobile: full-bleed (sem border/rounded), aspect 4:5 vertical
-        // — formato Instagram-friendly, equilibra impacto visual sem
-        // dominar a fold (469px num iPhone 375px).
-        // Desktop (lg+): container com border+rounded, aspect 3:1
-        // magazine cinematográfico — discreto, 400px em 1200px, deixa
-        // espaço pro grid de produtos na primeira dobra.
-        "aspect-[4/5] lg:aspect-[3/1] lg:rounded-[20px] lg:border lg:border-border",
+        // Card elegante em todas as breakpoints (founder review
+        // 2026-05-27 sobre ref Dribbble 1):
+        //  - Mobile: aspect 4:5 vertical (~Instagram), rounded-[22px],
+        //    border subtle + shadow elevada — "card editorial" estilo
+        //    ref 1 tela 1, não sangra os 16px do container.
+        //  - Desktop: aspect 3:1 panorâmico, rounded-[24px], border+
+        //    shadow ainda mais elevadas — sensação magazine.
+        // Drop-shadow tinted preto a 8% pra não competir com a foto
+        // mas dar a percepção de "elevação acima da página".
+        "aspect-[4/5] rounded-[22px] border border-border/70 shadow-[0_18px_40px_-22px_rgba(15,15,15,0.35)]",
+        "lg:aspect-[3/1] lg:rounded-[24px] lg:shadow-[0_24px_60px_-30px_rgba(15,15,15,0.4)]",
         className,
       )}
       style={imageUrl ? undefined : { background: HERO_GRADIENT }}
@@ -313,10 +317,10 @@ function HeroSplit({
     <section
       aria-label="Destaque editorial"
       className={cn(
-        // Mobile: stack vertical (imagem topo, texto bottom).
-        // Desktop: 50/50 grid horizontal com container.
+        // Card unificado em todas as breakpoints (2026-05-27).
         "relative grid grid-cols-1 overflow-hidden bg-background",
-        "lg:grid-cols-2 lg:rounded-[14px] lg:border lg:border-border",
+        "rounded-[22px] border border-border/70 shadow-[0_18px_40px_-22px_rgba(15,15,15,0.35)]",
+        "lg:grid-cols-2 lg:rounded-[24px] lg:shadow-[0_24px_60px_-30px_rgba(15,15,15,0.4)]",
         className,
       )}
     >
@@ -395,9 +399,9 @@ function HeroMinimal({
       aria-label="Destaque editorial"
       className={cn(
         "relative flex flex-col items-center justify-center overflow-hidden px-4 text-center",
-        // Mesma régua dos outros variants: full-bleed mobile 4:5,
-        // container desktop 3:1.
-        "aspect-[4/5] lg:aspect-[3/1] lg:rounded-[14px] lg:border lg:border-border",
+        // Card unificado em todas as breakpoints (2026-05-27).
+        "aspect-[4/5] rounded-[22px] border border-border/70 shadow-[0_18px_40px_-22px_rgba(15,15,15,0.35)]",
+        "lg:aspect-[3/1] lg:rounded-[24px] lg:shadow-[0_24px_60px_-30px_rgba(15,15,15,0.4)]",
         className,
       )}
       style={{ background: HERO_GRADIENT }}

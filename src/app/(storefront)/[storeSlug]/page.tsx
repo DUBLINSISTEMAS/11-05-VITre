@@ -115,23 +115,19 @@ export default async function StoreHomePage({
     // (Aritzia, ZARA, COS) — separação clara sem espaço vazio.
     <div className="space-y-[18px] lg:space-y-12">
       {hasBanner && (
-        // Mobile: `-mx-4` cancela o `px-4` do <main> pra que o banner
-        // sangre edge-to-edge (full-bleed). Desktop (lg+): respeita o
-        // container e o border+rounded do HeroCard.
-        // Justificativa UX: mobile é tela pequena → full-bleed maximiza
-        // o impacto visual sem desperdiçar pixels com margem lateral.
-        // Desktop tem real estate sobrando → container respira e cria
-        // hierarquia (Fitts: alvo de tap maior em mobile = mais
-        // conversão; espaço em desktop = mais elegância).
-        <div className="-mx-4 lg:mx-0">
-          <BannerCarousel
-            banners={banners}
-            storeSlug={store.slug}
-            storeName={store.name}
-            rotationSec={store.bannerRotationSec}
-            heroVariant={store.heroStyle as HeroVariant}
-          />
-        </div>
+        // 2026-05-27 (founder review): banner volta a respeitar o
+        // container em mobile também, como na ref Dribbble 1 tela 1
+        // ("card elegante com respiro lateral"). Full-bleed dava
+        // sensação de site genérico, não app — perdia a sensação de
+        // "card editorial" que define a hierarquia.
+        // HeroCard agora aplica rounded+shadow em todas as breakpoints.
+        <BannerCarousel
+          banners={banners}
+          storeSlug={store.slug}
+          storeName={store.name}
+          rotationSec={store.bannerRotationSec}
+          heroVariant={store.heroStyle as HeroVariant}
+        />
       )}
 
       {/* Sprint 5.3 — vitrines (coleções) entre banner e categorias.
