@@ -70,10 +70,31 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
   const [isSubmitting, startTransition] = useTransition();
   const router = useRouter();
 
-  // Idempotency key
+  // Idempotency key — Onda 31 (2026-05-27): persistido em sessionStorage
+  // keyed por storeSlug. Antes era useRef puro: se cliente: submit →
+  // erro de rede → reload → submit, gerava NOVA key e podia criar 2
+  // pedidos (server idempotency falha porque a key mudou). Agora a key
+  // sobrevive ao reload da aba; só zera quando a aba fecha (sessionStorage)
+  // ou quando pedido é confirmado (route push pra /sucesso).
   const idempotencyKeyRef = useRef<string | null>(null);
-  if (idempotencyKeyRef.current === null && typeof crypto !== "undefined") {
-    idempotencyKeyRef.current = crypto.randomUUID();
+  if (idempotencyKeyRef.current === null && typeof window !== "undefined") {
+    try {
+      const storageKey = `Mangos Pay:idempotency:${store.slug}`;
+      const stored = window.sessionStorage.getItem(storageKey);
+      if (stored) {
+        idempotencyKeyRef.current = stored;
+      } else if (typeof crypto !== "undefined") {
+        const fresh = crypto.randomUUID();
+        idempotencyKeyRef.current = fresh;
+        window.sessionStorage.setItem(storageKey, fresh);
+      }
+    } catch {
+      // sessionStorage indisponível — degrada pra useRef puro (cenário
+      // raro, mas funciona pelo menos durante a vida do componente).
+      if (typeof crypto !== "undefined") {
+        idempotencyKeyRef.current = crypto.randomUUID();
+      }
+    }
   }
 
   const form = useForm<CustomerInput>({
@@ -118,39 +139,47 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
   // Quando o carrinho mudar, valida de novo o cupom aplicado (subtotal
   // mudou — desconto% precisa ser recalculado, valor mínimo pode
   // deixar de bater).
+  //
+  // Onda 31 (2026-05-27): debounce 500ms. Antes cada add/remove disparava
+  // uma chamada — cliente adicionando 5 itens em sequência fazia 5
+  // requests. Rate limit publicApi permite (60/min) mas era desperdício.
+  // Agora só revalida quando o cliente para de mexer por 500ms.
   useEffect(() => {
     if (!appliedCoupon || !isHydrated) return;
     let canceled = false;
-    void (async () => {
-      try {
-        const res = await validateCouponForPublic({
-          storeSlug: store.slug,
-          code: appliedCoupon.code,
-          subtotalInCents: subtotalCents,
-        });
-        if (canceled) return;
-        if (!res.ok) {
-          setAppliedCoupon(null);
-          setCouponError(res.error);
-          return;
-        }
-        if (res.discountInCents !== appliedCoupon.discountInCents) {
-          setAppliedCoupon({
-            code: res.code,
-            discountInCents: res.discountInCents,
+    const timeoutId = setTimeout(() => {
+      void (async () => {
+        try {
+          const res = await validateCouponForPublic({
+            storeSlug: store.slug,
+            code: appliedCoupon.code,
+            subtotalInCents: subtotalCents,
           });
+          if (canceled) return;
+          if (!res.ok) {
+            setAppliedCoupon(null);
+            setCouponError(res.error);
+            return;
+          }
+          if (res.discountInCents !== appliedCoupon.discountInCents) {
+            setAppliedCoupon({
+              code: res.code,
+              discountInCents: res.discountInCents,
+            });
+          }
+        } catch (err) {
+          logger.error("storefront.checkout.coupon_revalidate_failed", {
+            err,
+            storeSlug: store.slug,
+          });
+          if (canceled) return;
+          setCouponError("Não foi possível atualizar o cupom. Tente novamente.");
         }
-      } catch (err) {
-        logger.error("storefront.checkout.coupon_revalidate_failed", {
-          err,
-          storeSlug: store.slug,
-        });
-        if (canceled) return;
-        setCouponError("Não foi possível atualizar o cupom. Tente novamente.");
-      }
-    })();
+      })();
+    }, 500);
     return () => {
       canceled = true;
+      clearTimeout(timeoutId);
     };
     // appliedCoupon.code é a chave; discountInCents pode mudar por
     // recálculo — não entra no array pra evitar loop.
@@ -222,29 +251,63 @@ export function CheckoutPanel({ store }: CheckoutPanelProps) {
     }
 
     startTransition(async () => {
+      // Onda 31 (2026-05-27): timeout 20s no submit pra evitar spinner
+      // eterno em internet ruim. Cliente sênior do interior não diagnostica
+      // "rede caiu" — fica olhando o loading sem entender. 20s é confortável
+      // pra rede 3G; após isso, mostra erro com retry CTA explícito.
+      const SUBMIT_TIMEOUT_MS = 20_000;
       let result: Awaited<ReturnType<typeof createOrderFromCart>>;
       try {
-        result = await createOrderFromCart({
-          storeSlug: store.slug,
-          idempotencyKey: idempotencyKeyRef.current!,
-          items,
-          // Sprint 5.1 — server revalida e aplica o desconto; o
-          // appliedCoupon do client é só preview.
-          couponCode: appliedCoupon?.code ?? null,
-          ...data,
-        });
+        result = await Promise.race([
+          createOrderFromCart({
+            storeSlug: store.slug,
+            idempotencyKey: idempotencyKeyRef.current!,
+            items,
+            // Sprint 5.1 — server revalida e aplica o desconto; o
+            // appliedCoupon do client é só preview.
+            couponCode: appliedCoupon?.code ?? null,
+            ...data,
+          }),
+          new Promise<never>((_, reject) =>
+            setTimeout(
+              () => reject(new Error("CHECKOUT_TIMEOUT")),
+              SUBMIT_TIMEOUT_MS,
+            ),
+          ),
+        ]);
       } catch (err) {
+        const isTimeout =
+          err instanceof Error && err.message === "CHECKOUT_TIMEOUT";
         logger.error("storefront.checkout.create_order_failed", {
           err,
           storeSlug: store.slug,
+          isTimeout,
         });
-        toast.error("Não foi possível enviar o pedido.", {
-          description: "Verifique sua conexão e tente novamente.",
-        });
+        toast.error(
+          isTimeout
+            ? "Demorou demais. Verifique sua internet."
+            : "Não foi possível enviar o pedido.",
+          {
+            description: "Toque em Finalizar de novo pra tentar.",
+            // Idempotency key preservada em sessionStorage — retry é seguro,
+            // server reconhece e devolve o mesmo pedido se já criado.
+          },
+        );
         return;
       }
 
       if (result.ok && result.publicToken) {
+        // Onda 31: limpa idempotencyKey da sessionStorage — próximo
+        // pedido (raro mas possível: cliente volta pra loja, monta nova
+        // sacola, finaliza de novo) precisa de chave NOVA pra não bater
+        // no idempotency hit do pedido recém-criado.
+        try {
+          window.sessionStorage.removeItem(
+            `Mangos Pay:idempotency:${store.slug}`,
+          );
+        } catch {
+          // ignore
+        }
         // `auto=1` aciona o handoff automático na /sucesso — usuário
         // é redirecionado pro WhatsApp do lojista após 2.5s sem precisar
         // clicar em nada. Onda 5 do pacote master 2026-05-13.

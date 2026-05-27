@@ -75,9 +75,26 @@ export function CartProvider({ storeSlug, children }: CartProviderProps) {
 
   // Persiste após qualquer mudança (mas só depois de hidratar pra não
   // sobrescrever o estado lido com o EMPTY_CART inicial).
+  // Onda 31 (2026-05-27): se writeCart falhar (quota cheia / privacy
+  // mode), avisa cliente UMA vez via toast — antes era fail silent e
+  // cliente perdia carrinho ao recarregar sem entender o porquê.
+  // O ref evita repetir o toast a cada mudança seguinte (já avisou).
+  const persistFailedRef = useRef(false);
   useEffect(() => {
     if (!isHydrated) return;
-    writeCart(slugRef.current, state);
+    const ok = writeCart(slugRef.current, state);
+    if (!ok && !persistFailedRef.current && state.items.length > 0) {
+      persistFailedRef.current = true;
+      // Import dinâmico pra evitar inflar bundle com sonner em rotas
+      // que não usam useCart.
+      void import("sonner").then(({ toast }) => {
+        toast.warning("Não foi possível salvar a sacola", {
+          description:
+            "Seu navegador pode estar com armazenamento cheio ou em modo privado. A sacola some se você fechar a aba.",
+          duration: 6000,
+        });
+      });
+    }
   }, [state, isHydrated]);
 
   const addItem = useCallback((input: AddItemInput) => {
@@ -113,26 +130,6 @@ export function CartProvider({ storeSlug, children }: CartProviderProps) {
         const nextItems = prev.items.filter(
           (it) => !sameCartLine(it, { productId, variantId }),
         );
-        // Telemetria temporária 2026-05-26 — founder reportou bug de
-        // "não consigo remover item quando tem 2+ produtos". Reducer
-        // e sameCartLine estão corretos no código; precisa repro pra
-        // entender. Log no console permite diagnóstico em produção
-        // sem precisar abrir Sentry. Remover após confirmação ou repro.
-        if (typeof window !== "undefined") {
-          console.debug("[cart] removeItem", {
-            productId,
-            variantId,
-            beforeCount: prev.items.length,
-            afterCount: nextItems.length,
-            removedSomething: nextItems.length < prev.items.length,
-            allItems: prev.items.map((it) => ({
-              productId: it.productId,
-              variantId: it.variantId,
-              productName: it.productName,
-              quantity: it.quantity,
-            })),
-          });
-        }
         return {
           ...prev,
           items: nextItems,

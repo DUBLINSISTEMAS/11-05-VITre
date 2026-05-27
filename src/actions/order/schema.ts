@@ -61,7 +61,15 @@ export const customerInputSchema = z.object({
     .string()
     .trim()
     .min(2, "Nome muito curto")
-    .max(120, "Nome muito longo"),
+    .max(120, "Nome muito longo")
+    // Onda 31 (2026-05-27): exige pelo menos uma letra (BR + acentos).
+    // Antes aceitava "999", "----", "@@@" etc — spam óbvio que rate
+    // limit protege em volume mas suja o admin com nomes inválidos.
+    // Permite letras, espaços, hífen e apóstrofo (D'Avila, Anne-Marie).
+    .refine(
+      (v) => /[a-zA-ZÀ-ÿ]/.test(v),
+      "Nome precisa ter pelo menos uma letra",
+    ),
   customerPhone: z
     .string()
     .trim()

@@ -59,8 +59,14 @@ export function readCart(storeSlug: string): CartState {
   }
 }
 
-export function writeCart(storeSlug: string, state: CartState): void {
-  if (!isBrowser()) return;
+/**
+ * Retorna true se persistiu, false se falhou (quota cheia, privacy mode,
+ * Safari ITP). Onda 31 (2026-05-27): antes era void com fail silent;
+ * cliente perdia o carrinho ao recarregar sem aviso nenhum. Agora o
+ * caller (useCart) pode reagir disparando toast de warning.
+ */
+export function writeCart(storeSlug: string, state: CartState): boolean {
+  if (!isBrowser()) return false;
 
   try {
     const toWrite: CartState = {
@@ -69,9 +75,11 @@ export function writeCart(storeSlug: string, state: CartState): void {
       savedAt: new Date().toISOString(),
     };
     window.localStorage.setItem(buildKey(storeSlug), JSON.stringify(toWrite));
+    return true;
   } catch {
-    // Quota cheia / privacy mode / safari ITP — falha silenciosa.
-    // O carrinho continua em memória; recarregar perde, mas não quebra.
+    // Quota cheia / privacy mode / safari ITP — carrinho continua em
+    // memória; recarregar perde. Caller responsável por avisar usuário.
+    return false;
   }
 }
 
