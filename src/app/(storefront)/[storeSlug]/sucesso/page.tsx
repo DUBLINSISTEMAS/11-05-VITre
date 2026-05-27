@@ -18,6 +18,7 @@
  *
  * Limpeza do carrinho acontece NO CLIENT (`SuccessClearCart`).
  */
+import { MapPin } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import Image from "next/image";
@@ -126,7 +127,12 @@ export default async function SuccessPage({
     STATUS_CONFIG[order.status] ?? { label: order.status, tone: "muted" as const };
 
   const orderDate = DATE_FORMATTER.format(new Date(order.createdAt));
-  const storeAddress = formatStoreAddress(order.store);
+  // Onda 4 (2026-05-27): usa `store` atual (não `order.store` snapshot)
+  // pro endereço — se a loja mudou de endereço entre o pedido e a tela
+  // de confirmação, o cliente vê o atual. Address snapshot na order é
+  // pra integridade fiscal/jurídica, não pra retirada.
+  const storeAddress = formatStoreAddress(store);
+  const mapsUrl = buildGoogleMapsUrl(store);
 
   // Auto-handoff só dispara quando:
   //  (a) Checkout passou `?auto=1`.
@@ -181,10 +187,26 @@ export default async function SuccessPage({
           <p className="mt-1 text-[15px] font-semibold tracking-[-0.2px] text-foreground">
             {order.store.name}
           </p>
-          {storeAddress ? (
-            <p className="text-muted-foreground mt-0.5 text-[12px] leading-snug">
-              {storeAddress}
-            </p>
+          {storeAddress || mapsUrl ? (
+            <div className="mt-1 space-y-1">
+              {storeAddress ? (
+                <p className="text-muted-foreground text-[12px] leading-snug whitespace-pre-line">
+                  {storeAddress}
+                </p>
+              ) : null}
+              {mapsUrl ? (
+                <a
+                  href={mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-foreground/80 hover:text-foreground inline-flex items-center gap-1 text-[11.5px] font-semibold underline-offset-2 outline-none transition-colors hover:underline focus-visible:ring-2 focus-visible:ring-ring rounded"
+                  aria-label="Abrir endereço da loja no Google Maps"
+                >
+                  <MapPin className="size-3.5" strokeWidth={1.8} aria-hidden />
+                  Abrir no Google Maps
+                </a>
+              ) : null}
+            </div>
           ) : null}
         </section>
 
@@ -319,12 +341,66 @@ function TotalsRow({
   );
 }
 
+/**
+ * Formata o endereço da loja em até 2 linhas:
+ *   Linha 1: Rua, Número
+ *   Linha 2: Bairro · Cidade — UF
+ * Onda 4 (2026-05-27): ampliado de city/state pra incluir street/number/
+ * neighborhood. Cliente precisa do endereço completo pra retirada presencial.
+ */
 function formatStoreAddress(store: {
+  addressStreet?: string | null;
+  addressNumber?: string | null;
+  addressNeighborhood?: string | null;
   addressCity?: string | null;
   addressState?: string | null;
 }): string | null {
+  const street = store.addressStreet?.trim();
+  const number = store.addressNumber?.trim();
+  const neighborhood = store.addressNeighborhood?.trim();
   const city = store.addressCity?.trim();
   const state = store.addressState?.trim();
-  if (!city && !state) return null;
-  return [city, state].filter(Boolean).join(" — ");
+
+  const line1Parts = [street, number].filter(Boolean);
+  const line1 = line1Parts.join(", ");
+
+  const cityState = [city, state].filter(Boolean).join(" — ");
+  const line2 = [neighborhood, cityState].filter(Boolean).join(" · ");
+
+  const lines = [line1, line2].filter(Boolean);
+  if (lines.length === 0) return null;
+  return lines.join("\n");
+}
+
+/**
+ * Constrói URL do Google Maps. Prefere `googleMapsUrl` custom do lojista
+ * (link de Place ID, mais preciso). Fallback: query string com endereço
+ * completo. Retorna null se sem dado mínimo (sem city E sem street).
+ */
+function buildGoogleMapsUrl(store: {
+  googleMapsUrl?: string | null;
+  addressStreet?: string | null;
+  addressNumber?: string | null;
+  addressNeighborhood?: string | null;
+  addressCity?: string | null;
+  addressState?: string | null;
+}): string | null {
+  const custom = store.googleMapsUrl?.trim();
+  if (custom) return custom;
+
+  const parts = [
+    store.addressStreet,
+    store.addressNumber,
+    store.addressNeighborhood,
+    store.addressCity,
+    store.addressState,
+  ]
+    .map((p) => p?.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return null;
+  // Só linka pro Maps se há cidade OU rua mínima (resto sozinho não acha).
+  if (!store.addressCity?.trim() && !store.addressStreet?.trim()) return null;
+
+  const query = encodeURIComponent(parts.join(", "));
+  return `https://www.google.com/maps/search/?api=1&query=${query}`;
 }

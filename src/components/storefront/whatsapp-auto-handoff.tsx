@@ -102,13 +102,21 @@ export function WhatsAppAutoHandoff({
       <p className="text-[15px] font-semibold tracking-tight text-foreground">
         Abrindo o WhatsApp…
       </p>
+      {/* Onda 4 (2026-05-27): link "Não abriu?" promovido pra CTA pleno
+          h-10 bg-whatsapp. Escape garantido se extensão/rede atrasarem o
+          redirect (raro, mas ocorre). Antes era underline 12px discreto;
+          agora é alvo legítimo. Mantém decisão de NÃO countdown (razão
+          documentada acima — abandono real pré-redirect). */}
       <a
         href={whatsappUrl}
-        className="text-[12px] font-medium text-whatsapp underline-offset-2 hover:underline"
+        className="inline-flex h-10 items-center justify-center rounded-full bg-whatsapp px-5 text-[13px] font-semibold text-white outline-none transition-opacity hover:bg-whatsapp-hover focus-visible:ring-2 focus-visible:ring-ring"
         style={{ touchAction: "manipulation" }}
       >
-        Não abriu? Toque aqui →
+        Abrir WhatsApp agora
       </a>
+      <p className="text-[11px] text-muted-foreground">
+        Se nada acontecer em 2 segundos, toque no botão acima.
+      </p>
     </div>
   );
 }

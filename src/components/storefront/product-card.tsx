@@ -246,16 +246,21 @@ function TagBadge({
   inverted: boolean;
   defaultInverted: boolean;
 }) {
-  // Resolve final inversion: variant override pode forçar invertida (bold),
-  // senão usa o padrão do layout.
+  // Onda 4 (2026-05-27): tag sobe de 9px (ilegível em mobile) pra 10.5px
+  // com peso semibold. Em variant não-invertida (overlay light) adiciona
+  // backdrop-blur sutil + bg semi-opaco pra preservar legibilidade sobre
+  // qualquer foto (antes bg-background sólido podia ficar invisível em
+  // fotos brancas como joalheria com fundo claro). Mantém font-mono +
+  // tracking pra continuar com cara de "label técnico" sem competir com
+  // o nome do produto.
   const isInverted = inverted || defaultInverted;
   return (
     <span
       className={cn(
-        "absolute left-2 top-2 rounded-[4px] px-1.5 py-[3px] font-mono text-[9px] font-semibold tracking-wide",
+        "absolute left-2 top-2 rounded-[4px] px-1.5 py-[3px] font-mono text-[10.5px] font-semibold tracking-wide",
         isInverted
           ? "bg-foreground text-background"
-          : "bg-background text-foreground",
+          : "bg-background/95 text-foreground backdrop-blur-sm shadow-[0_1px_2px_rgba(0,0,0,0.08)]",
       )}
     >
       {label}

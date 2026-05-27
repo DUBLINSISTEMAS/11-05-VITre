@@ -10,6 +10,12 @@
  * `?attr={attributeValueId}` na URL — single value, lojista escolhe um
  * filtro por vez. Quando ativo, vira "Atributo: Valor" pra ficar claro.
  *
+ * Onda 4 (2026-05-27): botão "Filtros" no fim da strip abre Sheet com
+ * controles de preço (min/max em reais) + sort (relevância / preço asc/desc
+ * / mais novos). Antes a URL aceitava `?priceMin=&priceMax=&sort=` mas
+ * não havia UI — cliente que queria "ordenar por menor preço" não tinha
+ * caminho (régua "funciona ou esconde" foi violada).
+ *
  * Visual: height 28, padding-12, rounded-full; ativo
  * bg-foreground cor-background border-foreground; inativo bg-muted/50
  * cor-foreground/70 border-border. Strip horizontal scroll com snap-start.
@@ -19,11 +25,57 @@
  * Roteamento: `useRouter().replace()` preserva price filters; reseta
  * page e zera os outros chips fixos quando atributo é escolhido.
  */
+import { ListFilter } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { StorefrontAttribute } from "@/lib/storefront/attributes-loader";
 import { cn } from "@/lib/utils";
+
+type SortValue = "relevance" | "price_asc" | "price_desc" | "newest";
+const SORT_LABEL: Record<SortValue, string> = {
+  relevance: "Relevância",
+  price_asc: "Menor preço",
+  price_desc: "Maior preço",
+  newest: "Mais novos",
+};
+function isSortValue(v: string | null): v is SortValue {
+  return v === "relevance" || v === "price_asc" || v === "price_desc" || v === "newest";
+}
+
+// Cents (URL) ↔ reais inteiros (input do usuário). Cliente lojista BR
+// usa preços inteiros em reais — não precisamos de centavos no filtro.
+function centsToReaisString(cents: string | null): string {
+  if (!cents) return "";
+  const n = Number(cents);
+  if (!Number.isFinite(n) || n <= 0) return "";
+  return String(Math.floor(n / 100));
+}
+function reaisStringToCents(value: string): number | null {
+  const trimmed = value.replace(/[^0-9]/g, "");
+  if (!trimmed) return null;
+  const n = Number(trimmed);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n * 100;
+}
 
 type FixedKey = "all" | "promo" | "newest";
 
@@ -103,6 +155,57 @@ export function CategoryFilterChips({
     [activeAttrValueId, router, buildHref],
   );
 
+  // ─── Onda 4: filtros preço + sort em Sheet ──────────────────────
+  const currentPriceMin = searchParams.get("priceMin");
+  const currentPriceMax = searchParams.get("priceMax");
+  const currentSortRaw = searchParams.get("sort");
+  const currentSort: SortValue = isSortValue(currentSortRaw)
+    ? currentSortRaw
+    : "relevance";
+
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [draftPriceMin, setDraftPriceMin] = useState(centsToReaisString(currentPriceMin));
+  const [draftPriceMax, setDraftPriceMax] = useState(centsToReaisString(currentPriceMax));
+  const [draftSort, setDraftSort] = useState<SortValue>(currentSort);
+
+  // Hidrata os drafts ao abrir o sheet (caso URL tenha mudado por trás).
+  useEffect(() => {
+    if (!filtersOpen) return;
+    setDraftPriceMin(centsToReaisString(currentPriceMin));
+    setDraftPriceMax(centsToReaisString(currentPriceMax));
+    setDraftSort(currentSort);
+  }, [filtersOpen, currentPriceMin, currentPriceMax, currentSort]);
+
+  // Contagem de filtros aplicados pra badge no botão.
+  const activeFilterCount =
+    (currentPriceMin ? 1 : 0) +
+    (currentPriceMax ? 1 : 0) +
+    (currentSort !== "relevance" && currentSort !== "newest" ? 1 : 0);
+
+  const handleApplyFilters = () => {
+    const next = new URLSearchParams();
+    // Preserva attr ativo (filtro de atributo é independente).
+    if (activeAttrValueId) next.set("attr", activeAttrValueId);
+    // Preserva promo se ativo na URL atual.
+    if (searchParams.get("promo") === "1") next.set("promo", "1");
+
+    const minCents = reaisStringToCents(draftPriceMin);
+    const maxCents = reaisStringToCents(draftPriceMax);
+    if (minCents !== null) next.set("priceMin", String(minCents));
+    if (maxCents !== null) next.set("priceMax", String(maxCents));
+    if (draftSort !== "relevance") next.set("sort", draftSort);
+
+    const qs = next.toString();
+    router.replace(qs ? `${basePath}?${qs}` : basePath, { scroll: false });
+    setFiltersOpen(false);
+  };
+
+  const handleClearFilters = () => {
+    setDraftPriceMin("");
+    setDraftPriceMax("");
+    setDraftSort("relevance");
+  };
+
   return (
     <div
       role="tablist"
@@ -173,6 +276,138 @@ export function CategoryFilterChips({
           );
         }),
       )}
+
+      {/* Onda 4 (2026-05-27): botão Filtros sempre presente, badge com
+          contador quando há filtros aplicados (preço/sort). Sheet à direita
+          (consistente com pattern de filter side-sheet de e-commerce). */}
+      <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <button
+          type="button"
+          onClick={() => setFiltersOpen(true)}
+          className={cn(
+            "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-semibold tracking-[-0.1px] transition-all outline-none",
+            "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            activeFilterCount > 0
+              ? "border-foreground bg-foreground text-background"
+              : "border-border bg-background text-foreground/70 hover:border-foreground/30 hover:text-foreground",
+          )}
+          aria-label={
+            activeFilterCount > 0
+              ? `Filtros · ${activeFilterCount} ativos`
+              : "Abrir filtros"
+          }
+          style={{ touchAction: "manipulation" }}
+        >
+          <ListFilter className="size-3.5" strokeWidth={2} aria-hidden />
+          <span>Filtros</span>
+          {activeFilterCount > 0 && (
+            <span
+              aria-hidden
+              className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-background px-1 font-mono text-[10px] font-bold leading-none text-foreground"
+            >
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
+        <SheetContent side="right" className="w-[88vw] max-w-[380px] flex flex-col gap-0 p-0">
+          <SheetHeader className="border-b border-border px-5 py-4">
+            <SheetTitle className="text-[15px] font-semibold tracking-[-0.2px]">
+              Filtros
+            </SheetTitle>
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
+            {/* Sort */}
+            <section className="space-y-2">
+              <Label htmlFor="filter-sort" className="text-[12px] font-semibold uppercase tracking-[0.4px] text-muted-foreground">
+                Ordenar por
+              </Label>
+              <Select
+                value={draftSort}
+                onValueChange={(v) => setDraftSort(v as SortValue)}
+              >
+                <SelectTrigger id="filter-sort" className="w-full">
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(["relevance", "price_asc", "price_desc", "newest"] as SortValue[]).map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {SORT_LABEL[s]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </section>
+
+            {/* Preço */}
+            <section className="space-y-2">
+              <Label className="text-[12px] font-semibold uppercase tracking-[0.4px] text-muted-foreground">
+                Faixa de preço (R$)
+              </Label>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 space-y-1">
+                  <Label htmlFor="filter-price-min" className="text-[11px] text-muted-foreground">
+                    De
+                  </Label>
+                  <Input
+                    id="filter-price-min"
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="0"
+                    min={0}
+                    step={1}
+                    value={draftPriceMin}
+                    onChange={(e) => setDraftPriceMin(e.target.value)}
+                    className="h-10"
+                  />
+                </div>
+                <span aria-hidden className="text-muted-foreground pt-5">
+                  —
+                </span>
+                <div className="flex-1 space-y-1">
+                  <Label htmlFor="filter-price-max" className="text-[11px] text-muted-foreground">
+                    Até
+                  </Label>
+                  <Input
+                    id="filter-price-max"
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="∞"
+                    min={0}
+                    step={1}
+                    value={draftPriceMax}
+                    onChange={(e) => setDraftPriceMax(e.target.value)}
+                    className="h-10"
+                  />
+                </div>
+              </div>
+              <p className="text-muted-foreground text-[11px]">
+                Valores em reais inteiros. Deixe em branco pra não filtrar.
+              </p>
+            </section>
+          </div>
+
+          <SheetFooter className="flex-row gap-2 border-t border-border px-5 py-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClearFilters}
+              className="flex-1"
+            >
+              Limpar
+            </Button>
+            <SheetClose asChild>
+              <Button
+                type="button"
+                onClick={handleApplyFilters}
+                className="flex-1"
+              >
+                Aplicar
+              </Button>
+            </SheetClose>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

@@ -392,18 +392,21 @@ export function ProductPurchasePanel({
           </div>
         )}
 
-        {/* Descrição — canvas linhas 318-323 */}
+        {/* Descrição — Onda 4 (2026-05-27): collapsable em "Ler mais" depois
+            de 4 linhas. Produto com descrição longa (perfume com história,
+            joia com narrativa) virava mural — empurrava meta grid + CTA pra
+            longe da dobra. Threshold de 220 chars como heurística pra evitar
+            "Ler mais" em textos curtos onde o botão seria ruído. */}
         {product.description && (
-          <div className="px-4 pt-5">
-            <div className="mb-2 text-[12px] font-semibold text-foreground">Descrição</div>
-            <p className="text-[12px] leading-[1.55] text-gray-700 [text-wrap:pretty]">
-              {product.description}
-            </p>
-          </div>
+          <ProductDescription text={product.description} />
         )}
 
-        {/* Meta grid — canvas linhas 326-338 */}
-        {metaPairs.length > 0 && (
+        {/* Meta grid — Onda 4 (2026-05-27): threshold ≥2 pares preenchidos.
+            Quando lojista preenche só COMPOSIÇÃO (caso comum em joia/perfumaria
+            onde MODELAGEM/FORRO/LAVAGEM não se aplicam), o grid renderizava 1
+            célula solitária na coluna esquerda criando assimetria visual.
+            Schema flexível key:value fica como follow-up estrutural. */}
+        {metaPairs.length >= 2 && (
           <div className="grid grid-cols-2 gap-2 px-4 pt-[18px]">
             {metaPairs.map(([label, value]) => (
               <div key={label} className="border-t border-border pt-2">
@@ -490,5 +493,42 @@ export function ProductPurchasePanel({
         </a>
       </div>
     </>
+  );
+}
+
+/**
+ * Bloco de descrição com toggle "Ler mais" — Onda 4 (2026-05-27).
+ * Textos curtos (< 220 chars) renderizam sem botão (não vale o ruído).
+ * Textos longos colapsam em line-clamp-4 com toggle pra expandir.
+ */
+function ProductDescription({ text }: { text: string }) {
+  const LONG_THRESHOLD = 220;
+  const isLong = text.length > LONG_THRESHOLD;
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="px-4 pt-5">
+      <div className="mb-2 text-[12px] font-semibold text-foreground">
+        Descrição
+      </div>
+      <p
+        className={cn(
+          "text-[12px] leading-[1.55] text-gray-700 [text-wrap:pretty]",
+          isLong && !expanded && "line-clamp-4",
+        )}
+      >
+        {text}
+      </p>
+      {isLong && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          className="text-foreground/80 hover:text-foreground mt-1.5 text-[11.5px] font-semibold underline-offset-2 outline-none transition-colors hover:underline focus-visible:ring-2 focus-visible:ring-ring rounded"
+        >
+          {expanded ? "Ler menos" : "Ler mais"}
+        </button>
+      )}
+    </div>
   );
 }
