@@ -7,7 +7,7 @@
  * - Filtra produtos quando usuário digita
  * - Design limpo e moderno estilo app de moda
  */
-import { ArrowLeft, Search as SearchIcon, X } from "lucide-react";
+import { ArrowLeft, Search as SearchIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -16,6 +16,7 @@ import { z } from "zod";
 import { Pagination } from "@/components/common/pagination";
 import { CategoryPills } from "@/components/storefront/category-pills";
 import { ProductGrid } from "@/components/storefront/product-grid";
+import { SearchTypeahead } from "@/components/storefront/search-typeahead";
 import { Button } from "@/components/ui/button";
 import {
   pageNumberSchema,
@@ -95,50 +96,19 @@ export default async function SearchPage({
             <h1 className="text-lg font-semibold flex-1">Explorar</h1>
           </div>
 
-          {/* Search bar */}
+          {/* Search bar — Onda 6 (2026-05-27): input substituído por
+              <SearchTypeahead> com combobox ARIA + debounce 200ms + dropdown
+              de 6 sugestões. Submit do form preservado: Enter sem item
+              selecionado continua indo pra /buscar?q= (listagem cheia).
+              Botão de submit mantido pra fallback sem JS / hábito tactil. */}
           <form
             action={`/${store.slug}/buscar`}
             method="get"
             role="search"
             className="flex items-center gap-3"
           >
-            <div className="relative flex-1">
-              <SearchIcon
-                className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
-              {/*
-                text-base (16px) no mobile evita zoom automático do iOS
-                Safari quando o input ganha foco. md:text-sm volta pra
-                14px no desktop onde o zoom não acontece.
-              */}
-              <input
-                type="search"
-                name="q"
-                defaultValue={q}
-                placeholder="Buscar produtos..."
-                className="h-12 w-full rounded-xl bg-gray-100 pl-12 pr-10 text-base outline-none transition-colors placeholder:text-muted-foreground focus:bg-gray-200/80 focus:ring-2 focus:ring-ring md:text-sm"
-                aria-label="Buscar produtos"
-                autoComplete="off"
-                enterKeyHint="search"
-              />
-              {q && (
-                <Link
-                  href={`/${store.slug}/buscar`}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label="Limpar busca"
-                >
-                  <X className="size-4" />
-                </Link>
-              )}
-            </div>
-            
-            {/* Submit button — Onda 3 (2026-05-27): ícone SlidersHorizontal
-                trocado por SearchIcon. O Sliders comunica "filtros" mas
-                aqui é o submit do form de busca. Bug semântico: o header
-                da home usa Sliders pra abrir categorias drawer, então o
-                mesmo ícone fazia duas coisas diferentes em telas distintas.
-                Agora a lupa comunica corretamente "buscar". */}
+            <SearchTypeahead storeSlug={store.slug} initialQuery={q} />
+
             <button
               type="submit"
               className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-foreground text-background outline-none transition-colors transition-transform hover:bg-foreground/90 hover:scale-105 active:scale-95 focus-visible:ring-2 focus-visible:ring-ring"
