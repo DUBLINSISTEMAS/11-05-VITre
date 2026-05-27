@@ -97,9 +97,9 @@ export function ReportView({
       );
     }
     add("");
-    add("LEADS");
+    // S4.8 (2026-05-26) — vocabulário canônico: "Leads" → "Recados do site".
+    add("RECADOS DO SITE");
     add(`Total,${report.leads.totalLeads}`);
-    add(`Taxa de conversão,${(report.leads.conversionRate * 100).toFixed(1)}%`);
     for (const l of report.leads.byStatus) {
       add(`${STATUS_LABEL[l.status] ?? l.status},${l.count}`);
     }
@@ -295,9 +295,10 @@ export function ReportView({
             />
           )}
         </ReportCard>
-        <ReportCard
-          title={`Leads · conversão ${(report.leads.conversionRate * 100).toFixed(1)}%`}
-        >
+        {/* S4.8 (2026-05-26) — vocabulário canônico. Conversão removida
+            do header porque não há fluxo de "marcar como convertido" no
+            módulo Recados (Sprint Relatórios audit detectou inconsistência). */}
+        <ReportCard title="Recados do site">
           {report.leads.totalLeads === 0 ? (
             <Empty />
           ) : (

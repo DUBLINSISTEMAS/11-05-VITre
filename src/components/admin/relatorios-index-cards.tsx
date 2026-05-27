@@ -16,9 +16,7 @@ import {
   HandCoinsIcon,
   type LucideIcon,
   ReceiptIcon,
-  StoreIcon,
   TrendingUpIcon,
-  TruckIcon,
   UsersIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -42,14 +40,9 @@ const REPORTS: ReportCard[] = [
     description:
       "Lista venda-a-venda com cliente, canal e método. Total + ticket médio.",
   },
-  {
-    k: "vendas-canal",
-    label: "Vendas por canal",
-    href: "/admin/relatorios/vendas-canal",
-    icon: StoreIcon,
-    description: "Balcão (PDV) vs. loja online (WhatsApp). Compara volume e ticket.",
-    soon: true,
-  },
+  // S4.8 (2026-05-26) — card "Vendas por canal" removido (regua funciona-ou-esconde).
+  // Rota /admin/relatorios/vendas-canal segue como stub via URL; quando virar feature
+  // real (Sprint 5+), reintroduzir aqui sem `soon`.
   {
     k: "top",
     label: "Top produtos",
@@ -57,14 +50,8 @@ const REPORTS: ReportCard[] = [
     icon: TrendingUpIcon,
     description: "O que mais vendeu, por faturamento ou quantidade.",
   },
-  {
-    k: "top-clientes",
-    label: "Top clientes",
-    href: "/admin/relatorios/top-clientes",
-    icon: UsersIcon,
-    description: "Ranking por receita gerada + frequência de compra.",
-    soon: true,
-  },
+  // S4.8 — "Top clientes" removido. Loader existe (loadFullReport.customers.topCustomers)
+  // mas precisa de rota dedicada — implementar em Sprint 5 + reintroduzir.
   {
     k: "margem",
     label: "Margem por produto",
@@ -86,14 +73,8 @@ const REPORTS: ReportCard[] = [
     icon: HandCoinsIcon,
     description: "Lista pra cobrança com saldo restante e vencimento.",
   },
-  {
-    k: "compras-fornecedor",
-    label: "Compras por fornecedor",
-    href: "/admin/relatorios/compras-fornecedor",
-    icon: TruckIcon,
-    description: "Volume e custo médio agrupado por fornecedor (CMV detalhado).",
-    soon: true,
-  },
+  // S4.8 — "Compras por fornecedor" removido. Implementação real requer
+  // agregado JOIN purchase+supplier+purchase_item — Sprint 5.
   {
     k: "vendedoras",
     label: "Vendas por vendedora",

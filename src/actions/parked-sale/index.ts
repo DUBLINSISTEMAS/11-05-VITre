@@ -14,7 +14,7 @@ import { and, desc, eq, gt } from "drizzle-orm";
 import { headers } from "next/headers";
 import { z } from "zod";
 
-import { parkedSaleTable, type ParkedItem } from "@/db/schema";
+import { type ParkedItem,parkedSaleTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import {
