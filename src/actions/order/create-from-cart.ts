@@ -100,7 +100,21 @@ const MAX_SHORTCODE_RETRIES = 5;
 export async function createOrderFromCart(
   input: CreateOrderInput,
 ): Promise<CreateOrderResult> {
-  // 1. Rate limit
+  // 1. Rate limit por IP (5/min via `rateLimits.createOrder`).
+  //
+  // Onda 35 (2026-05-27 — readiness audit) DECISÃO: NÃO ADICIONAR QUOTA MENSAL
+  // POR LOJA em order. Considerado mas rejeitado:
+  //  - Atacante distribuído (1000 IPs × 5 req/min) fura rate-limit por IP MAS
+  //    bate qualquer quota mensal de 5k+ em horas, fechando a loja pros
+  //    clientes legítimos pelo restante do mês. Cura pior que doença.
+  //  - Defesa real contra DoS distribuído é Cloudflare/Vercel WAF na borda,
+  //    não app-level. Rate-limit por IP aqui é defesa em profundidade contra
+  //    bot single-source.
+  //  - Custo Supabase de 1M order rows ≈ trivial (storage Postgres barato).
+  //
+  // Quotas em outras tabelas (customer/expense) também rejeitadas: criadas
+  // apenas por lojista logado → rate-limit `mutation` (60/min) já cobre,
+  // e lojista que infla a própria DB é problema dele, não do sistema.
   try {
     const headerList = await headers();
     await checkRateLimit(rateLimits.createOrder, getClientIp(headerList));

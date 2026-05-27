@@ -1,0 +1,70 @@
+# Cleanup semanal de "zombie users" — signups self-service que não
+# completaram o passo `createStore` em até 7 dias.
+#
+# Ver scripts/cleanup-zombie-users.mjs pra critérios e segurança.
+#
+# Schedule: toda segunda 04:00 UTC (01:00 BRT). Roda 2h DEPOIS do backup
+# weekly (domingo 06:00 UTC) pra garantir snapshot recente caso queira
+# auditar/revert (improvável — user zombie sem store não tem valor).
+#
+# Pré-requisito: secret PROD_DIRECT_URL (mesmo do backup-weekly.yml).
+#
+# Teste manual: Actions → Cleanup zombie users → Run workflow → escolher
+# `mode=dry-run` pra ver candidatos sem deletar.
+name: Cleanup zombie users
+
+on:
+  schedule:
+    # Toda segunda 04:00 UTC = 01:00 BRT
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Modo de execução"
+        required: true
+        default: "dry-run"
+        type: choice
+        options:
+          - dry-run
+          - apply
+
+jobs:
+  cleanup:
+    name: cleanup-zombie-users
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run cleanup
+        id: cleanup
+        env:
+          DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
+        run: |
+          if [ -z "$DIRECT_URL" ]; then
+            echo "::error::Secret PROD_DIRECT_URL não configurado. Veja docs/dr.md."
+            exit 1
+          fi
+          # Schedule sempre roda em --apply (limpeza efetiva).
+          # workflow_dispatch usa o input (default dry-run pra segurança).
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.mode }}" = "apply" ]; then
+            node scripts/cleanup-zombie-users.mjs --apply
+          else
+            node scripts/cleanup-zombie-users.mjs
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Cleanup zombie users" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Trigger: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "Mode: ${{ inputs.mode || 'apply (schedule)' }}" >> $GITHUB_STEP_SUMMARY
+          echo "Deleted: ${{ steps.cleanup.outputs.deleted_count || '?' }}" >> $GITHUB_STEP_SUMMARY

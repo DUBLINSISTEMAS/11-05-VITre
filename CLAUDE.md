@@ -155,35 +155,37 @@ CSS bug histórico corrigido em 2026-05-26: `body:has(.report-print-root)` agora
 
 ---
 
-## Sprint atual: Plano de Endurecimento Sprints 0-4 ✅ FECHADAS (2026-05-26)
+## Sprint atual: Onda 35 — Limpeza sênior + endurecimento pra 15 lojas (2026-05-27)
 
-**Sessão maratona de ~10h em 2026-05-26 fechou 4 sprints inteiras** (com 1 item de S4.1 parcial). Estado real:
+Auditoria com 3 agentes paralelos (SQLs, dead code, readiness 15 lojas) gerou 3 docs curtos acionáveis. Founder autorizou TODA a limpeza + ataque dos itens críticos.
 
-- **Sprint 0** Fundamento: 2/3 ✅ + 1 ⏸️ externa (Sentry token no Vercel)
-- **Sprint 1** Endurecimento Produção: 5/6 ✅ + 1 deferido (Resend externo)
-- **Sprint 2** Honestidade do Dashboard: **7/7 ✅**
-- **Sprint 3** Lojista BR Real: **6/6 ✅**
-- **Sprint 4** Refinamentos: **8/8 ✅** (S4.1 pdv-shell refactor 3409→3295 + estrutura modular; refactor pleno defer pra S5 com E2E test antes)
+**Entregue na Onda 35**:
+- **Dead code** ~1162 linhas removidas: 10 arquivos órfãos (delete-product-dialog, credit-installment-selector duplicata do inline em pdv-shell, product-publish-toggle, mango-icon, more-sheet, attributes-loader, 3 rotas stub de relatório + report-stub) + parked-sale inteiro (action + schema + tabela; SQL 81_drop_parked_sale.sql criado).
+- **Lint warnings** 12 imports não usados limpos. Lint agora **zero warnings**.
+- **Storefront bugs reportados pelo founder em uso real** (commit `dcff706`):
+  - Zoom no input "Buscar produtos" — `text-[13px]` → `text-[16px] md:text-[13px]` (iOS Safari força zoom < 16px; mobile sem zoom + desktop paridade preservada). Reverte trade-off da Onda 18.
+  - Banner/footer "sumindo e voltando" no scroll — remove `key={pathname}` + `animate-in fade-in duration-150` do `<main>` (Onda 21). Causa: forçava DESMONTE+REMONTE em soft nav, criando piscada visível. RSC streaming do Next já transiciona suave.
+- **Zombie users TTL** (`scripts/cleanup-zombie-users.mjs` + `.github/workflows/cleanup-zombie-users-weekly.yml`): cron toda segunda 04:00 UTC com `--apply`, workflow_dispatch oferece `dry-run`/`apply`. Critérios: user sem store + createdAt > 7d + nenhuma session ativa. Dry-run em prod: 0 zombies (sistema limpo).
+- **Integration tests pós-Ondas 32-34**: `RUN_INTEGRATION=1 npm run test:integration` → **40/40 verde**. Signup self-service + subdomain middleware não causaram regressão cross-tenant.
+- **Decisão arquitetural rejeitada**: NÃO adicionar quota em order/customer/expense. Justificativa em `src/actions/order/create-from-cart.ts` (seção rate-limit): quota mensal em order causa DoS-self (atacante distribuído fecha loja pelo mês); defesa real é Cloudflare/WAF na borda. customer/expense → criados só por lojista logado, rate-limit `mutation` (60/min) cobre.
+- **Sentinela `check-sql-applied.mjs`** estendida pra cobrir SQLs 72-81 (era 11→71b). +15 checks. `docs/MIGRATION.md` sync 68 → 81 + nota sobre drizzle/0034 deferred.
 
-**Estado verificado**: 80 SQLs em prod, 590 testes (548 pass / 0 fail / 42 skipped), tsc + lint zero erro. Branch única `main`. ~30 commits nesta sessão.
+**Estado verificado (2026-05-27)**: 80 SQLs em prod + 1 deferred (0034 grandfathering) + 1 pendente apply (81 drop parked_sale), 589 testes (548 pass + 41 skipped fora de RUN_INTEGRATION) + 40/40 integration verde, tsc + lint **zero warnings**. Branch única `main`.
 
-**Descoberta crítica durante S2.6**: `order_item.unit_cost_snapshot_in_cents` era NULL pra TODAS vendas — invalidava margem do sistema. Fix incluído (snapshot agora `coalesce(variant.cost, product.cost)` em PDV e WhatsApp checkout).
+**Pendências externas do founder** (atualizado 2026-05-27):
+- ✅ Sentry: `SENTRY_AUTH_TOKEN` + `SENTRY_ORG` + `SENTRY_PROJECT` setados no Vercel
+- ✅ Supabase: senha rotacionada
+- ⏸️ GitHub: secret `PROD_DIRECT_URL` (3 min — destrava backup weekly + cleanup zombie weekly)
+- ⏸️ Resend: domínio próprio + DKIM/SPF/DMARC → aplicar drizzle/0034 → flip `EMAIL_VERIFICATION_REQUIRED=true` (gate do Bloco 4 da Fase 2)
+- ⏸️ Aplicar `supabase/sql/81_drop_parked_sale.sql` em prod (founder roda manual)
 
-**Dívidas residuais documentadas**:
-- S0.2 CI Integration RLS — 15 tabelas skipam por GRANT não-debugado (test file tem TODO).
+**Dívidas residuais (mantidas da Onda 34)**:
 - S4.1 pdv-shell refactor pleno — 9 componentes ainda no shell, precisa E2E test antes.
-- UIs pendentes: lote na compra (S3.4), pausa-venda PDV (S3.3), ajuste taxa cartão (S2.4).
+- UI lote/validade na compra (S3.4) — schema pronto, falta input batch_number + expires_at em `/admin/compras`. Defer se primeiro lojista NÃO for perfumaria.
 - recordReceivablePayment com distribuição juros→multa→principal (helper pronto, falta plugar).
+- Load test pool DB pré-15 lojas + considerar Supabase Pro plan (60→200 conexões).
 
-**Pendências externas do founder** (4 itens curtos):
-1. Vercel: `SENTRY_AUTH_TOKEN` + `SENTRY_ORG` + `SENTRY_PROJECT` (10 min)
-2. GitHub: secret `PROD_DIRECT_URL` (3 min)
-3. Supabase: rotacionar senha exposta (5 min)
-4. Resend: domínio próprio + flip email verification (~30 min, defer)
-
-**Sistema pronto pra Sandra/Vânia operar diariamente**: DRE não mente, fiado cobra multa/juros, margem por variante, aging report, vendedoras com comissão, sangria 6-tipo, quota/rate-limit, DR doc, CSV server-side, storefront pixel-perfect.
-
-Detalhes completos em memória `sessao-2026-05-26-sprints-0-a-4.md` + `docs/PLANO-ENDURECIMENTO.md` (com status atualizado por item).
+Detalhes completos em memória `sessao-2026-05-26-sprints-0-a-4.md` + `docs/PLANO-ENDURECIMENTO.md`.
 
 ---
 
@@ -465,5 +467,6 @@ Marcos:
 - **MARATONA SPRINTS 0-4 DO PLANO DE ENDURECIMENTO em 2026-05-26** — ~10h de sessão fecharam 4 sprints (S0 fundamento, S1 produção, S2 honestidade 7/7, S3 lojista BR 6/6, S4 refinamentos 8/8). 80 SQLs em prod (até #80), 590 testes, ~30 commits. Sistema PRONTO pra lojista BR operar diariamente — DRE não mente, fiado cobra multa, comissão por vendedora, aging/lote/validade, sangria 6-tipo, quota/rate-limit, DR doc. Próximo bloco: Fase 2 Bloco 3-4-5 (signup self-service + hardening auth + roteamento subdomain) OU resolver dívidas residuais (pdv-shell refactor pleno + S0.2 GRANT debug).
 - **Storefront — Ondas 1-31 em 2026-05-26/27** — 31 ondas de polimento sênior: hierarquia conversão, PDP cirúrgico (×2), trust + share API, search typeahead, favoritos mobile, fade transitions, sistema tipográfico canônico, cantos Apple-style, sticky compact, paridade carrinho ↔ sidebar, Onda 31 resiliência (6 bugs + 3 atenções: telemetria removida, idempotency persistente, timeout 20s, cap stockQty, debounce cupom, regex nome).
 - **Fase 2 Bloco 3 ✅ + Bloco 4 🟡 INFRA em 2026-05-27 (Onda 32)** — Bloco 3 já estava substancialmente pronto (auditoria revelou), só faltava sync docs. Bloco 4: página `/verificar-email`, action `resendVerification` rate-limited, SQL 0034 grandfathering, flag `EMAIL_VERIFICATION_REQUIRED` no env. Aguarda Resend domain pra flip em prod. Próximo: Bloco 5 (subdomain routing).
+- **Onda 35 — Limpeza sênior + readiness pra 15 lojas em 2026-05-27** — 3 agentes de auditoria paralelos (SQLs, dead code, readiness). Removidos ~1162 linhas de dead code (10 arquivos órfãos + parked-sale inteiro com SQL 81 drop). 12 lint warnings limpos (zero warnings agora). 2 bugs storefront reportados pelo founder em uso real corrigidos: zoom no input (text-[16px] md:text-[13px]) + Onda 21 revertida (banner/footer "sumindo e voltando" em soft nav). Script + workflow weekly de cleanup zombie users criado (dry-run em prod = 0 zombies). Integration tests 40/40 verde pós-Ondas 32-34. Decisão arquitetural: NÃO adicionar quota em order/customer/expense (rate-limit + WAF cobrem). Sentinela `check-sql-applied.mjs` estendida 11→81. Pendências externas resolvidas: ✅ Sentry token + ✅ senha Supabase rotacionada. Restantes: GitHub secret `PROD_DIRECT_URL` + Resend domain + apply SQL 81 em prod.
 
 **Norte vivo sobrescreve qualquer ADR conflitante.** Se ADR antigo disser X e este arquivo disser Y, vale este arquivo. ADR é registro de decisão no momento; norte vivo é régua de execução atual.
