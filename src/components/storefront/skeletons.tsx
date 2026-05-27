@@ -61,14 +61,16 @@ export function ProductGridSkeleton({
 }
 
 /**
- * Hero card skeleton (substituiu BannerCarouselSkeleton na limpeza
- * Onda 4 da auditoria 2026-05-10 — banner-carousel.tsx foi removido).
+ * Hero card skeleton — alinhado com hero-card.tsx (Onda 3.1 2026-05-27):
+ * mobile full-bleed 4:5 sem rounded, desktop 3:1 com rounded+border.
+ * Skeleton precisa bater EXATAMENTE com o aspect final, senão há layout
+ * shift visível (CLS) entre placeholder e conteúdo.
  */
 export function HeroCardSkeleton({ className }: { className?: string }) {
   return (
     <Skeleton
       className={cn(
-        "aspect-[16/9] w-full rounded-3xl sm:aspect-[21/9]",
+        "aspect-[4/5] w-full rounded-none lg:aspect-[3/1] lg:rounded-[14px]",
         className,
       )}
     />
