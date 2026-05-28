@@ -13,6 +13,7 @@
  */
 import { z } from "zod";
 
+import { paymentLineSchema } from "@/actions/order/balcao/schema";
 import { isValidWhatsAppBR } from "@/lib/whatsapp-format";
 
 export const ORDER_STATUS_VALUES = [
@@ -117,3 +118,23 @@ export const createOrderInputSchema = customerInputSchema.extend({
     .default(null),
 });
 export type CreateOrderInput = z.input<typeof createOrderInputSchema>;
+
+// =====================================================================
+// confirmOrderPayment (Onda 36 — 2026-05-28)
+// =====================================================================
+
+/**
+ * Registra linhas de order_payment pra uma venda já existente (canal
+ * WhatsApp principalmente — PDV grava no momento da venda). Mesmo
+ * `paymentLineSchema` do PDV pra consistência (multi-payment, troco,
+ * parcelas crédito, notes). Soma das linhas tem que bater com
+ * `order.totalInCents` server-side (validado na action).
+ */
+export const confirmOrderPaymentSchema = z.object({
+  orderId: z.string().uuid(),
+  payments: z
+    .array(paymentLineSchema)
+    .min(1, "Informe pelo menos uma forma de pagamento")
+    .max(5, "Máximo 5 formas de pagamento por venda"),
+});
+export type ConfirmOrderPaymentInput = z.input<typeof confirmOrderPaymentSchema>;

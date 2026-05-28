@@ -40,6 +40,7 @@ import {
 } from "@/actions/order/load-detail";
 import { updateOrderNotes } from "@/actions/order/update-notes";
 import { CustomerLinkSection } from "@/components/admin/customer-link-section";
+import { OrderConfirmPaymentDialog } from "@/components/admin/order-confirm-payment-dialog";
 import { OrderStatusActions } from "@/components/admin/order-status-actions";
 import { OrderStatusBadge } from "@/components/admin/order-status-badge";
 import { OrderTimeline } from "@/components/admin/order-timeline";
@@ -75,6 +76,15 @@ function paymentLabelFull(method: string, installments: number): string {
   }
   return base;
 }
+
+// Onda 36 (2026-05-28) — espelha STATUSES_THAT_ACCEPT_PAYMENT da action
+// confirmOrderPayment. Mantemos a fonte verdadeira no server (que faz
+// guarda real); este Set client-side só decide se renderiza o CTA.
+const ACCEPTS_PAYMENT_STATUSES = new Set([
+  "awaiting_whatsapp",
+  "confirmed",
+  "fulfilled",
+]);
 
 interface OrderDetailDrawerProps {
   /** ID do pedido aberto. null = fechado. */
@@ -397,6 +407,28 @@ function DrawerContent({
                     {order.payments.length} formas
                   </span>
                 )}
+              </div>
+            ) : ACCEPTS_PAYMENT_STATUSES.has(order.status) ? (
+              /* Onda 36 (2026-05-28) — sem order_payment registrado.
+                 Típico de venda WhatsApp criada via storefront: cliente
+                 confirmou no chat e pagou fora. Lojista agora registra
+                 a forma pra DRE/dashboard refletirem taxa real e
+                 settlement_date. Quote/canceled/expired/returned NÃO
+                 mostram CTA — pagamento naqueles estados é nonsense. */
+              <div
+                className="mt-2 border-t pt-2"
+                style={{
+                  borderTop: "1px dashed var(--brand-line)",
+                  borderColor: "var(--brand-line)",
+                }}
+              >
+                <div className="text-ink-3 mb-2 text-[12px]">
+                  Pagamento ainda não registrado.
+                </div>
+                <OrderConfirmPaymentDialog
+                  orderId={order.id}
+                  totalInCents={order.totalInCents}
+                />
               </div>
             ) : null}
           </div>
