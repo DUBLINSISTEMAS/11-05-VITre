@@ -1011,12 +1011,9 @@
     .b3-side[data-collapsed="true"] .b3-side-item .chev {
       display: none !important;
     }
-    /* Active bar — quando collapsed, a barra esquerda vira "pílula"
-       inteira atrás do ícone pra ficar mais visível no formato estreito.
-       Sem isso, a barrinha de 3px some dentro do margin lateral de 12px. */
-    .b3-side[data-collapsed="true"] .b3-side-item[data-active="true"]::before {
-      left: -2px;
-    }
+    /* Active no collapsed: o item inteiro já recebe background brand sólido
+       (regra ativa principal). Nada extra a fazer aqui — a barra ::before
+       antiga foi removida no refactor plano 2026-05-27. */
     /* Footer: avatar centralizado, esconde nome/email/dropdown. */
     .b3-side[data-collapsed="true"] .b3-side-foot {
       padding: 8px 4px 12px;
@@ -1106,6 +1103,39 @@
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--ink-4);
+  }
+
+  /* ----- LAYOUT PLANO (refactor 2026-05-27 ref Finexy) -----
+     Substitui o accordion (b3-side-section + b3-side-collapsible) por um
+     layout plano: cada grupo é só uma label pequena cinza + lista de
+     items todos visíveis. Sem chevron, sem toggle.
+
+     b3-side-flat-group: wrapper de grupo com gap discreto pro próximo.
+     b3-side-section-label: rótulo "Menu", "Cadastros", etc — caps fino. */
+  .b3-side-flat-group {
+    margin-top: 14px;
+  }
+  .b3-side-flat-group:first-of-type {
+    margin-top: 6px;
+  }
+  .b3-side-section-label {
+    padding: 6px 24px 6px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--ink-4);
+    text-transform: none;
+  }
+  /* Collapsed (72px): esconde labels de grupo — só ícones cabem. */
+  .b3-side[data-collapsed="true"] .b3-side-section-label,
+  .b3-side[data-collapsed="true"] .b3-side-flat-group {
+    /* labels viram invisíveis (espaço some pra alinhar com b3-side-item col) */
+  }
+  .b3-side[data-collapsed="true"] .b3-side-section-label {
+    visibility: hidden;
+    height: 8px;
+    padding: 0;
+    overflow: hidden;
   }
   /* ----- Accordion section header (Fase 2 redesign 2026-05-21) -----
      Onda 2026-05-24: pai vira "label de grupo" (caps 12/700 ink-3,
@@ -1289,22 +1319,27 @@
      Linear / Notion. Substitui o ícone-laranja anterior, que competia
      com o amarelo do wash (vira "amarelo+laranja" em vez de "amarelo").
      A barra é feita via ::before pra não roubar padding interno do item. */
+  /* Active state — layout plano Finexy-style (2026-05-27): background
+     SÓLIDO na cor primária do projeto (--brand, verde Mangos #174D44) +
+     texto branco + ícone branco. Sem barra lateral, sem wash amarelo.
+     Bate brief do redesign ("Item ativo: fundo na cor primária do projeto,
+     texto branco"). A identidade Mangos (amarelo) segue presente em dots,
+     badges e accents em outros lugares — não no item ativo da nav. */
   .b3-side-item[data-active="true"] {
-    background: var(--mangos-yellow-soft);
-    color: var(--mangos-green-900);
+    background: var(--brand);
+    color: var(--brand-foreground, #ffffff);
     font-weight: 600;
   }
-  .b3-side-item[data-active="true"]::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 6px;
-    bottom: 6px;
-    width: 3px;
-    border-radius: 0 3px 3px 0;
-    background: var(--mangos-yellow);
+  .b3-side-item[data-active="true"] svg {
+    color: var(--brand-foreground, #ffffff);
   }
-  .b3-side-item[data-active="true"] svg { color: var(--mangos-yellow-hover); }
+  .b3-side-item[data-active="true"]:hover {
+    background: var(--brand-2);
+    color: var(--brand-foreground, #ffffff);
+  }
+  .b3-side-item[data-active="true"]:hover svg {
+    color: var(--brand-foreground, #ffffff);
+  }
   .b3-side-item .chev {
     margin-left: auto;
     color: var(--ink-4);
@@ -1654,6 +1689,206 @@
     background: var(--mangos-yellow);
     border-radius: 50%;
     border: 2px solid var(--surface);
+  }
+
+  /* ========================================================
+   * TOPBAR FINEXY-STYLE (refactor 2026-05-27)
+   * Logo round (left) + search central + ícones e avatar pill (right).
+   * Substitui o layout breadcrumb+actions anterior — mantém .b3-top
+   * (transparente, sticky-like) como container externo.
+   * ======================================================== */
+
+  /* LEFT: logo round + wordmark */
+  .b3-topbar-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    height: 44px;
+    padding: 4px 16px 4px 6px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--ink-1);
+    text-decoration: none;
+    box-shadow: 0 1px 2px color-mix(in oklab, var(--ink-1) 4%, transparent);
+    transition: box-shadow 150ms, border-color 150ms;
+  }
+  .b3-topbar-brand:hover {
+    border-color: var(--mangos-border-strong);
+    box-shadow: 0 2px 8px -2px color-mix(in oklab, var(--ink-1) 10%, transparent);
+  }
+  .b3-topbar-brand:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--mangos-yellow) 35%, transparent);
+  }
+  .b3-topbar-brand-icon {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    background: var(--brand);
+    color: white;
+    flex-shrink: 0;
+  }
+  .b3-topbar-brand-icon img {
+    filter: brightness(0) invert(1);
+  }
+  .b3-topbar-brand-word {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    color: var(--ink-1);
+  }
+
+  /* CENTER: search central */
+  .b3-topbar-search {
+    flex: 1;
+    max-width: 520px;
+    margin: 0 24px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    height: 44px;
+    padding: 0 8px 0 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--ink-3);
+    cursor: pointer;
+    box-shadow: 0 1px 2px color-mix(in oklab, var(--ink-1) 3%, transparent);
+    transition: border-color 150ms, box-shadow 150ms;
+  }
+  .b3-topbar-search:hover {
+    border-color: var(--mangos-border-strong);
+  }
+  .b3-topbar-search:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--mangos-yellow) 35%, transparent);
+  }
+  .b3-topbar-search > svg {
+    color: var(--ink-4);
+    flex-shrink: 0;
+  }
+  .b3-topbar-search-placeholder {
+    flex: 1;
+    text-align: left;
+    font-size: 13.5px;
+    font-weight: 400;
+    color: var(--ink-4);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .b3-topbar-kbd {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--font-mono, "Geist Mono", ui-monospace, monospace);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink-4);
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: var(--mangos-cream-soft);
+    border: 1px solid var(--line);
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  /* RIGHT: cluster com sino + help + avatar */
+  .b3-topbar-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  /* Ícone-only button redondo (sino, help) */
+  .b3-topbar-iconbtn {
+    width: 40px;
+    height: 40px;
+    display: inline-grid;
+    place-items: center;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--ink-3);
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 150ms, color 150ms, border-color 150ms;
+  }
+  .b3-topbar-iconbtn:hover {
+    background: var(--mangos-cream-soft);
+    color: var(--mangos-green-900);
+    border-color: var(--mangos-border-strong);
+  }
+  .b3-topbar-iconbtn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--mangos-yellow) 35%, transparent);
+  }
+  .b3-topbar-iconbtn[data-state="open"] {
+    background: var(--mangos-cream-soft);
+    color: var(--mangos-green-900);
+    border-color: var(--mangos-border-strong);
+  }
+
+  /* Avatar pill (logo+nome+cargo+chevron) */
+  .b3-topbar-avatar {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    height: 44px;
+    padding: 4px 14px 4px 5px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--ink-1);
+    cursor: pointer;
+    box-shadow: 0 1px 2px color-mix(in oklab, var(--ink-1) 4%, transparent);
+    transition: border-color 150ms, box-shadow 150ms;
+  }
+  .b3-topbar-avatar:hover {
+    border-color: var(--mangos-border-strong);
+    box-shadow: 0 2px 8px -2px color-mix(in oklab, var(--ink-1) 10%, transparent);
+  }
+  .b3-topbar-avatar:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--mangos-yellow) 35%, transparent);
+  }
+  .b3-topbar-avatar-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 1.15;
+    min-width: 0;
+    max-width: 140px;
+  }
+  .b3-topbar-avatar-name {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-1);
+    letter-spacing: -0.005em;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    max-width: 140px;
+  }
+  .b3-topbar-avatar-role {
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--ink-4);
+    letter-spacing: 0.01em;
+  }
+  .b3-topbar-avatar-chev {
+    color: var(--ink-4);
+    flex-shrink: 0;
+  }
+
+  /* Topbar precisa centralizar verticalmente o cluster da direita —
+     ajuste só pro layout novo (.b3-top mantém o padding original). */
+  .b3-top {
+    align-items: center;
   }
 
   /* Notifications popover — handoff design 2026-05-25 (Passo 5).
@@ -2014,6 +2249,810 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
+  }
+
+  /* ========================================================
+   * DASHBOARD FINEXY-STYLE (refactor 2026-05-27)
+   * MetricCard + ChartCard + RecentOrdersHeader + DateRangePill
+   * Substituem o layout antigo (OpCard + SalesSummaryCard) na home.
+   * ======================================================== */
+
+  /* --- Layout helpers do dashboard --- */
+  .b3-dashboard-hd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+  .b3-dashboard-hd .b3-page-title {
+    margin: 0;
+  }
+  .b3-dashboard-hd-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  /* Mobile: título full-width acima, actions full-width abaixo */
+  @media (max-width: 640px) {
+    .b3-dashboard-hd {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+    }
+    .b3-dashboard-hd-actions {
+      width: 100%;
+    }
+    .b3-dashboard-hd-actions > * {
+      flex: 1 1 auto;
+      justify-content: center;
+    }
+  }
+
+  .b3-metric-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  /* Em tela ~480px, força grid 2-col em vez de 1-col (auto-fit pulava direto
+     pra 1-col porque 220px ocupa mais de metade). */
+  @media (min-width: 420px) and (max-width: 640px) {
+    .b3-metric-grid {
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+  }
+
+  .b3-charts-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 960px) {
+    .b3-charts-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* --- HeroLucro (Bloco F.2.1 da ressignificação) -----------------------
+     Topo do /admin. 2 colunas (ontem · semana). Densidade Bling, não
+     SaaS-US: paddings contidos, número grande tabular, breakdown inline
+     em dl. Sem gradient, sem decoração. */
+  .b3-hero-lucro {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 2px color-mix(in oklab, var(--ink-1) 3%, transparent);
+  }
+  .b3-hero-lucro-grid {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 22px;
+    align-items: stretch;
+  }
+  @media (max-width: 720px) {
+    .b3-hero-lucro {
+      padding: 16px;
+    }
+    .b3-hero-lucro-grid {
+      grid-template-columns: 1fr;
+      gap: 18px;
+    }
+  }
+  .b3-hero-lucro-block {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+  }
+  /* Divisor entre blocos (desktop só) — linha vertical sutil */
+  @media (min-width: 721px) {
+    .b3-hero-lucro-block + .b3-hero-lucro-block {
+      padding-left: 22px;
+      border-left: 1px solid var(--line);
+    }
+  }
+  @media (max-width: 720px) {
+    .b3-hero-lucro-block + .b3-hero-lucro-block {
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+    }
+  }
+
+  .b3-hero-lucro-eyebrow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-4);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    min-width: 0;
+  }
+  .b3-hero-lucro-eyebrow > span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .b3-hero-lucro-no-compare {
+    font-size: 10.5px;
+    color: var(--ink-5);
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 500;
+    font-style: italic;
+  }
+
+  .b3-hero-lucro-amount {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 0;
+  }
+  .b3-hero-lucro-amount-value {
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.025em;
+    color: var(--ink-1);
+    font-variant-numeric: tabular-nums;
+  }
+  .b3-hero-lucro-block--primary .b3-hero-lucro-amount-value {
+    font-size: 44px;
+  }
+  @media (max-width: 480px) {
+    .b3-hero-lucro-amount-value {
+      font-size: 30px;
+    }
+    .b3-hero-lucro-block--primary .b3-hero-lucro-amount-value {
+      font-size: 34px;
+    }
+  }
+  .b3-hero-lucro-amount-value--negative {
+    color: var(--danger);
+  }
+  .b3-hero-lucro-amount-margin {
+    font-size: 12px;
+    color: var(--ink-4);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .b3-hero-lucro-breakdown {
+    margin: 4px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .b3-hero-breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 12.5px;
+    color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.005em;
+  }
+  .b3-hero-breakdown-row dt {
+    color: var(--ink-3);
+    font-weight: 500;
+  }
+  .b3-hero-breakdown-row dd {
+    margin: 0;
+    color: var(--ink-1);
+    font-weight: 500;
+  }
+  .b3-hero-breakdown-row--dim dt,
+  .b3-hero-breakdown-row--dim dd {
+    color: var(--ink-4);
+  }
+  .b3-hero-breakdown-row--highlight {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px dashed var(--line);
+  }
+  .b3-hero-breakdown-row--highlight dt {
+    color: var(--ink-1);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    align-self: center;
+  }
+  .b3-hero-breakdown-row--highlight dd {
+    color: var(--ink-1);
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  .b3-hero-lucro-footer-line {
+    margin-top: 6px;
+    font-size: 11.5px;
+    color: var(--ink-4);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Delta pill — usa ok/danger/neutral */
+  .b3-hero-delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    text-transform: none;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .b3-hero-delta--up {
+    background: color-mix(in oklab, var(--ok) 12%, transparent);
+    color: var(--ok);
+  }
+  .b3-hero-delta--down {
+    background: color-mix(in oklab, var(--danger) 12%, transparent);
+    color: var(--danger);
+  }
+  .b3-hero-delta--flat {
+    background: var(--bg-app);
+    color: var(--ink-4);
+  }
+
+  /* Footer global do hero — honestidade vs warning */
+  .b3-hero-lucro-honest,
+  .b3-hero-lucro-warn {
+    margin: 14px 0 0;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 11.5px;
+    line-height: 1.45;
+    letter-spacing: -0.005em;
+  }
+  .b3-hero-lucro-honest {
+    background: var(--bg-app);
+    color: var(--ink-4);
+  }
+  .b3-hero-lucro-warn {
+    background: color-mix(in oklab, var(--warn) 11%, transparent);
+    color: color-mix(in oklab, var(--warn) 80%, black);
+    border: 1px solid color-mix(in oklab, var(--warn) 26%, transparent);
+  }
+  .b3-hero-lucro-warn a {
+    color: inherit;
+  }
+
+  /* Empty state — loja sem venda */
+  .b3-hero-lucro--empty {
+    text-align: center;
+    padding: 28px 20px 32px;
+  }
+  .b3-hero-lucro-empty-inner {
+    max-width: 480px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+  }
+  .b3-hero-lucro-empty-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--ink-1);
+    letter-spacing: -0.015em;
+  }
+  .b3-hero-lucro-empty-hint {
+    margin: 0;
+    font-size: 13px;
+    color: var(--ink-4);
+    line-height: 1.5;
+  }
+  .b3-hero-lucro-empty-cta {
+    margin-top: 6px;
+  }
+
+  /* --- CTA Nova venda (header da página) --- */
+  .b3-newsale-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 14px;
+    border: 1px solid var(--brand);
+    background: var(--brand);
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    border-radius: 999px;
+    cursor: pointer;
+    outline: none;
+    transition: background-color 150ms, box-shadow 150ms, transform 150ms;
+    white-space: nowrap;
+  }
+  .b3-newsale-cta:hover {
+    background: var(--brand-2);
+    border-color: var(--brand-2);
+  }
+  .b3-newsale-cta:active { transform: translateY(0.5px); }
+  .b3-newsale-cta:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--mangos-yellow) 45%, transparent);
+  }
+  .b3-newsale-kbd {
+    font-family: var(--font-mono, "Geist Mono", ui-monospace, monospace);
+    font-size: 10.5px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.92);
+    padding: 2px 5px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    line-height: 1;
+  }
+  /* Mobile: esconde o F2 (não existe teclado físico no celular) */
+  @media (max-width: 640px) {
+    .b3-newsale-kbd { display: none; }
+  }
+
+  /* --- DateRangePill --- */
+  .b3-daterange-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 12px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ink-2);
+    cursor: pointer;
+    box-shadow: 0 1px 2px color-mix(in oklab, var(--ink-1) 3%, transparent);
+    transition: border-color 150ms, box-shadow 150ms;
+  }
+  .b3-daterange-pill:hover {
+    border-color: var(--mangos-border-strong);
+  }
+  .b3-daterange-pill:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--mangos-yellow) 35%, transparent);
+  }
+  .b3-daterange-pill > svg:first-child {
+    color: var(--ink-3);
+    flex-shrink: 0;
+  }
+  .b3-daterange-pill-text {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* --- MetricCard --- */
+  .b3-metric-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px 18px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: border-color 150ms, box-shadow 150ms;
+    min-width: 0;
+  }
+  .b3-metric-card:hover {
+    border-color: var(--mangos-border-strong);
+    box-shadow: 0 4px 12px -6px color-mix(in oklab, var(--ink-1) 8%, transparent);
+  }
+  .b3-metric-card-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 0;
+  }
+  .b3-metric-card-row--value {
+    align-items: baseline;
+    flex-wrap: wrap;
+  }
+  .b3-metric-card-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-3);
+    letter-spacing: -0.005em;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .b3-metric-card-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--brand) 10%, white);
+    color: var(--brand);
+    flex-shrink: 0;
+    border: 1px solid color-mix(in oklab, var(--brand) 15%, transparent);
+  }
+  .b3-metric-card-value {
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--ink-1);
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .b3-metric-card-footer {
+    font-size: 11.5px;
+    color: var(--ink-4);
+    letter-spacing: -0.005em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* Mobile (< 480px) — padding e valor menores pra caber em 1-col estreito */
+  @media (max-width: 479px) {
+    .b3-metric-card {
+      padding: 14px 14px 12px;
+      gap: 6px;
+    }
+    .b3-metric-card-value {
+      font-size: 22px;
+    }
+    .b3-metric-card-icon {
+      width: 28px;
+      height: 28px;
+    }
+  }
+  .b3-metric-delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+  .b3-metric-delta--up {
+    background: color-mix(in oklab, var(--ok) 12%, transparent);
+    color: var(--ok);
+  }
+  .b3-metric-delta--down {
+    background: color-mix(in oklab, var(--danger) 12%, transparent);
+    color: var(--danger);
+  }
+  .b3-metric-delta--flat {
+    background: var(--bg-app);
+    color: var(--ink-4);
+  }
+
+  /* --- ChartCard (Revenue analytics + Total income) --- */
+  .b3-chart-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 320px;
+  }
+  .b3-chart-card-hd {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 20px 6px;
+    flex-wrap: wrap;
+  }
+  .b3-chart-card-hd--income {
+    padding-bottom: 0;
+  }
+  .b3-chart-card-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink-1);
+    letter-spacing: -0.015em;
+    margin: 0;
+  }
+  .b3-chart-card-sub {
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: var(--ink-4);
+    letter-spacing: -0.005em;
+  }
+  /* Altura do corpo: Recharts ResponsiveContainer ocupa 100% — definida aqui
+     pra ser proporcional ao tamanho da tela. Min-height garante leitura. */
+  .b3-chart-card-body {
+    flex: 1;
+    padding: 4px 8px 10px;
+    min-height: 240px;
+    height: 280px;
+  }
+  @media (max-width: 640px) {
+    .b3-chart-card-body {
+      height: 220px;
+      min-height: 200px;
+      padding: 4px 4px 8px;
+    }
+  }
+
+  /* Empty state do chart card */
+  .b3-chart-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    height: 100%;
+    padding: 20px 24px;
+    gap: 10px;
+  }
+  .b3-chart-empty-icon {
+    color: var(--ink-5, var(--ink-4));
+    opacity: 0.5;
+  }
+  .b3-chart-empty-msg {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-2);
+    margin: 0;
+    max-width: 320px;
+  }
+  .b3-chart-empty-hint {
+    font-size: 11.5px;
+    color: var(--ink-4);
+    line-height: 1.4;
+    margin: 0;
+    max-width: 320px;
+  }
+  .b3-chart-period-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 12px;
+    background: var(--bg-app);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+  .b3-chart-period-pill > svg {
+    color: var(--ink-4);
+  }
+
+  /* Legenda do TotalIncome (Receita/Despesa) */
+  .b3-chart-legend {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 4px 20px 0;
+  }
+  .b3-chart-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--ink-3);
+  }
+  .b3-chart-legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+  .b3-chart-legend-swatch--profit {
+    background:
+      repeating-linear-gradient(
+        45deg,
+        var(--brand) 0,
+        var(--brand) 2px,
+        color-mix(in oklab, var(--brand) 30%, white) 2px,
+        color-mix(in oklab, var(--brand) 30%, white) 4px
+      );
+  }
+  .b3-chart-legend-swatch--loss {
+    background: #111827;
+  }
+
+  /* Tooltip flutuante dos charts (Recharts content custom) */
+  .b3-chart-tooltip {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 8px 12px;
+    box-shadow: 0 8px 24px -8px color-mix(in oklab, var(--ink-1) 18%, transparent);
+    min-width: 120px;
+  }
+  .b3-chart-tooltip-label {
+    font-size: 11px;
+    color: var(--ink-4);
+    font-family: var(--font-mono, "Geist Mono", ui-monospace, monospace);
+    margin-bottom: 2px;
+  }
+  .b3-chart-tooltip-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink-1);
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+  .b3-chart-tooltip-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 12px;
+    margin-top: 2px;
+  }
+  .b3-chart-tooltip-row-label { color: var(--ink-3); }
+  .b3-chart-tooltip-row-value {
+    color: var(--ink-1);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* --- RecentOrders header (busca + sort) --- */
+  .b3-recent-orders-hd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
+  .b3-recent-orders-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink-1);
+    letter-spacing: -0.015em;
+    margin: 0;
+    min-width: 0;
+    flex-shrink: 0;
+  }
+  .b3-recent-orders-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 0 1 auto;
+  }
+  .b3-recent-orders-search {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 10px;
+    background: var(--bg-app);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 12.5px;
+    color: var(--ink-3);
+    transition: border-color 150ms;
+    min-width: 0;
+    flex: 1 1 auto;
+    max-width: 220px;
+  }
+  .b3-recent-orders-search:focus-within {
+    border-color: var(--mangos-border-strong);
+    background: var(--surface);
+  }
+  .b3-recent-orders-search input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: 12.5px;
+    color: var(--ink-1);
+    min-width: 0;
+    width: 100%;
+  }
+  .b3-recent-orders-search input::placeholder {
+    color: var(--ink-4);
+  }
+  .b3-recent-orders-sort {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ink-2);
+    cursor: pointer;
+    transition: border-color 150ms;
+    flex-shrink: 0;
+  }
+  .b3-recent-orders-sort:hover {
+    border-color: var(--mangos-border-strong);
+  }
+  .b3-recent-orders-sort:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--mangos-yellow) 35%, transparent);
+  }
+  /* Mobile: title em cima, actions full-width abaixo */
+  @media (max-width: 540px) {
+    .b3-recent-orders-hd {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+      padding: 12px 14px;
+    }
+    .b3-recent-orders-actions {
+      width: 100%;
+    }
+    .b3-recent-orders-search {
+      max-width: none;
+      flex: 1 1 auto;
+    }
+    /* Sort some em mobile — sort sério vai pro /admin/pedidos */
+    .b3-recent-orders-sort .b3-recent-orders-sort-label {
+      display: none;
+    }
+    .b3-recent-orders-sort {
+      padding: 0 10px;
+    }
+  }
+
+  /* --- Checkbox inline-style usado na tabela (input direto, sem wrapper) ---
+     Nome próprio pra não colidir com `.b3-checkbox` original (wrapper label
+     do login/onboarding com `.b3-checkbox-box` decorativo). */
+  .b3-row-checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid var(--line-2);
+    border-radius: 4px;
+    background: var(--surface);
+    cursor: pointer;
+    display: inline-grid;
+    place-items: center;
+    transition: background-color 150ms, border-color 150ms;
+  }
+  .b3-row-checkbox:hover {
+    border-color: var(--mangos-border-strong);
+  }
+  .b3-row-checkbox:checked {
+    background: var(--brand);
+    border-color: var(--brand);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'><path d='M3 8.5l3 3 6.5-7' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 14px 14px;
+  }
+  .b3-row-checkbox:indeterminate {
+    background: var(--brand);
+    border-color: var(--brand);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'><line x1='4' y1='8' x2='12' y2='8' stroke='white' stroke-width='2' stroke-linecap='round'/></svg>");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 14px 14px;
+  }
+  .b3-row-checkbox:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--mangos-yellow) 35%, transparent);
   }
 
   /* ========================================================

@@ -1,57 +1,80 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
-import { loadActiveCashSession } from "@/actions/cash-session/load";
+import { loadDashboardLucro } from "@/actions/reports/load-dashboard-lucro";
+import { DateRangePill } from "@/components/admin/dashboard/date-range-pill";
+import { HeroLucro } from "@/components/admin/dashboard/hero-lucro";
+import { NewSaleButton } from "@/components/admin/dashboard/new-sale-button";
 import {
   type ChecklistStep,
   OnboardingChecklist,
 } from "@/components/admin/dashboard/onboarding-checklist";
-import { OpCard } from "@/components/admin/dashboard/op-card";
 import {
   type RecentOrderRow,
   RecentOrdersTable,
 } from "@/components/admin/dashboard/recent-orders-table";
 import {
-  type SalesSummary,
-  SalesSummaryCard,
-} from "@/components/admin/dashboard/sales-summary-card";
-import { StoreLinkCard } from "@/components/admin/dashboard/store-link-card";
+  RevenueAnalyticsChart,
+  type RevenuePoint,
+} from "@/components/admin/dashboard/revenue-analytics-chart";
+import {
+  type IncomePoint,
+  TotalIncomeChart,
+} from "@/components/admin/dashboard/total-income-chart";
 import {
   bannerTable,
+  expenseTable,
   orderTable,
   productTable,
-  receivableTable,
 } from "@/db/schema";
 import { requireSession } from "@/lib/auth-server";
-import { formatBRL } from "@/lib/pricing";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
-/** Período em dias aceito no URL ?periodo=7|30|90. Default 30. */
+/** Período em dias aceito no URL ?periodo=7|30|90. Default 30.
+ *  Controla o gráfico "Receita do período" — NÃO o Hero de Lucro
+ *  (esse usa janela canônica ontem + semana atual). */
 const periodoSchema = z
   .enum(["7", "30", "90"])
   .catch("30")
   .transform((v) => Number(v) as 7 | 30 | 90);
 
-/** Gera array de YYYY-MM-DD pros últimos N dias (ordenado ASC, hoje no fim). */
-function generateLastNDays(n: number): string[] {
-  const days: string[] = [];
-  const today = new Date();
-  for (let i = n - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setUTCDate(d.getUTCDate() - i);
-    days.push(d.toISOString().slice(0, 10));
-  }
-  return days;
-}
+const MONTH_PT = [
+  "Jan",
+  "Fev",
+  "Mar",
+  "Abr",
+  "Mai",
+  "Jun",
+  "Jul",
+  "Ago",
+  "Set",
+  "Out",
+  "Nov",
+  "Dez",
+] as const;
 
-function formatDuration(openedAt: Date): string {
-  const ms = Date.now() - openedAt.getTime();
-  const min = Math.floor(ms / 60000);
-  if (min < 60) return `${min}min aberto`;
-  const h = Math.floor(min / 60);
-  const remMin = min % 60;
-  return remMin === 0 ? `${h}h aberto` : `${h}h${remMin}min aberto`;
+/** Preenche série temporal contínua: mapeia cada dia do período pra um ponto,
+ *  com label "dd/mm" e valor (zero quando não houve venda). Mantém continuidade
+ *  temporal sem mentir — barra zero some, label do dia continua. */
+function fillDailySeries(
+  rowsByDay: Map<string, number>,
+  days: number,
+): RevenuePoint[] {
+  const result: RevenuePoint[] = [];
+  const today = new Date();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setUTCDate(today.getUTCDate() - i);
+    const isoDay = d.toISOString().slice(0, 10);
+    const dd = String(d.getUTCDate()).padStart(2, "0");
+    const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+    result.push({
+      label: `${dd}/${mm}`,
+      value: rowsByDay.get(isoDay) ?? 0,
+    });
+  }
+  return result;
 }
 
 export default async function AdminHomePage({
@@ -67,45 +90,28 @@ export default async function AdminHomePage({
 
   const sp = await searchParams;
   const periodo = periodoSchema.parse(sp.periodo);
-  // Sprint 1.5 (auditoria 2026-05-21 doc 04): eliminamos `sql.raw(String(periodo))`
-  // em favor de Date calculada server-side. Mais seguro (parametrizado, zero
-  // chance de injection mesmo se Zod schema for trocado por engano) e mais
-  // rápido (PG recebe timestamp como bind var em vez de fazer cast de string).
-  const periodStartDate = new Date(Date.now() - periodo * 24 * 60 * 60 * 1000);
 
-  // Sessão de caixa ativa (faz seu próprio withTenant — cache() em getCurrentStore
-  // deduplica a query da loja). Roda em paralelo com o bloco principal.
-  const cashSessionPromise = loadActiveCashSession();
+  const now = new Date();
+  const periodStart = new Date(now.getTime() - periodo * 86400000);
+  const incomeSeriesStart = new Date(
+    now.getFullYear(),
+    now.getMonth() - 7,
+    1,
+  );
 
   const {
-    salesStats,
     revenueSeriesRows,
-    recentOrdersRaw,
-    receivableStats,
-    lowStockCount,
-    yesterdaySales,
+    recentOrders,
     productCount,
     bannerCount,
     totalOrderCount,
+    incomeRows,
+    expenseRows,
   } = await withTenant(store.id, session.user.id, async (tx) => {
-    // 5 buckets de status × (count + sum) em 1 SELECT via FILTER
-    const salesStats = await tx
-      .select({
-        totalCount: sql<number>`count(*) filter (where ${orderTable.createdAt} >= ${periodStartDate})::int`,
-        totalSum: sql<number>`coalesce(sum(${orderTable.totalInCents}) filter (where ${orderTable.createdAt} >= ${periodStartDate}), 0)::int`,
-        aprovadosCount: sql<number>`count(*) filter (where ${orderTable.status} in ('confirmed','fulfilled') and ${orderTable.createdAt} >= ${periodStartDate})::int`,
-        aprovadosSum: sql<number>`coalesce(sum(${orderTable.totalInCents}) filter (where ${orderTable.status} in ('confirmed','fulfilled') and ${orderTable.createdAt} >= ${periodStartDate}), 0)::int`,
-        pendentesCount: sql<number>`count(*) filter (where ${orderTable.status} = 'awaiting_whatsapp' and ${orderTable.createdAt} >= ${periodStartDate})::int`,
-        pendentesSum: sql<number>`coalesce(sum(${orderTable.totalInCents}) filter (where ${orderTable.status} = 'awaiting_whatsapp' and ${orderTable.createdAt} >= ${periodStartDate}), 0)::int`,
-        canceladosCount: sql<number>`count(*) filter (where ${orderTable.status} = 'canceled' and ${orderTable.createdAt} >= ${periodStartDate})::int`,
-        canceladosSum: sql<number>`coalesce(sum(${orderTable.totalInCents}) filter (where ${orderTable.status} = 'canceled' and ${orderTable.createdAt} >= ${periodStartDate}), 0)::int`,
-        expiradosCount: sql<number>`count(*) filter (where ${orderTable.status} = 'expired' and ${orderTable.createdAt} >= ${periodStartDate})::int`,
-        expiradosSum: sql<number>`coalesce(sum(${orderTable.totalInCents}) filter (where ${orderTable.status} = 'expired' and ${orderTable.createdAt} >= ${periodStartDate}), 0)::int`,
-      })
-      .from(orderTable)
-      .where(eq(orderTable.storeId, store.id));
+    // Hero de Lucro Líquido (F.2.1) calcula em transações próprias via
+    // loadDashboardLucro (Promise.all top-level). Não duplica trabalho aqui.
 
-    // Receita por dia — janela do período selecionado
+    // === Receita diária no período (pra agrupar por dia da semana) ===
     const revenueSeriesRows = await tx
       .select({
         day: sql<string>`to_char(date_trunc('day', ${orderTable.createdAt}), 'YYYY-MM-DD')`,
@@ -113,67 +119,76 @@ export default async function AdminHomePage({
       })
       .from(orderTable)
       .where(
-        sql`${orderTable.storeId} = ${store.id} and ${orderTable.status} in ('confirmed','fulfilled') and ${orderTable.createdAt} >= ${periodStartDate}`,
+        sql`${orderTable.storeId} = ${store.id}
+            and ${orderTable.status} in ('confirmed','fulfilled')
+            and ${orderTable.createdAt} >= ${periodStart}`,
       )
       .groupBy(sql`date_trunc('day', ${orderTable.createdAt})`)
       .orderBy(sql`date_trunc('day', ${orderTable.createdAt})`);
 
-    const recentOrdersRaw = await tx.query.orderTable.findMany({
-      where: eq(orderTable.storeId, store.id),
-      orderBy: [desc(orderTable.createdAt)],
-      limit: 5,
-      columns: {
-        id: true,
-        shortCode: true,
-        customerName: true,
-        totalInCents: true,
-        status: true,
-        createdAt: true,
-      },
-    });
-
-    // ---- Card 2: A receber (pendente + vencido) ----
-    const receivableStats = await tx
+    // === Vendas recentes com Categoria + Itens (via subselect) ===
+    // Atenção: `${orderTable.id}` é serializado como "id" pelo Drizzle, o que
+    // colide com `order_item.id` ou `product.id` dentro das subqueries
+    // (column reference "id" is ambiguous). Por isso referenciamos a outer
+    // table pelo nome qualificado "order"."id" literalmente — `orderTable`
+    // é mapeada pra tabela "order" (palavra reservada, sempre vem aspeada).
+    const recentOrders = await tx
       .select({
-        pendingSum: sql<number>`coalesce(sum(${receivableTable.amountInCents}) filter (where ${receivableTable.paidAt} is null), 0)::int`,
-        overdueSum: sql<number>`coalesce(sum(${receivableTable.amountInCents}) filter (where ${receivableTable.paidAt} is null and ${receivableTable.dueDate} < now()), 0)::int`,
-        overdueCount: sql<number>`count(*) filter (where ${receivableTable.paidAt} is null and ${receivableTable.dueDate} < now())::int`,
+        id: orderTable.id,
+        shortCode: orderTable.shortCode,
+        customerName: orderTable.customerName,
+        totalInCents: orderTable.totalInCents,
+        status: orderTable.status,
+        createdAt: orderTable.createdAt,
+        itemCount: sql<number>`(
+          SELECT coalesce(sum(oi.quantity), 0)::int
+          FROM order_item oi
+          WHERE oi.order_id = "order"."id"
+        )`,
+        categoryLabel: sql<string | null>`(
+          SELECT c.name
+          FROM order_item oi
+          LEFT JOIN product p ON p.id = oi.product_id
+          LEFT JOIN category c ON c.id = p.category_id
+          WHERE oi.order_id = "order"."id"
+          ORDER BY oi.created_at ASC
+          LIMIT 1
+        )`,
       })
-      .from(receivableTable)
-      .where(eq(receivableTable.storeId, store.id));
+      .from(orderTable)
+      .where(eq(orderTable.storeId, store.id))
+      .orderBy(desc(orderTable.createdAt))
+      .limit(6);
 
-    // ---- Card 3: Estoque baixo ----
-    // Conta produtos com track_stock + min definido onde stock <= min.
-    // Variantes não têm campo minStockQuantity (apenas produtos a nível pai),
-    // então a contagem é product-scope. Quando variantes ganharem min stock
-    // próprio (Sprint futura), adicionar query irmã + soma.
-    const lowStockProducts = await tx
-      .select({ value: sql<number>`count(*)::int` })
-      .from(productTable)
-      .where(
-        and(
-          eq(productTable.storeId, store.id),
-          eq(productTable.trackStock, true),
-          sql`${productTable.minStockQuantity} is not null`,
-          sql`${productTable.stockQuantity} <= ${productTable.minStockQuantity}`,
-        ),
-      );
-    const lowStockCount = lowStockProducts[0]?.value ?? 0;
-
-    // ---- Card 4: Venda ontem ----
-    const yesterdaySales = await tx
+    // === Receita por mês (últimos 8 meses) — pro TotalIncomeChart ===
+    const incomeRows = await tx
       .select({
-        count: sql<number>`count(*)::int`,
+        month: sql<string>`to_char(date_trunc('month', ${orderTable.createdAt}), 'YYYY-MM')`,
         sum: sql<number>`coalesce(sum(${orderTable.totalInCents}), 0)::int`,
       })
       .from(orderTable)
       .where(
-        sql`${orderTable.storeId} = ${store.id} and ${orderTable.status} in ('confirmed','fulfilled') and date(${orderTable.createdAt}) = current_date - 1`,
-      );
+        sql`${orderTable.storeId} = ${store.id}
+            and ${orderTable.status} in ('confirmed','fulfilled')
+            and ${orderTable.createdAt} >= ${incomeSeriesStart}`,
+      )
+      .groupBy(sql`date_trunc('month', ${orderTable.createdAt})`);
 
-    // ---- Sinais de onboarding (3 counts baratos pra detectar loja "fresh") ----
-    // Cada query é um count(*) com filtro indexado em store_id — custo
-    // desprezível mesmo em loja madura.
+    // === Despesa por mês (últimos 8 meses, paidAt) ===
+    const expenseRows = await tx
+      .select({
+        month: sql<string>`to_char(date_trunc('month', ${expenseTable.paidAt}), 'YYYY-MM')`,
+        sum: sql<number>`coalesce(sum(${expenseTable.amountInCents}), 0)::int`,
+      })
+      .from(expenseTable)
+      .where(
+        sql`${expenseTable.storeId} = ${store.id}
+            and ${expenseTable.paidAt} is not null
+            and ${expenseTable.paidAt} >= ${incomeSeriesStart}`,
+      )
+      .groupBy(sql`date_trunc('month', ${expenseTable.paidAt})`);
+
+    // === Sinais de onboarding ===
     const productCountRow = await tx
       .select({ value: sql<number>`count(*)::int` })
       .from(productTable)
@@ -186,9 +201,6 @@ export default async function AdminHomePage({
       .where(eq(bannerTable.storeId, store.id));
     const bannerCount = bannerCountRow[0]?.value ?? 0;
 
-    // Considera qualquer venda confirmada/cumprida (storefront ou balcão)
-    // como "loja já vendeu pelo menos uma vez". Orçamento, aguardando
-    // WhatsApp, cancelado e expirado NÃO contam — não são compromisso fechado.
     const totalOrderCountRow = await tx
       .select({ value: sql<number>`count(*)::int` })
       .from(orderTable)
@@ -198,60 +210,22 @@ export default async function AdminHomePage({
     const totalOrderCount = totalOrderCountRow[0]?.value ?? 0;
 
     return {
-      salesStats,
       revenueSeriesRows,
-      recentOrdersRaw,
-      receivableStats,
-      lowStockCount,
-      yesterdaySales,
+      recentOrders,
       productCount,
       bannerCount,
       totalOrderCount,
+      incomeRows,
+      expenseRows,
     };
   });
 
-  const cashSession = await cashSessionPromise;
+  // Hero de Lucro Líquido — chamada PARALELA ao withTenant acima (top-level).
+  // 4 ranges internos rodam em paralelo dentro do loadDashboardLucro.
+  // Se loja não tem sessão/store, devolve null e hero some.
+  const lucroData = await loadDashboardLucro();
 
-  // ---- Sales summary (período selecionado) ----
-  const sStat = salesStats[0];
-  const summary: SalesSummary = {
-    total: { count: sStat?.totalCount ?? 0, totalInCents: sStat?.totalSum ?? 0 },
-    aprovados: { count: sStat?.aprovadosCount ?? 0, totalInCents: sStat?.aprovadosSum ?? 0 },
-    pendentes: { count: sStat?.pendentesCount ?? 0, totalInCents: sStat?.pendentesSum ?? 0 },
-    cancelados: { count: sStat?.canceladosCount ?? 0, totalInCents: sStat?.canceladosSum ?? 0 },
-    expirados: { count: sStat?.expiradosCount ?? 0, totalInCents: sStat?.expiradosSum ?? 0 },
-  };
-  const revenueByDay = new Map(
-    revenueSeriesRows.map((r) => [r.day, Number(r.total)]),
-  );
-  const series = generateLastNDays(periodo).map((date) => revenueByDay.get(date) ?? 0);
-
-  const recentOrders: RecentOrderRow[] = recentOrdersRaw.map((o) => ({
-    id: o.id,
-    shortCode: o.shortCode,
-    customerName: o.customerName,
-    totalInCents: o.totalInCents,
-    status: o.status,
-    createdAt: o.createdAt,
-  }));
-
-  // ---- Card 4: dados de ontem ----
-  const yStat = yesterdaySales[0];
-  const yesterdayCount = yStat?.count ?? 0;
-  const yesterdaySum = yStat?.sum ?? 0;
-
-  // ---- Card 2: a receber ----
-  const rStat = receivableStats[0];
-  const pendingSum = rStat?.pendingSum ?? 0;
-  const overdueSum = rStat?.overdueSum ?? 0;
-  const overdueCount = rStat?.overdueCount ?? 0;
-
-  // ---- Onboarding state ----
-  // Lojista é "fresh" quando ainda não cadastrou produto NEM registrou venda
-  // confirmada. Nesses dois casos o checklist substitui os OpCards vazios:
-  // mostrar "Caixa fechado / Sem vendas / Tudo dentro do mínimo" pra quem
-  // acabou de chegar é desencorajador e não orienta. Quando a loja já tem
-  // produto e já vendeu (ou já está rodando), volta o dashboard cheio.
+  // === Onboarding state ===
   const isFreshStore = productCount === 0 || totalOrderCount === 0;
 
   const onboardingSteps: ChecklistStep[] = [
@@ -261,7 +235,7 @@ export default async function AdminHomePage({
       description:
         "Adicione foto, preço e estoque. Com 5+ produtos a vitrine começa a vender.",
       ctaLabel: "Cadastrar",
-      href: "/admin/produtos/novo",
+      href: "/admin/produtos?edit=new",
       done: productCount > 0,
     },
     {
@@ -302,101 +276,89 @@ export default async function AdminHomePage({
     },
   ];
 
+  if (isFreshStore) {
+    return (
+      <div className="b3-page">
+        <h1 className="b3-page-title">Como tá o negócio hoje</h1>
+        <OnboardingChecklist storeName={store.name} steps={onboardingSteps} />
+      </div>
+    );
+  }
+
+  // === REVENUE CHART (série temporal real) ===
+  const revenueByDay = new Map(
+    revenueSeriesRows.map((r) => [r.day, Number(r.total)]),
+  );
+  const revenueSeries: RevenuePoint[] = fillDailySeries(revenueByDay, periodo);
+
+  // === INCOME CHART (8 meses retroativos) ===
+  const incomeMap = new Map(
+    incomeRows.map((r) => [r.month, Number(r.sum)]),
+  );
+  const expenseMap = new Map(
+    expenseRows.map((r) => [r.month, Number(r.sum)]),
+  );
+  const incomeChartData: IncomePoint[] = Array.from({ length: 8 }).map((_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (7 - i), 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    return {
+      label: MONTH_PT[d.getMonth()]!,
+      profit: incomeMap.get(key) ?? 0,
+      loss: expenseMap.get(key) ?? 0,
+    };
+  });
+
+  // === RECENT ORDERS ===
+  const recentRows: RecentOrderRow[] = recentOrders.map((o) => ({
+    id: o.id,
+    shortCode: o.shortCode,
+    customerName: o.customerName,
+    totalInCents: o.totalInCents,
+    status: o.status,
+    createdAt: o.createdAt,
+    categoryLabel: o.categoryLabel?.trim() || "—",
+    itemCount: Number(o.itemCount ?? 0),
+  }));
+
+  const periodLabel =
+    periodo === 7
+      ? "Últimos 7 dias"
+      : periodo === 30
+        ? "Últimos 30 dias"
+        : "Últimos 90 dias";
+
   return (
     <div className="b3-page">
-      {/* S2 (handoff pixel-perfect 2026-05-25): usa classe `.b3-page-title`
-          (utility compartilhada com pedidos/produtos/clientes/etc) em vez de
-          tailwind inline. Bate dashboard.jsx:202 do bundle. */}
-      <h1 className="b3-page-title">Hoje</h1>
-
-      {/* Link público da loja — sempre no topo, copy + QR + abrir loja a 1 clique. */}
-      <div className="mb-4">
-        <StoreLinkCard storeSlug={store.slug} storeName={store.name} />
+      {/* Header da página: título + actions (DateRangePill + Nova venda).
+          Mobile empilha em coluna; desktop fica lado a lado. */}
+      <div className="b3-dashboard-hd">
+        <h1 className="b3-page-title">Como tá o negócio hoje</h1>
+        <div className="b3-dashboard-hd-actions">
+          <DateRangePill periodo={periodo} />
+          <NewSaleButton />
+        </div>
       </div>
 
-      {isFreshStore ? (
-        <OnboardingChecklist storeName={store.name} steps={onboardingSteps} />
-      ) : (
-        <>
-          {/* 4 cards de operação do dia.
-              S2 (handoff): grid auto-fit minmax(220px, 1fr) — flow natural
-              que mostra 1/2/3/4 cards conforme largura disponível, em vez de
-              snap em breakpoints sm/xl que pula 3-col entre 768-1280px.
-              Bate dashboard.jsx:209 do bundle. */}
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
-            <OpCard
-              label="Caixa"
-              value={
-                cashSession
-                  ? formatBRL(cashSession.expectedInCents)
-                  : "Caixa fechado"
-              }
-              subInfo={
-                cashSession
-                  ? `Abertura ${formatBRL(cashSession.session.openingAmountInCents)} · ${formatDuration(cashSession.session.openedAt)}`
-                  : undefined
-              }
-              cta={{
-                label: cashSession ? "Ver caixa" : "Abrir caixa",
-                href: "/admin/pdv/caixa",
-              }}
-            />
+      {/* Hero de Lucro Líquido — Bloco F.2.1 da ressignificação.
+          Substitui 4 MetricCards genéricos por DOIS números úteis:
+          quanto lucrou ontem (vs mesmo dia da semana passada) e quanto
+          essa semana (vs mesma janela 7d atrás). Honestidade explícita
+          via cobertura CMV. */}
+      {lucroData ? (
+        <HeroLucro
+          yesterday={lucroData.yesterday}
+          thisWeek={lucroData.thisWeek}
+        />
+      ) : null}
 
-            <OpCard
-              label="A receber"
-              value={formatBRL(pendingSum)}
-              subInfo={
-                pendingSum === 0 ? "Nenhum fiado em aberto" : "Total pendente"
-              }
-              subInfoEmphasis={
-                overdueSum > 0
-                  ? {
-                      text: `${formatBRL(overdueSum)} vencido${overdueCount > 1 ? "s" : ""}`,
-                      tone: "danger",
-                    }
-                  : undefined
-              }
-              cta={{
-                label: "Ver fiados",
-                href: "/admin/financeiro/receber",
-              }}
-            />
+      {/* 2 gráficos: 60/40 */}
+      <div className="b3-charts-grid">
+        <RevenueAnalyticsChart data={revenueSeries} periodLabel={periodLabel} />
+        <TotalIncomeChart data={incomeChartData} />
+      </div>
 
-            <OpCard
-              label="Estoque baixo"
-              value={String(lowStockCount)}
-              subInfo={
-                lowStockCount === 0
-                  ? "Tudo dentro do mínimo"
-                  : `produto${lowStockCount > 1 ? "s" : ""} no/abaixo do mínimo`
-              }
-              cta={{ label: "Ver lista", href: "/admin/estoque/relatorio" }}
-            />
-
-            <OpCard
-              label="Venda ontem"
-              value={formatBRL(yesterdaySum)}
-              subInfo={
-                yesterdayCount === 0
-                  ? "Sem vendas confirmadas"
-                  : `${yesterdayCount} venda${yesterdayCount > 1 ? "s" : ""}`
-              }
-            />
-          </div>
-
-          <div className="mt-6">
-            <SalesSummaryCard
-              periodo={periodo}
-              series={series}
-              summary={summary}
-            />
-          </div>
-
-          <div className="mt-4">
-            <RecentOrdersTable orders={recentOrders} />
-          </div>
-        </>
-      )}
+      {/* Tabela de vendas recentes */}
+      <RecentOrdersTable orders={recentRows} />
     </div>
   );
 }
