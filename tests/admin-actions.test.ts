@@ -72,16 +72,14 @@ test("store creation inserts store and initial categories in one transaction", (
   assert.doesNotMatch(action, /withTenant\(newStore\.id/);
 });
 
-test("new product page opens without creating a draft on open", () => {
-  // Migrado 2026-05-12: modal → página dedicada /admin/produtos/novo.
-  // Migrado PP1 Fase B (2026-05-25): página → drawer global aberto via
-  // evento OPEN_PRODUCT_FORM_EVENT. `/admin/produtos/novo` virou redirect
-  // pra `/admin/produtos?edit=new` (preserva bookmarks legacy).
+test("new product flow opens drawer without creating a draft", () => {
+  // Bloco A da ressignificação (2026-05-27): rota /admin/produtos/novo
+  // removida. Botão "+ Adicionar produto" agora aponta direto pra
+  // /admin/produtos?edit=new (drawer abre via listener no mount).
   //
   // Invariante crítica PRESERVADA: produto só persiste no submit
   // explícito (createProductFromValues), nunca por prefetch, mount,
   // ou abertura do drawer.
-  const novoPage = readFileSync("src/app/(admin)/admin/produtos/novo/page.tsx", "utf8");
   const createButton = readFileSync(
     "src/components/admin/product-create-button.tsx",
     "utf8",
@@ -97,15 +95,13 @@ test("new product page opens without creating a draft on open", () => {
   const form = readFileSync("src/components/admin/product-form.tsx", "utf8");
   const uploader = readFileSync("src/components/admin/image-uploader.tsx", "utf8");
 
-  // /admin/produtos/novo é redirect server-side — não monta form nem
-  // dispara mutation.
-  assert.match(novoPage, /redirect\(["']\/admin\/produtos\?edit=new["']\)/);
-
   // Botão "+ Novo produto" dispara evento OPEN_PRODUCT_FORM_EVENT com
   // productId=null (modo "new"). Sem navegação, sem state local que
-  // crie nada no mount.
+  // crie nada no mount. Href aponta pro drawer-URL real como fallback
+  // de Ctrl+click — sem redirect intermediário.
   assert.match(createButton, /OPEN_PRODUCT_FORM_EVENT/);
   assert.match(createButton, /productId:\s*null/);
+  assert.match(createButton, /href="\/admin\/produtos\?edit=new"/);
   assert.doesNotMatch(createButton, /setDialog/);
 
   // ProductFormDrawer carrega via loadProductFormData. Modo "new" não

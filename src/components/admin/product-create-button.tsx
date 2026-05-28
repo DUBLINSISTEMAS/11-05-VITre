@@ -3,15 +3,10 @@
 /**
  * Botão "+ Adicionar produto" do header e do empty state.
  *
- * PP1 Fase B (2026-05-25): em vez de navegar pra /admin/produtos/novo
- * (página dedicada), agora dispara `OPEN_PRODUCT_FORM_EVENT` com
- * productId=null, e o ProductFormDrawerListener global abre o drawer
- * inline (modo "new") sem perder contexto da tabela.
- *
- * Rotas legacy `/admin/produtos/novo` foram convertidas em redirect
- * pra `/admin/produtos?edit=new` (preserva bookmarks). Ctrl+click no
- * botão segue funcionando pra abrir em nova aba (usa `<a>` com href
- * legacy como fallback).
+ * Dispara `OPEN_PRODUCT_FORM_EVENT` com productId=null pro
+ * ProductFormDrawerListener abrir o drawer inline (modo "new") sem
+ * perder contexto da tabela. Ctrl+click cai no href real
+ * (/admin/produtos?edit=new) que o listener detecta no mount.
  */
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
@@ -57,7 +52,7 @@ export function ProductCreateButton({
 }: ProductCreateButtonProps) {
   return (
     <Link
-      href="/admin/produtos/novo"
+      href="/admin/produtos?edit=new"
       onClick={handleClick}
       className={cn(
         "b3-btn b3-btn--cta",

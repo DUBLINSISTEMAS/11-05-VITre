@@ -545,7 +545,7 @@ function EmptySnapshot() {
         compra ou ajuste mantém a contagem atualizada automaticamente.
       </p>
       <Link
-        href="/admin/produtos/novo"
+        href="/admin/produtos?edit=new"
         className="b3-btn b3-btn--cta mt-2"
         prefetch
       >

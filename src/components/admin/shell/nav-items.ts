@@ -15,7 +15,6 @@ import {
   LayoutDashboardIcon,
   LayoutGridIcon,
   LifeBuoyIcon,
-  ListFilterIcon,
   type LucideIcon,
   PackageIcon,
   PaletteIcon,
@@ -127,14 +126,13 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
       { k: "aparencia",  label: "Aparência",           icon: PaletteIcon,       href: "/admin/aparencia"        },
       { k: "banners",    label: "Banners",             icon: ImageIcon,         href: "/admin/banners"          },
       { k: "vitrines",   label: "Vitrines",            icon: LayoutGridIcon,    href: "/admin/colecoes"         },
-      // PP6 (handoff pixel-perfect 2026-05-25): reativado no menu. CRUD de
-      // atributos + valores funciona; junction product_attribute_value EXISTE
-      // em schema. Falta UI no admin de vincular produto↔valor + storefront
-      // filter dinâmico — ambos pendentes PP6.x. Reativado por decisão
-      // "1:1 handoff" com mock honesto na página explicando o estado.
-      // Régua "funciona-ou-esconde" temporariamente suspensa (memory:
-      // pixel-perfect-redesign-decisao-2026-05-25).
-      { k: "filtros",    label: "Filtros da loja",     icon: ListFilterIcon,    href: "/admin/atributos"        },
+      // "Filtros da loja" (/admin/atributos) removido em 2026-05-27 (Bloco A
+      // da ressignificação). CRUD funcionava mas integração storefront tava
+      // quebrada há 2 sprints (junction product_attribute_value sem UI de
+      // vinculação produto↔valor + sem filtros dinâmicos no /categoria).
+      // Régua "funciona ou esconde" reativada com força total. Schema
+      // (attribute, attribute_value, product_attribute_value) preservado pra
+      // reativar quando integração storefront landar (sprint dedicada).
       { k: "cupons",     label: "Códigos de desconto", icon: TicketPercentIcon, href: "/admin/promocoes/cupons" },
       { k: "pagamento",  label: "Formas de pagamento", icon: CreditCardIcon,    href: "/admin/pagamento"        },
       // "Equipe" escondida do menu em 2026-05-24 (Onda 1.2 do plano 4 ondas).

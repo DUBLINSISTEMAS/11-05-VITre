@@ -3,13 +3,9 @@
 /**
  * Botão "+ Adicionar cliente" do header e do empty state de /admin/clientes.
  *
- * PP2 (2026-05-25): em vez de navegar pra /admin/clientes/novo (página
- * dedicada), dispara `OPEN_CUSTOMER_FORM_EVENT` com customerId=null, e o
- * CustomerFormDrawerListener global abre o drawer inline. Mesmo pattern
- * do ProductCreateButton.
- *
- * Mantém href="/admin/clientes/novo" como fallback pra Ctrl+click abrir
- * em nova aba (rota legacy virou redirect pra ?customer=new).
+ * Dispara `OPEN_CUSTOMER_FORM_EVENT` com customerId=null pro
+ * CustomerFormDrawerListener abrir o drawer inline. Ctrl+click cai no
+ * href real (/admin/clientes?customer=new) que o listener detecta no mount.
  */
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
@@ -51,7 +47,7 @@ export function CustomerCreateButton({
 }: CustomerCreateButtonProps) {
   return (
     <Link
-      href="/admin/clientes/novo"
+      href="/admin/clientes?customer=new"
       onClick={handleClick}
       className={cn("b3-btn b3-btn--cta", className)}
     >

@@ -47,13 +47,13 @@ const QUICK_ACTIONS: QuickAction[] = [
   },
   {
     label: "Novo produto",
-    href: "/admin/produtos/novo",
+    href: "/admin/produtos?edit=new",
     hint: "Cadastrar produto novo",
     icon: PlusIcon,
   },
   {
     label: "Novo cliente",
-    href: "/admin/clientes?novo=1",
+    href: "/admin/clientes?customer=new",
     hint: "Cadastrar cliente no admin",
     icon: UserIcon,
   },
