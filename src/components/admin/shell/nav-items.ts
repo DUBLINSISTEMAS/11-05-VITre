@@ -9,6 +9,7 @@ import {
   CalculatorIcon,
   ClockIcon,
   CreditCardIcon,
+  FileTextIcon,
   FolderIcon,
   ImageIcon,
   InboxIcon,
@@ -78,8 +79,12 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
     label: "Operação",
     icon: ZapIcon,
     items: [
-      { k: "vendas",   label: "Vendas",                  icon: ReceiptIcon,        href: "/admin/pedidos"               },
-      { k: "caixa",    label: "Caixa do dia",            icon: WalletIcon,         href: "/admin/pdv/caixa"             },
+      { k: "vendas",     label: "Vendas",                icon: ReceiptIcon,        href: "/admin/pedidos"               },
+      // Semana 5 da ressignificação (2026-05-28) — orçamento ganha rota
+      // dedicada (era misturado em /admin/pedidos com filtro). Joalheiro
+      // recebe pedido de orçamento o dia inteiro; merece atalho próprio.
+      { k: "orcamentos", label: "Orçamentos",            icon: FileTextIcon,       href: "/admin/orcamentos"            },
+      { k: "caixa",      label: "Caixa do dia",          icon: WalletIcon,         href: "/admin/pdv/caixa"             },
       // Onda 1.4 (2026-05-24) — label simplificado de "Movimentação de
       // estoque" pra "Estoque" só. Lojista procura "estoque", não
       // "movimentação". A tela /admin/estoque agora tem 2 views (saldo +

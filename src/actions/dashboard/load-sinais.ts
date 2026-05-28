@@ -50,7 +50,8 @@ export type SinalType =
   | "caixa_esquecido"
   | "whatsapp_pendente"
   | "fiado_atrasado"
-  | "estoque_critico_novo";
+  | "estoque_critico_novo"
+  | "orcamento_vencendo";
 
 export interface DashboardSinal {
   type: SinalType;
@@ -177,6 +178,23 @@ export async function loadDashboardSinais(): Promise<LoadDashboardSinaisOutput> 
         p.stockQuantity <= p.minStockQuantity,
     );
 
+    // ---- 5) ORÇAMENTOS expirando nas próximas 48h (DELTA — Semana 5).
+    //         Pega só status=quote com validade definida caindo agora.
+    //         Joalheiro precisa ligar pro cliente ANTES de expirar.
+    const twoDaysAhead = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+    const [quotesAgg] = await tx
+      .select({ count: sql<number>`count(*)::int` })
+      .from(orderTable)
+      .where(
+        and(
+          eq(orderTable.storeId, store.id),
+          eq(orderTable.status, "quote"),
+          gte(orderTable.quoteValidUntil, now),
+          lte(orderTable.quoteValidUntil, twoDaysAhead),
+        ),
+      );
+    const quotesExpiring = quotesAgg?.count ?? 0;
+
     // ---- Monta lista por severidade ----
     const items: DashboardSinal[] = [];
 
@@ -257,6 +275,20 @@ export async function loadDashboardSinais(): Promise<LoadDashboardSinaisOutput> 
         href: "/admin/estoque?status=low",
         severity: "med",
         count: estoqueCritico.length,
+      });
+    }
+
+    if (quotesExpiring > 0) {
+      items.push({
+        type: "orcamento_vencendo",
+        title:
+          quotesExpiring === 1
+            ? "1 orçamento vence em até 2 dias"
+            : `${quotesExpiring} orçamentos vencem em até 2 dias`,
+        subtitle: "Hora de ligar pro cliente — esfria depois de expirar.",
+        href: "/admin/orcamentos?validade=ativos",
+        severity: "med",
+        count: quotesExpiring,
       });
     }
 

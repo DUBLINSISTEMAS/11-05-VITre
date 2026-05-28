@@ -23,6 +23,7 @@
 // (`OrderDetailDrawerListener`) é quem segura o state e roda na admin-shell.
 
 import {
+  CheckCircle2Icon,
   Loader2Icon,
   MessageCircleIcon,
   PhoneIcon,
@@ -69,6 +70,54 @@ const PAYMENT_LABELS: Record<string, string> = {
  * mostrava só "Crédito" mesmo em 3×; agora mostra "Crédito 3×" quando faz
  * sentido. Outras formas (cash/pix/debit/other) são sempre à vista.
  */
+/**
+ * Chip de validade do orçamento (Semana 5 — 2026-05-28).
+ * Inline no header do drawer pra status=quote. Cor reflete urgência:
+ *   verde   → +2d restantes
+ *   âmbar   → 1-2d (joalheiro liga pro cliente)
+ *   vermelho → expirado
+ */
+function QuoteValidityChip({ validUntil }: { validUntil: Date }) {
+  const ms = validUntil.getTime() - Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+  let label: string;
+  let className: string;
+  if (ms < 0) {
+    const days = Math.floor(-ms / dayMs);
+    label =
+      days === 0
+        ? "Expirou hoje"
+        : days === 1
+          ? "Expirou ontem"
+          : `Expirou há ${days}d`;
+    className = "text-destructive font-semibold";
+  } else {
+    const days = Math.floor(ms / dayMs);
+    if (days === 0) {
+      label = "Expira hoje";
+      className = "text-state-warning font-semibold";
+    } else if (days === 1) {
+      label = "Expira amanhã";
+      className = "text-state-warning font-semibold";
+    } else {
+      label = `${days}d restantes`;
+      className = "text-state-success font-medium";
+    }
+  }
+  return (
+    <span
+      className={className}
+      title={validUntil.toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })}
+    >
+      {label}
+    </span>
+  );
+}
+
 function paymentLabelFull(method: string, installments: number): string {
   const base = PAYMENT_LABELS[method] ?? method;
   if (method === "credit" && installments > 1) {
@@ -219,7 +268,10 @@ function DrawerContent({
           </div>
           <div className="min-w-0 flex-1 space-y-1">
             <SheetTitle className="text-ink-1 text-[15px] font-semibold tracking-tight">
-              Venda{" "}
+              {/* Semana 5 da ressignificação (2026-05-28) — título reflete
+                  natureza: orçamento (futuro) ≠ venda (passado). Antes
+                  mostrava "Venda #X" mesmo pra quote, confundia lojista. */}
+              {order.status === "quote" ? "Orçamento" : "Venda"}{" "}
               <span
                 className="font-mono"
                 style={{ color: "var(--mangos-green-800)" }}
@@ -241,6 +293,14 @@ function DrawerContent({
                 </span>
                 <span aria-hidden>·</span>
                 <span>{formatRelativeDate(order.createdAt)}</span>
+                {/* Validade do orçamento — joalheiro vê de cara, antes
+                    de prosseguir, quanto tempo ainda tem pra fechar. */}
+                {order.status === "quote" && order.quoteValidUntil ? (
+                  <>
+                    <span aria-hidden>·</span>
+                    <QuoteValidityChip validUntil={order.quoteValidUntil} />
+                  </>
+                ) : null}
               </div>
             </SheetDescription>
           </div>
@@ -518,12 +578,20 @@ function DrawerContent({
           totalInCents={order.totalInCents}
         />
 
-        {/* Sprint 1A Fase 4 — Transformar orçamento em venda. */}
+        {/* Sprint 1A Fase 4 + Semana 5 (2026-05-28) — Transformar
+            orçamento em venda. Em status=quote, este vira o CTA
+            principal do drawer (movido pra topo, verde, com ícone).
+            Decisão #4 do paradigma: vendedor cria venda separada (não
+            converte status diretamente). PDV abre com itens pré-
+            carregados; vendedor reconfere e fecha como venda real. */}
         {order.status === "quote" &&
         order.quoteValidUntil &&
         order.quoteValidUntil > new Date() ? (
-          <Button asChild size="sm" className="w-full">
-            <a href={`/admin/pdv?fromQuote=${order.id}`}>Transformar em venda</a>
+          <Button asChild size="sm" className="w-full gap-1.5">
+            <a href={`/admin/pdv?fromQuote=${order.id}`}>
+              <CheckCircle2Icon className="size-4" aria-hidden />
+              Aceitar e criar venda
+            </a>
           </Button>
         ) : null}
 
