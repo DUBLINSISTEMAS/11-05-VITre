@@ -14,6 +14,7 @@ import {
   ChevronRightIcon,
   ClockIcon,
   HandCoinsIcon,
+  LineChartIcon,
   type LucideIcon,
   ReceiptIcon,
   TrendingUpIcon,
@@ -32,6 +33,16 @@ interface ReportCard {
 }
 
 const REPORTS: ReportCard[] = [
+  // Bloco E da ressignificação (2026-05-27) — primeiro card porque responde
+  // a pergunta-mãe #1 do lojista: "Quanto sobrou esse mês?".
+  {
+    k: "resultado",
+    label: "Resultado",
+    href: "/admin/relatorios/resultado",
+    icon: LineChartIcon,
+    description:
+      "Lucro líquido REAL do período: faturamento − custos − taxas − despesas. Comparação com período anterior.",
+  },
   {
     k: "vendas",
     label: "Vendas por período",

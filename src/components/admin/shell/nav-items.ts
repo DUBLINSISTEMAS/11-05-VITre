@@ -109,6 +109,10 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
     label: "Gestão",
     icon: TrendingUpIcon,
     items: [
+      // Bloco E da ressignificação (2026-05-27): topo do grupo Gestão.
+      // Responde a pergunta-mãe "Quanto sobrou?" — primeiro item porque
+      // é o que o lojista mais procura e merece atalho direto.
+      { k: "resultado",    label: "Resultado",      icon: TrendingUpIcon,    href: "/admin/relatorios/resultado" },
       { k: "relatorios",    label: "Relatórios",     icon: BarChart2Icon,     href: "/admin/relatorios"        },
       // S3.6 (2026-05-26) — capital empatado em produto que nao vende ha 60d+.
       { k: "estoque-parado", label: "Estoque parado", icon: AlertTriangleIcon, href: "/admin/estoque/parado"   },
