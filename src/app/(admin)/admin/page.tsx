@@ -1,6 +1,7 @@
 import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
+import { loadProdutosBombando } from "@/actions/dashboard/load-bombando";
 import { loadDashboardSinais } from "@/actions/dashboard/load-sinais";
 import { loadDashboardLucro } from "@/actions/reports/load-dashboard-lucro";
 import { DateRangePill } from "@/components/admin/dashboard/date-range-pill";
@@ -11,6 +12,7 @@ import {
   OnboardingChecklist,
 } from "@/components/admin/dashboard/onboarding-checklist";
 import { PegandoFogo } from "@/components/admin/dashboard/pegando-fogo";
+import { ProdutosBombando } from "@/components/admin/dashboard/produtos-bombando";
 import {
   type RecentOrderRow,
   RecentOrdersTable,
@@ -222,12 +224,13 @@ export default async function AdminHomePage({
     };
   });
 
-  // Hero de Lucro + Sinais "pegando fogo" — em paralelo top-level.
+  // Hero de Lucro + Sinais + Produtos bombando — em paralelo top-level.
   // Cada chamada abre sua própria transação RLS-aware, então Promise.all
   // sem efeito DeprecationWarning (cliente pg diferente por transação).
-  const [lucroData, sinaisData] = await Promise.all([
+  const [lucroData, sinaisData, bombandoData] = await Promise.all([
     loadDashboardLucro(),
     loadDashboardSinais(),
+    loadProdutosBombando(),
   ]);
 
   // === Onboarding state ===
@@ -356,14 +359,29 @@ export default async function AdminHomePage({
         />
       ) : null}
 
-      {/* Pegando fogo agora — Bloco F.2.2.
-          Sinais DELTA do dia (não fila acumulada). 4 categorias curadas:
-          caixa esquecido · WhatsApp pendente · fiado vencido · estoque
-          novo em mínimo. Vazio = "Tudo em dia 🤝". */}
-      <PegandoFogo
-        items={sinaisData.items}
-        allClear={sinaisData.allClear}
-      />
+      {/* Grid 2-col (desktop) com sinais + produtos bombando.
+          Bloco F.2.2 e F.2.3 lado a lado economizam scroll e equilibram
+          peso visual (defensivo + ofensivo). Mobile empilha em coluna. */}
+      <div className="b3-insight-grid">
+        {/* Pegando fogo agora — Bloco F.2.2.
+            Sinais DELTA do dia (não fila acumulada). 4 categorias curadas:
+            caixa esquecido · WhatsApp pendente · fiado vencido · estoque
+            novo em mínimo. Vazio = "Tudo em dia 🤝". */}
+        <PegandoFogo
+          items={sinaisData.items}
+          allClear={sinaisData.allClear}
+        />
+
+        {/* Produtos que tão bombando — Bloco F.2.3.
+            Critério: aceleração 30%+ vs média móvel 28d (surpresa positiva,
+            não top de sempre). Fallback Top 3 lucro absoluto quando loja
+            jovem sem histórico ou sem candidato acelerando. Esconde
+            completamente se sem nenhum candidato. */}
+        <ProdutosBombando
+          items={bombandoData.items}
+          fallback={bombandoData.fallback}
+        />
+      </div>
 
       {/* 2 gráficos: 60/40 */}
       <div className="b3-charts-grid">

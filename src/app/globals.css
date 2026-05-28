@@ -2532,6 +2532,180 @@
     color: inherit;
   }
 
+  /* --- Insight grid (Pegando fogo + Produtos bombando lado a lado) ----- */
+  .b3-insight-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 14px;
+    margin-bottom: 16px;
+    align-items: start;
+  }
+  /* Cada filho do grid recompõe seu margin-bottom (já controlado pelo gap) */
+  .b3-insight-grid > * {
+    margin-bottom: 0;
+  }
+  @media (max-width: 960px) {
+    .b3-insight-grid {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+  }
+
+  /* --- ProdutosBombando (Bloco F.2.3 da ressignificação) ----------------
+     Lista densa de 3 produtos com aceleração 30%+ vs média móvel 28d.
+     Fallback: Top 3 por lucro absoluto. Linha clicável → form do produto. */
+  .b3-bombando {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 16px 12px;
+    margin-bottom: 16px;
+    min-width: 0;
+  }
+  .b3-bombando-hd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .b3-bombando-title {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-1);
+    letter-spacing: -0.01em;
+  }
+  .b3-bombando-icon {
+    color: var(--ok);
+  }
+  .b3-bombando-sub {
+    font-size: 11px;
+    color: var(--ink-4);
+    font-weight: 500;
+    letter-spacing: -0.005em;
+  }
+  .b3-bombando-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .b3-bombando-row {
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 8px 8px 6px;
+    border-radius: 10px;
+    text-decoration: none;
+    color: inherit;
+    transition: background-color 120ms;
+    outline: none;
+    min-width: 0;
+  }
+  .b3-bombando-row:hover,
+  .b3-bombando-row:focus-visible {
+    background: var(--bg-app);
+  }
+  .b3-bombando-row:focus-visible {
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--ring) 60%, transparent);
+  }
+
+  .b3-bombando-thumb {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 1px solid var(--line);
+    background: var(--bg-app);
+    flex-shrink: 0;
+  }
+  .b3-bombando-thumb--placeholder {
+    display: inline-grid;
+    place-items: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink-4);
+    letter-spacing: -0.01em;
+  }
+
+  .b3-bombando-info {
+    min-width: 0;
+  }
+  .b3-bombando-name {
+    margin: 0;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink-1);
+    letter-spacing: -0.005em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.35;
+  }
+  .b3-bombando-meta {
+    margin: 1px 0 0;
+    font-size: 11px;
+    color: var(--ink-4);
+    letter-spacing: -0.005em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .b3-bombando-metric {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+  .b3-bombando-accel {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 8px;
+    background: color-mix(in oklab, var(--ok) 12%, transparent);
+    color: var(--ok);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.005em;
+    white-space: nowrap;
+  }
+  .b3-bombando-profit {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-end;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-1);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.005em;
+    line-height: 1.15;
+  }
+  .b3-bombando-profit-label {
+    font-size: 9.5px;
+    font-weight: 600;
+    color: var(--ink-4);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 1px;
+  }
+  .b3-bombando-profit-empty {
+    font-size: 11px;
+    color: var(--ink-5);
+    font-style: italic;
+  }
+
   /* --- PegandoFogo (Bloco F.2.2 da ressignificação) ---------------------
      Painel "Pegando fogo agora" — sinais operacionais DELTA, não fila
      acumulada. Linhas clicáveis, cor por severidade, vocabulário do balcão. */
