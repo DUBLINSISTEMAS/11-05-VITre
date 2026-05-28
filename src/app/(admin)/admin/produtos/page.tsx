@@ -56,6 +56,13 @@ const PAGE_SIZE = 20;
 const STATUS_VALUES = ["active", "inactive", "draft", "no-stock", "no-tracking"] as const;
 type StatusFilter = (typeof STATUS_VALUES)[number];
 
+// R5 Semana 4 da ressignificação (2026-05-28) — filtro TIPO URL-driven.
+// Eixo ortogonal ao STATUS: STATUS = operacional (rascunho/pausado/ativo),
+// TIPO = universo (público / interno / item de gestão / serviço).
+// Default sem ?tipo= mostra TUDO (visão geral de catálogo).
+const TIPO_VALUES = ["publico", "interno", "gestao", "servico"] as const;
+type TipoFilter = (typeof TIPO_VALUES)[number];
+
 const VIEW_VALUES = ["table", "grid"] as const;
 
 // Audit 2026-05-26 — sort URL-driven na tabela de produtos. Antes era
@@ -76,6 +83,7 @@ const produtosSearchSchema = z.object({
   q: searchTextSchema,
   categoryId: idOrNullSchema,
   status: enumOrNull(STATUS_VALUES),
+  tipo: enumOrNull(TIPO_VALUES),
   promo: boolFlagSchema,
   page: pageNumberSchema,
   // Passo 9 — toggle table↔grid (default omite param).
@@ -98,6 +106,7 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
     q,
     categoryId,
     status: statusFilter,
+    tipo: tipoFilter,
     promo: onlyPromo,
     page,
     view,
@@ -167,11 +176,44 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
     return NOT_DRAFT;
   };
 
+  // R5 Semana 4 da ressignificação — filtro TIPO ortogonal ao STATUS.
+  // STATUS = operacional (rascunho/pausado/ativo + bucket no-stock/no-tracking).
+  // TIPO   = universo conceitual (público/interno/gestão/serviço).
+  // Os dois se combinam: ex: ?status=active&tipo=publico = produtos vendendo
+  // na loja online.
+  const tipoConditions = (t: TipoFilter | null): SQL[] => {
+    if (t === "publico") {
+      return [
+        eq(productTable.kind, "finished_good"),
+        eq(productTable.isPublishedToStorefront, true),
+      ];
+    }
+    if (t === "interno") {
+      return [
+        eq(productTable.kind, "finished_good"),
+        eq(productTable.isPublishedToStorefront, false),
+      ];
+    }
+    if (t === "gestao") return [eq(productTable.kind, "raw_material")];
+    if (t === "servico") return [eq(productTable.kind, "service")];
+    return [];
+  };
+
   // Lista respeita ou ?promo=1 ou ?status=X (mutex). Quando ?promo=1, ignora
-  // statusFilter (UI já garante mas backend é defensivo).
+  // statusFilter (UI já garante mas backend é defensivo). ?tipo= combina com
+  // ambos (eixo ortogonal — sempre AND).
   const listConditions: SQL[] = onlyPromo
-    ? [...baseConditions, ...promoConditions(), ...NOT_DRAFT]
-    : [...baseConditions, ...statusConditions(statusFilter)];
+    ? [
+        ...baseConditions,
+        ...promoConditions(),
+        ...NOT_DRAFT,
+        ...tipoConditions(tipoFilter),
+      ]
+    : [
+        ...baseConditions,
+        ...statusConditions(statusFilter),
+        ...tipoConditions(tipoFilter),
+      ];
   const whereClause = and(...listConditions);
 
   // ---- Fetch sequencial dentro do tx: 4 queries em vez de 9 ----

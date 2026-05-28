@@ -29,6 +29,18 @@ import {
 import type { CategoryOption } from "./category-dialog";
 
 const CATEGORY_ALL = "__all__";
+const TIPO_ALL = "__all__";
+
+// R5 Semana 4 da ressignificação — opções do filtro TIPO. Espelha
+// TIPO_VALUES de page.tsx. Ordem: do mais frequente (público) ao mais
+// raro (serviço). Labels usam vocabulário do varejista (NÃO "kind",
+// NÃO "produto comercializável") — mesmo termo da coluna TIPO da tabela.
+const TIPO_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "publico", label: "Produto público" },
+  { value: "interno", label: "Produto interno" },
+  { value: "gestao", label: "Item de gestão" },
+  { value: "servico", label: "Serviço" },
+];
 
 interface ProductsToolbarProps {
   categories: CategoryOption[];
@@ -45,6 +57,8 @@ export function ProductsToolbar({ categories, rangeLabel }: ProductsToolbarProps
   const categoryId = searchParams.get("categoryId") ?? CATEGORY_ALL;
   // Audit 2026-05-26 — sort URL-driven.
   const sort = searchParams.get("sort") ?? "updated-desc";
+  // R5 Semana 4 da ressignificação — filtro TIPO URL-driven.
+  const tipo = searchParams.get("tipo") ?? TIPO_ALL;
 
   const [q, setQ] = useState(initialQ);
 
@@ -79,6 +93,17 @@ export function ProductsToolbar({ categories, rangeLabel }: ProductsToolbarProps
     const usp = new URLSearchParams(window.location.search);
     if (value === "updated-desc") usp.delete("sort");
     else usp.set("sort", value);
+    usp.delete("page");
+    startTransition(() => {
+      router.replace(`?${usp.toString()}`, { scroll: false });
+    });
+  };
+
+  // R5 Semana 4 — handler de TIPO. "Todos" omite o param.
+  const updateTipo = (value: string) => {
+    const usp = new URLSearchParams(window.location.search);
+    if (value === TIPO_ALL) usp.delete("tipo");
+    else usp.set("tipo", value);
     usp.delete("page");
     startTransition(() => {
       router.replace(`?${usp.toString()}`, { scroll: false });
@@ -148,6 +173,28 @@ export function ProductsToolbar({ categories, rangeLabel }: ProductsToolbarProps
               </SelectGroup>
             );
           })}
+        </SelectContent>
+      </Select>
+
+      {/* R5 Semana 4 da ressignificação (2026-05-28) — filtro TIPO.
+          Eixo ortogonal ao STATUS (operacional). Lojista que quer ver
+          SÓ os públicos pra checar a vitrine, OU SÓ os internos pra
+          decidir o que publicar, OU SÓ os itens de gestão pra contar
+          matéria-prima vai aqui. Default omite param e mostra TODOS. */}
+      <Select value={tipo} onValueChange={updateTipo}>
+        <SelectTrigger
+          className="h-9 min-w-40 max-w-52"
+          data-active={tipo !== TIPO_ALL ? "true" : undefined}
+        >
+          <SelectValue placeholder="Tipo" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={TIPO_ALL}>Todos os tipos</SelectItem>
+          {TIPO_OPTIONS.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
 
