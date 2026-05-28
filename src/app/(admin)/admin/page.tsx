@@ -2,10 +2,13 @@ import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { loadProdutosBombando } from "@/actions/dashboard/load-bombando";
+import { loadDashboardKpis } from "@/actions/dashboard/load-kpis";
 import { loadDashboardSinais } from "@/actions/dashboard/load-sinais";
 import { loadDashboardLucro } from "@/actions/reports/load-dashboard-lucro";
 import { DateRangePill } from "@/components/admin/dashboard/date-range-pill";
 import { HeroLucro } from "@/components/admin/dashboard/hero-lucro";
+import { KpisSecundarios } from "@/components/admin/dashboard/kpis-secundarios";
+import { LojaOnlineSnapshot } from "@/components/admin/dashboard/loja-online-snapshot";
 import { NewSaleButton } from "@/components/admin/dashboard/new-sale-button";
 import {
   type ChecklistStep,
@@ -224,13 +227,14 @@ export default async function AdminHomePage({
     };
   });
 
-  // Hero de Lucro + Sinais + Produtos bombando — em paralelo top-level.
+  // Hero + Sinais + Bombando + KPIs/LojaOnline — em paralelo top-level.
   // Cada chamada abre sua própria transação RLS-aware, então Promise.all
   // sem efeito DeprecationWarning (cliente pg diferente por transação).
-  const [lucroData, sinaisData, bombandoData] = await Promise.all([
+  const [lucroData, sinaisData, bombandoData, kpisData] = await Promise.all([
     loadDashboardLucro(),
     loadDashboardSinais(),
     loadProdutosBombando(),
+    loadDashboardKpis({ periodoDays: periodo }),
   ]);
 
   // === Onboarding state ===
@@ -348,15 +352,22 @@ export default async function AdminHomePage({
       </div>
 
       {/* Hero de Lucro Líquido — Bloco F.2.1 da ressignificação.
-          Substitui 4 MetricCards genéricos por DOIS números úteis:
-          quanto lucrou ontem (vs mesmo dia da semana passada) e quanto
-          essa semana (vs mesma janela 7d atrás). Honestidade explícita
+          DOIS números úteis: lucrou ontem (vs mesmo dia da semana passada)
+          e essa semana (vs mesma janela 7d atrás). Honestidade explícita
           via cobertura CMV. */}
       {lucroData ? (
         <HeroLucro
           yesterday={lucroData.yesterday}
           thisWeek={lucroData.thisWeek}
         />
+      ) : null}
+
+      {/* KPIs Secundários — Bloco F.2.5. Linha tabular densa de 4
+          indicadores (Vendas · Faturamento · Clientes novos · Devoluções)
+          pra janela do ?periodo. Substitui os 4 MetricCards individuais
+          do WIP anterior — densificação por subtração. */}
+      {kpisData ? (
+        <KpisSecundarios kpis={kpisData.kpis} periodoLabel={periodLabelShort(periodo)} />
       ) : null}
 
       {/* Grid 2-col (desktop) com sinais + produtos bombando.
@@ -391,6 +402,18 @@ export default async function AdminHomePage({
 
       {/* Tabela de vendas recentes */}
       <RecentOrdersTable orders={recentRows} />
+
+      {/* Mini-snapshot da loja online — Bloco F.2.4. Linha compacta no
+          rodapé respondendo a pergunta-mãe #7 ("Como tá indo a loja online?").
+          Mostra apenas o acionável: recados aguardando, produtos sem foto,
+          contagem de publicados + link pro storefront. Sem analytics de
+          visitas/conversão (fora do escopo F sem Plausible). */}
+      {kpisData ? <LojaOnlineSnapshot data={kpisData.lojaOnline} /> : null}
     </div>
   );
+}
+
+/** "7d" / "30d" / "90d" — usado no aria-label da linha de KPIs. */
+function periodLabelShort(periodo: number): string {
+  return `últimos ${periodo} dias`;
 }
