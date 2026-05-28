@@ -71,7 +71,7 @@ Produtos `/admin/produtos` · Categorias · Marcas · Clientes `/admin/clientes`
 | Estoque parado | `/admin/estoque/parado` |
 | Estoque vencendo | `/admin/estoque/vencendo` |
 | Compras | `/admin/compras` |
-| Custo & margem | `/admin/produtos/custos` |
+| Preencher custos | `/admin/produtos/custos` |
 
 **Grupo 4 — Loja online + Configurações**
 Aparência · Banners · Vitrines `/admin/colecoes` · Códigos de desconto `/admin/promocoes/cupons` · Formas de pagamento `/admin/pagamento` · Dados da loja `/admin/configuracoes`

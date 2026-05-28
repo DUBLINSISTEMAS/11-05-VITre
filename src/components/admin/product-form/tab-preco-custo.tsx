@@ -12,6 +12,7 @@
 //    acima esconde.
 //  - default (legacy): mostra tudo num só lugar — preservado pra callers
 //    que ainda não migraram pra split.
+import { useEffect, useState } from "react";
 import type {
   Control,
   FieldErrors,
@@ -20,6 +21,7 @@ import type {
 } from "react-hook-form";
 import { Controller, useWatch } from "react-hook-form";
 
+import { loadCostComponents } from "@/actions/product/cost-components";
 import type { ProductFormValues } from "@/actions/product/schema";
 import { MarginLivePreview } from "@/components/admin/margin-live-preview";
 import { MarginQuickSimulator } from "@/components/admin/margin-quick-simulator";
@@ -34,7 +36,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import { CostComponentsEditor } from "./cost-components-editor";
 import { SubCard } from "./shared";
+
+type CostComponentRow = { label: string; amountInCents: number };
 
 interface TabPrecoCustoProps {
   control: Control<ProductFormValues>;
@@ -47,6 +52,8 @@ interface TabPrecoCustoProps {
   hideAdvanced?: boolean;
   /** Onda 2.2 — renderiza APENAS o que `hideAdvanced` esconde. */
   onlyAdvanced?: boolean;
+  /** ID do produto. "new" durante criação — editor de componentes só renderiza após salvar. */
+  productId: string;
 }
 
 export function TabPrecoCusto({
@@ -57,12 +64,37 @@ export function TabPrecoCusto({
   setValue,
   hideAdvanced = false,
   onlyAdvanced = false,
+  productId,
 }: TabPrecoCustoProps) {
   const costPriceInCents = useWatch({ control, name: "costPriceInCents" });
   const basePriceInCents = useWatch({ control, name: "basePriceInCents" });
 
   const showEssential = !onlyAdvanced;
   const showAdvanced = !hideAdvanced;
+
+  // Rehidratação dos componentes de custo ao reabrir produto existente.
+  // Editor mantém estado interno a partir de `initial` — então renderizamos
+  // só DEPOIS de carregar pra garantir hidratação correta.
+  const isExistingProduct = productId !== "new" && showEssential;
+  const [costComponents, setCostComponents] = useState<CostComponentRow[]>([]);
+  const [costComponentsLoaded, setCostComponentsLoaded] = useState(
+    !isExistingProduct,
+  );
+
+  useEffect(() => {
+    if (!isExistingProduct) return;
+    let alive = true;
+    void loadCostComponents(productId).then((rows) => {
+      if (!alive) return;
+      setCostComponents(
+        rows.map((r) => ({ label: r.label, amountInCents: r.amountInCents })),
+      );
+      setCostComponentsLoaded(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [isExistingProduct, productId]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -139,6 +171,26 @@ export function TabPrecoCusto({
               setValue={setValue}
             />
           </div>
+        </SubCard>
+      ) : null}
+
+      {showEssential ? (
+        <SubCard
+          title="Detalhar custo por material"
+          description="Quebre o custo em peças (ouro 18k, mão de obra, embalagem). A soma vira o custo total do produto."
+        >
+          {productId === "new" ? (
+            <p className="text-ink-4 text-xs">
+              Salve o produto primeiro para detalhar o custo.
+            </p>
+          ) : costComponentsLoaded ? (
+            <CostComponentsEditor
+              productId={productId}
+              initial={costComponents}
+            />
+          ) : (
+            <p className="text-ink-4 text-xs">Carregando custo…</p>
+          )}
         </SubCard>
       ) : null}
 

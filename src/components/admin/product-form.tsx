@@ -650,6 +650,7 @@ export function ProductForm({
               errors={errors}
               isPending={isPending}
               setValue={setValue}
+              productId={initialData.productId}
             />
           </div>
 

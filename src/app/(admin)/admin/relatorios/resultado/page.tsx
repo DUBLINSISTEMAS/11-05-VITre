@@ -11,6 +11,7 @@
  * "DRE detalhado" → `/admin/relatorios/dre`.
  */
 import { loadDreSimple } from "@/actions/reports/load-dre";
+import { derivePreviousFilters, resolveReportRange } from "@/actions/reports/range";
 import {
   loadReportOperatorName,
   loadStoreInfoForReport,
@@ -36,55 +37,15 @@ function flatten(
   return out;
 }
 
-/**
- * Deriva filtros do período ANTERIOR de mesma duração — sem repensar
- * `resolveReportRange`. Pra periodo=7/30/90 dias, o anterior são os N
- * dias antes do início do atual. Pra custom, espelha o range com
- * mesma length, deslocado.
- */
-function shiftFiltersToPreviousPeriod(
-  filters: Record<string, string | undefined>,
-): Record<string, string | undefined> {
-  const periodo = filters.periodo ?? "30";
-  const days =
-    periodo === "7" ? 7 : periodo === "90" ? 90 : periodo === "30" ? 30 : null;
-
-  // Periodo padrão (7/30/90): calcula start = today − 2N, end = today − N.
-  if (days !== null) {
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-    const end = new Date(today);
-    end.setDate(end.getDate() - days);
-    const start = new Date(end);
-    start.setDate(start.getDate() - days + 1);
-    return {
-      periodo: "custom",
-      start: start.toISOString().slice(0, 10),
-      end: end.toISOString().slice(0, 10),
-    };
-  }
-
-  // Custom: desloca o mesmo length pra trás.
-  if (filters.start && filters.end) {
-    const s = new Date(filters.start);
-    const e = new Date(filters.end);
-    const lengthMs = e.getTime() - s.getTime();
-    const newEnd = new Date(s.getTime() - 24 * 60 * 60 * 1000);
-    const newStart = new Date(newEnd.getTime() - lengthMs);
-    return {
-      periodo: "custom",
-      start: newStart.toISOString().slice(0, 10),
-      end: newEnd.toISOString().slice(0, 10),
-    };
-  }
-
-  return { periodo: "30" };
-}
-
 export default async function ResultadoPage({ searchParams }: SearchParams) {
   await requireSession();
   const flat = flatten(await searchParams);
-  const previousFilters = shiftFiltersToPreviousPeriod(flat);
+  // Modo de comparação — "prev" (período imediatamente anterior, default)
+  // ou "yoy" (mesmo período do ano passado). YoY é o que o varejista
+  // pede quando tem sazonalidade (joia em maio vs maio passado).
+  const compareMode: "prev" | "yoy" = flat.compare === "yoy" ? "yoy" : "prev";
+  const range = resolveReportRange(flat);
+  const previousFilters = derivePreviousFilters(range, compareMode);
 
   const [storeInfo, current, previous, operatorName] = await Promise.all([
     loadStoreInfoForReport(),
@@ -110,6 +71,7 @@ export default async function ResultadoPage({ searchParams }: SearchParams) {
         period={current.range.periodLabel}
         filters={flat}
         operatorName={operatorName}
+        compareMode={compareMode}
       />
     </div>
   );

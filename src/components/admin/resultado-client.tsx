@@ -37,12 +37,19 @@ interface ResultadoClientProps {
   period: string;
   filters: Record<string, string | undefined>;
   operatorName: string | null;
+  compareMode: "prev" | "yoy";
 }
 
+// Presets temporais — pedido founder 2026-05-28. Períodos civis (mes/ano)
+// no topo porque é o que o varejista BR pergunta toda segunda. "30 dias"
+// fica como rolante pra dashboards de marketing.
 const PERIOD_OPTIONS = [
-  { value: "7", label: "7 dias" },
+  { value: "hoje", label: "Hoje" },
+  { value: "semana", label: "Esta semana" },
+  { value: "mes", label: "Este mês" },
+  { value: "trimestre", label: "Trimestre" },
+  { value: "ano", label: "Este ano" },
   { value: "30", label: "30 dias" },
-  { value: "90", label: "90 dias" },
 ] as const;
 
 const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
@@ -68,12 +75,13 @@ export function ResultadoClient({
   period,
   filters,
   operatorName,
+  compareMode,
 }: ResultadoClientProps) {
   const router = useRouter();
   const params = useSearchParams();
   const [pending, startTransition] = useTransition();
 
-  const currentPeriodo = filters.periodo ?? "30";
+  const currentPeriodo = filters.periodo ?? "mes";
 
   const setPeriodo = useCallback(
     (value: string) => {
@@ -87,6 +95,18 @@ export function ResultadoClient({
     },
     [params, router],
   );
+
+  const toggleCompareMode = useCallback(() => {
+    const next = new URLSearchParams(params?.toString() ?? "");
+    if (compareMode === "yoy") {
+      next.delete("compare");
+    } else {
+      next.set("compare", "yoy");
+    }
+    startTransition(() => {
+      router.push(`?${next.toString()}`);
+    });
+  }, [params, router, compareMode]);
 
   const handlePrint = useCallback(() => {
     window.print();
@@ -201,6 +221,40 @@ export function ResultadoClient({
         </Link>
       </div>
 
+      {/* Toggle de comparação --------------------------------------- */}
+      {/* "vs período anterior" (default) ou "vs mesmo período no ano passado".
+          YoY é o que joalheiro/perfumaria pergunta — sazonalidade pesa
+          mais que tendência mês-a-mês. */}
+      <div className="flex flex-wrap items-center gap-2 print:hidden">
+        <span className="text-ink-4 text-[11px] font-bold uppercase tracking-[0.06em]">
+          Comparar com
+        </span>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => compareMode !== "prev" && toggleCompareMode()}
+          className={
+            compareMode === "prev"
+              ? "b3-btn b3-btn--sm bg-ink-1 text-bg-1"
+              : "b3-btn b3-btn--sm bg-bg-2"
+          }
+        >
+          Período anterior
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => compareMode !== "yoy" && toggleCompareMode()}
+          className={
+            compareMode === "yoy"
+              ? "b3-btn b3-btn--sm bg-ink-1 text-bg-1"
+              : "b3-btn b3-btn--sm bg-bg-2"
+          }
+        >
+          Mesmo período no ano passado
+        </button>
+      </div>
+
       {/* Hero card de LUCRO LÍQUIDO --------------------------------- */}
       <article
         className="b3-card relative overflow-hidden p-6 sm:p-8"
@@ -225,12 +279,14 @@ export function ResultadoClient({
             </p>
           </div>
 
-          {/* Delta vs período anterior */}
+          {/* Delta vs período de comparação selecionado */}
           {previous !== null ? (
             <DeltaPill
               currentInCents={current.operationalProfitInCents}
               previousInCents={previous.operationalProfitInCents}
-              previousLabel="vs período anterior"
+              previousLabel={
+                compareMode === "yoy" ? "vs mesmo período ano passado" : "vs período anterior"
+              }
               previousPct={profitDelta}
             />
           ) : null}

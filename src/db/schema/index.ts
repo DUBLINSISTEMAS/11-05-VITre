@@ -16,3 +16,4 @@ export * from "./order";
 export * from "./store";
 export * from "./storefront-collection";
 export * from "./team";
+export * from "./cost-component";

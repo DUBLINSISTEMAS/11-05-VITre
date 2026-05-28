@@ -124,7 +124,11 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
       // S3.4 (2026-05-26) — lotes vencendo (perfumaria/cosmetico).
       { k: "estoque-vencendo", label: "Estoque vencendo", icon: ClockIcon, href: "/admin/estoque/vencendo" },
       { k: "compras",       label: "Compras",        icon: ShoppingCartIcon,  href: "/admin/compras"           },
-      { k: "custos",        label: "Custo & margem", icon: CalculatorIcon,    href: "/admin/produtos/custos"   },
+      // Renomeado de "Custo & margem" → "Preencher custos" (2026-05-28).
+      // Label antigo soava "relatório de margem"; tela é workbench pra
+      // lojista cadastrar custo dos produtos que ainda não têm — alimenta
+      // CMV honesto na tela Resultado.
+      { k: "custos",        label: "Preencher custos", icon: CalculatorIcon,    href: "/admin/produtos/custos"   },
     ],
   },
   {
