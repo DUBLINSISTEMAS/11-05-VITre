@@ -23,7 +23,11 @@ import { generateUniqueProductSlug } from "@/lib/slug-uniqueness";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
-import { type UpdateProductInput,updateProductSchema } from "./schema";
+import {
+  applyKindOverrides,
+  type UpdateProductInput,
+  updateProductSchema,
+} from "./schema";
 
 export type UpdateProductResult =
   | { ok: true; productId: string; slug: string }
@@ -81,7 +85,13 @@ export async function updateProduct(
       fieldErrors,
     };
   }
-  const data = parsed.data;
+  // R3 Semana 4 da ressignificação — defesa em profundidade. Item de
+  // gestão (kind=raw_material) NÃO vende em canal nenhum: zera campos
+  // comerciais (preço/promo/atacado/parcelamento/desconto) e força
+  // unpublish do storefront. Sem isso, cliente comprometido OU replay
+  // de payload antigo OU mudança de kind sem refresh do form poderia
+  // deixar item de gestão como produto público com preço fantasma.
+  const data = applyKindOverrides(parsed.data);
 
   // 4. Resolve loja
   const store = await getCurrentStore(userId);

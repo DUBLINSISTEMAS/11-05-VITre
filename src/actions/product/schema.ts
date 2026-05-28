@@ -54,6 +54,41 @@ export const productKindSchema = z.enum([
 export type ProductKind = z.infer<typeof productKindSchema>;
 
 /**
+ * Defesa em profundidade: a UI já condiciona campos quando kind=raw_material
+ * (R3 Semana 4 da ressignificação — esconde abas Preço/Precificação/
+ * Catálogo público e força isPublishedToStorefront=false), mas o server
+ * NÃO confia na UI. Cliente comprometido, replay de payload antigo ou
+ * mudança de kind via outro path (ex: bulk update futuro) tem que cair
+ * neste filtro antes de tocar o DB.
+ *
+ * Aplicado em create-from-values.ts e update.ts depois do `safeParse`.
+ * Não aplicar a finished_good/service — esses são canais de venda
+ * legítimos.
+ */
+export function applyKindOverrides<
+  T extends {
+    kind: ProductKind;
+    basePriceInCents: number;
+    promoPriceInCents: number | null;
+    wholesalePriceInCents: number | null;
+    installmentsOverride: number | null;
+    cashDiscountOverrideBps: number | null;
+    isPublishedToStorefront: boolean;
+  },
+>(data: T): T {
+  if (data.kind !== "raw_material") return data;
+  return {
+    ...data,
+    basePriceInCents: 0,
+    promoPriceInCents: null,
+    wholesalePriceInCents: null,
+    installmentsOverride: null,
+    cashDiscountOverrideBps: null,
+    isPublishedToStorefront: false,
+  };
+}
+
+/**
  * ADR-0034 Camada 2 — unidade de venda do produto. Espelha DB enum
  * `product_unit`. Default `un` cobre 95% varejo SMB BR.
  */
@@ -395,9 +430,13 @@ const STOCK_REQUIRED_MSG: { message: string; path: string[] } = {
   path: ["stockQuantity"],
 };
 const ACTIVE_REQUIRES_PRICE = (v: {
+  kind: ProductKind;
   isActive: boolean;
   basePriceInCents: number;
-}) => !v.isActive || v.basePriceInCents > 0;
+}) =>
+  // raw_material (item de gestão) NÃO vende em canal nenhum — preço
+  // é dado morto, exigir > 0 atrapalha cadastro de matéria-prima/ativo.
+  v.kind === "raw_material" || !v.isActive || v.basePriceInCents > 0;
 const ACTIVE_REQUIRES_PRICE_MSG: { message: string; path: string[] } = {
   message: "Informe um preço maior que zero para publicar.",
   path: ["basePriceInCents"],

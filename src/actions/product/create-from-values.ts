@@ -17,6 +17,7 @@ import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
 import {
+  applyKindOverrides,
   productFormSchema,
   type ProductFormValues,
 } from "./schema";
@@ -55,7 +56,11 @@ export async function createProductFromValues(
       fieldErrors,
     };
   }
-  const data = parsed.data;
+  // R3 Semana 4 da ressignificação — defesa em profundidade. Mesmo
+  // comportamento do update.ts: kind=raw_material zera campos
+  // comerciais e força unpublish. UI já condiciona (R3), server-side
+  // não confia em payload nenhum vindo do cliente.
+  const data = applyKindOverrides(parsed.data);
 
   const store = await getCurrentStore(userId);
   if (!store) return { ok: false, error: "Loja não encontrada." };
