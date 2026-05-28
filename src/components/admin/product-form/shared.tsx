@@ -249,12 +249,21 @@ export type TabKey =
 const TAB_FIELDS: Record<TabKey, Array<keyof ProductFormValues>> = {
   basico: ["name", "description", "categoryId", "brand"],
   imagens: [], // imagens são state separado (não campo do RHF)
+  // Ressignificação 2026-05-27 — installmentsOverride e cashDiscountOverrideBps
+  // migraram de "loja" pra cá porque afetam TODOS os canais (não só vitrine).
   preco: [
     "basePriceInCents",
     "costPriceInCents",
     "gtin",
     "internalCode",
     "unit",
+    "promoPriceInCents",
+    "wholesalePriceInCents",
+    "installmentsOverride",
+    "cashDiscountOverrideBps",
+    "defaultCommissionBps",
+    "ncm",
+    "weightGrams",
   ],
   precificacao: [], // view read-only — sem campos do form
   estoque: [
@@ -264,16 +273,13 @@ const TAB_FIELDS: Record<TabKey, Array<keyof ProductFormValues>> = {
     "maxStockQuantity",
   ],
   variantes: ["variants"],
+  // Pós-ressignificação, "loja" fica SOMENTE com campos exclusivos da vitrine
+  // pública: publicação + meta editorial. Promo/atacado/comissão/NCM saíram
+  // pro bloco "Avançado" da aba "Preço & Custo" também (Onda 2.2).
   loja: [
     "isActive",
     "isPublishedToStorefront",
     "isFeatured",
-    "promoPriceInCents",
-    "wholesalePriceInCents",
-    "installmentsOverride",
-    "cashDiscountOverrideBps",
-    "ncm",
-    "defaultCommissionBps",
     "composition",
     "modeling",
     "lining",

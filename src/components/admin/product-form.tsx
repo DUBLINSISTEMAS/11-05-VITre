@@ -580,13 +580,18 @@ export function ProductForm({
           </div>
 
           <div hidden={activeTab !== "preco"} className="space-y-4">
+            {/* Ressignificação 2026-05-27 — aba "Preço & Custo" agora mostra
+                TUDO sobre dinheiro do produto: essencial (preço/custo/margem)
+                + avançado (promo/atacado/parcelamento/desconto-vista/comissão/NCM).
+                Razão: princípio 8 + decisão #7 do paradigma — o produto é nó
+                central que alimenta TODOS os canais, e o lojista precisa de UM
+                lugar pra entender o financeiro completo do SKU. */}
             <TabPrecoCusto
               control={control}
               register={register}
               errors={errors}
               isPending={isPending}
               setValue={setValue}
-              hideAdvanced
             />
           </div>
 
@@ -615,9 +620,11 @@ export function ProductForm({
 
           <div hidden={activeTab !== "loja"} className="space-y-4">
             <div className="rounded-xl border border-dashed border-line bg-bg-app p-3 text-[12.5px] text-ink-4">
-              Publicação na vitrine, promoção, atacado, comissão, NCM e
-              metadados editoriais (composição, modelagem, forro, lavagem
-              quando aplicável).
+              Publicação na vitrine pública e detalhes editoriais (composição,
+              modelagem, forro, lavagem quando aplicável). Preço, parcelamento
+              e desconto à vista deste produto ficam na aba{" "}
+              <strong className="text-ink-2">Preço &amp; Custo</strong> — eles
+              valem em todos os canais (PDV, WhatsApp, vitrine).
             </div>
             <TabLojaOnline
               control={control}
@@ -626,14 +633,6 @@ export function ProductForm({
               isPending={isPending}
               isDraft={isDraft}
               showApparelMetaFields={showApparelMetaFields}
-            />
-            <TabPrecoCusto
-              control={control}
-              register={register}
-              errors={errors}
-              isPending={isPending}
-              setValue={setValue}
-              onlyAdvanced
             />
           </div>
         </div>
