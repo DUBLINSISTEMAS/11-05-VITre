@@ -70,7 +70,7 @@ export function TabPrecoCusto({
       {showEssential ? (
         <SubCard
           title="Preço & Custo"
-          description="Quanto pago e quanto vendo. A margem aparece automaticamente."
+          description="Quanto pago e quanto vendo. A margem aparece automaticamente. Estes preços valem em TODOS os canais — balcão, WhatsApp e loja online."
         >
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="space-y-1.5">

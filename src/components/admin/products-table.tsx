@@ -69,6 +69,15 @@ export interface ProductTableRow {
    * cadastrado — exibe "—" + margem fica "—".
    */
   costPriceInCents?: number | null;
+  /**
+   * R2 Semana 4 (2026-05-28) — universo do produto pra coluna TIPO.
+   * Combinado com `isPublishedToStorefront` deriva o label visível:
+   *   raw_material  → "Item de gestão"
+   *   service       → "Serviço"
+   *   finished_good && published → "Produto público"
+   *   finished_good && !published → "Produto interno"
+   */
+  kind: "raw_material" | "finished_good" | "service";
 }
 
 export interface ProductsTableProps {
@@ -130,6 +139,7 @@ export function ProductsTable({ products }: ProductsTableProps) {
             <th>NOME</th>
             <th>SKU</th>
             <th>CATEGORIA</th>
+            <th>TIPO</th>
             <th style={{ textAlign: "right" }}>ESTOQUE</th>
             <th style={{ textAlign: "right" }}>CUSTO</th>
             <th style={{ textAlign: "right" }}>PREÇO</th>
@@ -211,6 +221,12 @@ export function ProductsTable({ products }: ProductsTableProps) {
                     <span className="text-ink-4">—</span>
                   )}
                 </td>
+                <td>
+                  <TypePill
+                    kind={p.kind}
+                    isPublishedToStorefront={p.isPublishedToStorefront}
+                  />
+                </td>
                 <td className="mono" style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
                   <StockCell
                     productId={p.id}
@@ -248,13 +264,7 @@ export function ProductsTable({ products }: ProductsTableProps) {
                   />
                 </td>
                 <td>
-                  <StatusPill
-                    isActive={p.isActive}
-                    isPublishedToStorefront={p.isPublishedToStorefront}
-                    trackStock={p.trackStock}
-                    quantity={p.stockQuantity}
-                    isDraft={isDraft}
-                  />
+                  <StatusPill isActive={p.isActive} isDraft={isDraft} />
                 </td>
               </tr>
             );
@@ -380,35 +390,87 @@ function MarginCell({
   );
 }
 
+/**
+ * StatusPill — binário: Rascunho / Pausado / Ativo.
+ *
+ * Refactor R2 Semana 4 (2026-05-28): tirou a sobrecarga de informação
+ * (publicado/Só PDV/Sem estoque) que antes vivia aqui. Agora cada coluna
+ * conta UMA história:
+ *   - TIPO     → universo (Item de gestão / Produto público / Produto interno / Serviço)
+ *   - ESTOQUE  → saldo numérico + vermelho quando zerado
+ *   - STATUS   → operacional binário: tá ativo no sistema ou não?
+ *
+ * Lojista lê em 1 olhada: "ativo" = sendo usado em algum canal; "pausado"
+ * = retirado de TODOS os canais sem deletar; "rascunho" = ainda não saiu
+ * do cadastro.
+ */
 function StatusPill({
   isActive,
-  isPublishedToStorefront,
-  trackStock,
-  quantity,
   isDraft,
 }: {
   isActive: boolean;
-  isPublishedToStorefront: boolean;
-  trackStock: boolean;
-  quantity: number | null;
   isDraft: boolean;
 }) {
-  const isOutOfStock = trackStock && (quantity ?? 0) === 0;
   if (isDraft) {
     return <span className="b3-pill">Rascunho</span>;
   }
   if (!isActive) {
     return <span className="b3-pill b3-pill--gold">Pausado</span>;
   }
-  if (isOutOfStock) {
-    return <span className="b3-pill b3-pill--danger">Sem estoque</span>;
-  }
-  if (!isPublishedToStorefront) {
+  return <span className="b3-pill b3-pill--ok">Ativo</span>;
+}
+
+/**
+ * TypePill — universo conceitual do produto (R2 Semana 4 da ressignificação).
+ * Deriva de `kind` + `isPublishedToStorefront`:
+ *   - raw_material  → "Item de gestão"  (cinza, não vende em canal)
+ *   - service       → "Serviço"         (azul)
+ *   - finished_good && published → "Produto público"  (verde, na loja online)
+ *   - finished_good && !published → "Produto interno" (cinza, só balcão/WA)
+ *
+ * O combo "publicado" sai da coluna STATUS pra cá — é informação de
+ * canal/escopo, não de operação.
+ */
+function TypePill({
+  kind,
+  isPublishedToStorefront,
+}: {
+  kind: "raw_material" | "finished_good" | "service";
+  isPublishedToStorefront: boolean;
+}) {
+  if (kind === "raw_material") {
     return (
-      <span className="b3-pill b3-pill--silver" title="Ativo no sistema mas oculto da vitrine pública. Disponível pra venda no PDV.">
-        Só PDV
+      <span
+        className="b3-pill"
+        title="Matéria-prima ou ativo. Não vende em canal nenhum."
+      >
+        Item de gestão
       </span>
     );
   }
-  return <span className="b3-pill b3-pill--ok">Na loja online</span>;
+  if (kind === "service") {
+    return (
+      <span className="b3-pill b3-pill--silver" title="Serviço — sem estoque físico.">
+        Serviço
+      </span>
+    );
+  }
+  if (!isPublishedToStorefront) {
+    return (
+      <span
+        className="b3-pill b3-pill--silver"
+        title="Vende no balcão e WhatsApp, mas não aparece na loja online."
+      >
+        Produto interno
+      </span>
+    );
+  }
+  return (
+    <span
+      className="b3-pill b3-pill--ok"
+      title="Aparece na loja online + PDV + WhatsApp."
+    >
+      Produto público
+    </span>
+  );
 }

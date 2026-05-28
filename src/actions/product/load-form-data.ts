@@ -180,6 +180,7 @@ export async function loadProductFormData(
       initialData: {
         productId: product.id,
         name: product.name,
+        kind: product.kind,
         description: product.description ?? "",
         basePriceInCents: product.basePriceInCents,
         promoPriceInCents: product.promoPriceInCents,
@@ -242,6 +243,7 @@ function emptyInitialData(): ProductFormInitialData {
   return {
     productId: "new",
     name: "",
+    kind: "finished_good",
     description: "",
     basePriceInCents: 0,
     promoPriceInCents: null,

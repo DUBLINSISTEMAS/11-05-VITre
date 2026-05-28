@@ -38,6 +38,22 @@ export const variantAxisSchema = z.enum(["size", "color"]);
 export type VariantAxis = z.infer<typeof variantAxisSchema>;
 
 /**
+ * Bloco B da ressignificação (SQL 82, 2026-05-27) — universo do produto.
+ * Espelha DB enum `product_kind`. Default `finished_good` preserva
+ * compat com produtos existentes (todos pré-migration foram backfilled
+ * com NOT NULL DEFAULT).
+ *   - raw_material   = matéria-prima/ativo/mostruário. NÃO vende em canal.
+ *   - finished_good  = produto comercializável (default).
+ *   - service        = serviço (limpeza, instalação, conserto).
+ */
+export const productKindSchema = z.enum([
+  "raw_material",
+  "finished_good",
+  "service",
+]);
+export type ProductKind = z.infer<typeof productKindSchema>;
+
+/**
  * ADR-0034 Camada 2 — unidade de venda do produto. Espelha DB enum
  * `product_unit`. Default `un` cobre 95% varejo SMB BR.
  */
@@ -192,6 +208,15 @@ const productFormFieldsSchema = z.object({
     .trim()
     .min(2, "Nome muito curto.")
     .max(120, "Nome muito longo (máx 120)."),
+  /**
+   * Bloco B da ressignificação (2026-05-27) — universo do produto.
+   * Default 'finished_good' preserva compat com 100% dos produtos antes
+   * do SQL 82. Lojista escolhe 'raw_material' pra matéria-prima/ativo
+   * (joalheria: ouro 18k em barra) ou 'service' pra serviços.
+   * `.default()` cobre callers antigos (fixtures + import) que não
+   * passam o campo.
+   */
+  kind: productKindSchema.default("finished_good"),
   description: z
     .string()
     .trim()

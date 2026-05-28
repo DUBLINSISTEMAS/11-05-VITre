@@ -248,6 +248,12 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
         // calcular margem inline ((base − cost) / base * 100).
         internalCode: true,
         costPriceInCents: true,
+        // R2 da Semana 4 (2026-05-28) — coluna TIPO. Derivação na UI:
+        //   raw_material → "Item de gestão"
+        //   finished_good && !isPublishedToStorefront → "Produto interno"
+        //   finished_good && isPublishedToStorefront → "Produto público"
+        //   service → "Serviço"
+        kind: true,
       },
     });
 
@@ -406,6 +412,8 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
     // PP7 (handoff 2026-05-25) — SKU + custo pra colunas novas.
     sku: p.internalCode,
     costPriceInCents: p.costPriceInCents,
+    // R2 Semana 4 — universo do produto, pra coluna TIPO.
+    kind: p.kind,
   }));
 
   const rangeStart = total === 0 ? 0 : offset + 1;

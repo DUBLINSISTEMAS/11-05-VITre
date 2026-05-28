@@ -99,6 +99,7 @@ export async function createProductFromValues(
           storeId: store.id,
           categoryId: data.categoryId,
           name: data.name,
+          kind: data.kind,
           slug,
           description: data.description,
           basePriceInCents: data.basePriceInCents,

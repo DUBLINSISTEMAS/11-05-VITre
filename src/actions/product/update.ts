@@ -202,6 +202,7 @@ export async function updateProduct(
         .update(productTable)
         .set({
           name: data.name,
+          kind: data.kind,
           slug: nextSlug,
           description: data.description,
           basePriceInCents: data.basePriceInCents,

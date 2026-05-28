@@ -25,9 +25,45 @@ import {
 } from "@/components/admin/image-uploader";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
 import { CategoryField, SubCard } from "./shared";
+
+/**
+ * Bloco B da ressignificação — 3 universos de produto. Label voltado pro
+ * lojista BR (não jargão técnico). Helper text contextualiza cada opção
+ * com exemplo concreto do ICP varejo (joalheria + roupa + perfumaria).
+ */
+const KIND_OPTIONS: Array<{
+  value: "raw_material" | "finished_good" | "service";
+  label: string;
+  helper: string;
+}> = [
+  {
+    value: "finished_good",
+    label: "Produto pra venda",
+    helper: "Comum: vende no balcão, WhatsApp ou loja online.",
+  },
+  {
+    value: "raw_material",
+    label: "Item de gestão",
+    helper:
+      "Matéria-prima, mostruário, ativo. Tem custo e ocupa estoque, mas não aparece pra venda.",
+  },
+  {
+    value: "service",
+    label: "Serviço",
+    helper:
+      "Conserto, limpeza, instalação. Sem estoque físico — só preço e tempo.",
+  },
+];
 
 interface TabIdentidadeProps {
   control: Control<ProductFormValues>;
@@ -94,12 +130,59 @@ export function TabIdentidade(props: TabIdentidadeProps) {
 // retorna SubCard. ----
 
 function BasicoSubCard({
+  control,
   register,
   errors,
   isPending,
 }: TabIdentidadeProps) {
   return (
     <SubCard title="Básico">
+      {/* Tipo de produto vem PRIMEIRO — decisão conceitual que define o
+          que o resto do form vai precisar (raw_material esconde abas de
+          preço/catálogo público, ver R3). Helper text inline troca por
+          opção pra explicar sem manual. */}
+      <div className="space-y-1.5">
+        <Label htmlFor="product-kind" required>
+          Tipo de produto
+        </Label>
+        <Controller
+          control={control}
+          name="kind"
+          render={({ field }) => {
+            const current = KIND_OPTIONS.find((o) => o.value === field.value);
+            return (
+              <>
+                <Select
+                  value={field.value}
+                  onValueChange={(v) => field.onChange(v)}
+                  disabled={isPending}
+                >
+                  <SelectTrigger
+                    id="product-kind"
+                    aria-invalid={!!errors.kind}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {KIND_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {current ? (
+                  <p className="text-ink-4 text-xs">{current.helper}</p>
+                ) : null}
+              </>
+            );
+          }}
+        />
+        {errors.kind?.message ? (
+          <p className="text-destructive text-xs">{errors.kind.message}</p>
+        ) : null}
+      </div>
+
       <div className="space-y-1.5">
         <Label htmlFor="product-name" required>
           Nome

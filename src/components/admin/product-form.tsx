@@ -63,6 +63,12 @@ import { type VariantData } from "./variant-editor";
 export interface ProductFormInitialData {
   productId: string;
   name: string;
+  /**
+   * Bloco B da ressignificação (2026-05-27) — universo do produto.
+   * Default 'finished_good' em produtos pré-migration via SQL 82 backfill.
+   * UI guia cadastro por intenção: raw_material esconde abas Preço/Catálogo.
+   */
+  kind: "raw_material" | "finished_good" | "service";
   description: string;
   basePriceInCents: number;
   promoPriceInCents: number | null;
@@ -201,7 +207,12 @@ const TAB_NAV: {
   { key: "precificacao", label: "Precificação", icon: TrendingUpIcon },
   { key: "estoque", label: "Estoque", icon: PackageIcon },
   { key: "variantes", label: "Variantes", icon: LayoutGridIcon },
-  { key: "loja", label: "Loja online", icon: StoreIcon },
+  // Renomeada de "Loja online" pra "Catálogo público" em 2026-05-28
+  // (R1 Semana 4 da ressignificação). Reflete que esta aba contém SOMENTE
+  // campos exclusivos do storefront público (publicação, slug, meta,
+  // composição/modelagem/forro/lavagem). Overrides de preço/cartão saíram
+  // daqui pra "Preço & custo" no Bloco F.0 — sem ambiguidade restante.
+  { key: "loja", label: "Catálogo público", icon: StoreIcon },
 ];
 
 /**
@@ -268,6 +279,7 @@ export function ProductForm({
     resolver: zodResolver(productFormSchema),
     defaultValues: {
       name: initialData.name,
+      kind: initialData.kind,
       description: initialData.description,
       basePriceInCents: initialData.basePriceInCents,
       promoPriceInCents: initialData.promoPriceInCents,
