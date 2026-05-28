@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useTransition,
@@ -338,6 +339,51 @@ export function ProductForm({
   const watchedValues = watch();
   useFormDraft(draftKey, watchedValues, { skip: !isCreating });
 
+  // ===================================================================
+  // R3 Semana 4 da ressignificação (2026-05-28) — abas dependem do tipo.
+  // ===================================================================
+  // raw_material = item de gestão (matéria-prima, mostruário, ativo). NÃO
+  // vende em canal nenhum. Logo, esconde abas que falam de venda:
+  //   - "Preço & custo" (não tem preço de venda)
+  //   - "Precificação" (workbench depende de preço/margem)
+  //   - "Catálogo público" (não publica em lugar nenhum)
+  // Estoque + Variantes continuam visíveis (raw_material ocupa estoque
+  // e pode ter variantes — ex: ouro 18k em barra de 50g vs 100g).
+  //
+  // service e finished_good seguem mostrando todas as abas. Decisão de
+  // afinar service (sem aba estoque) fica pra iteração futura — pedido
+  // explícito do R3 era só raw_material.
+  const currentKind = watch("kind");
+  const visibleTabs = useMemo(() => {
+    if (currentKind === "raw_material") {
+      const HIDDEN: TabKey[] = ["preco", "precificacao", "loja"];
+      return TAB_NAV.filter((t) => !HIDDEN.includes(t.key));
+    }
+    return TAB_NAV;
+  }, [currentKind]);
+
+  // Se a aba ativa some quando lojista troca pra raw_material, volta pra
+  // "Básico". Sem isso, o painel renderizaria branco (todos os blocos
+  // `hidden={activeTab !== ...}` ficariam ocultos).
+  useEffect(() => {
+    if (!visibleTabs.some((t) => t.key === activeTab)) {
+      setActiveTab("basico");
+    }
+  }, [visibleTabs, activeTab]);
+
+  // raw_material nunca aparece na loja online — força flag pra false
+  // ao mudar de tipo. Sem isso, lojista que tinha `finished_good`
+  // publicado e troca pra `raw_material` deixaria um produto na vitrine
+  // sem aba "Catálogo público" pra desligar.
+  useEffect(() => {
+    if (currentKind === "raw_material" && watchedValues.isPublishedToStorefront) {
+      setValue("isPublishedToStorefront", false, { shouldDirty: true });
+    }
+    // setValue/watchedValues.isPublishedToStorefront ficam fora das deps
+    // de propósito — queremos disparar SÓ na mudança do `kind`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentKind]);
+
   // Restore: se há rascunho recente, oferece via toast UMA vez por mount.
   // Heurística simples — só oferece se o nome veio vazio (initialData de
   // criação) e o draft tem nome preenchido.
@@ -499,7 +545,7 @@ export function ProductForm({
           role="tablist"
           aria-label="Seções do produto"
         >
-          {TAB_NAV.map((tab) => {
+          {visibleTabs.map((tab) => {
             const errCount = getTabErrorCount(tab.key, errors);
             const isActive = activeTab === tab.key;
             const Icon = tab.icon;
