@@ -1,21 +1,22 @@
 "use client";
 
-// Conteúdo da sidebar admin — accordion estilo fintech (Fase 2 redesign 2026-05-21).
-// Renderiza estritamente os primitivos `b3-side-*` definidos em globals.css.
-// Usado em desktop (dentro de `<aside class="b3-side">`) e em mobile
-// (dentro de um Sheet drawer com `flex flex-col`).
+// Conteúdo da sidebar admin — layout PLANO (refactor 2026-05-27 ref Finexy).
 //
-// Estrutura:
-// - b3-side-top: brand Mangos Pay (logo + wordmark) — link pra /admin
-// - Início standalone (sempre visível, fora do accordion)
-// - 4 seções colapsáveis (Operação / Cadastros / Gestão / Loja online + Config)
-//   com comportamento accordion: abrir uma fecha a anterior
-// - Default aberto: a seção que contém a rota atual
-// - SupportFooterLink discreto acima do rodapé
-// - b3-side-foot: store identity + dropdown
+// Antes: 4 seções colapsáveis (accordion). Agora: cada seção renderiza
+// como label pequeno cinza + lista plana de items, todos visíveis. Sem
+// chevron de seção, sem accordion logic. Brief explícito do founder
+// ("aparecer já planos / como itens de primeiro nível").
+//
+// Mantido:
+// - Logo + store-switcher no topo
+// - Item "Início" sempre visível
+// - 4 grupos (Operação / Cadastros / Gestão / Loja+Config)
+// - Hover + active state + dot + soon-badge
+// - Modo collapsed (72px só ícones, controlado pelo aside via data-collapsed)
+// - Suporte + StoreFooter no rodapé com dropdown
+
 import type { LucideIcon } from "lucide-react";
 import {
-  ChevronDownIcon,
   LogOutIcon,
   MoreVerticalIcon,
   PanelLeftCloseIcon,
@@ -45,11 +46,7 @@ import {
   ADMIN_NAV_SECTIONS,
   ADMIN_NAV_SUPPORT,
   type AdminNavItem,
-  type AdminNavSection,
-  type AdminNavSubItem,
-  findActiveSectionKey,
   isItemActive,
-  isSubItemActive,
 } from "./nav-items";
 
 export interface SidebarContentProps {
@@ -59,18 +56,8 @@ export interface SidebarContentProps {
   storeSlug: string;
   primaryColor: string;
   logoUrl: string | null;
-  /** Callback opcional pra fechar drawer mobile ao navegar. */
   onNavigate?: () => void;
-  /**
-   * Modo collapsed (desktop only, controlado pelo AdminSidebar). Quando
-   * true, o sidebar tem 72px e renderiza só ícones. Mobile (drawer Sheet)
-   * passa false / undefined.
-   */
   collapsed?: boolean;
-  /**
-   * Handler do botão de toggle no `b3-side-top`. Se ausente, o botão
-   * não é renderizado (caso do mobile, que usa hamburger do header).
-   */
   onToggleCollapsed?: () => void;
 }
 
@@ -87,44 +74,8 @@ export function SidebarContent({
 }: SidebarContentProps) {
   const pathname = usePathname();
 
-  // Accordion state — uma única seção aberta por vez.
-  // Inicializa abrindo a seção da rota atual; null = todas fechadas.
-  const [openKey, setOpenKey] = useState<string | null>(() =>
-    findActiveSectionKey(pathname),
-  );
-
-  // Ao navegar entre seções (ex: via command palette), sincroniza o accordion
-  // pra abrir a seção da nova rota. Se a rota não bate em nenhuma seção
-  // (caso de /admin), preserva o estado atual do usuário.
-  useEffect(() => {
-    const active = findActiveSectionKey(pathname);
-    if (active && active !== openKey) {
-      setOpenKey(active);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
-
-  const handleToggleSection = (sectionKey: string) => {
-    setOpenKey((prev) => (prev === sectionKey ? null : sectionKey));
-  };
-
-  // Quando collapsed, o accordion fica achatado (todas as seções abertas
-  // simultaneamente) — o CSS força `grid-template-rows: 1fr` via
-  // `.b3-side[data-collapsed="true"] .b3-side-collapsible`. O React passa
-  // `isOpen=true` em todas pra alinhar o estado lógico com o visual
-  // (caso o usuário expanda o sidebar de volta, queremos lembrar o estado
-  // anterior — mas isso é refinamento futuro, hoje preservamos `openKey`).
   return (
     <>
-      {/* b3-side-top: brand Mangos Pay (logo + wordmark) — link pra /admin.
-          Imagem única do logo.svg (o arquivo já contém o ícone da manga +
-          o nome "Mangos Pay" juntos). Usar <img> em vez de next/image
-          porque next/image exige `dangerouslyAllowSVG: true` no config.
-
-          Onda 2026-05-24: layout flex justify-between — logo à esquerda,
-          botão collapse à direita. No modo collapsed, a logo full some
-          (CSS), restando só o botão centralizado. Mobile não recebe
-          `onToggleCollapsed` (passa undefined) → botão não renderiza. */}
       <div className="b3-side-top">
         <Link
           href="/admin"
@@ -159,10 +110,6 @@ export function SidebarContent({
         ) : null}
       </div>
 
-      {/* PP14 (handoff pixel-perfect 2026-05-25) — StoreSwitcher compact
-          entre logo e nav. Bate sidebar.jsx do bundle linhas 15-27.
-          Esconde no modo collapsed (espaço apertado, info redundante
-          com avatar do footer). */}
       {!collapsed ? (
         <Link
           href={`/${storeSlug}`}
@@ -202,7 +149,7 @@ export function SidebarContent({
       ) : null}
 
       <nav className="flex-1 overflow-y-auto py-2" aria-label="Navegação principal">
-        {/* Início standalone — sempre visível, fora do accordion */}
+        {/* Início standalone — sempre visível, sem label de seção */}
         <div className="px-0 pb-1">
           <NavItemRow
             item={ADMIN_NAV_HOME}
@@ -212,19 +159,25 @@ export function SidebarContent({
           />
         </div>
 
-        {/* 4 seções colapsáveis (accordion: uma aberta por vez).
-            No modo collapsed, o CSS força collapsible aberto + esconde
-            o header de seção — então isOpen aqui não importa visualmente. */}
+        {/* Seções planas: label pequeno cinza + items todos visíveis */}
         {ADMIN_NAV_SECTIONS.map((section) => (
-          <NavSection
-            key={section.k}
-            section={section}
-            pathname={pathname}
-            isOpen={openKey === section.k}
-            onToggle={() => handleToggleSection(section.k)}
-            onNavigate={onNavigate}
-            collapsed={collapsed}
-          />
+          <div key={section.k} className="b3-side-flat-group">
+            <div
+              className="b3-side-section-label"
+              aria-hidden={collapsed || undefined}
+            >
+              {section.label}
+            </div>
+            {section.items.map((item) => (
+              <NavItemRow
+                key={item.k}
+                item={item}
+                pathname={pathname}
+                onNavigate={onNavigate}
+                collapsed={collapsed}
+              />
+            ))}
+          </div>
         ))}
       </nav>
 
@@ -234,7 +187,6 @@ export function SidebarContent({
         collapsed={collapsed}
       />
 
-      {/* b3-side-foot: identidade da loja do lojista + dropdown da conta */}
       <StoreFooter
         ownerName={ownerName}
         ownerEmail={ownerEmail}
@@ -248,88 +200,8 @@ export function SidebarContent({
   );
 }
 
-// ----- NAV SECTION (header colapsável + items) -----
+// ----- ICON com pop animation ao virar ativo -----
 
-interface NavSectionProps {
-  section: AdminNavSection;
-  pathname: string;
-  isOpen: boolean;
-  onToggle: () => void;
-  onNavigate?: () => void;
-  collapsed?: boolean;
-}
-
-function NavSection({
-  section,
-  pathname,
-  isOpen,
-  onToggle,
-  onNavigate,
-  collapsed = false,
-}: NavSectionProps) {
-  const Icon = section.icon;
-  const hasActive = section.items.some((item) => isItemActive(item, pathname));
-  // No modo collapsed o CSS abre todos os collapsibles + esconde o header
-  // — passamos `data-open=true` pra alinhar o estado lógico (aria-hidden
-  // do panel também precisa refletir isso pra leitor de tela).
-  const effectivelyOpen = collapsed ? true : isOpen;
-
-  return (
-    <div className="b3-side-section-wrap">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={effectivelyOpen}
-        aria-controls={`b3-side-panel-${section.k}`}
-        aria-hidden={collapsed || undefined}
-        tabIndex={collapsed ? -1 : undefined}
-        className="b3-side-section"
-        data-active={hasActive ? "true" : undefined}
-        data-open={effectivelyOpen ? "true" : undefined}
-      >
-        <Icon aria-hidden />
-        <span className="b3-side-label flex-1 truncate">{section.label}</span>
-        {/* Chevron maior + traço 2.2 — mais presente visualmente. Rotação
-            animada de 180° controlada pelo CSS (.b3-side-section .chev). */}
-        <ChevronDownIcon
-          size={16}
-          strokeWidth={2.2}
-          className="chev b3-side-label"
-          aria-hidden
-        />
-      </button>
-
-      <div
-        id={`b3-side-panel-${section.k}`}
-        className="b3-side-collapsible"
-        data-open={effectivelyOpen ? "true" : undefined}
-        aria-hidden={!effectivelyOpen}
-      >
-        <div className="b3-side-collapsible-inner">
-          {section.items.map((item) => (
-            <NavItemRow
-              key={item.k}
-              item={item}
-              pathname={pathname}
-              onNavigate={onNavigate}
-              nested
-              collapsed={collapsed}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ----- ICON com pop animation ao virar ativo (mudança de rota) -----
-//
-// Detecta a transição inativo → ativo via ref + effect e aplica a classe
-// `b3-icon-pop` por 380ms (sincronizado com a duração da animação CSS).
-// Próxima ativação: classe removida → re-aplicada, animation re-roda.
-//
-// Acessibilidade: a animação respeita prefers-reduced-motion via media
-// query no globals.css (a classe vira no-op naquele contexto).
 function AnimatedNavIcon({
   Icon,
   isActive,
@@ -359,14 +231,17 @@ function AnimatedNavIcon({
   );
 }
 
-// ----- NAV ITEM (link direto OU expansível com subs) -----
+// ----- NAV ITEM (link direto OU disabled "em breve") -----
+//
+// No layout plano nunca renderizamos sub-items expansíveis: items que tinham
+// `subs` no nav-items.ts foram normalizados pra link direto (ver nav-items.ts).
+// Mantemos a guarda defensiva caso alguém adicione subs no futuro: renderiza
+// só o header sem expandir.
 
 interface NavItemRowProps {
   item: AdminNavItem;
   pathname: string;
   onNavigate?: () => void;
-  /** True quando o item está dentro de uma seção do accordion (indent). */
-  nested?: boolean;
   collapsed?: boolean;
 }
 
@@ -374,70 +249,19 @@ function NavItemRow({
   item,
   pathname,
   onNavigate,
-  nested,
   collapsed = false,
 }: NavItemRowProps) {
   const Icon = item.icon;
-  const hasSubs = Boolean(item.subs && item.subs.length > 0);
   const isActive = isItemActive(item, pathname);
-  // Default: aberto se algum sub estiver ativo
-  const [isOpen, setIsOpen] = useState(isActive && hasSubs);
-
-  const itemClass = cn("b3-side-item", nested && "b3-side-item--nested");
-  // Tooltip nativa via `title` quando collapsed — sem dep extra (radix
-  // tooltip não está instalado). Limitação: delay ~700ms padrão do SO.
   const tooltip = collapsed ? item.label : undefined;
 
-  // ----- Item COM subs: clica no header pra toggle, não navega -----
-  if (hasSubs) {
-    return (
-      <>
-        <button
-          type="button"
-          onClick={() => setIsOpen((v) => !v)}
-          aria-expanded={isOpen}
-          className={cn(itemClass, "w-full text-left")}
-          data-active={isActive ? "true" : undefined}
-          data-open={isOpen ? "true" : undefined}
-          title={tooltip}
-        >
-          <AnimatedNavIcon Icon={Icon} isActive={isActive} />
-          <span className="b3-side-label flex-1 truncate">{item.label}</span>
-          {item.dot ? <span className="dot" aria-hidden /> : null}
-          {/* Mesmo padrão do header de seção — chevron maior + stroke 2.2. */}
-          <ChevronDownIcon
-            size={15}
-            strokeWidth={2.2}
-            className="chev"
-            aria-hidden
-          />
-        </button>
-
-        {isOpen ? (
-          <div className="b3-side-sub">
-            {item.subs!.map((sub) => (
-              <SubItemRow
-                key={sub.href}
-                sub={sub}
-                pathname={pathname}
-                onNavigate={onNavigate}
-              />
-            ))}
-          </div>
-        ) : null}
-      </>
-    );
-  }
-
-  // ----- Item SEM subs: link direto (ou soon → disabled) -----
   if (item.soon) {
     return (
       <div
-        className={cn(itemClass, "cursor-not-allowed opacity-50")}
+        className="b3-side-item cursor-not-allowed opacity-50"
         aria-disabled="true"
         title={tooltip ?? "Em breve"}
       >
-        {/* Soon nunca é ativo — passa false (no-op). */}
         <AnimatedNavIcon Icon={Icon} isActive={false} />
         <span className="b3-side-label flex-1 truncate">{item.label}</span>
         <SoonBadge />
@@ -445,14 +269,26 @@ function NavItemRow({
     );
   }
 
-  // mailto: ou link interno
-  const isExternal = item.href!.startsWith("mailto:") || item.href!.startsWith("http");
+  if (!item.href) {
+    // Defensivo: item com subs sem href direto vira label estática.
+    return (
+      <div
+        className="b3-side-item opacity-60"
+        title={tooltip}
+      >
+        <AnimatedNavIcon Icon={Icon} isActive={false} />
+        <span className="b3-side-label flex-1 truncate">{item.label}</span>
+      </div>
+    );
+  }
+
+  const isExternal = item.href.startsWith("mailto:") || item.href.startsWith("http");
   if (isExternal) {
     return (
       <a
         href={item.href}
         onClick={onNavigate}
-        className={itemClass}
+        className="b3-side-item"
         data-active={isActive ? "true" : undefined}
         title={tooltip}
       >
@@ -464,58 +300,22 @@ function NavItemRow({
 
   return (
     <Link
-      href={item.href!}
+      href={item.href}
       prefetch
       onClick={onNavigate}
-      className={itemClass}
+      className="b3-side-item"
       data-active={isActive ? "true" : undefined}
       aria-current={isActive ? "page" : undefined}
       title={tooltip}
     >
       <AnimatedNavIcon Icon={Icon} isActive={isActive} />
       <span className="b3-side-label flex-1 truncate">{item.label}</span>
+      {item.dot ? <span className="dot" aria-hidden /> : null}
     </Link>
   );
 }
 
-// ----- SUB-ITEM (dentro de b3-side-sub) -----
-
-interface SubItemRowProps {
-  sub: AdminNavSubItem;
-  pathname: string;
-  onNavigate?: () => void;
-}
-
-function SubItemRow({ sub, pathname, onNavigate }: SubItemRowProps) {
-  if (sub.soon) {
-    return (
-      <div
-        className="b3-side-sub-item cursor-not-allowed opacity-50"
-        aria-disabled="true"
-        title="Em breve"
-      >
-        <span className="b3-side-label flex-1 truncate">{sub.label}</span>
-        <SoonBadge />
-      </div>
-    );
-  }
-
-  const isActive = isSubItemActive(sub, pathname);
-  return (
-    <Link
-      href={sub.href}
-      prefetch
-      onClick={onNavigate}
-      className="b3-side-sub-item"
-      data-active={isActive ? "true" : undefined}
-      aria-current={isActive ? "page" : undefined}
-    >
-      <span className="b3-side-label flex-1 truncate">{sub.label}</span>
-    </Link>
-  );
-}
-
-// ----- SUPORTE — link discreto entre nav e rodapé -----
+// ----- SUPORTE — link discreto acima do rodapé -----
 
 function SupportFooterLink({
   pathname,
@@ -547,8 +347,6 @@ function SupportFooterLink({
     </div>
   );
 }
-
-// ----- Badge "em breve" -----
 
 function SoonBadge() {
   return (
@@ -606,9 +404,6 @@ function StoreFooter({
     });
   };
 
-  // Avatar/logo da loja — extraído pra reusar nos dois modos (expandido
-  // mostra como ornamento à esquerda da meta + trigger separado; collapsed
-  // vira ele mesmo o trigger do dropdown).
   const avatar = logoUrl ? (
     <span
       aria-hidden
@@ -636,7 +431,6 @@ function StoreFooter({
     </span>
   );
 
-  // Conteúdo do dropdown — idêntico nos dois modos.
   const dropdownContent = (
     <DropdownMenuContent
       align={collapsed ? "start" : "end"}
@@ -673,8 +467,6 @@ function StoreFooter({
     </DropdownMenuContent>
   );
 
-  // Modo collapsed: o avatar inteiro vira o trigger. Sem meta visível.
-  // Sem isso, o usuário perde acesso a "Sair" no modo recolhido.
   if (collapsed) {
     return (
       <div className="b3-side-foot">
@@ -694,7 +486,6 @@ function StoreFooter({
     );
   }
 
-  // Modo expandido: avatar + meta + trigger separado (MoreVerticalIcon).
   return (
     <div className="b3-side-foot">
       <div className="b3-side-foot-user">

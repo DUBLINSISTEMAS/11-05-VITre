@@ -41,7 +41,14 @@ export function AdminShell({ children, ...userProps }: AdminShellProps) {
       <AdminSidebar {...userProps} />
 
       <div className="b3-main">
-        <TopBar storeSlug={userProps.storeSlug} />
+        <TopBar
+          storeSlug={userProps.storeSlug}
+          storeName={userProps.storeName}
+          ownerName={userProps.ownerName}
+          ownerEmail={userProps.ownerEmail}
+          logoUrl={userProps.logoUrl}
+          primaryColor={userProps.primaryColor}
+        />
         <MobileHeader {...userProps} />
 
         {/*

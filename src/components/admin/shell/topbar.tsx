@@ -1,56 +1,67 @@
 "use client";
 
-// Topbar desktop do admin — redesign Fase 2 ref Abacate Pay (2026-05-21),
-// handoff design 2026-05-25 (CTA "Nova venda" verde com kbd F2).
+// Topbar desktop do admin — redesign Finexy-style 2026-05-27.
 //
 // Layout:
-// - LEFT: breadcrumb da rota atual (ícone + Seção / ícone + Item)
-// - RIGHT: search trigger (Cmd+K), CTA "Ver loja", sino, CTA verde "Nova venda" (F2)
+// - LEFT:  logo round (favicon Mangos) + wordmark compacto
+// - CENTER: search trigger largo (Cmd+K) com kbd à direita
+// - RIGHT: sino (notifications) + help (?) + avatar pill
 //
-// Background TRANSPARENTE — flutua sobre o cinza do .b3-main acima do
-// card branco .b3-main-card. Mobile não usa este componente.
-import { ExternalLinkIcon, PlusIcon, SearchIcon } from "lucide-react";
+// Decisões de migração:
+// - Breadcrumb removido daqui — o título da página (h1.b3-page-title) e a
+//   sidebar plana já indicam onde o usuário está. Reduz ruído visual.
+// - CTAs "Ver loja" e "Nova venda" descem pro header da dashboard (próximo
+//   ao DateRangePill) ou ficam disponíveis via avatar pill + F2 global.
+// - Background TRANSPARENTE preservado — flutua sobre o cinza do .b3-main
+//   acima do card branco .b3-main-card.
+
+import {
+  ChevronDownIcon,
+  HelpCircleIcon,
+  LogOutIcon,
+  SearchIcon,
+  SettingsIcon,
+  StoreIcon,
+} from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
+import { toast } from "sonner";
 
-import { NEW_SALE_EVENT } from "@/components/admin/pdv/new-sale-events";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { signOut } from "@/lib/auth-client";
 
-import { Breadcrumb } from "./breadcrumb";
 import { NotificationsPopover } from "./notifications-popover";
 
 function openPalette() {
   window.dispatchEvent(new Event("admin:open-palette"));
 }
 
-function openNewSale() {
-  window.dispatchEvent(new Event(NEW_SALE_EVENT));
-}
-
-/**
- * Prefetch silencioso do chunk do PdvShell ao primeiro hover/focus do CTA.
- * Cobre o caso "lojista em outra rota (relatórios, cadastros, etc) clica
- * Nova venda" — sem isso o chunk só baixaria no click, gerando 1-3s de
- * espera. Idempotente (Webpack/Turbopack cacheiam após primeira chamada).
- * Marcador `prefetched` evita disparo a cada hover. Audit 2026-05-26.
- */
-let _pdvPrefetched = false;
-function prefetchPdvOnce() {
-  if (_pdvPrefetched) return;
-  _pdvPrefetched = true;
-  void import("@/components/admin/pdv/pdv-shell");
-}
-
 export interface TopBarProps {
-  /** Slug da loja do usuário, usado pra montar o link da loja online. */
   storeSlug: string;
+  storeName: string;
+  ownerName: string;
+  ownerEmail: string;
+  logoUrl: string | null;
+  primaryColor: string;
 }
 
-export function TopBar({ storeSlug }: TopBarProps) {
-  const pathname = usePathname();
-
-  // Renderiza atalho coerente com o SO (Mac=⌘K, Win/Linux=Ctrl K).
-  // Default = "Ctrl K" pra não piscar errado em SSR.
+export function TopBar({
+  storeSlug,
+  storeName,
+  ownerName,
+  ownerEmail,
+  logoUrl,
+  primaryColor,
+}: TopBarProps) {
+  // Atalho coerente com o SO (Mac=⌘K, Win/Linux=Ctrl K).
   const [shortcut, setShortcut] = useState("Ctrl K");
   useEffect(() => {
     const isMac =
@@ -61,64 +72,162 @@ export function TopBar({ storeSlug }: TopBarProps) {
 
   return (
     <header className="b3-top hidden lg:flex" data-admin-chrome="topbar">
-      <Breadcrumb pathname={pathname} />
+      {/* LEFT — logo round + wordmark */}
+      <Link
+        href="/admin"
+        prefetch
+        className="b3-topbar-brand"
+        aria-label="Mangos Pay — Início"
+      >
+        <span className="b3-topbar-brand-icon" aria-hidden>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logos/favicon.svg" alt="" className="h-5 w-5" />
+        </span>
+        <span className="b3-topbar-brand-word">Mangos Pay</span>
+      </Link>
 
-      <div className="ml-auto flex items-center gap-2">
-        <button
-          type="button"
-          className="b3-search-btn"
-          onClick={openPalette}
-          aria-label={`Abrir busca (${shortcut})`}
-          title={`Buscar produto, cliente ou pedido (${shortcut})`}
-        >
-          <SearchIcon size={14} aria-hidden />
-          <span>Buscar</span>
-          <kbd>{shortcut}</kbd>
-        </button>
+      {/* CENTER — search bar largo, click abre command palette */}
+      <button
+        type="button"
+        className="b3-topbar-search"
+        onClick={openPalette}
+        aria-label={`Abrir busca (${shortcut})`}
+        title={`Buscar produto, cliente ou pedido (${shortcut})`}
+      >
+        <SearchIcon size={15} aria-hidden />
+        <span className="b3-topbar-search-placeholder">
+          Buscar produto, cliente ou venda
+        </span>
+        <kbd className="b3-topbar-kbd">{shortcut}</kbd>
+      </button>
 
-        {/* CTA persistente pro lojista ver a loja online — o storefront é o
-            diferencial defensável do Mangos Pay (princípio do norte). Manter
-            o caminho pra ele a 1 clique.
-
-            S1 (handoff pixel-perfect 2026-05-25): label normalizado pra
-            "Ver loja" conforme app-oficial/topbar.jsx do bundle + README
-            "ícone notificações, 'Ver loja', 'Nova venda' CTA verde". O
-            "online" segue no aria-label e title pra clareza assistiva. */}
-        <Link
-          href={`/${storeSlug}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          prefetch={false}
-          className="b3-top-storelink"
-          aria-label="Abrir loja online em uma nova aba"
-          title="Ver loja online (abre em nova aba)"
-        >
-          <ExternalLinkIcon size={14} aria-hidden />
-          <span>Ver loja</span>
-        </Link>
-
-        {/* Popover do sino — clica abre painel com lista (ou empty state
-            honesto). Dot só renderiza com unreadCount > 0. Handoff Passo 5. */}
+      {/* RIGHT — sino + help + avatar pill */}
+      <div className="b3-topbar-right">
         <NotificationsPopover />
-
-        {/* CTA verde "Nova venda" + kbd F2 — entrada principal de fluxo
-            operacional do lojista. Disponível em qualquer rota do admin
-            (não só /admin/pedidos). Abre o modal global montado em
-            admin-shell via evento NEW_SALE_EVENT. */}
-        <button
-          type="button"
-          className="b3-top-newsale"
-          onClick={openNewSale}
-          onMouseEnter={prefetchPdvOnce}
-          onFocus={prefetchPdvOnce}
-          aria-label="Nova venda (F2)"
-          title="Nova venda (F2)"
+        <Link
+          href="/admin/suporte"
+          prefetch
+          className="b3-topbar-iconbtn"
+          aria-label="Ajuda e suporte"
+          title="Ajuda e suporte"
         >
-          <PlusIcon size={14} aria-hidden />
-          <span>Nova venda</span>
-          <kbd>F2</kbd>
-        </button>
+          <HelpCircleIcon size={16} aria-hidden />
+        </Link>
+        <TopBarAvatarPill
+          ownerName={ownerName}
+          ownerEmail={ownerEmail}
+          storeName={storeName}
+          storeSlug={storeSlug}
+          logoUrl={logoUrl}
+          primaryColor={primaryColor}
+        />
       </div>
     </header>
+  );
+}
+
+// ----- AVATAR PILL (right) -----
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
+}
+
+interface TopBarAvatarPillProps {
+  ownerName: string;
+  ownerEmail: string;
+  storeName: string;
+  storeSlug: string;
+  logoUrl: string | null;
+  primaryColor: string;
+}
+
+function TopBarAvatarPill({
+  ownerName,
+  ownerEmail,
+  storeName,
+  storeSlug,
+  logoUrl,
+  primaryColor,
+}: TopBarAvatarPillProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  const handleSignOut = () => {
+    startTransition(async () => {
+      await signOut({
+        fetchOptions: {
+          onSuccess: () => {
+            toast.success("Sessão encerrada.");
+            router.push("/entrar");
+            router.refresh();
+          },
+        },
+      });
+    });
+  };
+
+  const avatar = logoUrl ? (
+    <span
+      aria-hidden
+      className="relative flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-line bg-white"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={logoUrl} alt="" className="size-full object-contain p-0.5" />
+    </span>
+  ) : (
+    <span
+      aria-hidden
+      className="grid size-7 shrink-0 place-items-center rounded-full text-[10.5px] font-bold text-white"
+      style={{ background: primaryColor || "var(--brand)" }}
+    >
+      {getInitials(storeName)}
+    </span>
+  );
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className="b3-topbar-avatar"
+        aria-label="Opções da conta"
+      >
+        {avatar}
+        <span className="b3-topbar-avatar-meta">
+          <b className="b3-topbar-avatar-name">{storeName}</b>
+          <span className="b3-topbar-avatar-role">Admin</span>
+        </span>
+        <ChevronDownIcon size={14} className="b3-topbar-avatar-chev" aria-hidden />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" sideOffset={6} className="min-w-56">
+        <DropdownMenuLabel className="space-y-0.5 py-2">
+          <p className="truncate text-sm font-medium text-ink-1">{ownerName}</p>
+          <p className="truncate text-xs font-normal text-ink-4">{ownerEmail}</p>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href={`/${storeSlug}`} target="_blank" rel="noopener noreferrer">
+            <StoreIcon className="size-4" /> Ver loja online
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/admin/configuracoes">
+            <SettingsIcon className="size-4" /> Configurações
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onSelect={(e) => {
+            e.preventDefault();
+            handleSignOut();
+          }}
+          disabled={isPending}
+          variant="destructive"
+        >
+          <LogOutIcon className="size-4" /> Sair
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

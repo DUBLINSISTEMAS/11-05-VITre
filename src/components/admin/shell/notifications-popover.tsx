@@ -85,7 +85,7 @@ export function NotificationsPopover() {
       <PopoverPrimitive.Trigger asChild>
         <button
           type="button"
-          className="b3-top-icbtn"
+          className="b3-topbar-iconbtn relative"
           aria-label={
             unreadCount > 0
               ? `Notificações (${unreadCount} não lida${unreadCount === 1 ? "" : "s"})`
@@ -93,8 +93,13 @@ export function NotificationsPopover() {
           }
           title="Notificações"
         >
-          <BellIcon size={18} aria-hidden />
-          {unreadCount > 0 ? <span className="ndot" aria-hidden /> : null}
+          <BellIcon size={16} aria-hidden />
+          {unreadCount > 0 ? (
+            <span
+              aria-hidden
+              className="absolute top-1.5 right-2 size-2 rounded-full border-2 border-surface bg-mangos-yellow"
+            />
+          ) : null}
         </button>
       </PopoverPrimitive.Trigger>
 
