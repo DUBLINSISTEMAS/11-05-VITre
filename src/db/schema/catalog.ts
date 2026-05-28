@@ -103,6 +103,23 @@ export const productUnitEnum = pgEnum("product_unit", [
   "duzia",
 ]);
 
+/**
+ * Bloco B da ressignificação (SQL 82). Distingue 3 universos de produto:
+ *   - raw_material: matéria-prima, mostruário, ativo (joalheria: ouro em
+ *     barra). Tem custo + estoque, NÃO vende em canal nenhum.
+ *   - finished_good: produto comercializável (default — todos os produtos
+ *     existentes herdam via DEFAULT no DDL).
+ *   - service: serviço (ex: limpeza de joia, manutenção).
+ *
+ * UI guia cadastro por intenção (forms separados, não tab única). Filtros
+ * em /admin/produtos e /admin/itens segregam visualmente.
+ */
+export const productKindEnum = pgEnum("product_kind", [
+  "raw_material",
+  "finished_good",
+  "service",
+]);
+
 // =====================================================================
 // Product
 // =====================================================================
@@ -234,6 +251,14 @@ export const productTable = pgTable(
     // produto mesmo que loja ofereça). Memory team
     // `override-por-produto-heuristica-20-percent-2026-05-16`. Fase 2 / ADR-0013.
     cashDiscountOverrideBps: integer("cash_discount_override_bps"),
+
+    /**
+     * Bloco B da ressignificação (SQL 82). Universo do produto. Default
+     * 'finished_good' preserva 100% compat com produtos pré-migration.
+     * Lojista escolhe 'raw_material' pra matéria-prima/mostruário (tem
+     * custo e estoque, NÃO vende) ou 'service' pra serviços.
+     */
+    kind: productKindEnum("kind").notNull().default("finished_good"),
 
     isActive: boolean("is_active").notNull().default(true),
     isFeatured: boolean("is_featured").notNull().default(false),

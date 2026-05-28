@@ -366,6 +366,15 @@ export const orderItemTable = pgTable(
      */
     discountInCents: integer("discount_in_cents"),
 
+    /**
+     * Bloco B da ressignificação (SQL 82) — comissão da vendedora
+     * calculada nesta linha em centavos. NULL pra orders sem seller_id
+     * ou produtos sem default_commission_bps. Snapshot — fica fixo
+     * mesmo se lojista ajustar % depois. Consumido pelo helper canônico
+     * `calculateNetProfit` pra DRE honesto.
+     */
+    commissionSnapshotInCents: integer("commission_snapshot_in_cents"),
+
     quantity: integer("quantity").notNull(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },

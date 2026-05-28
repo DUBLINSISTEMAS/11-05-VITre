@@ -25,7 +25,7 @@ O projeto usa **duas pastas de schema** em paralelo. Não é bagunça — é dec
   - **GRANTs** por role (vitre_app vs anon vs postgres)
   - **Indexes especiais** (gin_trgm pra busca, parciais com WHERE, etc)
   - Backfills idempotentes
-- Numeração sequencial (`11_*.sql`, `12_*.sql`…). Hoje vai até **81** (cleanup 2026-05-27). O #80 (parked_sale) foi DROPADO no #81 — feature nunca foi entregue UI e founder removeu na auditoria de dead code.
+- Numeração sequencial (`11_*.sql`, `12_*.sql`…). Hoje vai até **82** (Bloco B da ressignificação 2026-05-27 — `kind` enum + snapshots completos + settlement_days). O #80 (parked_sale) foi DROPADO no #81 — feature nunca foi entregue UI e founder removeu na auditoria de dead code.
 - Cada nova SQL tem 2 obrigações:
   1. **Idempotente** — `IF NOT EXISTS`, `DROP CONSTRAINT IF EXISTS`, `DO $$ ... IF NOT EXISTS THEN ...`. Roda 2× = mesmo resultado.
   2. **Sentinelada** em `scripts/check-sql-applied.mjs` — um SELECT que retorna 1 linha se aplicada.

@@ -90,6 +90,23 @@ export const orderPaymentTable = pgTable(
     /** Notas livres — ex: "últimos 4 dígitos cartão 1234", "comprovante PIX E2E xyz". */
     notes: text("notes"),
 
+    /**
+     * Bloco B da ressignificação (SQL 82) — taxa REAL da maquininha
+     * descontada nesta linha em centavos. Snapshot — fica fixo mesmo
+     * se lojista mudar store.card_real_fee_bps_* depois. NULL pra
+     * cash/pix/other (sem taxa). Calculado no INSERT pelo helper
+     * canônico `calculateNetProfit` a partir de store.card_real_fee_bps_*
+     * + parcelas escolhidas.
+     */
+    cardFeeSnapshotInCents: integer("card_fee_snapshot_in_cents"),
+    /**
+     * Bloco B da ressignificação (SQL 82) — data calculada de quando
+     * este valor cai na conta (createdAt + store.settlement_days_<method>).
+     * NULL pra cash (já entrou em caixa físico). Permite consultar
+     * "quanto eu recebo de fato esta semana" no fluxo de caixa real.
+     */
+    settlementDate: date("settlement_date"),
+
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => ({
@@ -485,6 +502,18 @@ export const receivablePaymentTable = pgTable(
      * integridade vem do FK declarado em supabase/sql/54.
      */
     reversalOfId: uuid("reversal_of_id"),
+    /**
+     * Bloco B da ressignificação (SQL 82) — multa REAL cobrada nesta
+     * linha em centavos (não bps). Lojista lê extrato "R$ 50 de multa"
+     * direto. NULL pra pagamento em dia ou linha pré-SQL 78.
+     */
+    lateFeeAppliedInCents: integer("late_fee_applied_in_cents"),
+    /**
+     * Bloco B da ressignificação (SQL 82) — juros REAIS cobrados em
+     * centavos. Calculado em app: principal × interest_per_month_bps ×
+     * meses_atraso / 10000. NULL pra pagamento em dia.
+     */
+    interestAppliedInCents: integer("interest_applied_in_cents"),
     createdByUserId: text("created_by_user_id")
       .notNull()
       .references(() => userTable.id),

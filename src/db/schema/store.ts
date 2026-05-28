@@ -197,6 +197,19 @@ export const storeTable = pgTable(
       .default(1199),
 
     // =================================================================
+    // Bloco B da ressignificação (SQL 82, 2026-05-27) — dias de
+    // settlement por método. Quando o dinheiro CAI na conta. PIX D+0,
+    // débito D+1, crédito D+30 (defaults médios Stone/Cielo 2025).
+    // Lojista ajusta em /admin/pagamento conforme contrato. Permite
+    // calcular fluxo de caixa real ("você fez R$ 28k essa semana mas
+    // só R$ 12k cai sexta — R$ 16k chega espalhado em fevereiro").
+    // CHECK 0..90 dias.
+    // =================================================================
+    settlementDaysPix: integer("settlement_days_pix").notNull().default(0),
+    settlementDaysDebit: integer("settlement_days_debit").notNull().default(1),
+    settlementDaysCredit: integer("settlement_days_credit").notNull().default(30),
+
+    // =================================================================
     // Quotas (S1.3 do Plano de Endurecimento, 2026-05-26)
     // =================================================================
     // Limites hard por loja. Default conservador (Free). Plano Pago futuro

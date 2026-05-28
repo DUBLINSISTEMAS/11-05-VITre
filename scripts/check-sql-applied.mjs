@@ -5,9 +5,11 @@
  * Lê DIRECT_URL de .env.local. Nunca escreve no banco.
  * Uso: pnpm exec tsx scripts/check-sql-applied.mjs
  *
- * Cobertura: SQLs 11–79 + 81 (estruturais). SQLs 01–10 são bootstrap inicial
- * e SQL 17_cleanup / 99_cleanup são one-shot DELETE — sem auditoria.
+ * Cobertura: SQLs 11–79 + 81 + 82 (estruturais). SQLs 01–10 são bootstrap
+ * inicial e SQL 17_cleanup / 99_cleanup são one-shot DELETE — sem auditoria.
  * SQL 80 (parked_sale) foi removido em 2026-05-27; SQL 81 valida o drop.
+ * SQL 82 (Bloco B da ressignificação 2026-05-27) — kind enum + snapshots
+ * + settlement days.
  */
 import { config } from "dotenv";
 config({ path: ".env.local" });
@@ -125,6 +127,13 @@ const checks = [
   { id: "79b", desc: "category.tracks_batch opt-in", q: "SELECT 1 FROM information_schema.columns WHERE table_name='category' AND column_name='tracks_batch'" },
   // SQL 81 (2026-05-27) — drop parked_sale (cleanup founder); valida que a tabela NÃO existe mais.
   { id: "81",  desc: "parked_sale tabela DROPADA (cleanup 2026-05-27)", q: "SELECT 1 FROM pg_class WHERE relname='parked_sale'", expectEmpty: true },
+  // SQL 82 (2026-05-27) — Bloco B da ressignificação: kind + snapshots + settlement_days.
+  { id: "82a", desc: "product_kind enum existe", q: "SELECT 1 FROM pg_type WHERE typname='product_kind'" },
+  { id: "82b", desc: "product.kind column NOT NULL DEFAULT finished_good", q: "SELECT 1 FROM information_schema.columns WHERE table_name='product' AND column_name='kind' AND is_nullable='NO'" },
+  { id: "82c", desc: "store.settlement_days_{pix,debit,credit} columns", q: "SELECT 1 FROM information_schema.columns WHERE table_name='store' AND column_name IN ('settlement_days_pix','settlement_days_debit','settlement_days_credit') HAVING count(*) = 3" },
+  { id: "82d", desc: "order_payment.card_fee_snapshot_in_cents + settlement_date columns", q: "SELECT 1 FROM information_schema.columns WHERE table_name='order_payment' AND column_name IN ('card_fee_snapshot_in_cents','settlement_date') HAVING count(*) = 2" },
+  { id: "82e", desc: "order_item.commission_snapshot_in_cents column", q: "SELECT 1 FROM information_schema.columns WHERE table_name='order_item' AND column_name='commission_snapshot_in_cents'" },
+  { id: "82f", desc: "receivable_payment late_fee_applied + interest_applied columns", q: "SELECT 1 FROM information_schema.columns WHERE table_name='receivable_payment' AND column_name IN ('late_fee_applied_in_cents','interest_applied_in_cents') HAVING count(*) = 2" },
 ];
 
 const url = process.env.DIRECT_URL;

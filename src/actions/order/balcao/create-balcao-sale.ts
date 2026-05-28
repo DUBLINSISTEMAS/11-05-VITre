@@ -50,6 +50,10 @@ import { isShortCodeCollision } from "@/lib/db-errors";
 import { logger } from "@/lib/logger";
 import { recordSaleMovements } from "@/lib/order/record-sale-movements";
 import { resolveVariantPrice } from "@/lib/pricing";
+import {
+  computeCardFeeSnapshot,
+  computeSettlementDate,
+} from "@/lib/pricing/net-profit";
 import { generatePublicOrderToken } from "@/lib/public-order";
 import {
   checkRateLimit,
@@ -1167,6 +1171,12 @@ export async function createBalcaoSale(
               // creditAmountInCents), pula o INSERT — o saldo vai pra
               // receivable abaixo.
               if (payments.length > 0) {
+                // Bloco D da ressignificação (2026-05-27): persiste snapshot
+                // da taxa real do cartão e da data de settlement na MESMA
+                // transação do INSERT do pagamento. Sem isso, mudar a taxa
+                // depois falsifica DRE retroativo; sem settlement_date,
+                // fluxo de caixa real é impossível de calcular.
+                const paymentCreatedAt = new Date();
                 await innerTx.insert(orderPaymentTable).values(
                   payments.map((p) => ({
                     storeId: store.id,
@@ -1178,6 +1188,17 @@ export async function createBalcaoSale(
                     // validou range 1..24 + regra "só credit pode > 1".
                     installments: p.installments,
                     notes: p.notes,
+                    cardFeeSnapshotInCents: computeCardFeeSnapshot(
+                      p.amountInCents,
+                      p.method,
+                      p.installments,
+                      store,
+                    ),
+                    settlementDate: computeSettlementDate(
+                      paymentCreatedAt,
+                      p.method,
+                      store,
+                    ),
                   })),
                 );
               }

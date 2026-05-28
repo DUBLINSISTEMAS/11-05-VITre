@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const loader = readFileSync("src/lib/storefront/related-products-loader.ts", "utf8");
-const editPage = readFileSync("src/app/(admin)/admin/produtos/[id]/page.tsx", "utf8");
 const sharedLoader = readFileSync("src/lib/storefront/_shared.ts", "utf8");
 const rlsSql = readFileSync("supabase/sql/18_product_related_rls.sql", "utf8");
 
@@ -21,14 +20,14 @@ test("related products loader appends automatic picks after manual picks", () =>
   assert.match(autoBlock, /related = \[\.\.\.related, \.\.\.categoryRelated\]/);
 });
 
-// PP1 Fase B (2026-05-25): /admin/produtos/[id]/page.tsx virou redirect
-// puro pro drawer global. RelatedProductsCard saiu do edit page; reintroduzir
-// dentro do ProductFormDrawer fica pendente como PP1.x — quando isso acontecer,
-// reativar este teste apontando pro arquivo certo (provavelmente o drawer
-// ou um sub-componente dele que use a mesma query candidateIds + inArray).
+// Bloco A da ressignificação (2026-05-27): /admin/produtos/[id]/page.tsx
+// deletada — drawer global passou a ser o único caminho de edição. UI de
+// curadoria de produtos relacionados é pendência da Semana 5 (decisão
+// founder: implementar product_related UI admin). Quando o componente
+// entrar no drawer, reativar este teste apontando pro componente certo.
 test.skip("admin related candidates cover query is limited to candidate product ids", () => {
   // Skipado intencionalmente. Reativar quando RelatedProductsCard for
-  // reinjetado no ProductFormDrawer.
+  // reinjetado no ProductFormDrawer (Semana 5 da ressignificação).
 });
 
 test("product_related RLS SQL keeps public read tenant-scoped instead of USING true", () => {
