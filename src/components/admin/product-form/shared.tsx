@@ -233,10 +233,15 @@ export function bumpSessionCounter(): number {
 // PP1 (handoff pixel-perfect 2026-05-25): 3 abas → 6 abas conforme
 // drawers.jsx do bundle. Reverte parcialmente a consolidação 2.1 pra
 // match 1:1 do protótipo. Lojista navega por sidebar 180px no drawer.
+//
+// Bloco G da ressignificação (2026-05-27): +1 aba "precificacao" — view
+// read-only consumindo o helper canônico `calculateNetProfit`. Sem campos
+// próprios (TAB_FIELDS.precificacao = []), zero count de erros.
 export type TabKey =
   | "basico"
   | "imagens"
   | "preco"
+  | "precificacao"
   | "estoque"
   | "variantes"
   | "loja";
@@ -251,6 +256,7 @@ const TAB_FIELDS: Record<TabKey, Array<keyof ProductFormValues>> = {
     "internalCode",
     "unit",
   ],
+  precificacao: [], // view read-only — sem campos do form
   estoque: [
     "trackStock",
     "stockQuantity",

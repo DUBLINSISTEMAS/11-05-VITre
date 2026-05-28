@@ -173,6 +173,7 @@ export function ProductFormDrawer({
               categories={data.categories}
               brands={data.brands}
               storeNiche={data.storeNiche ?? undefined}
+              storeFees={data.storeFees}
               isDraft={data.isDraft}
               onCreateProduct={
                 data.mode === "new" ? createProductFromValues : undefined

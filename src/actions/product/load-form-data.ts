@@ -39,6 +39,17 @@ export interface ProductFormDrawerData {
   categories: Array<{ id: string; name: string; parentId: string | null }>;
   brands: Array<{ id: string; name: string }>;
   storeNiche: Store["niche"];
+  /**
+   * Bloco G da ressignificação (2026-05-27) — taxas reais da maquininha
+   * pra alimentar o workbench de Precificação. Vem de `store.card_real_fee_bps_*`.
+   * Sem isso, o workbench cai no DEFAULT_STORE_FEES (médias Stone/Cielo 2025).
+   */
+  storeFees: {
+    cardRealFeeBpsDebit: number;
+    cardRealFeeBpsCredit1x: number;
+    cardRealFeeBpsCredit2xTo6x: number;
+    cardRealFeeBpsCredit7xTo12x: number;
+  };
   /** isDraft=true → modo "novo" (sem productId real); ProductForm chama createProductFromValues. */
   isDraft: boolean;
   /** Mode hint pro caller: "edit" carregou produto existente; "new" é form vazio. */
@@ -90,6 +101,12 @@ export async function loadProductFormData(
         categories: meta.categories,
         brands: meta.brands,
         storeNiche: store.niche,
+        storeFees: {
+          cardRealFeeBpsDebit: store.cardRealFeeBpsDebit,
+          cardRealFeeBpsCredit1x: store.cardRealFeeBpsCredit1x,
+          cardRealFeeBpsCredit2xTo6x: store.cardRealFeeBpsCredit2xTo6x,
+          cardRealFeeBpsCredit7xTo12x: store.cardRealFeeBpsCredit7xTo12x,
+        },
         isDraft: true,
         mode: "new",
       },
@@ -205,6 +222,12 @@ export async function loadProductFormData(
       categories,
       brands,
       storeNiche: store.niche,
+      storeFees: {
+        cardRealFeeBpsDebit: store.cardRealFeeBpsDebit,
+        cardRealFeeBpsCredit1x: store.cardRealFeeBpsCredit1x,
+        cardRealFeeBpsCredit2xTo6x: store.cardRealFeeBpsCredit2xTo6x,
+        cardRealFeeBpsCredit7xTo12x: store.cardRealFeeBpsCredit7xTo12x,
+      },
       isDraft,
       mode: "edit",
     },

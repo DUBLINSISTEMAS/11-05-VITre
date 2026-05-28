@@ -11,6 +11,7 @@ import {
   SaveIcon,
   StoreIcon,
   TagIcon,
+  TrendingUpIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
@@ -36,6 +37,7 @@ import {
   loadFormDraft,
   useFormDraft,
 } from "@/hooks/use-form-draft";
+import type { StoreFeeConfig } from "@/lib/pricing/net-profit";
 import { cn } from "@/lib/utils";
 
 import {
@@ -53,6 +55,7 @@ import {
 import { TabEstoque } from "./product-form/tab-estoque";
 import { TabIdentidade } from "./product-form/tab-identidade";
 import { TabLojaOnline } from "./product-form/tab-loja-online";
+import { TabPrecificacao } from "./product-form/tab-precificacao";
 import { TabPrecoCusto } from "./product-form/tab-preco-custo";
 import { TabVariantes } from "./product-form/tab-variantes";
 import { type VariantData } from "./variant-editor";
@@ -172,11 +175,21 @@ interface ProductFormProps {
    * o footer dentro do form.
    */
   submitRef?: React.RefObject<HTMLButtonElement | null>;
+  /**
+   * Bloco G da ressignificação (2026-05-27) — taxas reais da maquininha
+   * pra alimentar a aba Precificação. Quando omitido, o workbench cai
+   * em DEFAULT_STORE_FEES (médias Stone/Cielo 2025).
+   */
+  storeFees?: StoreFeeConfig;
 }
 
 // PP1 (handoff pixel-perfect 2026-05-25): 6 abas com sidebar 180px à
 // esquerda + form panel à direita. Bate o ProductFormDrawer do bundle
 // (drawers.jsx linha 209-216).
+//
+// Bloco G da ressignificação (2026-05-27): +1 aba "Precificação" entre
+// "Preço & custo" e "Estoque". É view read-only que calcula lucro por
+// forma de pagamento — atende pedido direto do cliente joalheiro.
 const TAB_NAV: {
   key: TabKey;
   label: string;
@@ -185,6 +198,7 @@ const TAB_NAV: {
   { key: "basico", label: "Básico", icon: TagIcon },
   { key: "imagens", label: "Imagens", icon: ImageIcon },
   { key: "preco", label: "Preço & custo", icon: DollarSignIcon },
+  { key: "precificacao", label: "Precificação", icon: TrendingUpIcon },
   { key: "estoque", label: "Estoque", icon: PackageIcon },
   { key: "variantes", label: "Variantes", icon: LayoutGridIcon },
   { key: "loja", label: "Loja online", icon: StoreIcon },
@@ -223,6 +237,7 @@ export function ProductForm({
   storeNiche,
   embedded = false,
   submitRef,
+  storeFees,
 }: ProductFormProps) {
   // Onda 2.3 — campos "Composição/Modelagem/Forro/Lavagem" só fazem
   // sentido pra roupa. Pra joia, semijoia, perfumaria, outro: escondemos.
@@ -573,6 +588,10 @@ export function ProductForm({
               setValue={setValue}
               hideAdvanced
             />
+          </div>
+
+          <div hidden={activeTab !== "precificacao"} className="space-y-4">
+            <TabPrecificacao control={control} storeFees={storeFees} />
           </div>
 
           <div hidden={activeTab !== "estoque"} className="space-y-4">
