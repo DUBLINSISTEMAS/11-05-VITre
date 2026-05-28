@@ -1,6 +1,7 @@
 import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
+import { loadDashboardSinais } from "@/actions/dashboard/load-sinais";
 import { loadDashboardLucro } from "@/actions/reports/load-dashboard-lucro";
 import { DateRangePill } from "@/components/admin/dashboard/date-range-pill";
 import { HeroLucro } from "@/components/admin/dashboard/hero-lucro";
@@ -9,6 +10,7 @@ import {
   type ChecklistStep,
   OnboardingChecklist,
 } from "@/components/admin/dashboard/onboarding-checklist";
+import { PegandoFogo } from "@/components/admin/dashboard/pegando-fogo";
 import {
   type RecentOrderRow,
   RecentOrdersTable,
@@ -220,10 +222,13 @@ export default async function AdminHomePage({
     };
   });
 
-  // Hero de Lucro Líquido — chamada PARALELA ao withTenant acima (top-level).
-  // 4 ranges internos rodam em paralelo dentro do loadDashboardLucro.
-  // Se loja não tem sessão/store, devolve null e hero some.
-  const lucroData = await loadDashboardLucro();
+  // Hero de Lucro + Sinais "pegando fogo" — em paralelo top-level.
+  // Cada chamada abre sua própria transação RLS-aware, então Promise.all
+  // sem efeito DeprecationWarning (cliente pg diferente por transação).
+  const [lucroData, sinaisData] = await Promise.all([
+    loadDashboardLucro(),
+    loadDashboardSinais(),
+  ]);
 
   // === Onboarding state ===
   const isFreshStore = productCount === 0 || totalOrderCount === 0;
@@ -350,6 +355,15 @@ export default async function AdminHomePage({
           thisWeek={lucroData.thisWeek}
         />
       ) : null}
+
+      {/* Pegando fogo agora — Bloco F.2.2.
+          Sinais DELTA do dia (não fila acumulada). 4 categorias curadas:
+          caixa esquecido · WhatsApp pendente · fiado vencido · estoque
+          novo em mínimo. Vazio = "Tudo em dia 🤝". */}
+      <PegandoFogo
+        items={sinaisData.items}
+        allClear={sinaisData.allClear}
+      />
 
       {/* 2 gráficos: 60/40 */}
       <div className="b3-charts-grid">

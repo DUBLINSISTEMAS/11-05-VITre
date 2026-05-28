@@ -2532,6 +2532,152 @@
     color: inherit;
   }
 
+  /* --- PegandoFogo (Bloco F.2.2 da ressignificação) ---------------------
+     Painel "Pegando fogo agora" — sinais operacionais DELTA, não fila
+     acumulada. Linhas clicáveis, cor por severidade, vocabulário do balcão. */
+  .b3-pegando-fogo {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 16px 12px;
+    margin-bottom: 16px;
+    min-width: 0;
+  }
+  .b3-pegando-fogo-hd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .b3-pegando-fogo-title {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-1);
+    letter-spacing: -0.01em;
+  }
+  .b3-pegando-fogo-icon {
+    color: var(--danger);
+  }
+  .b3-pegando-fogo-counter {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-4);
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--bg-app);
+    font-variant-numeric: tabular-nums;
+  }
+  .b3-pegando-fogo-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  /* Linha de sinal — bloco clicável */
+  .b3-sinal-row {
+    display: grid;
+    grid-template-columns: 8px 1fr auto;
+    align-items: start;
+    gap: 10px;
+    padding: 10px 10px 10px 8px;
+    border-radius: 10px;
+    text-decoration: none;
+    color: inherit;
+    transition: background-color 120ms;
+    outline: none;
+    min-width: 0;
+  }
+  .b3-sinal-row:hover,
+  .b3-sinal-row:focus-visible {
+    background: var(--bg-app);
+  }
+  .b3-sinal-row:focus-visible {
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--ring) 60%, transparent);
+  }
+  .b3-sinal-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: 6px;
+    flex-shrink: 0;
+  }
+  .b3-sinal-row--high .b3-sinal-dot {
+    background: var(--danger);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--danger) 16%, transparent);
+  }
+  .b3-sinal-row--med .b3-sinal-dot {
+    background: var(--warn);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--warn) 18%, transparent);
+  }
+  .b3-sinal-row--low .b3-sinal-dot {
+    background: var(--ink-4);
+  }
+  .b3-sinal-content {
+    min-width: 0;
+  }
+  .b3-sinal-title {
+    margin: 0;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink-1);
+    letter-spacing: -0.005em;
+    line-height: 1.35;
+  }
+  .b3-sinal-sub {
+    margin: 2px 0 0;
+    font-size: 11.5px;
+    color: var(--ink-4);
+    letter-spacing: -0.005em;
+    line-height: 1.4;
+  }
+  .b3-sinal-chev {
+    color: var(--ink-5);
+    flex-shrink: 0;
+    margin-top: 4px;
+    transition: transform 120ms;
+  }
+  .b3-sinal-row:hover .b3-sinal-chev {
+    transform: translateX(2px);
+    color: var(--ink-2);
+  }
+
+  /* Empty state cordial */
+  .b3-pegando-fogo-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 18px 12px 14px;
+    text-align: center;
+  }
+  .b3-pegando-fogo-empty-icon {
+    font-size: 28px;
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+  .b3-pegando-fogo-empty-msg {
+    margin: 0;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--ink-1);
+    letter-spacing: -0.01em;
+  }
+  .b3-pegando-fogo-empty-hint {
+    margin: 0;
+    font-size: 11.5px;
+    color: var(--ink-4);
+    max-width: 280px;
+    line-height: 1.45;
+  }
+
   /* Empty state — loja sem venda */
   .b3-hero-lucro--empty {
     text-align: center;
