@@ -176,28 +176,52 @@
 
 **Visível pro cliente**: SIM (aba Precificação).
 
-### 💰 Semana 3 — Lucro no centro
+### 💰 Semana 3 — Lucro no centro ✅ FECHADA
 
 **Entregáveis:**
 
-1. **Tela `/admin/resultado`** (NOVA — pergunta-mãe #1):
+1. **Tela `/admin/resultado`** (NOVA — pergunta-mãe #1) — ✅ commit `7a1a851` (Bloco E):
    - Equação completa: Faturamento − CMV − Taxas de cartão − Comissões − Despesas = **LUCRO LÍQUIDO**
    - Default: semana atual + comparação semana anterior
-   - Toggles: dia / semana / mês / customizado
-   - Tabela densa por dia
+   - Toggles: 7/30/90 dias
    - Export CSV + PDF (reuso `<ReportLayout/>`)
    - Adiciona ao Grupo 3 — Gestão (topo)
 
-2. **Refundação `/admin` (dashboard)**:
-   - **Hero**: "Você lucrou **R$ X** ontem · R$ Y essa semana · {+15%/-8%} vs anterior" — número grande, vocabulário varejista
-   - **Lista de tarefas do dia**: caixa fechado? compras a receber? estoque crítico? venda externa não conferida?
-   - **3 atalhos gigantes**: Nova venda · Novo produto · Novo cliente (sticky no topo)
-   - **Top 3 produtos por lucro absoluto** da semana (não por unidade)
-   - **Alerta vermelho** se SKU foi vendido com margem negativa (lê snapshot)
-   - **Mini-snapshot loja online**: leads pendentes WhatsApp + (futuro) visitas/conversão
-   - Remove cards decorativos atuais (`MetricCard` redesenhado com mais densidade — gap-1, fonte menor, tabela inline em vez de big number isolado)
+2. **Refundação `/admin` (dashboard)** — ✅ Bloco F commits A→E (2026-05-28).
+   **Pós-conselho 2026-05-28**: plano original revisado em 4 blocos curados
+   em vez de 7 itens enfileirados (resolve cry-wolf + scope creep).
+   Entregue:
+   - **Bloco F.0** (`9f035a2`) — `installmentsOverride` + `cashDiscountOverrideBps`
+     moveram de "Loja online" pra "Preço & Custo" com tooltip "vale em todos
+     os canais". Quick win paralelo que mata "amadorismo" pela raiz.
+   - **Bloco F.2.1** (`30d5262`) — **Hero de Lucro HONESTO**. 2 colunas:
+     "Você lucrou R$ X ontem" (vs mesmo dia da semana anterior) + "R$ Y
+     essa semana" (vs mesma janela 7d atrás). Breakdown denso (Faturou −
+     Custo − Taxa − Despesa = Sobrou). Gate de honestidade: cobertura CMV
+     < 80% mostra warning amarelo com CTA pro cadastro de custos. Vendas
+     sem snapshot completo são EXCLUÍDAS, não estimadas.
+   - **Bloco F.2.2** (`585629a`) — **"Pegando fogo agora"** (substitui
+     "Tarefas de hoje" com curadoria DELTA, anti-cry-wolf). 4 sinais:
+     caixa esquecido (>12h), WhatsApp pendente (>2h), fiado vencido/hoje,
+     estoque NOVO em mínimo (24h). Vazio = "Tudo em dia 🤝".
+   - **Bloco F.2.3** (`ac5c6c4`) — **"Produtos que tão bombando"**
+     (substitui "Top 3 por lucro absoluto"). Critério: aceleração 30%+
+     vs média móvel 28d. Fallback Top 3 lucro absoluto quando loja jovem.
+     Esconde se sem candidato (zero ruído).
+   - **Bloco F.2.4 + F.2.5** (`9a9459e`) — **KPIs tabulares** (1 linha
+     densa de 4 KPIs secundários, devoluções com semântica invertida) +
+     **Mini-snapshot loja online** (recados pendentes · produtos sem foto ·
+     count publicados · link vitre.site/slug).
 
-**Visível pro cliente**: SIM (dashboard novo).
+   **NÃO entrou na v1 (decisão consciente do conselho)**:
+   - 3 atalhos gigantes sticky: gasta 60px em mobile pra economizar 1
+     clique. Mantemos só "Nova venda" no header.
+   - Alerta de margem negativa banner topo: cry-wolf alto. Mover pro
+     drawer da venda em commit futuro (contexto > alerta global).
+
+**Visível pro cliente**: SIM (dashboard novo). Layout final top-to-bottom:
+Header → Hero Lucro → KPIs tabulares → (Pegando fogo · Bombando 2-col) →
+Charts → Vendas recentes → Mini loja online.
 
 ### 🔀 Semana 4 — Separação gestão ≠ catálogo público
 
@@ -313,5 +337,8 @@ Disponíveis nos transcripts da sessão de 2026-05-27.
 
 ---
 
-**Última atualização**: 2026-05-27 — Semana 1 (auditoria + plano) concluída.
-**Próxima ação**: validação dos 6 pontos abertos da seção 7 + GO pra Semana 2.
+**Última atualização**: 2026-05-28 — Semana 3 (Lucro no centro) fechada via
+Bloco F.2 curado pelo conselho (Hero honesto + Pegando fogo DELTA +
+Produtos bombando + KPIs tabulares + Mini loja online).
+**Próxima ação**: Semana 4 — Separação gestão ≠ catálogo público (form
+de produto refundado + nova rota `/admin/itens` pra gestão pura).
