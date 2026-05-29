@@ -1,8 +1,8 @@
 "use client";
 
 // Header MOBILE-ONLY do admin — port Dublin v3 (ADR-0019, Onda A.3).
-// Em desktop a sidebar (b3-side) + topbar (b3-top) cuidam de tudo, então
-// este componente fica `lg:hidden`.
+// Em desktop a sidebar (b3-side) + chrome interno do card (b3-card-chrome,
+// refactor 2026-05-29) cuidam de tudo, então este componente fica `lg:hidden`.
 //
 // Estrutura:
 // - Hamburger à esquerda abre Sheet drawer com SidebarContent completa

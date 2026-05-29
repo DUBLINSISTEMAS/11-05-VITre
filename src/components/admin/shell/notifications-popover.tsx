@@ -85,7 +85,7 @@ export function NotificationsPopover() {
       <PopoverPrimitive.Trigger asChild>
         <button
           type="button"
-          className="b3-topbar-iconbtn relative"
+          className="b3-card-chrome-iconbtn relative"
           aria-label={
             unreadCount > 0
               ? `Notificações (${unreadCount} não lida${unreadCount === 1 ? "" : "s"})`
