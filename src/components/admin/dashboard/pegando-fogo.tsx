@@ -18,17 +18,48 @@
 // Server component (zero bundle client). Render condicional do empty
 // state quando allClear=true.
 
-import { ChevronRightIcon, FlameIcon } from "lucide-react";
+import {
+  ChevronRightIcon,
+  FlameIcon,
+  TriangleAlertIcon,
+} from "lucide-react";
 import Link from "next/link";
 
-import type { DashboardSinal } from "@/actions/dashboard/load-sinais";
+import type {
+  DashboardSinal,
+  SinalType,
+} from "@/actions/dashboard/load-sinais";
 
 interface PegandoFogoProps {
   items: DashboardSinal[];
   allClear: boolean;
+  /** Bloco E1 UX (2026-05-29) — timestamp da última checagem. */
+  checkedAt: Date;
+  /** Categorias que falharam silenciosamente — UI mostra warning. */
+  failedChecks: SinalType[];
 }
 
-export function PegandoFogo({ items, allClear }: PegandoFogoProps) {
+const SINAL_TYPE_LABEL: Record<SinalType, string> = {
+  caixa_esquecido: "caixa",
+  whatsapp_pendente: "WhatsApp",
+  fiado_atrasado: "fiados",
+  estoque_critico_novo: "estoque",
+  orcamento_vencendo: "orçamentos",
+};
+
+function formatCheckedAt(d: Date): string {
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+export function PegandoFogo({
+  items,
+  allClear,
+  checkedAt,
+  failedChecks,
+}: PegandoFogoProps) {
+  const hasFailures = failedChecks.length > 0;
   return (
     <section className="b3-pegando-fogo" aria-label="Pegando fogo agora">
       <header className="b3-pegando-fogo-hd">
@@ -36,6 +67,12 @@ export function PegandoFogo({ items, allClear }: PegandoFogoProps) {
           <FlameIcon size={14} aria-hidden className="b3-pegando-fogo-icon" />
           Pegando fogo agora
         </h2>
+        <span
+          className="b3-pegando-fogo-checked"
+          title={`Última checagem: ${checkedAt.toLocaleString("pt-BR")}`}
+        >
+          verificado às {formatCheckedAt(checkedAt)}
+        </span>
         {!allClear ? (
           <span className="b3-pegando-fogo-counter">
             {items.length} {items.length === 1 ? "ponto" : "pontos"}
@@ -43,8 +80,31 @@ export function PegandoFogo({ items, allClear }: PegandoFogoProps) {
         ) : null}
       </header>
 
+      {/* Bloco E1 UX (2026-05-29) — quando alguma checagem falhou, mostra
+          warning ANTES da lista/empty pra lojista não confiar em "tudo ok"
+          silencioso. */}
+      {hasFailures ? (
+        <div className="b3-pegando-fogo-warn">
+          <TriangleAlertIcon
+            size={13}
+            aria-hidden
+            className="text-state-warning shrink-0"
+          />
+          <p>
+            Não consegui checar{" "}
+            <strong>
+              {failedChecks
+                .map((t) => SINAL_TYPE_LABEL[t])
+                .filter(Boolean)
+                .join(", ")}
+            </strong>
+            . Atualize a página em alguns segundos.
+          </p>
+        </div>
+      ) : null}
+
       {allClear ? (
-        <EmptyState />
+        <EmptyState fullyChecked={!hasFailures} />
       ) : (
         <ul className="b3-pegando-fogo-list">
           {items.map((item) => (
@@ -96,16 +156,21 @@ function SinalRow({ item }: { item: DashboardSinal }) {
 // Empty state — vocabulário cordial BR
 // ============================================================================
 
-function EmptyState() {
+function EmptyState({ fullyChecked }: { fullyChecked: boolean }) {
   return (
     <div className="b3-pegando-fogo-empty">
       <span aria-hidden className="b3-pegando-fogo-empty-icon">
         🤝
       </span>
-      <p className="b3-pegando-fogo-empty-msg">Tudo em dia por aqui.</p>
+      <p className="b3-pegando-fogo-empty-msg">
+        {fullyChecked
+          ? "Tudo em dia por aqui."
+          : "Nenhum sinal nas categorias checadas."}
+      </p>
       <p className="b3-pegando-fogo-empty-hint">
-        Caixa fechado, fiados em dia, estoque ok e WhatsApp respondido.
-        Bom trabalho.
+        {fullyChecked
+          ? "Caixa fechado, fiados em dia, estoque ok e WhatsApp respondido. Bom trabalho."
+          : "Algumas verificações falharam — reveja após atualizar a página."}
       </p>
     </div>
   );

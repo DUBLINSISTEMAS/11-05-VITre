@@ -13,6 +13,7 @@ import { NewSaleButton } from "@/components/admin/dashboard/new-sale-button";
 import {
   type ChecklistStep,
   OnboardingChecklist,
+  OnboardingProgressStrip,
 } from "@/components/admin/dashboard/onboarding-checklist";
 import { PegandoFogo } from "@/components/admin/dashboard/pegando-fogo";
 import { ProdutosBombando } from "@/components/admin/dashboard/produtos-bombando";
@@ -238,7 +239,12 @@ export default async function AdminHomePage({
   ]);
 
   // === Onboarding state ===
-  const isFreshStore = productCount === 0 || totalOrderCount === 0;
+  // Bloco E1 UX (2026-05-29): trocado OR por AND. Antes a loja que
+  // cadastrou 1 produto E fez 1 venda perdia o checklist inteiro — mesmo
+  // sem ter feito passos 2-4 (logo, endereço, banner). Agora o checklist
+  // cheio só aparece em loja TOTALMENTE zerada; loja madura com passos
+  // pendentes vê uma faixa fina (OnboardingProgressStrip).
+  const isFreshStore = productCount === 0 && totalOrderCount === 0;
 
   const onboardingSteps: ChecklistStep[] = [
     {
@@ -351,6 +357,11 @@ export default async function AdminHomePage({
         </div>
       </div>
 
+      {/* Bloco E1 UX (2026-05-29): faixa fina enquanto loja não fechou
+          todos os passos de configuração. Substitui o some-tudo do
+          checklist anterior. */}
+      <OnboardingProgressStrip steps={onboardingSteps} />
+
       {/* Hero de Lucro Líquido — Bloco F.2.1 da ressignificação.
           DOIS números úteis: lucrou ontem (vs mesmo dia da semana passada)
           e essa semana (vs mesma janela 7d atrás). Honestidade explícita
@@ -381,6 +392,8 @@ export default async function AdminHomePage({
         <PegandoFogo
           items={sinaisData.items}
           allClear={sinaisData.allClear}
+          checkedAt={sinaisData.checkedAt}
+          failedChecks={sinaisData.failedChecks}
         />
 
         {/* Produtos que tão bombando — Bloco F.2.3.

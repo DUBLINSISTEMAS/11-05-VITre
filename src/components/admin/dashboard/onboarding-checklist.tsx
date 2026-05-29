@@ -11,6 +11,11 @@
  *
  * O cálculo de done/pending vive no parent (`/admin/page.tsx`) — este
  * componente só renderiza props prontas.
+ *
+ * Bloco E1 UX (2026-05-29) — `OnboardingProgressStrip` é a versão fina
+ * (1 linha) pra dashboard maduro com passos pendentes. Antes o checklist
+ * grande SOMIA assim que cadastrava 1 produto + 1 venda — passos 2-4
+ * (logo, endereço, banner) ficavam órfãos.
  */
 import { ArrowRightIcon, CheckIcon } from "lucide-react";
 import Link from "next/link";
@@ -113,5 +118,53 @@ export function OnboardingChecklist({
         ))}
       </ol>
     </section>
+  );
+}
+
+/**
+ * Faixa fina pra dashboard maduro com passos pendentes — mostra
+ * "3/5 passos · Próximo: Subir logo →". Quando todos os steps foram
+ * concluídos, o caller esconde o componente (não renderiza nada).
+ */
+export interface OnboardingProgressStripProps {
+  steps: ChecklistStep[];
+}
+
+export function OnboardingProgressStrip({
+  steps,
+}: OnboardingProgressStripProps) {
+  const doneCount = steps.filter((s) => s.done).length;
+  const total = steps.length;
+  if (doneCount >= total) return null;
+  const nextStep = steps.find((s) => !s.done);
+  if (!nextStep) return null;
+
+  return (
+    <Link
+      href={nextStep.href}
+      prefetch
+      className="border-line bg-bg-app hover:bg-mangos-cream-soft flex flex-wrap items-center gap-3 rounded-[10px] border px-4 py-2.5 text-[12.5px] transition-colors"
+      aria-label={`${doneCount} de ${total} passos · Próximo: ${nextStep.title}`}
+    >
+      <span
+        className="mono inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums"
+        style={{
+          background: "var(--brand-wash)",
+          color: "var(--brand)",
+        }}
+      >
+        {doneCount}/{total}
+      </span>
+      <span className="text-ink-3 hidden sm:inline">
+        Configuração da loja —
+      </span>
+      <span className="text-ink-2 min-w-0 flex-1 font-medium">
+        Próximo: <strong className="text-ink-1">{nextStep.title}</strong>
+      </span>
+      <span className="text-mangos-green-800 inline-flex shrink-0 items-center gap-1 text-[12px] font-semibold">
+        {nextStep.ctaLabel}
+        <ArrowRightIcon className="size-3.5" aria-hidden />
+      </span>
+    </Link>
   );
 }

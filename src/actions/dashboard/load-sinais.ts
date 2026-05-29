@@ -71,14 +71,29 @@ export interface LoadDashboardSinaisOutput {
   items: DashboardSinal[];
   /** True quando NENHUM sinal está ativo — UI mostra "Tudo em dia". */
   allClear: boolean;
+  /**
+   * Bloco E1 UX (2026-05-29) — quando true, vc pode confiar que "Tudo em dia"
+   * significa "todas as 5 categorias checadas, nenhuma disparou". Se algum
+   * check falhou (ver `failedChecks`), allClear pode ser TRUE só porque os
+   * checks que rodaram não acharam nada — UI mostra warning em vez de
+   * "tudo ok" silencioso (cry wolf reverso).
+   */
+  checkedAt: Date;
+  /**
+   * Categorias que falharam silenciosamente (ex: query timeout, índice
+   * faltando). Length > 0 → UI mostra "Não consegui checar X, Y. Atualize".
+   */
+  failedChecks: SinalType[];
 }
 
 export async function loadDashboardSinais(): Promise<LoadDashboardSinaisOutput> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user) return { items: [], allClear: true };
+  if (!session?.user)
+    return { items: [], allClear: true, checkedAt: new Date(), failedChecks: [] };
 
   const store = await getCurrentStore(session.user.id);
-  if (!store) return { items: [], allClear: true };
+  if (!store)
+    return { items: [], allClear: true, checkedAt: new Date(), failedChecks: [] };
 
   return withTenant(store.id, session.user.id, async (tx) => {
     const now = new Date();
@@ -88,112 +103,142 @@ export async function loadDashboardSinais(): Promise<LoadDashboardSinaisOutput> 
     const todayEnd = new Date(now);
     todayEnd.setHours(23, 59, 59, 999);
 
-    // pg dentro de transação serializa — usamos await sequencial em
-    // vez de Promise.all pra evitar DeprecationWarning. 4 queries pequenas
-    // indexadas (~10ms cada) — total ~40ms. Aceitável.
+    // Bloco E1 UX (2026-05-29) — cada checagem isolada em try/catch.
+    // Antes: 1 query falhando (ex: timeout) derrubava o handler inteiro
+    // e Next mostrava error boundary; ou, com array vazio, lojista via
+    // "Tudo em dia" mentindo. Agora cada falha vai pra `failedChecks` e
+    // UI mostra warning sem esconder os checks que rodaram.
+    const failedChecks: SinalType[] = [];
 
     // ---- 1) CAIXA aberto há > 12h ----
-    const caixaRow = await tx
-      .select({
-        sessionId: cashSessionTable.id,
-        openedAt: cashSessionTable.openedAt,
-      })
-      .from(cashSessionTable)
-      .where(
-        and(
-          eq(cashSessionTable.storeId, store.id),
-          isNull(cashSessionTable.closedAt),
-          lte(cashSessionTable.openedAt, twelveHoursAgo),
-        ),
-      )
-      .limit(1);
+    let caixaRow: { sessionId: string; openedAt: Date }[] = [];
+    try {
+      caixaRow = await tx
+        .select({
+          sessionId: cashSessionTable.id,
+          openedAt: cashSessionTable.openedAt,
+        })
+        .from(cashSessionTable)
+        .where(
+          and(
+            eq(cashSessionTable.storeId, store.id),
+            isNull(cashSessionTable.closedAt),
+            lte(cashSessionTable.openedAt, twelveHoursAgo),
+          ),
+        )
+        .limit(1);
+    } catch {
+      failedChecks.push("caixa_esquecido");
+    }
 
     // ---- 2) VENDAS WhatsApp esperando há > 2h ----
-    const [whatsappAgg] = await tx
-      .select({ count: sql<number>`count(*)::int` })
-      .from(orderTable)
-      .where(
-        and(
-          eq(orderTable.storeId, store.id),
-          eq(orderTable.status, "awaiting_whatsapp"),
-          isNull(orderTable.whatsappOpenedAt),
-          lte(orderTable.createdAt, twoHoursAgo),
-        ),
-      );
-    const whatsappCount = whatsappAgg?.count ?? 0;
+    let whatsappCount = 0;
+    try {
+      const [whatsappAgg] = await tx
+        .select({ count: sql<number>`count(*)::int` })
+        .from(orderTable)
+        .where(
+          and(
+            eq(orderTable.storeId, store.id),
+            eq(orderTable.status, "awaiting_whatsapp"),
+            isNull(orderTable.whatsappOpenedAt),
+            lte(orderTable.createdAt, twoHoursAgo),
+          ),
+        );
+      whatsappCount = whatsappAgg?.count ?? 0;
+    } catch {
+      failedChecks.push("whatsapp_pendente");
+    }
 
     // ---- 3) FIADO vencendo HOJE ou ATRASADO sem pagamento ----
     // Junta 2 condições: vencendo hoje + vencido em atraso. Conta total
     // mas labels diferentes (UI prioriza atrasado se houver).
-    const [fiadoAgg] = await tx
-      .select({
-        overdueCount: sql<number>`count(*) filter (
-          where ${receivableTable.dueDate} is not null
-            and ${receivableTable.dueDate} < ${now}
-            and ${receivableTable.paidAt} is null
-        )::int`,
-        dueToday: sql<number>`count(*) filter (
-          where ${receivableTable.dueDate} >= ${now}
-            and ${receivableTable.dueDate} <= ${todayEnd}
-            and ${receivableTable.paidAt} is null
-        )::int`,
-        totalOpen: sql<number>`coalesce(sum(${receivableTable.amountInCents}) filter (
-          where ${receivableTable.dueDate} is not null
-            and ${receivableTable.dueDate} < ${todayEnd}
-            and ${receivableTable.paidAt} is null
-        ), 0)::int`,
-      })
-      .from(receivableTable)
-      .where(eq(receivableTable.storeId, store.id));
+    let fiadoOverdue = 0;
+    let fiadoDueToday = 0;
+    let fiadoOpenAmount = 0;
+    try {
+      const [fiadoAgg] = await tx
+        .select({
+          overdueCount: sql<number>`count(*) filter (
+            where ${receivableTable.dueDate} is not null
+              and ${receivableTable.dueDate} < ${now}
+              and ${receivableTable.paidAt} is null
+          )::int`,
+          dueToday: sql<number>`count(*) filter (
+            where ${receivableTable.dueDate} >= ${now}
+              and ${receivableTable.dueDate} <= ${todayEnd}
+              and ${receivableTable.paidAt} is null
+          )::int`,
+          totalOpen: sql<number>`coalesce(sum(${receivableTable.amountInCents}) filter (
+            where ${receivableTable.dueDate} is not null
+              and ${receivableTable.dueDate} < ${todayEnd}
+              and ${receivableTable.paidAt} is null
+          ), 0)::int`,
+        })
+        .from(receivableTable)
+        .where(eq(receivableTable.storeId, store.id));
 
-    const fiadoOverdue = fiadoAgg?.overdueCount ?? 0;
-    const fiadoDueToday = fiadoAgg?.dueToday ?? 0;
-    const fiadoOpenAmount = fiadoAgg?.totalOpen ?? 0;
+      fiadoOverdue = fiadoAgg?.overdueCount ?? 0;
+      fiadoDueToday = fiadoAgg?.dueToday ?? 0;
+      fiadoOpenAmount = fiadoAgg?.totalOpen ?? 0;
+    } catch {
+      failedChecks.push("fiado_atrasado");
+    }
 
     // ---- 4) ESTOQUE crítico DELTA — produto que entrou em mínimo
     //         nas últimas 24h (updatedAt recente + stock <= min).
     //         updatedAt move quando produto vende OU quando compra entra,
     //         então captura o momento real do downgrade pra crítico.
-    const estoqueDeltaRows = await tx
-      .select({
-        id: productTable.id,
-        name: productTable.name,
-        stockQuantity: productTable.stockQuantity,
-        minStockQuantity: productTable.minStockQuantity,
-      })
-      .from(productTable)
-      .where(
-        and(
-          eq(productTable.storeId, store.id),
-          eq(productTable.trackStock, true),
-          eq(productTable.isActive, true),
-          gte(productTable.updatedAt, oneDayAgo),
-        ),
-      )
-      .limit(50);
-    const estoqueCritico = estoqueDeltaRows.filter(
-      (p) =>
-        p.minStockQuantity !== null &&
-        p.stockQuantity !== null &&
-        p.stockQuantity <= p.minStockQuantity,
-    );
+    let estoqueCritico: { name: string }[] = [];
+    try {
+      const estoqueDeltaRows = await tx
+        .select({
+          id: productTable.id,
+          name: productTable.name,
+          stockQuantity: productTable.stockQuantity,
+          minStockQuantity: productTable.minStockQuantity,
+        })
+        .from(productTable)
+        .where(
+          and(
+            eq(productTable.storeId, store.id),
+            eq(productTable.trackStock, true),
+            eq(productTable.isActive, true),
+            gte(productTable.updatedAt, oneDayAgo),
+          ),
+        )
+        .limit(50);
+      estoqueCritico = estoqueDeltaRows.filter(
+        (p) =>
+          p.minStockQuantity !== null &&
+          p.stockQuantity !== null &&
+          p.stockQuantity <= p.minStockQuantity,
+      );
+    } catch {
+      failedChecks.push("estoque_critico_novo");
+    }
 
     // ---- 5) ORÇAMENTOS expirando nas próximas 48h (DELTA — Semana 5).
     //         Pega só status=quote com validade definida caindo agora.
     //         Joalheiro precisa ligar pro cliente ANTES de expirar.
     const twoDaysAhead = new Date(now.getTime() + 48 * 60 * 60 * 1000);
-    const [quotesAgg] = await tx
-      .select({ count: sql<number>`count(*)::int` })
-      .from(orderTable)
-      .where(
-        and(
-          eq(orderTable.storeId, store.id),
-          eq(orderTable.status, "quote"),
-          gte(orderTable.quoteValidUntil, now),
-          lte(orderTable.quoteValidUntil, twoDaysAhead),
-        ),
-      );
-    const quotesExpiring = quotesAgg?.count ?? 0;
+    let quotesExpiring = 0;
+    try {
+      const [quotesAgg] = await tx
+        .select({ count: sql<number>`count(*)::int` })
+        .from(orderTable)
+        .where(
+          and(
+            eq(orderTable.storeId, store.id),
+            eq(orderTable.status, "quote"),
+            gte(orderTable.quoteValidUntil, now),
+            lte(orderTable.quoteValidUntil, twoDaysAhead),
+          ),
+        );
+      quotesExpiring = quotesAgg?.count ?? 0;
+    } catch {
+      failedChecks.push("orcamento_vencendo");
+    }
 
     // ---- Monta lista por severidade ----
     const items: DashboardSinal[] = [];
@@ -295,6 +340,8 @@ export async function loadDashboardSinais(): Promise<LoadDashboardSinaisOutput> 
     return {
       items,
       allClear: items.length === 0,
+      checkedAt: now,
+      failedChecks,
     };
   });
 }

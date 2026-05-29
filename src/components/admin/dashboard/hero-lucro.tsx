@@ -92,6 +92,14 @@ interface LucroBlockProps {
   variant: "primary" | "secondary";
 }
 
+/**
+ * Bloco E1 UX (2026-05-29) — gate de amostra pequena. Loja de joia
+ * interior com 1 vs 2 vendas mostrava "+100%" sem significar nada.
+ * Abaixo de 5 vendas no menor dos dois períodos, escondemos o
+ * percentual e mostramos texto neutro "amostra pequena".
+ */
+const SMALL_SAMPLE_THRESHOLD = 5;
+
 function LucroBlock({ window, variant }: LucroBlockProps) {
   const profit = window.current.operationalProfitInCents;
   const previousProfit = window.previous?.operationalProfitInCents ?? null;
@@ -102,6 +110,7 @@ function LucroBlock({ window, variant }: LucroBlockProps) {
   const cardFees = cardFeesOf(window.current);
   const otherExpenses = nonCardExpensesOf(window.current);
   const orderCount = window.current.totalOrderCount;
+  const previousOrderCount = window.previous?.totalOrderCount ?? 0;
 
   const marginPct =
     netRevenue === 0 ? 0 : (profit / netRevenue) * 100;
@@ -109,22 +118,59 @@ function LucroBlock({ window, variant }: LucroBlockProps) {
   const scopeUpper =
     window.scopeLabel.charAt(0).toUpperCase() + window.scopeLabel.slice(1);
 
+  const className =
+    variant === "primary"
+      ? "b3-hero-lucro-block b3-hero-lucro-block--primary"
+      : "b3-hero-lucro-block";
+
+  // Bloco E1 UX (2026-05-29) — quando NÃO houve venda no período, hero
+  // mostrava "R$ 0,00 −100% vs sex passada" pra loja que vendeu sex
+  // passada e zerou ontem. Soco no estômago de manhã. Agora bloco fica
+  // compacto e honesto: zero, sem delta, sem breakdown vazio.
+  if (orderCount === 0) {
+    return (
+      <div className={className}>
+        <header className="b3-hero-lucro-eyebrow">
+          <span>Você lucrou {window.scopeLabel}</span>
+        </header>
+        <div className="b3-hero-lucro-amount">
+          <span className="b3-hero-lucro-amount-value">{formatBRL(0)}</span>
+        </div>
+        <footer className="b3-hero-lucro-footer-line">
+          <span>Nenhuma venda confirmada {window.scopeLabel}.</span>
+        </footer>
+      </div>
+    );
+  }
+
+  // Amostra pequena se algum dos dois períodos tem < 5 vendas. Quando
+  // previous é null (sem dado histórico), também conta como amostra
+  // insuficiente pra comparação.
+  const smallSample =
+    delta !== null &&
+    (orderCount < SMALL_SAMPLE_THRESHOLD ||
+      previousOrderCount < SMALL_SAMPLE_THRESHOLD);
+
   return (
-    <div
-      className={
-        variant === "primary"
-          ? "b3-hero-lucro-block b3-hero-lucro-block--primary"
-          : "b3-hero-lucro-block"
-      }
-    >
+    <div className={className}>
       <header className="b3-hero-lucro-eyebrow">
         <span>Você lucrou {window.scopeLabel}</span>
-        {delta !== null ? (
-          <DeltaPill pct={delta} compareLabel={window.compareLabel} />
-        ) : (
-          <span className="b3-hero-lucro-no-compare" title={`Sem dado em ${window.compareLabel}`}>
+        {delta === null ? (
+          <span
+            className="b3-hero-lucro-no-compare"
+            title={`Sem dado em ${window.compareLabel}`}
+          >
             sem comparação
           </span>
+        ) : smallSample ? (
+          <span
+            className="b3-hero-lucro-no-compare"
+            title={`Amostra pequena (${orderCount} agora vs ${previousOrderCount} em ${window.compareLabel}) — comparação % não é confiável`}
+          >
+            amostra pequena
+          </span>
+        ) : (
+          <DeltaPill pct={delta} compareLabel={window.compareLabel} />
         )}
       </header>
 
@@ -143,16 +189,15 @@ function LucroBlock({ window, variant }: LucroBlockProps) {
         </span>
       </div>
 
-      {/* Breakdown inline — denso, vocabulário do varejo */}
+      {/* Breakdown inline — denso, vocabulário do varejo.
+          Bloco E1 UX (2026-05-29): Taxa cartão e Despesas sempre
+          renderizam, mesmo zeradas. Antes elas sumiam quando = 0 e
+          lojista achava que "tinha sumido" a linha. */}
       <dl className="b3-hero-lucro-breakdown">
         <BreakdownItem label="Faturou" value={netRevenue} />
         <BreakdownItem label="Custo das peças" value={-cogs} dim />
-        {cardFees > 0 ? (
-          <BreakdownItem label="Taxa cartão" value={-cardFees} dim />
-        ) : null}
-        {otherExpenses > 0 ? (
-          <BreakdownItem label="Despesas" value={-otherExpenses} dim />
-        ) : null}
+        <BreakdownItem label="Taxa cartão" value={-cardFees} dim />
+        <BreakdownItem label="Despesas" value={-otherExpenses} dim />
         <BreakdownItem
           label={`= ${scopeUpper}`}
           value={profit}
@@ -161,17 +206,13 @@ function LucroBlock({ window, variant }: LucroBlockProps) {
       </dl>
 
       <footer className="b3-hero-lucro-footer-line">
-        {orderCount === 0 ? (
-          <span>Nenhuma venda confirmada {window.scopeLabel}.</span>
-        ) : (
-          <span>
-            {orderCount} {orderCount === 1 ? "venda" : "vendas"} ·{" "}
-            {window.dayCount === 1
-              ? "1 dia"
-              : `${window.dayCount} dias`}{" "}
-            de janela
-          </span>
-        )}
+        <span>
+          {orderCount} {orderCount === 1 ? "venda" : "vendas"} ·{" "}
+          {window.dayCount === 1
+            ? "1 dia"
+            : `${window.dayCount} dias`}{" "}
+          de janela
+        </span>
       </footer>
     </div>
   );
