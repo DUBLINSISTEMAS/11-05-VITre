@@ -24,6 +24,7 @@ import { loadFinanceiroOverview } from "@/actions/financeiro/load-overview";
 import { loadPendingReceivables } from "@/actions/receivable/load-pending";
 import { loadSuppliers } from "@/actions/supplier";
 import { ExpensesPageClient } from "@/components/admin/expenses-page-client";
+import { FinanceiroDialogsHost } from "@/components/admin/financeiro-dialogs-host";
 import { FinanceiroOverview } from "@/components/admin/financeiro-overview";
 import {
   type FinanceiroTab,
@@ -70,6 +71,8 @@ export default async function FinanceiroPage({
     loadSuppliers(),
   ]);
 
+  const suppliersList = suppliers.map((s) => ({ id: s.id, name: s.name }));
+
   return (
     <div className="space-y-6">
       <FinanceiroOverview overview={overview} />
@@ -89,7 +92,7 @@ export default async function FinanceiroPage({
         <ExpensesPageClient
           embedded
           initialData={expensesResult}
-          suppliers={suppliers.map((s) => ({ id: s.id, name: s.name }))}
+          suppliers={suppliersList}
           initialFilters={{
             from: params.from,
             to: params.to,
@@ -98,6 +101,11 @@ export default async function FinanceiroPage({
           }}
         />
       )}
+
+      {/* Onda R5 — host global. Os 2 CTAs do header (Lançar fiado /
+          Lançar despesa) abrem aqui INDEPENDENTE da tab ativa.
+          Founder reportou que despesa "nao abria" da tab "receber". */}
+      <FinanceiroDialogsHost suppliers={suppliersList} />
     </div>
   );
 }

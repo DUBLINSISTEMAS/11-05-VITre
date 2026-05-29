@@ -1,26 +1,26 @@
 "use client";
 
 /**
- * FinanceiroOverview — Onda L2 (2026-05-29).
+ * FinanceiroOverview — Onda L2 (2026-05-29), repaginado em R5 (2026-05-29).
  *
  * Header centralizado da tela `/admin/financeiro`:
  *   - H1 "Financeiro" + sub-titulo
- *   - KPI strip horizontal: Recebido / Pago / Saldo / Em aberto
- *   - 2 CTAs verbais grandes: "Lancar fiado" / "Lancar despesa"
+ *   - KPI strip horizontal Stripe-style: peso/cor, NAO splash
+ *   - 2 CTAs verbais: "Lancar fiado" / "Lancar despesa"
  *
- * Saldo do mes recebe destaque visual (texto grande + cor pelo sinal):
- *   - verde se >= 0
- *   - vermelho se < 0 (gastou mais que recebeu)
+ * Onda R5 — sistema-minimalista. Saldo do mes SEGUE com cor pelo sinal
+ * (verde >=0, vermelho <0) mas SEM splash 24px gigante. Hierarquia agora
+ * vem de peso (700) + cor + container destacado, nao de tamanho.
+ * Money component canonico.
  *
- * Vocabulario do balcao BR — nao usa "Receita / Despesa", "Inflow / Outflow",
- * etc. Usa "Recebido", "Pago", "Saldo", "Em aberto". Founder pediu planilha
- * financeira de papel, nao SaaS-EUA.
+ * Vocabulario PT-BR varejo. Founder pediu "planilha financeira",
+ * nao SaaS-EUA.
  */
 
-import { HandCoinsIcon, MinusCircleIcon, PlusIcon } from "lucide-react";
+import { PlusIcon } from "lucide-react";
 
 import type { FinanceiroOverview as Overview } from "@/actions/financeiro/load-overview";
-import { formatBRL } from "@/lib/pricing";
+import { Money } from "@/components/ui/money";
 import { cn } from "@/lib/utils";
 
 import {
@@ -42,26 +42,27 @@ function dispatchNewExpense() {
 
 export function FinanceiroOverview({ overview }: FinanceiroOverviewProps) {
   const saldoNegativo = overview.saldoMesInCents < 0;
+  const emAbertoNet =
+    overview.pendenteReceberInCents - overview.pendentePagarInCents;
 
   return (
-    <header className="space-y-5">
-      {/* Titulo + sub */}
+    <header className="space-y-4">
+      {/* Titulo + sub + CTAs */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="b3-page-title">Financeiro</h1>
           <p className="b3-page-sub">
-            Tudo que entra e sai num lugar só. Saldo do mês, fiados em aberto,
-            despesas a pagar.
+            Tudo que entra e sai num lugar só. {overview.mesLabel}.
           </p>
         </div>
 
-        {/* CTAs verbais — 2 acoes principais. Disparam custom event que os
-            paineis abaixo escutam (cada um abre seu proprio dialog). */}
+        {/* CTAs sticky em mobile (R5): garantem descoberta da acao.
+            Lojista nao precisa procurar onde lancar despesa. */}
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={dispatchNewReceivable}
-            className="b3-btn b3-btn--cta whitespace-nowrap"
+            className="b3-btn whitespace-nowrap"
             title="Empréstimo, adiantamento ou débito histórico sem venda Mangos Pay"
           >
             <PlusIcon size={14} aria-hidden />
@@ -79,101 +80,73 @@ export function FinanceiroOverview({ overview }: FinanceiroOverviewProps) {
         </div>
       </div>
 
-      {/* KPI strip — 4 cards horizontais com hierarquia visual.
-          Saldo do mes recebe tamanho maior (24px) porque e a pergunta-mae. */}
+      {/* KPI strip Stripe-style. Saldo do mes em container destacado
+          (mangos-cream-soft + brand-line) — hierarquia por COR/CONTAINER,
+          nao por tamanho. Money em size=lg (18px) consistente. */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          label="Recebido este mês"
-          value={formatBRL(overview.recebidoMesInCents)}
+        <KpiStat
+          label="Recebido"
+          valueInCents={overview.recebidoMesInCents}
           tone="positive"
-          hint={overview.mesLabel}
         />
-        <KpiCard
-          label="Pago este mês"
-          value={formatBRL(overview.pagoMesInCents)}
+        <KpiStat
+          label="Pago"
+          valueInCents={overview.pagoMesInCents}
           tone="negative"
-          hint={overview.mesLabel}
         />
-        <KpiCard
+        <KpiStat
           label="Saldo do mês"
-          value={formatBRL(overview.saldoMesInCents)}
-          tone={saldoNegativo ? "negative-strong" : "positive-strong"}
+          valueInCents={overview.saldoMesInCents}
+          tone={saldoNegativo ? "negative" : "positive"}
+          highlight
           hint={
             saldoNegativo ? "Saiu mais do que entrou" : "Entrou mais do que saiu"
           }
-          highlight
         />
-        <KpiCard
+        <KpiStat
           label="Em aberto"
-          value={formatBRL(
-            overview.pendenteReceberInCents - overview.pendentePagarInCents,
-          )}
-          tone="neutral"
-          hint={`A receber ${formatBRL(overview.pendenteReceberInCents)} · A pagar ${formatBRL(overview.pendentePagarInCents)}`}
+          valueInCents={emAbertoNet}
+          tone="muted"
+          hint={`Receber R$ ${(overview.pendenteReceberInCents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} · Pagar R$ ${(overview.pendentePagarInCents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
         />
       </div>
     </header>
   );
 }
 
-type KpiTone =
-  | "positive"
-  | "positive-strong"
-  | "negative"
-  | "negative-strong"
-  | "neutral";
+type KpiTone = "positive" | "negative" | "muted" | "neutral";
 
-function KpiCard({
+function KpiStat({
   label,
-  value,
-  hint,
+  valueInCents,
   tone = "neutral",
   highlight = false,
+  hint,
 }: {
   label: string;
-  value: string;
-  hint?: string | null;
+  valueInCents: number;
   tone?: KpiTone;
   highlight?: boolean;
+  hint?: string;
 }) {
-  const iconMap: Record<KpiTone, React.ReactNode | null> = {
-    positive: null,
-    "positive-strong": (
-      <HandCoinsIcon className="text-emerald-700 size-4" aria-hidden />
-    ),
-    negative: null,
-    "negative-strong": (
-      <MinusCircleIcon className="text-rose-700 size-4" aria-hidden />
-    ),
-    neutral: null,
-  };
-
-  const valueClass = cn(
-    "tabular-nums leading-none mt-1 font-bold",
-    highlight ? "text-[24px]" : "text-[20px]",
-    tone === "positive" && "text-emerald-700",
-    tone === "positive-strong" && "text-emerald-700",
-    tone === "negative" && "text-rose-700",
-    tone === "negative-strong" && "text-rose-700",
-    tone === "neutral" && "text-ink-1",
-  );
-
   return (
     <div
       className={cn(
-        "b3-card p-4 transition-colors",
+        "b3-card p-3.5 transition-colors",
         highlight && "border-mangos-yellow-soft bg-mangos-cream-soft",
       )}
     >
-      <div className="flex items-center gap-1.5">
-        <p className="text-ink-4 text-[10.5px] font-bold uppercase tracking-[0.06em]">
-          {label}
-        </p>
-        {iconMap[tone]}
-      </div>
-      <p className={valueClass}>{value}</p>
+      <p className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-ink-4">
+        {label}
+      </p>
+      <Money
+        valueInCents={valueInCents}
+        size="lg"
+        tone={tone}
+        className="mt-1.5 block"
+      />
       {hint ? (
-        <p className="text-ink-4 mt-1 truncate text-[11px]">{hint}</p>
+        <p className="mt-1 truncate text-[11px] text-ink-4">{hint}</p>
       ) : null}
     </div>
   );

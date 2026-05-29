@@ -76,16 +76,12 @@ export function ExpensesPageClient({
   const [showCreate, setShowCreate] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Onda L2 — quando embedded em /admin/financeiro, escuta o evento
-  // disparado pelo CTA "+ Lançar despesa" do FinanceiroOverview e abre
-  // o form de criar. Em modo standalone (rota /financeiro/pagar antiga
-  // ainda existir), o CTA proprio continua funcionando.
-  useEffect(() => {
-    if (!embedded) return;
-    const onOpen = () => setShowCreate(true);
-    window.addEventListener(OPEN_NEW_EXPENSE_EVENT, onOpen);
-    return () => window.removeEventListener(OPEN_NEW_EXPENSE_EVENT, onOpen);
-  }, [embedded]);
+  // Onda R5 (2026-05-29) — listener do OPEN_NEW_EXPENSE_EVENT MOVIDO pra
+  // FinanceiroDialogsHost (vive sempre montado, qualquer tab). Founder
+  // reportou que despesa "nao abria" da tab "receber" porque listener
+  // estava preso aqui (embedded so monta em "pagar"). Em modo standalone
+  // (botao "Nova despesa" no header proprio do componente), showCreate
+  // ainda funciona via state local.
 
   function updateFilter(key: string, value: string | undefined) {
     const usp = new URLSearchParams(searchParams.toString());
