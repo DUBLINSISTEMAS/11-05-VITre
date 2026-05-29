@@ -97,7 +97,7 @@ export async function createExpense(
         .values(entries)
         .returning({ id: expenseTable.id });
 
-      revalidatePath("/admin/financeiro/pagar");
+      revalidatePath("/admin/financeiro");
       revalidatePath("/admin/relatorios/dre");
 
       return {

@@ -54,8 +54,9 @@ Fonte da verdade: `src/components/admin/shell/nav-items.ts`. Se divergir, o cód
 | Orçamentos | `/admin/orcamentos` |
 | Caixa do dia | `/admin/pdv/caixa` |
 | Estoque | `/admin/estoque` |
-| A receber | `/admin/financeiro/receber` |
-| A pagar | `/admin/financeiro/pagar` |
+| Financeiro | `/admin/financeiro` |
+
+> Financeiro = tela única com KPI saldo do mês + tabs `?tab=receber|pagar` + 2 CTAs verbais ("Lançar fiado" / "Lançar despesa"). Rotas `/admin/financeiro/receber` e `/admin/financeiro/pagar` viraram redirects server-side em Onda L2 (2026-05-29).
 
 > Nova venda = CTA `<NewSaleButton/>` no header de `/admin/pedidos` + atalho F2 global + Ctrl/Cmd+K. `/admin/pdv` segue vivo como fallback de URL.
 
@@ -144,8 +145,9 @@ Muda/cria tabela · consequência irreversível em ≤30 dias · outro dev preci
 - **Cadastro de produto**: abre como modal fullscreen (`ProductFormModal` 92vh/1400px max, Bloco F 2026-05-29 — substituiu Drawer Sheet) com 7 abas. Materiais somados atualizam o custo do produto no form e no banco. CTA "abrir produto" aceita `initialTab` pra deep-link em aba específica.
 - **Canais reais**: enum `order_channel` só tem `whatsapp` + `balcao`. "Venda externa/InfinitePay" e "Loja online" como canal próprio NÃO existem no banco. ⚠️
 - **Onda L1 fechada (2026-05-29)** — limpeza estrutural pedida pelo founder: **DELETADAS** `/admin/contatos` (Recados do site — feature morta) e `/admin/produtos/custos` (cards grandes duplicando /admin/produtos). Sidebar minimalista: 4 grupos com 17 itens visíveis (era 25). 3 referências de link pra `/admin/produtos/custos` redirecionadas pra `/admin/produtos`. `loadCustoProducts`, `update-cost-batch`, `LeadsReport`, `leadsAgg` (dashboard) e tudo da UI admin de leads removido. Tabela `lead` preservada (storefront ainda recebe via `submitContact`). Migration 0037+0038+0039 aplicadas no banco do founder (estavam pendentes).
+- **Onda L2 fechada (2026-05-29)** — Financeiro como planilha. "A receber" + "A pagar" consolidados em UMA tela `/admin/financeiro` com tabs `?tab=receber|pagar`. Header `FinanceiroOverview` central: H1 + 2 CTAs verbais ("Lançar fiado" / "Lançar despesa" via eventos `OPEN_NEW_RECEIVABLE_EVENT` / `OPEN_NEW_EXPENSE_EVENT`) + 4 KPIs (Recebido este mês / Pago este mês / **Saldo do mês** em destaque cream + ícone / Em aberto). Nova action `loadFinanceiroOverview` calcula tudo em 1 transação. `ExpensesPageClient` ganhou prop `embedded` que esconde header+KPIs próprios quando dentro da tela consolidada. Rotas antigas `/financeiro/receber` e `/financeiro/pagar` viraram redirects server-side (`redirect("/admin/financeiro?tab=*")`). Sidebar: 17 → 16 itens (1 menos). Vocabulário verbal aplicado: "Lançar fiado / Lançar despesa" (verbos), "Recebido / Pago / Saldo / Em aberto" (varejo BR, não Receita/Despesa de SaaS-EUA).
 - **Onda 2 fechada** (2026-05-28) — lucro líquido completo: PDV grava `commission_snapshot_in_cents` no `order_item` em todos os 3 INSERTs (sale + fiado + quote); `load-dre.ts` agrega `SUM(commission_snapshot)`; `/admin/relatorios/resultado` mostra linha "Comissão de vendedoras" no waterfall.
-- **Pendente Ondas L2-L6** (plano alinhado com founder 2026-05-29): L2 Financeiro como planilha (4 verbos: A receber, A pagar, Lançar despesa, Lançar pagamento), L3 Produto enxuto (ProductForm cai pra 3-4 abas + planilha densa em /admin/produtos com coluna custo+filtro "sem custo"), L4 Estoque consolidado (parado/vencendo/contagem viram tabs internas), L5 Loja online opt-in, L6 Cleanup vocabulário.
+- **Pendente Ondas L3-L6** (plano alinhado com founder 2026-05-29): L3 Produto enxuto (ProductForm cai pra 3-4 abas + planilha densa em /admin/produtos com coluna custo+filtro "sem custo"), L4 Estoque consolidado (parado/vencendo/contagem viram tabs internas), L5 Loja online opt-in, L6 Cleanup vocabulário.
 - **Construir** (norte do empresário): canal venda externa · meta mensal · comparação anual · automação proativa.
 
 Histórico congelado em `docs/sessoes/` e `docs/decisoes/` (ADRs). Norte vivo sobrescreve ADR conflitante.

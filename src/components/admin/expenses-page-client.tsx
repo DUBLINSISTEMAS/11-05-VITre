@@ -11,8 +11,10 @@
  */
 import { Edit2,Plus, Trash2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
+
+import { OPEN_NEW_EXPENSE_EVENT } from "./financeiro-events";
 
 import { deleteExpense } from "@/actions/expense/delete";
 import type { ExpenseRow,LoadExpensesResult } from "@/actions/expense/load";
@@ -51,12 +53,20 @@ interface ExpensesPageClientProps {
     category?: string;
     paid?: "all" | "paid" | "pending";
   };
+  /**
+   * Onda L2 (2026-05-29) — quando true, esconde o page header (H1 +
+   * sub + CTA "Nova despesa") e os KPIs proprios. Usado quando este
+   * componente vive dentro da tela `/admin/financeiro` que ja tem
+   * header + KPIs centralizados.
+   */
+  embedded?: boolean;
 }
 
 export function ExpensesPageClient({
   initialData,
   suppliers,
   initialFilters,
+  embedded = false,
 }: ExpensesPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -65,6 +75,17 @@ export function ExpensesPageClient({
   const [editingExpense, setEditingExpense] = useState<ExpenseRow | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Onda L2 — quando embedded em /admin/financeiro, escuta o evento
+  // disparado pelo CTA "+ Lançar despesa" do FinanceiroOverview e abre
+  // o form de criar. Em modo standalone (rota /financeiro/pagar antiga
+  // ainda existir), o CTA proprio continua funcionando.
+  useEffect(() => {
+    if (!embedded) return;
+    const onOpen = () => setShowCreate(true);
+    window.addEventListener(OPEN_NEW_EXPENSE_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_NEW_EXPENSE_EVENT, onOpen);
+  }, [embedded]);
 
   function updateFilter(key: string, value: string | undefined) {
     const usp = new URLSearchParams(searchParams.toString());
@@ -88,40 +109,45 @@ export function ExpensesPageClient({
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Page header */}
-      <div className="flex items-end justify-between">
-        <div>
-          <h1 className="b3-page-title">Contas a pagar</h1>
-          <p className="b3-page-sub">
-            Aluguel, salário, luz, taxa de máquina — despesas operacionais que
-            o DRE precisa pra mostrar o lucro real do mês.
-          </p>
+      {/* Page header — escondido em modo embedded (header centralizado vive
+          em FinanceiroOverview). */}
+      {!embedded ? (
+        <div className="flex items-end justify-between">
+          <div>
+            <h1 className="b3-page-title">Contas a pagar</h1>
+            <p className="b3-page-sub">
+              Aluguel, salário, luz, taxa de máquina — despesas operacionais
+              que o DRE precisa pra mostrar o lucro real do mês.
+            </p>
+          </div>
+          <Button
+            type="button"
+            onClick={() => setShowCreate(true)}
+            className="b3-btn b3-btn--cta"
+          >
+            <Plus size={14} aria-hidden />
+            Nova despesa
+          </Button>
         </div>
-        <Button
-          type="button"
-          onClick={() => setShowCreate(true)}
-          className="b3-btn b3-btn--cta"
-        >
-          <Plus size={14} aria-hidden />
-          Nova despesa
-        </Button>
-      </div>
+      ) : null}
 
-      {/* KPIs */}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="b3-card p-4">
-          <p className="text-ink-3 text-xs">Pago no período</p>
-          <p className="text-ink-1 mt-1 text-2xl font-semibold">
-            {formatBRL(initialData.totalPaidInCents)}
-          </p>
+      {/* KPIs — escondidos em modo embedded (centralizado). */}
+      {!embedded ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="b3-card p-4">
+            <p className="text-ink-3 text-xs">Pago no período</p>
+            <p className="text-ink-1 mt-1 text-2xl font-semibold">
+              {formatBRL(initialData.totalPaidInCents)}
+            </p>
+          </div>
+          <div className="b3-card p-4">
+            <p className="text-ink-3 text-xs">Pendente</p>
+            <p className="text-ink-1 mt-1 text-2xl font-semibold">
+              {formatBRL(initialData.totalPendingInCents)}
+            </p>
+          </div>
         </div>
-        <div className="b3-card p-4">
-          <p className="text-ink-3 text-xs">Pendente</p>
-          <p className="text-ink-1 mt-1 text-2xl font-semibold">
-            {formatBRL(initialData.totalPendingInCents)}
-          </p>
-        </div>
-      </div>
+      ) : null}
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">

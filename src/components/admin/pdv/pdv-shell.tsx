@@ -2822,7 +2822,7 @@ function CustomerComboboxLight({
                 </span>
               </span>
               <Link
-                href={`/admin/financeiro/receber?cliente=${customerId}`}
+                href={`/admin/financeiro?tab=receber&cliente=${customerId}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-ink-4 hover:text-ink-1 ml-auto text-[10.5px] underline"

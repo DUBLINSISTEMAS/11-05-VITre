@@ -228,7 +228,7 @@ export function ReceivablesReportClient({
     <>
       <div className="mb-4 flex flex-wrap items-center gap-3 print:hidden">
         <Link
-          href="/admin/financeiro/receber"
+          href="/admin/financeiro?tab=receber"
           prefetch
           className="text-ink-4 hover:text-ink-1 text-[11px] uppercase tracking-wide"
         >

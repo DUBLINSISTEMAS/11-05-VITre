@@ -127,7 +127,7 @@ export async function createStandaloneReceivable(
 
         if (!row) throw new Error("Falha ao gravar fiado.");
 
-        revalidatePath("/admin/financeiro/receber");
+        revalidatePath("/admin/financeiro");
         revalidatePath("/admin/clientes");
         revalidatePath("/admin");
 

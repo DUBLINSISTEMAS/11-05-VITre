@@ -254,7 +254,7 @@ export function OrderReturnDialog({
                 Voltar
               </Button>
               <Button asChild>
-                <Link href={`/admin/financeiro/receber?receivable=${pendingReceivable.receivableId}`}>
+                <Link href={`/admin/financeiro?tab=receber&receivable=${pendingReceivable.receivableId}`}>
                   Abrir fiado
                 </Link>
               </Button>

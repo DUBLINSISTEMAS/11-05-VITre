@@ -753,8 +753,8 @@ export async function createPurchase(
         revalidatePath("/admin/produtos");
         revalidatePath("/admin/estoque");
         revalidatePath("/admin/pdv/caixa");
-        // Bloco H — expenses derivadas afetam /financeiro/pagar.
-        revalidatePath("/admin/financeiro/pagar");
+        // Bloco H — expenses derivadas afetam /admin/financeiro.
+        revalidatePath("/admin/financeiro");
 
         logger.info("purchase.created", {
           storeId: ctx.store.id,

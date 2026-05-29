@@ -52,7 +52,7 @@ export async function deleteExpense(input: {
         );
     });
 
-    revalidatePath("/admin/financeiro/pagar");
+    revalidatePath("/admin/financeiro");
     revalidatePath("/admin/relatorios/dre");
     return { ok: true };
   } catch (e) {

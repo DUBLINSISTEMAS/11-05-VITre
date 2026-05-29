@@ -177,11 +177,11 @@ test("Sprint 2.1: UI OrderReturnDialog cobre full + partial + fiado guiado", () 
     /it\.quantity - it\.quantityReturned/,
     "dialog deve calcular saldo (vendido - já devolvido)",
   );
-  // Botão Abrir fiado leva pra tela de receber
+  // Botão Abrir fiado leva pra tela consolidada de Financeiro tab=receber (L2).
   assert.match(
     ui,
-    /\/admin\/financeiro\/receber\?receivable=/,
-    "tela de fiado pendente deve linkar pra /admin/financeiro/receber com receivableId",
+    /\/admin\/financeiro\?tab=receber&receivable=/,
+    "tela de fiado pendente deve linkar pra /admin/financeiro?tab=receber com receivableId",
   );
 });
 

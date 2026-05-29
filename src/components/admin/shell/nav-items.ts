@@ -2,10 +2,10 @@
 // soon:true → renderizado como disabled com badge "em breve" pelo sidebar-content.
 import {
   ArrowLeftRightIcon,
+  BanknoteIcon,
   BarChart2Icon,
   BookOpenIcon,
   Building2Icon,
-  ClockIcon,
   CreditCardIcon,
   FileTextIcon,
   FolderIcon,
@@ -91,8 +91,9 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
       { k: "orcamentos", label: "Orçamentos",     icon: FileTextIcon,       href: "/admin/orcamentos"         },
       { k: "caixa",      label: "Caixa do dia",   icon: WalletIcon,         href: "/admin/pdv/caixa"          },
       { k: "estoque",    label: "Estoque",        icon: ArrowLeftRightIcon, href: "/admin/estoque", exact: true },
-      { k: "receber",    label: "A receber",      icon: ClockIcon,          href: "/admin/financeiro/receber" },
-      { k: "pagar",      label: "A pagar",        icon: ClockIcon,          href: "/admin/financeiro/pagar"   },
+      // Onda L2 (2026-05-29) — "A receber" + "A pagar" consolidados em
+      // "Financeiro" (tela unica com KPI saldo do mes + tabs).
+      { k: "financeiro", label: "Financeiro",     icon: BanknoteIcon,       href: "/admin/financeiro"         },
     ],
   },
   {

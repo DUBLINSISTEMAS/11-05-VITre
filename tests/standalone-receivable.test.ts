@@ -39,7 +39,8 @@ test("createStandaloneReceivable amount > 0 obrigatório (Zod)", () => {
 
 test("createStandaloneReceivable revalida paths do fluxo de fiado", () => {
   const s = loadSource();
-  assert.match(s, /revalidatePath\(["']\/admin\/financeiro\/receber["']\)/);
+  // Onda L2 (2026-05-29) — rota consolidada em /admin/financeiro.
+  assert.match(s, /revalidatePath\(["']\/admin\/financeiro["']\)/);
 });
 
 test("createStandaloneReceivable aceita dueDate nulo (sem vencimento)", () => {

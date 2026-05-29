@@ -77,7 +77,8 @@ test("recordReceivablePayment gera cash_adjustment 'other_in' quando há caixa a
 
 test("recordReceivablePayment revalida paths críticos", () => {
   const s = loadActionSource();
-  assert.match(s, /revalidatePath\(["']\/admin\/financeiro\/receber["']\)/);
+  // Onda L2 (2026-05-29) — rota consolidada em /admin/financeiro.
+  assert.match(s, /revalidatePath\(["']\/admin\/financeiro["']\)/);
   assert.match(s, /revalidatePath\(["']\/admin\/pdv\/caixa["']\)/);
 });
 

@@ -303,7 +303,7 @@ if (fiadoOverdue > 0 || fiadoDueToday > 0) {
           fiadoOverdue > 0 && fiadoDueToday > 0
             ? `+ ${fiadoDueToday} vencem hoje`
             : undefined,
-        href: "/admin/financeiro/receber?status=overdue",
+        href: "/admin/financeiro?tab=receber&status=overdue",
         severity,
         count: fiadoOverdue + fiadoDueToday,
       });

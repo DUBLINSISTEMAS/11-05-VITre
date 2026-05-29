@@ -233,7 +233,7 @@ export async function recordReceivablePayment(
           }
         }
 
-        revalidatePath("/admin/financeiro/receber");
+        revalidatePath("/admin/financeiro");
         revalidatePath("/admin/clientes");
         revalidatePath("/admin");
         revalidatePath("/admin/pdv/caixa");

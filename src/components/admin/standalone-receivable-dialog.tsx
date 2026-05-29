@@ -301,7 +301,7 @@ export function StandaloneReceivableDialog({
           <div className="text-ink-4 mb-3 flex items-start gap-2 text-[11px]">
             <CheckCircle2Icon size={12} className="mt-0.5 shrink-0" />
             <span>
-              Vai entrar em <code className="text-ink-2">/admin/financeiro/receber</code>{" "}
+              Vai entrar em <code className="text-ink-2">/admin/financeiro</code>{" "}
               ao lado das vendas fiadas. Pagamento pode ser parcial pelo dialog
               de recebimento.
             </span>

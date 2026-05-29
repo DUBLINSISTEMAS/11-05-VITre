@@ -289,7 +289,7 @@ export function ResultadoClient({
               Abrir Vendas
             </Link>
             <Link
-              href="/admin/financeiro/pagar"
+              href="/admin/financeiro?tab=pagar"
               className="b3-btn"
               prefetch
             >
@@ -460,7 +460,7 @@ export function ResultadoClient({
                 Sem isso, esse &ldquo;lucro&rdquo; é otimista.{" "}
               </em>
               <Link
-                href="/admin/financeiro/pagar"
+                href="/admin/financeiro?tab=pagar"
                 className="font-semibold underline"
                 prefetch
               >

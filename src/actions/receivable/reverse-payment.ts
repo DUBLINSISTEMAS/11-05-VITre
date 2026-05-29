@@ -233,7 +233,7 @@ export async function reverseReceivablePayment(
           cashAdjustmentId = adj?.id ?? null;
         }
 
-        revalidatePath("/admin/financeiro/receber");
+        revalidatePath("/admin/financeiro");
         revalidatePath("/admin");
         revalidatePath("/admin/pdv/caixa");
 
