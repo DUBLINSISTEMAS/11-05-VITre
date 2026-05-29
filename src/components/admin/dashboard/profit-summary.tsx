@@ -117,7 +117,9 @@ function PrimaryBlock({ window }: { window: DashboardLucroWindow }) {
       <div className="mt-1 flex items-baseline gap-3">
         <Money valueInCents={profit} size="kpi" tone={tone} />
         <span className="text-[12px] tabular-nums text-ink-3">
-          {margin.toFixed(1).replace(".", ",")}% de margem
+          {margin == null || Number.isNaN(margin)
+            ? "— margem"
+            : `${margin.toFixed(1).replace(".", ",")}% de margem`}
         </span>
       </div>
 

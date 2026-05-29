@@ -237,6 +237,12 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
       // Audit 2026-05-26 — qty total de itens (sum quantity) por pedido,
       // pra exibir como coluna "Itens" sem N+1.
       const itemQtyByOrderId = new Map<string, number>();
+      // Onda R3 — agregacoes pra lucro real por venda. Declaradas FORA do if
+      // porque o return em ~393 referencia elas independente de orderIds vazio.
+      const costByOrderId = new Map<string, number>();
+      const qtyWithCostByOrderId = new Map<string, number>();
+      const commissionByOrderId = new Map<string, number>();
+      const cardFeeByOrderId = new Map<string, number>();
       if (orderIds.length > 0) {
         const rows = await tx
           .select({
@@ -269,9 +275,6 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
           .from(orderItemTable)
           .where(inArray(orderItemTable.orderId, orderIds))
           .groupBy(orderItemTable.orderId);
-        const costByOrderId = new Map<string, number>();
-        const qtyWithCostByOrderId = new Map<string, number>();
-        const commissionByOrderId = new Map<string, number>();
         for (const r of itemRows) {
           itemQtyByOrderId.set(r.orderId, Number(r.qty));
           costByOrderId.set(r.orderId, Number(r.costTotal));
@@ -290,7 +293,6 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
           .from(orderPaymentTable)
           .where(inArray(orderPaymentTable.orderId, orderIds))
           .groupBy(orderPaymentTable.orderId);
-        const cardFeeByOrderId = new Map<string, number>();
         for (const r of cardFeeRows) {
           cardFeeByOrderId.set(r.orderId, Number(r.cardFeeTotal));
         }
