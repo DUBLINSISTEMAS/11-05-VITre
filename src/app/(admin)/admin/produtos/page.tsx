@@ -13,11 +13,19 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { sql } from "drizzle-orm";
-import { PackageIcon, PlusIcon, SearchXIcon } from "lucide-react";
+import {
+  CheckCircle2Icon,
+  CoinsIcon,
+  PackageIcon,
+  PackageXIcon,
+  PlusIcon,
+  SearchXIcon,
+} from "lucide-react";
 import { Suspense } from "react";
 import { z } from "zod";
 
 import type { CategoryOption } from "@/components/admin/category-dialog";
+import { KpiTile } from "@/components/admin/dashboard/kpi-tile";
 import { ProductCreateButton } from "@/components/admin/product-create-button";
 import { ProductsErrorToast } from "@/components/admin/products-error-toast";
 import { ProductsGrid } from "@/components/admin/products-grid";
@@ -506,28 +514,19 @@ export default async function ProdutosPage({
 
   return (
     <div className="b3-page">
-      {/* S4 (handoff pixel-perfect 2026-05-25): h1 vira `.b3-page-title`
-          + p vira `.b3-page-sub` (handoff produtos.jsx:26-27). Wrapper
-          b3-page-hd dá o flex layout pro h1+sub à esquerda + actions à
-          direita. ProductsStatusTabs mantém "Todos" (masculine concorda
-          com "produtos") em vez de "Todas" (que seria pra "vendas"). */}
-      <div className="b3-page-hd">
-        <div>
+      {/* Header — Onda M5 (2026-05-29): eyebrow + titulo maior + actions */}
+      <div className="b3-dashboard-hd">
+        <div className="b3-page-title-wrap">
+          <span className="b3-page-eyebrow">Cadastros</span>
           <h1 className="b3-page-title">Produtos</h1>
-          {/* Subtítulo dinâmico — conta total inclui rascunhos pra refletir
-              o universo real do CRUD; "sem estoque" só conta produtos com
-              controle ativo (não conta no-tracking). */}
           <p className="b3-page-sub">
             {tabCounts.all + tabCounts.draft}{" "}
             {tabCounts.all + tabCounts.draft === 1
               ? "produto cadastrado"
               : "produtos cadastrados"}
-            {tabCounts["no-stock"] > 0
-              ? ` · ${tabCounts["no-stock"]} sem estoque`
-              : ""}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="b3-dashboard-hd-actions">
           <ProductCreateButton />
         </div>
       </div>
@@ -535,6 +534,67 @@ export default async function ProdutosPage({
       <Suspense fallback={null}>
         <ProductsErrorToast />
       </Suspense>
+
+      {/* KPI row do catalogo — Onda M5 (2026-05-29). Consome tabCounts.
+          Sem estoque + Sem custo sao acionaveis: pill rosa quando >0,
+          empty "Zero" cinza quando OK. */}
+      <section
+        className="b3-kpi-grid"
+        aria-label="Indicadores do catálogo"
+      >
+        <KpiTile
+          label="Cadastrados"
+          Icon={PackageIcon}
+          accent="cream"
+          value={String(tabCounts.all + tabCounts.draft)}
+          empty={tabCounts.all + tabCounts.draft === 0}
+          hint={
+            tabCounts.draft > 0
+              ? `${tabCounts.draft} rascunho${tabCounts.draft === 1 ? "" : "s"}`
+              : "todos publicáveis"
+          }
+        />
+        <KpiTile
+          label="Ativos"
+          Icon={CheckCircle2Icon}
+          accent="green"
+          value={String(tabCounts.active)}
+          empty={tabCounts.active === 0}
+          hint={
+            tabCounts.inactive > 0
+              ? `${tabCounts.inactive} pausado${tabCounts.inactive === 1 ? "" : "s"}`
+              : "nenhum pausado"
+          }
+        />
+        <KpiTile
+          label="Sem estoque"
+          Icon={PackageXIcon}
+          accent="rose"
+          invertedTone
+          value={String(tabCounts["no-stock"])}
+          empty={tabCounts["no-stock"] === 0}
+          emptyLabel="Zero"
+          hint={
+            tabCounts["no-stock"] > 0
+              ? "ver na aba Sem estoque"
+              : "estoque ok"
+          }
+        />
+        <KpiTile
+          label="Sem custo"
+          Icon={CoinsIcon}
+          accent="yellow"
+          invertedTone
+          value={String(tabCounts["no-cost"])}
+          empty={tabCounts["no-cost"] === 0}
+          emptyLabel="Zero"
+          hint={
+            tabCounts["no-cost"] > 0
+              ? "DRE fica otimista"
+              : "DRE fecha honesto"
+          }
+        />
+      </section>
 
       {/* Empty state fresh (sem pedidos + sem filtros) FORA do card */}
       {products.length === 0 && !hasFilters ? (

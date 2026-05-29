@@ -59,7 +59,7 @@ export interface AdminNavSection {
  */
 export const ADMIN_NAV_HOME: AdminNavItem = {
   k: "inicio",
-  label: "Início",
+  label: "Dashboard",
   icon: LayoutDashboardIcon,
   href: "/admin",
   exact: true,

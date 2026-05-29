@@ -1,27 +1,29 @@
 "use client";
 
 /**
- * FinanceiroOverview — Onda L2 (2026-05-29), repaginado em R5 (2026-05-29).
+ * FinanceiroOverview — Onda L2 (2026-05-29), repaginado em R5 (2026-05-29),
+ * unificado com a linguagem visual do dashboard em M5 (2026-05-29).
  *
  * Header centralizado da tela `/admin/financeiro`:
- *   - H1 "Financeiro" + sub-titulo
- *   - KPI strip horizontal Stripe-style: peso/cor, NAO splash
+ *   - Eyebrow "Operação" + H1 "Financeiro" + sub-titulo
  *   - 2 CTAs verbais: "Lancar fiado" / "Lancar despesa"
+ *   - KPI grid com 4 tiles consistentes com Dashboard/Vendas/Produtos
  *
- * Onda R5 — sistema-minimalista. Saldo do mes SEGUE com cor pelo sinal
- * (verde >=0, vermelho <0) mas SEM splash 24px gigante. Hierarquia agora
- * vem de peso (700) + cor + container destacado, nao de tamanho.
- * Money component canonico.
- *
- * Vocabulario PT-BR varejo. Founder pediu "planilha financeira",
- * nao SaaS-EUA.
+ * Saldo do mes mantem destaque pelo accent "highlight" (cream + border
+ * yellow + hover shadow yellow). Vocabulario PT-BR varejo.
  */
 
-import { PlusIcon } from "lucide-react";
+import {
+  ArrowDownCircleIcon,
+  ArrowUpCircleIcon,
+  ClockIcon,
+  PlusIcon,
+  ScaleIcon,
+} from "lucide-react";
 
 import type { FinanceiroOverview as Overview } from "@/actions/financeiro/load-overview";
-import { Money } from "@/components/ui/money";
-import { cn } from "@/lib/utils";
+import { KpiTile } from "@/components/admin/dashboard/kpi-tile";
+import { formatBRL } from "@/lib/pricing";
 
 import {
   OPEN_NEW_EXPENSE_EVENT,
@@ -47,18 +49,17 @@ export function FinanceiroOverview({ overview }: FinanceiroOverviewProps) {
 
   return (
     <header className="space-y-4">
-      {/* Titulo + sub + CTAs */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
+      {/* Header — Onda M5: eyebrow + titulo maior + 2 CTAs verbais. */}
+      <div className="b3-dashboard-hd">
+        <div className="b3-page-title-wrap">
+          <span className="b3-page-eyebrow">Operação</span>
           <h1 className="b3-page-title">Financeiro</h1>
           <p className="b3-page-sub">
             Tudo que entra e sai num lugar só. {overview.mesLabel}.
           </p>
         </div>
 
-        {/* CTAs sticky em mobile (R5): garantem descoberta da acao.
-            Lojista nao precisa procurar onde lancar despesa. */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="b3-dashboard-hd-actions">
           <button
             type="button"
             onClick={dispatchNewReceivable}
@@ -80,74 +81,50 @@ export function FinanceiroOverview({ overview }: FinanceiroOverviewProps) {
         </div>
       </div>
 
-      {/* KPI strip Stripe-style. Saldo do mes em container destacado
-          (mangos-cream-soft + brand-line) — hierarquia por COR/CONTAINER,
-          nao por tamanho. Money em size=lg (18px) consistente. */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiStat
+      {/* KPI grid consistente com Dashboard/Vendas/Produtos. Saldo do mes
+          ganha accent="highlight" (cream + yellow border) — hierarquia
+          por container, nao por tamanho. */}
+      <section
+        className="b3-kpi-grid"
+        aria-label="Resumo financeiro do mês"
+      >
+        <KpiTile
           label="Recebido"
-          valueInCents={overview.recebidoMesInCents}
-          tone="positive"
+          Icon={ArrowUpCircleIcon}
+          accent="green"
+          value={formatBRL(overview.recebidoMesInCents)}
+          empty={overview.recebidoMesInCents === 0}
+          hint="entradas confirmadas"
         />
-        <KpiStat
+        <KpiTile
           label="Pago"
-          valueInCents={overview.pagoMesInCents}
-          tone="negative"
+          Icon={ArrowDownCircleIcon}
+          accent="rose"
+          value={formatBRL(overview.pagoMesInCents)}
+          empty={overview.pagoMesInCents === 0}
+          hint="saídas confirmadas"
         />
-        <KpiStat
+        <KpiTile
           label="Saldo do mês"
-          valueInCents={overview.saldoMesInCents}
-          tone={saldoNegativo ? "negative" : "positive"}
-          highlight
+          Icon={ScaleIcon}
+          accent="highlight"
+          value={formatBRL(overview.saldoMesInCents)}
+          empty={overview.saldoMesInCents === 0}
           hint={
-            saldoNegativo ? "Saiu mais do que entrou" : "Entrou mais do que saiu"
+            saldoNegativo
+              ? "Saiu mais do que entrou"
+              : "Entrou mais do que saiu"
           }
         />
-        <KpiStat
+        <KpiTile
           label="Em aberto"
-          valueInCents={emAbertoNet}
-          tone="muted"
-          hint={`Receber R$ ${(overview.pendenteReceberInCents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} · Pagar R$ ${(overview.pendentePagarInCents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
+          Icon={ClockIcon}
+          accent="cream"
+          value={formatBRL(emAbertoNet)}
+          empty={emAbertoNet === 0}
+          hint={`Receber ${formatBRL(overview.pendenteReceberInCents)} · Pagar ${formatBRL(overview.pendentePagarInCents)}`}
         />
-      </div>
+      </section>
     </header>
-  );
-}
-
-type KpiTone = "positive" | "negative" | "muted" | "neutral";
-
-function KpiStat({
-  label,
-  valueInCents,
-  tone = "neutral",
-  highlight = false,
-  hint,
-}: {
-  label: string;
-  valueInCents: number;
-  tone?: KpiTone;
-  highlight?: boolean;
-  hint?: string;
-}) {
-  return (
-    <div
-      className={cn(
-        "b3-card p-3.5 transition-colors",
-        highlight && "border-mangos-yellow-soft bg-mangos-cream-soft",
-      )}
-    >
-      <p className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-ink-4">
-        {label}
-      </p>
-      <Money
-        valueInCents={valueInCents}
-        size="lg"
-        tone={tone}
-        className="mt-1.5 block"
-      />
-      {hint ? (
-        <p className="mt-1 truncate text-[11px] text-ink-4">{hint}</p>
-      ) : null}
-    </div>
   );
 }

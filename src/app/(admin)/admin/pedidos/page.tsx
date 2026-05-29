@@ -1,10 +1,18 @@
 import { and, count, desc, eq, gte, ilike, inArray, lte, or, type SQL, sql } from "drizzle-orm";
-import { ReceiptIcon, SearchXIcon } from "lucide-react";
+import {
+  AlertTriangleIcon,
+  CoinsIcon,
+  ReceiptIcon,
+  SearchXIcon,
+  WalletIcon,
+} from "lucide-react";
+import Link from "next/link";
 import { Suspense } from "react";
 import { z } from "zod";
 
 import { loadActiveCashSession } from "@/actions/cash-session/load";
 import { ORDER_STATUS_VALUES } from "@/actions/order/schema";
+import { KpiTile } from "@/components/admin/dashboard/kpi-tile";
 import { NewSaleButton } from "@/components/admin/dashboard/new-sale-button";
 import { OrdersExportCsvButton } from "@/components/admin/orders-export-csv-button";
 import {
@@ -35,6 +43,7 @@ import {
   pageNumberSchema,
   searchTextSchema,
 } from "@/lib/page-search-params";
+import { formatBRL } from "@/lib/pricing";
 import {
   calculateNetProfit,
   type PaymentMethodCategory,
@@ -517,20 +526,16 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
           dia espera 1-3s em conexão de cidade do interior (audit 2026-05-26). */}
       <PdvPrefetcher />
 
-      {/* H1 + subtítulo + ações. Nova venda volta pro header (audit
-          2026-05-28): a refatoração Finexy tirou o CTA do topbar mas
-          ninguém replantou — F2/Cmd+K continuam funcionando como atalho,
-          mas lojista no celular ou que não conhece atalho não tem
-          affordance pra abrir o modal. Régua "funciona ou esconde": o
-          caminho principal da rota tem que ter botão visível. */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
+      {/* Header — Onda M5 (2026-05-29): eyebrow + titulo maior + actions */}
+      <div className="b3-dashboard-hd">
+        <div className="b3-page-title-wrap">
+          <span className="b3-page-eyebrow">Operação</span>
           <h1 className="b3-page-title">Vendas</h1>
           <p className="b3-page-sub">
             Pedidos de balcão (PDV) e online (loja + WhatsApp)
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="b3-dashboard-hd-actions">
           <NewSaleButton />
           <PrintPageButton label="Imprimir lista" />
           <OrdersExportCsvButton />
@@ -541,6 +546,63 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
           monitora status na própria página de Vendas e pode abrir caixa
           aqui antes de começar a vender no modal. */}
       <CashSessionStatus active={cashSessionForBanner} />
+
+      {/* KPI row do periodo — Onda M5 (2026-05-29). Consome periodSummary
+          + incompleteSales (ja agregados). Mostra o resumo da listagem
+          filtrada (q + canal + de/ate + fiado). */}
+      <section
+        className="b3-kpi-grid"
+        aria-label="Indicadores do período filtrado"
+      >
+        <KpiTile
+          label="Vendas no período"
+          Icon={ReceiptIcon}
+          accent="green"
+          value={String(periodSummary.count)}
+          empty={periodSummary.count === 0}
+          emptyLabel="0"
+          hint={
+            hasFilters
+              ? "filtros aplicados"
+              : `${rangeStart}–${rangeEnd} de ${total}`
+          }
+        />
+        <KpiTile
+          label="Faturamento"
+          Icon={WalletIcon}
+          accent="yellow"
+          value={formatBRL(periodSummary.totalInCents)}
+          empty={periodSummary.totalInCents === 0}
+          hint="exclui canceladas e expiradas"
+        />
+        <KpiTile
+          label="Ticket médio"
+          Icon={CoinsIcon}
+          accent="cream"
+          value={formatBRL(periodSummary.ticketAverageInCents)}
+          empty={periodSummary.count === 0}
+          emptyLabel="—"
+          hint={
+            periodSummary.count > 0
+              ? `${periodSummary.count} ${periodSummary.count === 1 ? "venda" : "vendas"}`
+              : "sem dados"
+          }
+        />
+        <KpiTile
+          label="Custo incompleto"
+          Icon={AlertTriangleIcon}
+          accent="rose"
+          invertedTone
+          value={String(incompleteSales)}
+          empty={incompleteSales === 0}
+          emptyLabel="Nenhuma"
+          hint={
+            incompleteSales > 0
+              ? `de ${salesRows.length} vendas · lucro otimista`
+              : "todas com custo cadastrado"
+          }
+        />
+      </section>
 
       {orders.length === 0 && !hasFilters ? (
         <EmptyState />
@@ -582,12 +644,13 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
                 {" "}de {salesRows.length} vendas com{" "}
                 <span className="font-medium">custo incompleto</span> — lucro mostrado é otimista.
               </span>
-              <a
+              <Link
                 href="/admin/produtos?status=no-cost"
+                prefetch
                 className="font-medium text-mangos-green-800 underline-offset-2 hover:underline"
               >
                 Preencher custos →
-              </a>
+              </Link>
             </div>
           ) : null}
 

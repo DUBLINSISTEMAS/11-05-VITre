@@ -2,14 +2,13 @@ import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { loadActiveCashSession } from "@/actions/cash-session/load";
+import { loadDashboardChannels } from "@/actions/dashboard/load-channels";
 import { loadDashboardKpis } from "@/actions/dashboard/load-kpis";
 import { loadDashboardSinais } from "@/actions/dashboard/load-sinais";
 import { loadDashboardLucro } from "@/actions/reports/load-dashboard-lucro";
+import { ChannelsCard } from "@/components/admin/dashboard/channels-card";
 import { DateRangePill } from "@/components/admin/dashboard/date-range-pill";
-// Onda R4 (2026-05-29) — HeroLucro splash deletado. ProfitSummary
-// Stripe-style: 1 numero principal modesto + delta + breakdown denso.
-// Founder pediu sistema-minimalista, nao SaaS-EUA.
-import { ProfitSummary } from "@/components/admin/dashboard/profit-summary";
+import { DashboardKpiRow } from "@/components/admin/dashboard/kpi-row";
 // Onda M4 (2026-05-29) — KpisSecundarios e ProdutosBombando removidos do
 // dashboard. KpisSecundarios duplicava info do HeroLucro (lucrou ontem +
 // semana ja cobre faturamento). ProdutosBombando era info nao-acionavel
@@ -24,6 +23,10 @@ import {
   OnboardingProgressStrip,
 } from "@/components/admin/dashboard/onboarding-checklist";
 import { PegandoFogo } from "@/components/admin/dashboard/pegando-fogo";
+// Onda R4 (2026-05-29) — HeroLucro splash deletado. ProfitSummary
+// Stripe-style: 1 numero principal modesto + delta + breakdown denso.
+// Founder pediu sistema-minimalista, nao SaaS-EUA.
+import { ProfitSummary } from "@/components/admin/dashboard/profit-summary";
 import {
   type RecentOrderRow,
   RecentOrdersTable,
@@ -190,11 +193,12 @@ export default async function AdminHomePage({
   // Onda M4 (2026-05-29) — loadProdutosBombando removido junto com o
   // componente que consumia. loadDashboardKpis ainda carrega porque
   // LojaOnlineSnapshot consome o subset `lojaOnline`.
-  const [lucroData, sinaisData, kpisData, activeCashSession] =
+  const [lucroData, sinaisData, kpisData, channelsData, activeCashSession] =
     await Promise.all([
       loadDashboardLucro(),
       loadDashboardSinais(),
       loadDashboardKpis({ periodoDays: periodo }),
+      loadDashboardChannels({ periodoDays: periodo }),
       loadActiveCashSession(),
     ]);
 
@@ -257,7 +261,10 @@ export default async function AdminHomePage({
   if (isFreshStore) {
     return (
       <div className="b3-page">
-        <h1 className="b3-page-title">Como tá o negócio hoje</h1>
+        <div className="b3-page-title-wrap">
+          <span className="b3-page-eyebrow">Visão geral</span>
+          <h1 className="b3-page-title">Dashboard</h1>
+        </div>
         <OnboardingChecklist storeName={store.name} steps={onboardingSteps} />
       </div>
     );
@@ -288,41 +295,32 @@ export default async function AdminHomePage({
         ? "Últimos 30 dias"
         : "Últimos 90 dias";
 
+  const compareLabel =
+    periodo === 7
+      ? "7 dias atrás"
+      : periodo === 30
+        ? "30 dias atrás"
+        : "90 dias atrás";
+
   return (
-    <div className="b3-page">
-      {/* Header da página: título + actions (DateRangePill + Nova venda).
-          Mobile empilha em coluna; desktop fica lado a lado. */}
+    <div className="b3-page b3-dashboard-page">
+      {/* Header: eyebrow + title à esquerda · period + Nova venda à direita.
+          Mobile empilha em coluna full-width. */}
       <div className="b3-dashboard-hd">
-        <h1 className="b3-page-title">Como tá o negócio hoje</h1>
+        <div className="b3-page-title-wrap">
+          <span className="b3-page-eyebrow">Visão geral</span>
+          <h1 className="b3-page-title">Dashboard</h1>
+        </div>
         <div className="b3-dashboard-hd-actions">
           <DateRangePill periodo={periodo} />
           <NewSaleButton />
         </div>
       </div>
 
-      {/* Bloco E1 UX (2026-05-29): faixa fina enquanto loja não fechou
-          todos os passos de configuração. Substitui o some-tudo do
-          checklist anterior. */}
+      {/* Onboarding strip — só aparece quando há passos pendentes. */}
       <OnboardingProgressStrip steps={onboardingSteps} />
 
-      {/* Onda R4 — ProfitSummary. 1 numero principal (essa semana, mais
-          estavel que dia) + delta + breakdown denso inline. Ontem fica
-          como SecondaryBlock menor. Eliminado splash do HeroLucro. */}
-      {lucroData ? (
-        <ProfitSummary
-          primary={lucroData.thisWeek}
-          secondary={lucroData.yesterday}
-        />
-      ) : null}
-
-      {/* Bloco E2 UX (2026-05-29) — primeiro toque do dia do lojista
-          de balcão é o caixa. Estado aberto: mostra duração + esperado
-          + venda count + "Gerenciar caixa". Estado fechado: CTA "Abrir
-          caixa" com OpenCashDialog inline. Sem isso, lojista entrava
-          no admin e ia adivinhando se já tinha aberto ou não.
-          Adapter inline: CashSessionStatus espera o shape achatado
-          {id, openedAt, openingAmountInCents, expectedInCents, saleCount},
-          loadActiveCashSession devolve {session: CashSession, expected, ...}. */}
+      {/* Caixa do dia — primeiro toque do balcão. Full-width sempre. */}
       <CashSessionStatus
         active={
           activeCashSession
@@ -338,32 +336,54 @@ export default async function AdminHomePage({
         }
       />
 
-      {/* Pegando fogo agora — Bloco F.2.2.
-          Sinais DELTA do dia (não fila acumulada). Vazio = "Tudo em dia".
-          Onda M4 (2026-05-29) — promovido a largura inteira porque a coluna
-          ProdutosBombando foi cortada. Sinal urgente merece destaque. */}
-      <PegandoFogo
-        items={sinaisData.items}
-        allClear={sinaisData.allClear}
-        checkedAt={sinaisData.checkedAt}
-        failedChecks={sinaisData.failedChecks}
-      />
+      {/* Linha de KPIs — 4 stat-tiles do período (Vendas / Faturamento /
+          Clientes novos / Devoluções). Reference Shopeers, paleta Mangos. */}
+      {kpisData ? (
+        <DashboardKpiRow
+          kpis={kpisData.kpis}
+          compareLabel={compareLabel}
+        />
+      ) : null}
 
-      {/* Bloco E3 UX (2026-05-29) — TotalIncomeChart (8m receita vs
-          despesa) removido: bonito mas sem ação. Mesma análise existe
-          em /admin/relatorios/resultado. Revenue chart ocupa largura
-          inteira agora — comparação de dia-a-dia fica mais legível. */}
+      {/* GRID 12-col (Onda M5, 2026-05-29) — reorganização Shopeers-style.
+          Hero de Lucro à esquerda (8/12), Pegando fogo à direita (4/12). */}
+      <div className="b3-dashboard-grid">
+        <div className="b3-dashboard-col-main">
+          {lucroData ? (
+            <ProfitSummary
+              primary={lucroData.thisWeek}
+              secondary={lucroData.yesterday}
+            />
+          ) : null}
+        </div>
+        <div className="b3-dashboard-col-side">
+          <PegandoFogo
+            items={sinaisData.items}
+            allClear={sinaisData.allClear}
+            checkedAt={sinaisData.checkedAt}
+            failedChecks={sinaisData.failedChecks}
+          />
+        </div>
+      </div>
+
+      {/* Gráfico de receita — full width pra dia-a-dia ficar legível. */}
       <RevenueAnalyticsChart data={revenueSeries} periodLabel={periodLabel} />
 
-      {/* Tabela de vendas recentes */}
-      <RecentOrdersTable orders={recentRows} />
-
-      {/* Mini-snapshot da loja online — Bloco F.2.4. Linha compacta no
-          rodapé respondendo a pergunta-mãe #7 ("Como tá indo a loja online?").
-          Mostra apenas o acionável: recados aguardando, produtos sem foto,
-          contagem de publicados + link pro storefront. Sem analytics de
-          visitas/conversão (fora do escopo F sem Plausible). */}
-      {kpisData ? <LojaOnlineSnapshot data={kpisData.lojaOnline} /> : null}
+      {/* Segunda linha de grid: Vendas recentes (8/12) + Canais + Loja online (4/12). */}
+      <div className="b3-dashboard-grid">
+        <div className="b3-dashboard-col-main">
+          <RecentOrdersTable orders={recentRows} />
+        </div>
+        <div className="b3-dashboard-col-side">
+          {channelsData ? (
+            <ChannelsCard
+              data={channelsData}
+              periodLabel={periodLabel}
+            />
+          ) : null}
+          {kpisData ? <LojaOnlineSnapshot data={kpisData.lojaOnline} /> : null}
+        </div>
+      </div>
     </div>
   );
 }

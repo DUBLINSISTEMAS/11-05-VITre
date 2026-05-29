@@ -1135,12 +1135,13 @@
     margin-top: 6px;
   }
   .b3-side-section-label {
-    padding: 6px 24px 6px;
+    padding: 10px 24px 4px;
     font-size: 10.5px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
+    font-weight: 700;
+    letter-spacing: 0.08em;
     color: var(--ink-4);
-    text-transform: none;
+    text-transform: uppercase;
+    opacity: 0.7;
   }
   /* Collapsed (72px): esconde labels de grupo — só ícones cabem. */
   .b3-side[data-collapsed="true"] .b3-side-section-label,
@@ -1367,7 +1368,10 @@
     border-radius: 10px;
     transition: background-color 150ms, color 150ms;
   }
-  .b3-side-item:hover { background: var(--mangos-cream-soft); color: var(--mangos-green-900); }
+  .b3-side-item:hover {
+    background: color-mix(in oklab, var(--mangos-cream) 70%, transparent);
+    color: var(--mangos-green-900);
+  }
   .b3-side-item svg { color: var(--ink-3); flex-shrink: 0; transition: color 150ms; }
   .b3-side-item:hover svg { color: var(--mangos-green-800); }
   /* Active state — "selo" inequívoco: barra vertical 3px amarelo sólido
@@ -1381,16 +1385,27 @@
      Bate brief do redesign ("Item ativo: fundo na cor primária do projeto,
      texto branco"). A identidade Mangos (amarelo) segue presente em dots,
      badges e accents em outros lugares — não no item ativo da nav. */
+  /* Active state — Onda M5 (2026-05-29): pill verde-folha com elevação
+     sutil pra "lifted look" Shopeers-ref. Gradient diagonal verde→verde-2
+     dá profundidade sem competir com a cor sólida. Shadow pequena (1px)
+     + ring interno branco translúcido suaviza a borda dura. */
   .b3-side-item[data-active="true"] {
-    background: var(--brand);
+    background:
+      linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%);
     color: var(--brand-foreground, #ffffff);
     font-weight: 600;
+    box-shadow:
+      0 1px 1px color-mix(in oklab, var(--mangos-green-950) 18%, transparent),
+      0 6px 14px -8px color-mix(in oklab, var(--mangos-green-900) 50%, transparent),
+      inset 0 1px 0 color-mix(in oklab, white 18%, transparent);
   }
   .b3-side-item[data-active="true"] svg {
     color: var(--brand-foreground, #ffffff);
+    filter: drop-shadow(0 1px 0 color-mix(in oklab, var(--mangos-green-950) 30%, transparent));
   }
   .b3-side-item[data-active="true"]:hover {
-    background: var(--brand-2);
+    background:
+      linear-gradient(135deg, var(--brand-2) 0%, var(--mangos-green-950) 100%);
     color: var(--brand-foreground, #ffffff);
   }
   .b3-side-item[data-active="true"]:hover svg {
@@ -1445,27 +1460,37 @@
   }
   .b3-side-foot {
     margin-top: auto;
-    padding: 10px 12px 16px;
-    border-top: 1px solid color-mix(in oklab, var(--mangos-border-strong) 35%, transparent);
+    padding: 12px 8px 16px;
     margin-left: 8px;
     margin-right: 8px;
-    padding-left: 4px;
-    padding-right: 4px;
+    border-top: 1px solid color-mix(in oklab, var(--mangos-border-strong) 30%, transparent);
   }
+  /* Onda M5 (2026-05-29) — footer-user vira card cream sutil com border
+     pra criar âncora visual no rodapé (mesmo papel do "Upgrade Premium"
+     navy da ref Shopeers, mas em cream Mangos). Estado default não é
+     mais transparent — é discreto sempre, hover destaca. */
   .b3-side-foot-user {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 8px;
-    border-radius: 10px;
+    padding: 10px;
+    border-radius: 12px;
     cursor: pointer;
-    background: transparent;
-    border: 1px solid transparent;
-    transition: background-color 150ms, border-color 150ms;
+    background: color-mix(in oklab, var(--mangos-cream-soft) 92%, transparent);
+    border: 1px solid color-mix(in oklab, var(--mangos-border) 45%, transparent);
+    transition:
+      background-color 180ms ease,
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      transform 180ms ease;
   }
   .b3-side-foot-user:hover {
-    background: var(--mangos-cream-soft);
+    background: var(--mangos-cream);
     border-color: var(--mangos-border-strong);
+    box-shadow:
+      0 1px 2px color-mix(in oklab, var(--mangos-green-950) 8%, transparent),
+      0 4px 12px -6px color-mix(in oklab, var(--mangos-green-900) 20%, transparent);
+    transform: translateY(-1px);
   }
   .b3-side-foot-avatar {
     width: 36px;
@@ -1753,31 +1778,38 @@
     flex-shrink: 0;
   }
 
-  /* Busca ghost — sem fundo de pílula, encostada na esquerda. Hover ativa
-     um wash creme sutil pra confirmar interatividade sem virar botão. */
+  /* Busca pill — Onda M5 (2026-05-29): visual mais "input-like" alinhado
+     a Shopeers ref. Default tem cream-soft + border sutil pra ser
+     imediatamente reconhecivel como campo de busca. Hover acentua,
+     focus dá ring amarelo. */
   .b3-card-chrome-search {
     display: inline-flex;
     align-items: center;
     gap: 10px;
     flex: 1;
     max-width: 460px;
-    height: 36px;
-    padding: 0 10px;
-    margin-left: -10px;
-    background: transparent;
-    border: none;
+    height: 38px;
+    padding: 0 12px;
+    background: color-mix(in oklab, var(--mangos-cream-soft) 75%, transparent);
+    border: 1px solid color-mix(in oklab, var(--line) 80%, transparent);
     border-radius: 10px;
     color: var(--ink-3);
     cursor: pointer;
-    transition: background-color 150ms, color 150ms;
+    transition:
+      background-color 180ms ease,
+      border-color 180ms ease,
+      color 180ms ease,
+      box-shadow 180ms ease;
   }
   .b3-card-chrome-search:hover {
     background: var(--mangos-cream-soft);
+    border-color: var(--mangos-border);
     color: var(--ink-1);
   }
   .b3-card-chrome-search:focus-visible {
     outline: none;
     background: var(--mangos-cream-soft);
+    border-color: var(--mangos-border-strong);
     box-shadow: 0 0 0 3px color-mix(in oklab, var(--mangos-yellow) 30%, transparent);
   }
   .b3-card-chrome-search > svg {
@@ -4187,3 +4219,421 @@
     transition: none !important;
   }
 }
+
+/* ============================================================
+ * DASHBOARD REDESIGN — Onda M5 (2026-05-29)
+ *
+ * Reference Shopeers admin (laptop+sidebar refs em /ref painel).
+ * Paleta Mangos (verde-folha #174D44, amarelo manga #F6B73C, cream).
+ * Estrutura: KPI row → grid 12-col (main 8 / side 4) → chart full →
+ * grid 12-col (orders 8 / canais+loja 4).
+ *
+ * Tudo escopado em @layer components pra não brigar com Tailwind utility.
+ * Mobile cai natural em coluna única <lg via grid-template-columns 1fr.
+ * ============================================================ */
+@layer components {
+  /* --- Header da página: eyebrow + título ---------------------------- */
+  .b3-page-title-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .b3-page-eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--mangos-green-800);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.85;
+  }
+  .b3-dashboard-hd .b3-page-title-wrap .b3-page-title {
+    margin: 0;
+    font-size: 26px;
+    line-height: 1.1;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--ink-1);
+  }
+  @media (max-width: 640px) {
+    .b3-dashboard-hd .b3-page-title-wrap .b3-page-title {
+      font-size: 22px;
+    }
+  }
+
+  /* --- Page wrapper do dashboard (gaps maiores que páginas comuns) --- */
+  .b3-dashboard-page {
+    gap: 18px;
+    display: flex;
+    flex-direction: column;
+  }
+  @media (min-width: 1024px) {
+    .b3-dashboard-page {
+      gap: 20px;
+    }
+  }
+
+  /* --- Grid 12-col do dashboard ------------------------------------- */
+  .b3-dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  @media (min-width: 1024px) {
+    .b3-dashboard-grid {
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+      gap: 20px;
+    }
+  }
+  .b3-dashboard-col-main,
+  .b3-dashboard-col-side {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+  }
+  @media (min-width: 1024px) {
+    .b3-dashboard-col-main,
+    .b3-dashboard-col-side {
+      gap: 20px;
+    }
+  }
+
+  /* ============================================================
+   * KPI TILES — 4 cards no topo do dashboard (Shopeers ref).
+   * ============================================================ */
+  .b3-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  @media (min-width: 700px) {
+    .b3-kpi-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  @media (min-width: 1024px) {
+    .b3-kpi-grid {
+      gap: 16px;
+    }
+  }
+
+  .b3-kpi-tile {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 16px 13px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    transition:
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      transform 180ms ease;
+  }
+  .b3-kpi-tile:hover {
+    border-color: color-mix(in oklab, var(--mangos-border-strong) 60%, var(--line));
+    box-shadow:
+      0 1px 2px color-mix(in oklab, var(--ink-1) 4%, transparent),
+      0 8px 20px -10px color-mix(in oklab, var(--mangos-green-900) 18%, transparent);
+    transform: translateY(-1px);
+  }
+  .b3-kpi-tile-hd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .b3-kpi-tile-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-4);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .b3-kpi-tile-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--mangos-cream-soft);
+    color: var(--mangos-green-800);
+    flex-shrink: 0;
+    border: 1px solid color-mix(in oklab, var(--mangos-border) 60%, transparent);
+  }
+  .b3-kpi-tile[data-accent="yellow"] .b3-kpi-tile-icon {
+    background: var(--mangos-yellow-soft);
+    color: #8A5A0F;
+    border-color: color-mix(in oklab, var(--mangos-yellow) 30%, transparent);
+  }
+  .b3-kpi-tile[data-accent="green"] .b3-kpi-tile-icon {
+    background: var(--mangos-green-100);
+    color: var(--mangos-green-800);
+    border-color: color-mix(in oklab, var(--mangos-green-800) 18%, transparent);
+  }
+  .b3-kpi-tile[data-accent="rose"] .b3-kpi-tile-icon {
+    background: #FBEBE9;
+    color: #B91C1C;
+    border-color: color-mix(in oklab, #B91C1C 18%, transparent);
+  }
+  .b3-kpi-tile[data-accent="cream"] .b3-kpi-tile-icon {
+    background: var(--mangos-cream);
+    color: var(--mangos-green-900);
+    border-color: var(--mangos-border);
+  }
+  .b3-kpi-tile-value {
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    font-size: 28px;
+    line-height: 1.05;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: var(--ink-1);
+    font-variant-numeric: tabular-nums;
+    margin: 0;
+  }
+  @media (max-width: 700px) {
+    .b3-kpi-tile-value {
+      font-size: 24px;
+    }
+  }
+  .b3-kpi-tile-empty {
+    color: var(--ink-4);
+    font-weight: 600;
+    font-size: 22px;
+  }
+  .b3-kpi-tile-delta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin: 0;
+    font-size: 11.5px;
+    color: var(--ink-4);
+  }
+  .b3-kpi-tile-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    background: var(--bg-app);
+    color: var(--ink-3);
+  }
+  .b3-kpi-tile-pill[data-tone="good"] {
+    background: color-mix(in oklab, var(--ok) 12%, transparent);
+    color: var(--ok);
+  }
+  .b3-kpi-tile-pill[data-tone="bad"] {
+    background: color-mix(in oklab, var(--danger) 11%, transparent);
+    color: var(--danger);
+  }
+  .b3-kpi-tile-pill[data-tone="flat"] {
+    background: var(--bg-app);
+    color: var(--ink-4);
+  }
+  .b3-kpi-tile-compare {
+    color: var(--ink-4);
+    font-size: 11px;
+  }
+  .b3-kpi-tile-delta-none {
+    color: var(--ink-5);
+    font-style: italic;
+    font-size: 11px;
+  }
+  /* Modo "hint": substitui a linha de delta por um subtitulo descritivo
+     (ex: "Saiu mais do que entrou" no Saldo do mes do Financeiro). */
+  .b3-kpi-tile-hint {
+    margin: 0;
+    font-size: 11.5px;
+    color: var(--ink-4);
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* Accent "highlight": tile destacado em cream com border yellow.
+     Usado no Saldo do mes do Financeiro pra ancorar o numero central
+     sem precisar aumentar tamanho do value. */
+  .b3-kpi-tile[data-accent="highlight"] {
+    background:
+      linear-gradient(180deg,
+        var(--mangos-cream-soft) 0%,
+        color-mix(in oklab, var(--mangos-cream) 92%, white) 100%);
+    border-color: color-mix(in oklab, var(--mangos-yellow) 38%, var(--mangos-border));
+  }
+  .b3-kpi-tile[data-accent="highlight"] .b3-kpi-tile-icon {
+    background: var(--mangos-yellow-soft);
+    color: #8A5A0F;
+    border-color: color-mix(in oklab, var(--mangos-yellow) 45%, transparent);
+  }
+  .b3-kpi-tile[data-accent="highlight"]:hover {
+    border-color: color-mix(in oklab, var(--mangos-yellow) 60%, var(--mangos-border-strong));
+    box-shadow:
+      0 1px 2px color-mix(in oklab, var(--ink-1) 4%, transparent),
+      0 10px 22px -10px color-mix(in oklab, var(--mangos-yellow) 50%, transparent);
+  }
+
+  /* ============================================================
+   * CHANNELS CARD — Distribuição de canais (Vendas por canal)
+   * ============================================================ */
+  .b3-channels-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px 18px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .b3-channels-hd {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .b3-channels-title {
+    margin: 0;
+    font-size: 13.5px;
+    font-weight: 700;
+    letter-spacing: -0.005em;
+    color: var(--ink-1);
+  }
+  .b3-channels-period {
+    font-size: 11px;
+    color: var(--ink-4);
+    text-transform: lowercase;
+  }
+  .b3-channels-total {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin: 0;
+    font-size: 13px;
+    color: var(--ink-3);
+  }
+  .b3-channels-total-num {
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--ink-1);
+    font-variant-numeric: tabular-nums;
+  }
+  .b3-channels-total-lbl {
+    font-size: 12px;
+    color: var(--ink-4);
+  }
+  .b3-channels-total-sep {
+    color: var(--ink-5);
+    margin: 0 4px;
+  }
+  .b3-channels-total-revenue {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
+  }
+  .b3-channels-bar {
+    display: flex;
+    width: 100%;
+    height: 10px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--bg-app);
+    border: 1px solid var(--line);
+    gap: 2px;
+    padding: 1px;
+  }
+  .b3-channels-seg {
+    height: 100%;
+    border-radius: 999px;
+    transition: opacity 180ms ease, filter 180ms ease;
+  }
+  .b3-channels-card:hover .b3-channels-seg {
+    filter: saturate(1.05);
+  }
+  .b3-channels-legend {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .b3-channels-legend-row {
+    display: grid;
+    grid-template-columns: 8px 18px minmax(60px, 1fr) auto auto;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-top: 1px solid color-mix(in oklab, var(--line) 65%, transparent);
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+  .b3-channels-legend-row:first-child {
+    border-top: 0;
+  }
+  .b3-channels-legend-swatch {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .b3-channels-legend-icon {
+    color: var(--ink-3);
+    display: inline-flex;
+    align-items: center;
+  }
+  .b3-channels-legend-label {
+    font-weight: 600;
+    color: var(--ink-1);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .b3-channels-legend-count {
+    grid-column: 3 / 4;
+    justify-self: end;
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+    font-size: 11.5px;
+  }
+  .b3-channels-legend-pct {
+    font-weight: 700;
+    color: var(--mangos-green-800);
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+  }
+  .b3-channels-legend-revenue {
+    grid-column: 1 / -1;
+    padding-left: 34px;
+    margin-top: -2px;
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+    font-size: 11.5px;
+  }
+  .b3-channels-legend-avg {
+    grid-column: 1 / -1;
+    padding-left: 34px;
+    color: var(--ink-4);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+  }
+  .b3-channels-empty {
+    margin: 4px 0 6px;
+    font-size: 12.5px;
+    color: var(--ink-3);
+    line-height: 1.45;
+  }
+}
+
