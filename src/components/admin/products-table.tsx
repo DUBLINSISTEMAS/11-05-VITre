@@ -22,6 +22,7 @@ import { formatBRL, hasActivePromo } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
 import { BulkActionsToolbar } from "./bulk-actions-toolbar";
+import { InlineCostCell } from "./inline-cost-cell";
 import {
   OPEN_PRODUCT_FORM_EVENT,
   type OpenProductFormEventDetail,
@@ -82,6 +83,15 @@ export interface ProductTableRow {
 
 export interface ProductsTableProps {
   products: ReadonlyArray<ProductTableRow>;
+  /**
+   * Onda M3 (2026-05-29) — quando true, ativa modo "bulk-edit inline":
+   * a celula CUSTO de cada linha vira input editavel com auto-save
+   * debounced. Recupera o fluxo "preencher 30 produtos sem custo em
+   * 10min" que se perdeu com a delecao da tela /admin/produtos/custos
+   * (L1). Ativado automaticamente pela page quando filtro
+   * `?status=no-cost` esta ativo.
+   */
+  inlineEditCost?: boolean;
 }
 
 function getInitials(name: string): string {
@@ -92,9 +102,19 @@ function getInitials(name: string): string {
   return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
 }
 
-export function ProductsTable({ products }: ProductsTableProps) {
+export function ProductsTable({
+  products,
+  inlineEditCost = false,
+}: ProductsTableProps) {
   const router = useRouter();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // Onda M3 — estado local de custos editados (productId -> cents).
+  // Atualizado pelo InlineCostCell ao salvar, usado pra reagir a SOBRA
+  // sem precisar refetch server-side. Refresh do router cuida da
+  // sincronizacao final.
+  const [localCosts, setLocalCosts] = useState<Map<string, number | null>>(
+    new Map(),
+  );
 
   const allIds = useMemo(() => products.map((p) => p.id), [products]);
   const allSelected = allIds.length > 0 && selectedIds.size === allIds.length;
@@ -237,7 +257,20 @@ export function ProductsTable({ products }: ProductsTableProps) {
                   />
                 </td>
                 <td className="mono text-ink-4" style={{ textAlign: "right", fontSize: 12.5 }}>
-                  {typeof p.costPriceInCents === "number" ? (
+                  {inlineEditCost ? (
+                    <InlineCostCell
+                      productId={p.id}
+                      productName={p.name}
+                      initialCostInCents={p.costPriceInCents ?? null}
+                      onCostChange={(next) => {
+                        setLocalCosts((prev) => {
+                          const m = new Map(prev);
+                          m.set(p.id, next);
+                          return m;
+                        });
+                      }}
+                    />
+                  ) : typeof p.costPriceInCents === "number" ? (
                     formatBRL(p.costPriceInCents)
                   ) : (
                     <span>—</span>
@@ -260,7 +293,14 @@ export function ProductsTable({ products }: ProductsTableProps) {
                   <SobraCell
                     basePriceInCents={p.basePriceInCents}
                     promoPriceInCents={onPromoNow ? p.promoPriceInCents : null}
-                    costPriceInCents={p.costPriceInCents}
+                    costPriceInCents={
+                      // Onda M3 — usa custo local (recem-editado inline)
+                      // se houver, senao o do server. Sobra atualiza em
+                      // tempo real conforme lojista digita.
+                      localCosts.has(p.id)
+                        ? localCosts.get(p.id) ?? null
+                        : p.costPriceInCents
+                    }
                   />
                 </td>
                 <td>

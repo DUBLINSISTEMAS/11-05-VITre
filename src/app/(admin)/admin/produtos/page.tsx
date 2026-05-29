@@ -569,7 +569,15 @@ export default async function ProdutosPage({
           ) : view === "grid" ? (
             <ProductsGrid products={tableRows} />
           ) : (
-            <ProductsTable products={tableRows} />
+            <ProductsTable
+              products={tableRows}
+              // Onda M3 (2026-05-29) — bulk-edit inline da coluna CUSTO
+              // ativa SOMENTE quando o filtro "Sem custo" esta selecionado.
+              // Lojista filtra produtos sem custo, digita direto na celula,
+              // tabula pro proximo. Recupera fluxo da /admin/produtos/custos
+              // (deletada em L1) sem duplicar tela.
+              inlineEditCost={statusFilter === "no-cost"}
+            />
           )}
 
           {totalPages > 1 ? (
