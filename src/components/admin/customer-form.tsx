@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2Icon, SaveIcon } from "lucide-react";
-import { useRef, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -14,6 +14,7 @@ import {
   updateCustomerSchema,
 } from "@/actions/customer/schema";
 import { updateCustomer } from "@/actions/customer/update";
+import { CepAutocompleteInput } from "@/components/admin/cep-autocomplete-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -306,7 +307,7 @@ export function CustomerForm({
           htmlFor="cust-phone"
           error={errors.phone?.message}
           required
-          hint="Use formato internacional com DDI: +5511999999999"
+          hint="(98) 99999-9999, 98 99999-9999 ou +5598999999999 — todos funcionam."
         >
           <Controller
             name="phone"
@@ -314,7 +315,7 @@ export function CustomerForm({
             render={({ field }) => (
               <Input
                 id="cust-phone"
-                placeholder="+5511999999999"
+                placeholder="(98) 99999-9999"
                 inputMode="tel"
                 disabled={isPending}
                 aria-invalid={!!errors.phone}
@@ -470,23 +471,33 @@ export function CustomerForm({
           label="CEP"
           htmlFor="cust-zip"
           error={errors.addressZip?.message}
-          hint="Somente números (8 dígitos)"
+          hint="8 dígitos — preenchemos endereço, bairro, cidade e UF pra você"
         >
           <Controller
             name="addressZip"
             control={control}
             render={({ field }) => (
-              <Input
+              <CepAutocompleteInput
                 id="cust-zip"
-                inputMode="numeric"
-                placeholder="65725000"
-                maxLength={8}
-                disabled={isPending}
                 value={field.value ?? ""}
-                onChange={(e) =>
-                  field.onChange(e.target.value.replace(/\D/g, "").slice(0, 8))
+                onChangeValue={(v) =>
+                  field.onChange(v.replace(/\D/g, "").slice(0, 8))
                 }
                 onBlur={field.onBlur}
+                disabled={isPending}
+                onResolved={(data) => {
+                  // Bloco I UX (2026-05-29) — popula só campos vazios pra
+                  // não sobrescrever correção manual do lojista.
+                  const street = (watch("addressStreet") ?? "").trim();
+                  const neigh = (watch("addressNeighborhood") ?? "").trim();
+                  const city = (watch("addressCity") ?? "").trim();
+                  const state = (watch("addressState") ?? "").trim();
+                  if (!street) setValue("addressStreet", data.street, { shouldDirty: true });
+                  if (!neigh) setValue("addressNeighborhood", data.neighborhood, { shouldDirty: true });
+                  if (!city) setValue("addressCity", data.city, { shouldDirty: true });
+                  if (!state) setValue("addressState", data.state, { shouldDirty: true });
+                  toast.success("Endereço preenchido pelo CEP.");
+                }}
               />
             )}
           />

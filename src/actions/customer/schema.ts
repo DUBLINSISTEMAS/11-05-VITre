@@ -8,6 +8,7 @@
 import { z } from "zod";
 
 import { isValidDocument, normalizeDocument } from "@/lib/document";
+import { parseWhatsAppBR } from "@/lib/whatsapp-format";
 
 const E164 = /^\+[1-9][0-9]{6,14}$/;
 const UF = /^[A-Z]{2}$/;
@@ -42,10 +43,32 @@ const customerInputBase = z.object({
     .trim()
     .min(1, "Nome obrigatório.")
     .max(120, "Nome muito longo (máx 120)."),
+  // Bloco I UX (2026-05-29) — aceita formato BR digitado pelo lojista
+  // (com/sem DDD, com/sem 9, com/sem +55, com/sem máscara) e normaliza
+  // pra E.164 internamente via libphonenumber. Antes o regex estrito
+  // rejeitava "(98) 99999-9999" — fricção nº1 do cadastro no balcão.
+  //
+  // Fallback: se libphonenumber recusar (heurística estrita pode rejeitar
+  // sequências repetidas comuns em fixtures) mas o input já for E.164
+  // válido, aceita como tá. Lojistas com clientes estrangeiros (raro) e
+  // fixtures de teste continuam OK.
   phone: z
     .string()
     .trim()
-    .regex(E164, "Telefone inválido. Use formato internacional (+5511999999999)."),
+    .min(1, "Telefone obrigatório.")
+    .transform((v, ctx) => {
+      try {
+        return parseWhatsAppBR(v).e164;
+      } catch {
+        if (E164.test(v)) return v;
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "Telefone inválido. Aceito: (98) 99999-9999, 98 99999-9999, +5598999999999.",
+        });
+        return z.NEVER;
+      }
+    }),
   email: z
     .string()
     .trim()

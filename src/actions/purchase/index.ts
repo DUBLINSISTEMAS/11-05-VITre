@@ -313,7 +313,9 @@ export async function createPurchase(
             return {
               ok: false,
               error: "Fornecedor não encontrado nesta loja.",
-              fieldErrors: { supplierId: "Fornecedor inválido." },
+              fieldErrors: {
+                supplierId: "Fornecedor inválido.",
+              } as Record<string, string>,
             };
           }
         }
@@ -405,7 +407,7 @@ export async function createPurchase(
             error: `Desconto (${data.discountInCents}) maior que subtotal + frete + impostos (${grossWithExtrasInCents}).`,
             fieldErrors: {
               discountInCents: "Acima do total bruto da compra.",
-            },
+            } as Record<string, string>,
           };
         }
         const totalInCents = grossWithExtrasInCents - data.discountInCents;
@@ -425,7 +427,7 @@ export async function createPurchase(
               fieldErrors: {
                 installments:
                   "Soma das parcelas precisa bater com o total da compra.",
-              },
+              } as Record<string, string>,
             };
           }
         }

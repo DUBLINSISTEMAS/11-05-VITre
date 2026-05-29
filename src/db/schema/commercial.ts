@@ -221,11 +221,21 @@ export const purchaseTable = pgTable(
     /** Número da NF do fornecedor anotado — texto livre. */
     invoiceNumber: text("invoice_number"),
     /**
-     * Total da compra em centavos. Calculado e snapshotado no momento do
-     * registro. Pode divergir da soma de purchase_item se houver frete /
-     * desconto agregado (campos futuros). CHECK >= 0 no SQL 45.
+     * Total da compra em centavos. Inclui frete + impostos − desconto
+     * agregados (SQL 39, Bloco H). CHECK >= 0 no SQL 45.
      */
     totalInCents: integer("total_in_cents").notNull(),
+
+    /**
+     * Bloco H (2026-05-29) — agregados da NF. Antes ficavam embutidos
+     * no custo unitário item-a-item (mata o WAC). Agora itens carregam
+     * custo limpo, header carrega o agregado. Frete não rateado por
+     * item (decisão pragmática).
+     */
+    freightInCents: integer("freight_in_cents").notNull().default(0),
+    discountInCents: integer("discount_in_cents").notNull().default(0),
+    taxesInCents: integer("taxes_in_cents").notNull().default(0),
+    installmentsCount: smallint("installments_count").notNull().default(1),
 
     /**
      * Quando foi pago. NULL = ainda em aberto. Setar paid_at gera
@@ -593,6 +603,15 @@ export const expenseTable = pgTable(
     }),
     /** true = veio de "Repetir mensalmente". App gera 12 entries no INSERT. */
     recurring: boolean("recurring").notNull().default(false),
+    /**
+     * Bloco H (2026-05-29) — NOT NULL quando esta despesa foi gerada
+     * por createPurchase (parcela de compra de fornecedor). Permite
+     * navegação reversa e badge "Compra #X · parcela N/Y" em
+     * /financeiro/pagar. ON DELETE SET NULL via FK em SQL 39.
+     */
+    purchaseId: uuid("purchase_id").references(() => purchaseTable.id, {
+      onDelete: "set null",
+    }),
     notes: text("notes"),
 
     createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -604,6 +623,7 @@ export const expenseTable = pgTable(
       t.storeId,
       t.category,
     ),
+    purchaseIdx: index("expense_purchase_idx").on(t.purchaseId),
   }),
 );
 
