@@ -92,7 +92,10 @@ test("admin: remove controles fake e links quebrados visíveis", () => {
 test("product archive: exclusão do admin não apaga produto nem imagens", () => {
   const single = src("src/actions/product/delete.ts");
   const bulk = src("src/actions/product/bulk-delete.ts");
-  const drawer = src("src/components/admin/product-form-drawer.tsx");
+  // Bloco F (2026-05-29): drawer Sheet substituído por modal Dialog
+  // fullscreen (product-form-modal.tsx). A sentinela continua válida —
+  // só o arquivo mudou.
+  const modal = src("src/components/admin/product-form-modal.tsx");
   const toolbar = src("src/components/admin/bulk-actions-toolbar.tsx");
 
   assert.match(single, /\.update\(productTable\)/);
@@ -105,7 +108,7 @@ test("product archive: exclusão do admin não apaga produto nem imagens", () =>
   assert.doesNotMatch(bulk, /\.delete\(productTable\)/);
   assert.doesNotMatch(bulk, /deleteFromStorage/);
 
-  assert.match(drawer, /Arquivar produto/);
+  assert.match(modal, /Arquivar produto/);
   assert.match(toolbar, /Arquivar/);
 });
 

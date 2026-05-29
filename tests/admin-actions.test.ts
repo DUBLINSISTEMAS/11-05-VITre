@@ -84,8 +84,11 @@ test("new product flow opens drawer without creating a draft", () => {
     "src/components/admin/product-create-button.tsx",
     "utf8",
   );
+  // Bloco F (2026-05-29): drawer Sheet substituído por modal Dialog
+  // fullscreen (product-form-modal.tsx). Asserts continuam idênticos —
+  // só renomeamos o host.
   const drawer = readFileSync(
-    "src/components/admin/product-form-drawer.tsx",
+    "src/components/admin/product-form-modal.tsx",
     "utf8",
   );
   const loadFormData = readFileSync(

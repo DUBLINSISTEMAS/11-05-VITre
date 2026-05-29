@@ -4,7 +4,7 @@ import { CustomerFormDrawerListener } from "@/components/admin/customer-form-dra
 import { FeedbackWidget } from "@/components/admin/feedback-widget";
 import { OrderDetailDrawerListener } from "@/components/admin/order-detail-drawer-listener";
 import { NewSaleModalListener } from "@/components/admin/pdv/new-sale-modal";
-import { ProductFormDrawerListener } from "@/components/admin/product-form-drawer-listener";
+import { ProductFormModalListener } from "@/components/admin/product-form-modal";
 
 import { AdminSidebar, type AdminSidebarProps } from "./admin-sidebar";
 import { CommandPalette } from "./command-palette";
@@ -80,11 +80,12 @@ export function AdminShell({ children, ...userProps }: AdminShellProps) {
           OPEN_ORDER_DETAIL_EVENT (row da OrdersTable, "Vendas recentes" do
           dashboard, etc) ou via deep-link `?detail=<id>`. Handoff 2026-05-25. */}
       <OrderDetailDrawerListener />
-      {/* Host global do drawer de produto — abre via evento
+      {/* Host global do modal de produto — abre via evento
           OPEN_PRODUCT_FORM_EVENT (row da ProductsTable, CTA "Novo produto"
-          do header, Cmd+K) ou deep-link `?edit=<id|new>`. PP1 Fase B
-          (handoff pixel-perfect 2026-05-25). */}
-      <ProductFormDrawerListener storeSlug={userProps.storeSlug} />
+          do header, Cmd+K) ou deep-link `?edit=<id|new>`. Bloco F
+          (2026-05-29): drawer Sheet substituído por Dialog fullscreen
+          (estilo Nova Venda) — decisão founder. */}
+      <ProductFormModalListener storeSlug={userProps.storeSlug} />
       {/* Host global do drawer de cliente — abre via evento
           OPEN_CUSTOMER_FORM_EVENT (row da CustomersTable, CTA "Adicionar
           cliente") ou deep-link `?customer=<id|new>`. PP2 (handoff). */}
