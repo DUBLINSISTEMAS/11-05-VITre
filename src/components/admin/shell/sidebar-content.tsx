@@ -63,6 +63,13 @@ export interface SidebarContentProps {
   storeSlug: string;
   primaryColor: string;
   logoUrl: string | null;
+  /**
+   * Onda L5 (2026-05-29) — opt-in da Loja online. Quando false (sem
+   * produto publicado), o grupo "Loja online" colapsa por default
+   * (chevron + label visiveis, items escondidos). Lojista que so vende
+   * balcao+WhatsApp nao ve esse grupo poluindo o dia-a-dia.
+   */
+  hasStorefront?: boolean;
   onNavigate?: () => void;
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
@@ -75,6 +82,7 @@ export function SidebarContent({
   storeSlug,
   primaryColor,
   logoUrl,
+  hasStorefront = false,
   onNavigate,
   collapsed = false,
   onToggleCollapsed,
@@ -166,26 +174,57 @@ export function SidebarContent({
           />
         </div>
 
-        {/* Seções planas: label pequeno cinza + items todos visíveis */}
-        {ADMIN_NAV_SECTIONS.map((section) => (
-          <div key={section.k} className="b3-side-flat-group">
-            <div
-              className="b3-side-section-label"
-              aria-hidden={collapsed || undefined}
-            >
-              {section.label}
+        {/* Seções planas: label pequeno cinza + items todos visíveis.
+            Onda L5 (2026-05-29): grupo "loja-config" vira opt-in. Quando
+            !hasStorefront (loja sem produto publicado), renderiza como
+            <details> fechado por default — lojista clica pra expandir
+            quando quiser ativar a loja online. Outros grupos seguem
+            sempre planos. Modo collapsed do sidebar inteiro continua
+            mostrando so icones em todos os grupos (incluindo opt-in). */}
+        {ADMIN_NAV_SECTIONS.map((section) => {
+          const isOptIn =
+            section.k === "loja-config" && !hasStorefront && !collapsed;
+          if (isOptIn) {
+            return (
+              <details key={section.k} className="b3-side-flat-group">
+                <summary className="b3-side-section-label b3-side-optin-summary">
+                  <span>{section.label}</span>
+                  <span className="b3-side-optin-hint">
+                    Configurar
+                  </span>
+                </summary>
+                {section.items.map((item) => (
+                  <NavItemRow
+                    key={item.k}
+                    item={item}
+                    pathname={pathname}
+                    onNavigate={onNavigate}
+                    collapsed={collapsed}
+                  />
+                ))}
+              </details>
+            );
+          }
+          return (
+            <div key={section.k} className="b3-side-flat-group">
+              <div
+                className="b3-side-section-label"
+                aria-hidden={collapsed || undefined}
+              >
+                {section.label}
+              </div>
+              {section.items.map((item) => (
+                <NavItemRow
+                  key={item.k}
+                  item={item}
+                  pathname={pathname}
+                  onNavigate={onNavigate}
+                  collapsed={collapsed}
+                />
+              ))}
             </div>
-            {section.items.map((item) => (
-              <NavItemRow
-                key={item.k}
-                item={item}
-                pathname={pathname}
-                onNavigate={onNavigate}
-                collapsed={collapsed}
-              />
-            ))}
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       <SupportFooterLink

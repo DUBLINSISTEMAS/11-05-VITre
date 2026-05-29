@@ -15,6 +15,9 @@ export interface AdminShellProps extends AdminSidebarProps {
   children: ReactNode;
 }
 
+// Onda L5 (2026-05-29) — `hasStorefront` herdado via AdminSidebarProps ->
+// SidebarContentProps. Server-rendered no layout.tsx do admin.
+
 /**
  * Shell do painel admin — port Dublin v3 BAGY-style (Onda A.3, ADR-0019).
  *

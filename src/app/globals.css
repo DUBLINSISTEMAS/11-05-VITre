@@ -1137,6 +1137,46 @@
     padding: 0;
     overflow: hidden;
   }
+  /* Onda L5 (2026-05-29) — opt-in da Loja online via <details>.
+     Quando o lojista nao tem produto publicado, o grupo aparece colapsado:
+     summary mostra label + hint "Configurar" + chevron rotativo. Click
+     abre o accordion. Style minimo pra parecer parte natural do menu.
+
+     Native <summary> tem marker default (lista) — escondemos pra usar nosso
+     chevron com CSS pseudo-element rotativo. */
+  .b3-side-optin-summary {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    /* Mesma altura/padding do .b3-side-section-label normal */
+  }
+  .b3-side-optin-summary::-webkit-details-marker { display: none; }
+  .b3-side-optin-summary::after {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-right: 1.5px solid var(--ink-4);
+    border-bottom: 1.5px solid var(--ink-4);
+    transform: rotate(-45deg);
+    transition: transform 180ms ease;
+    margin-left: auto;
+    margin-right: 18px;
+    margin-top: -2px;
+  }
+  details[open] > .b3-side-optin-summary::after {
+    transform: rotate(45deg);
+    margin-top: -4px;
+  }
+  .b3-side-optin-hint {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--mangos-green-800);
+    text-transform: none;
+    letter-spacing: 0.02em;
+  }
   /* ----- Accordion section header (Fase 2 redesign 2026-05-21) -----
      Onda 2026-05-24: pai vira "label de grupo" (caps 12/700 ink-3,
      letter-spacing alto) — não compete visualmente com os filhos. Padrão
