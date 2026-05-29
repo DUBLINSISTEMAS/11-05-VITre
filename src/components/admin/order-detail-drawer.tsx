@@ -40,10 +40,7 @@ import { toast } from "sonner";
 // action e perdia o pending state intermitente em React 19, causando
 // "loading travado" reportado pelo founder em 2026-05-29.
 
-import {
-  loadOrderDetail,
-  type OrderDetail,
-} from "@/actions/order/load-detail";
+import { type OrderDetail } from "@/actions/order/load-detail";
 import { updateOrderNotes } from "@/actions/order/update-notes";
 import { CustomerLinkSection } from "@/components/admin/customer-link-section";
 import { OrderConfirmPaymentDialog } from "@/components/admin/order-confirm-payment-dialog";
@@ -154,18 +151,17 @@ export function OrderDetailDrawer({ orderId, onOpenChange }: OrderDetailDrawerPr
   // refetch do detalhe pra o drawer refletir o novo estado.
   const [reloadKey, setReloadKey] = useState(0);
 
-  // Onda M2 (2026-05-29) — loading com TIMEOUT defensivo.
+  // Onda M2.1 (2026-05-29) — substituido server action por fetch HTTP.
   //
-  // Histórico do bug:
-  //   - Fix 1 (L1): trocou useTransition por useState manual + cleanup.
-  //     Founder reportou que ainda travava em orcamento PDV.
-  //   - Fix 2 (M2): paralelizou loadOrderDetail (6 queries -> 3 round-trips)
-  //     reduzindo latencia. Mas se a action travar de vez (RLS, deadlock,
-  //     network), a UI nunca sai do estado "Carregando".
+  // Diagnostico: telemetria M2 capturou que o server respondia em ~1.5s
+  // (logs do dev server confirmaram POST 200) mas o client useEffect
+  // NUNCA recebia a resposta. Bug Turbopack + React 19 + Server Action
+  // em useEffect — request silenciosamente abortado por HMR/cancellation
+  // race, sem erro, sem stack.
   //
-  // Defesa: timeout de 15s + telemetria de timing. Quando ocorrer, founder
-  // ve "tempo esgotado" em vez de spinner eterno + temos log com duracao
-  // pra triangular causa.
+  // Fix: Route Handler `/api/admin/order/[id]/detail` + fetch comum com
+  // AbortController. Sem magica RSC, comportamento previsivel em dev E
+  // prod. Mesma logica/queries (M2 paralelizacao preservada server-side).
   useEffect(() => {
     if (!orderId) {
       setData(null);
@@ -173,52 +169,64 @@ export function OrderDetailDrawer({ orderId, onOpenChange }: OrderDetailDrawerPr
       setIsLoading(false);
       return;
     }
-    let cancelled = false;
+    const abortController = new AbortController();
     setData(null);
     setError(null);
     setIsLoading(true);
 
     const startedAt = performance.now();
-    const TIMEOUT_MS = 15_000;
-    const timeoutId = window.setTimeout(() => {
-      if (cancelled) return;
-      cancelled = true;
-      setIsLoading(false);
-      const elapsed = Math.round(performance.now() - startedAt);
-      logger.error("admin.order.detail_load_timeout", {
-        orderId,
-        elapsedMs: elapsed,
-      });
-      setError(
-        `O detalhe demorou demais pra carregar (${elapsed}ms). Verifique sua conexão e tente novamente.`,
-      );
-    }, TIMEOUT_MS);
 
-    loadOrderDetail(orderId)
-      .then((res) => {
-        window.clearTimeout(timeoutId);
-        if (cancelled) return;
-        setIsLoading(false);
+    fetch(`/api/admin/order/${orderId}/detail`, {
+      signal: abortController.signal,
+      // dev cache de fetch e bug-prone — pula
+      cache: "no-store",
+    })
+      .then(async (res) => {
+        if (abortController.signal.aborted) return;
         const elapsed = Math.round(performance.now() - startedAt);
-        if (!res.ok) {
+        const body = (await res.json()) as
+          | { ok: true; order: OrderDetail }
+          | { ok: false; error: string };
+
+        setIsLoading(false);
+        if (!body.ok) {
           logger.error("admin.order.detail_load_failed", {
             orderId,
             elapsedMs: elapsed,
-            error: res.error,
+            httpStatus: res.status,
+            error: body.error,
           });
-          setError(res.error);
+          setError(body.error);
           return;
         }
-        // Log de timing tambem em sucesso pra detectar lentidao silenciosa
-        // (caso founder reporte "demora muito" em vez de "trava de vez").
         if (elapsed > 2000) {
           logger.warn("admin.order.detail_load_slow", { orderId, elapsedMs: elapsed });
         }
-        setData(res.order);
+        // Datas serializadas como string no JSON — reconverte.
+        const hydrated: OrderDetail = {
+          ...body.order,
+          createdAt: new Date(body.order.createdAt),
+          whatsappOpenedAt: body.order.whatsappOpenedAt
+            ? new Date(body.order.whatsappOpenedAt)
+            : null,
+          confirmedAt: body.order.confirmedAt
+            ? new Date(body.order.confirmedAt)
+            : null,
+          expiresAt: body.order.expiresAt
+            ? new Date(body.order.expiresAt)
+            : null,
+          quoteValidUntil: body.order.quoteValidUntil
+            ? new Date(body.order.quoteValidUntil)
+            : null,
+          returns: body.order.returns.map((r) => ({
+            ...r,
+            createdAt: new Date(r.createdAt),
+          })),
+        };
+        setData(hydrated);
       })
       .catch((err) => {
-        window.clearTimeout(timeoutId);
-        if (cancelled) return;
+        if (abortController.signal.aborted) return;
         setIsLoading(false);
         const elapsed = Math.round(performance.now() - startedAt);
         logger.error("admin.order.detail_load_exception", {
@@ -234,8 +242,7 @@ export function OrderDetailDrawer({ orderId, onOpenChange }: OrderDetailDrawerPr
       });
 
     return () => {
-      cancelled = true;
-      window.clearTimeout(timeoutId);
+      abortController.abort();
     };
   }, [orderId, reloadKey]);
 
