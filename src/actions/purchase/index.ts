@@ -68,12 +68,86 @@ async function getSessionAndStore() {
   return { session, store };
 }
 
-/** Lista paginada simples (50 mais recentes). */
-export async function loadPurchases(): Promise<PurchaseListRow[]> {
+export interface LoadPurchasesFilters {
+  supplierId?: string | null;
+  /** YYYY-MM-DD. Inclusivo. */
+  from?: string | null;
+  /** YYYY-MM-DD. Inclusivo (até 23:59:59.999). */
+  to?: string | null;
+  /** "all" (default) | "paid" | "pending" */
+  status?: "all" | "paid" | "pending";
+  page?: number;
+  pageSize?: number;
+}
+
+export interface LoadPurchasesOutput {
+  rows: PurchaseListRow[];
+  total: number;
+  totalInCents: number;
+  page: number;
+  pageSize: number;
+}
+
+const DEFAULT_PAGE_SIZE = 30;
+
+/**
+ * Bloco H.C (2026-05-29) — listagem paginada com filtros e totalizador.
+ *
+ * Antes era hard-limit 50, sem filtros — loja madura perdia histórico
+ * silenciosamente e "quanto comprei do fornecedor X em maio" exigia SQL.
+ *
+ * Filtros: fornecedor, intervalo de data (created_at), status (pago/pendente).
+ * Output inclui `totalInCents` do conjunto FILTRADO (não da página) pra
+ * mostrar "30 compras · R$ X" no header.
+ */
+export async function loadPurchases(
+  filters: LoadPurchasesFilters = {},
+): Promise<LoadPurchasesOutput> {
   const ctx = await getSessionAndStore();
-  if (!ctx) return [];
+  if (!ctx) {
+    return { rows: [], total: 0, totalInCents: 0, page: 1, pageSize: DEFAULT_PAGE_SIZE };
+  }
+
+  const page = Math.max(1, filters.page ?? 1);
+  const pageSize = Math.max(1, Math.min(100, filters.pageSize ?? DEFAULT_PAGE_SIZE));
+  const offset = (page - 1) * pageSize;
+  const status = filters.status ?? "all";
 
   return withTenant(ctx.store.id, ctx.session.user.id, async (tx) => {
+    const conditions = [eq(purchaseTable.storeId, ctx.store.id)];
+    if (filters.supplierId) {
+      conditions.push(eq(purchaseTable.supplierId, filters.supplierId));
+    }
+    if (filters.from) {
+      conditions.push(sql`${purchaseTable.createdAt} >= ${filters.from}::date`);
+    }
+    if (filters.to) {
+      conditions.push(
+        sql`${purchaseTable.createdAt} < (${filters.to}::date + interval '1 day')`,
+      );
+    }
+    if (status === "paid") {
+      conditions.push(sql`${purchaseTable.paidAt} is not null`);
+    } else if (status === "pending") {
+      conditions.push(sql`${purchaseTable.paidAt} is null`);
+    }
+    const whereClause = and(...conditions);
+
+    // Totais do conjunto filtrado (NÃO da página).
+    const [totals] = await tx
+      .select({
+        count: sql<number>`count(*)::int`,
+        sum: sql<number>`coalesce(sum(${purchaseTable.totalInCents}), 0)::int`,
+      })
+      .from(purchaseTable)
+      .where(whereClause);
+    const total = totals?.count ?? 0;
+    const totalInCents = totals?.sum ?? 0;
+
+    if (total === 0) {
+      return { rows: [], total: 0, totalInCents: 0, page, pageSize };
+    }
+
     const rows = await tx
       .select({
         id: purchaseTable.id,
@@ -88,35 +162,43 @@ export async function loadPurchases(): Promise<PurchaseListRow[]> {
       })
       .from(purchaseTable)
       .leftJoin(supplierTable, eq(supplierTable.id, purchaseTable.supplierId))
-      .where(eq(purchaseTable.storeId, ctx.store.id))
+      .where(whereClause)
       .orderBy(desc(purchaseTable.createdAt))
-      .limit(50);
-
-    if (rows.length === 0) return [];
+      .limit(pageSize)
+      .offset(offset);
 
     const ids = rows.map((r) => r.id);
-    const counts = await tx
-      .select({
-        purchaseId: purchaseItemTable.purchaseId,
-        n: sql<number>`count(*)::int`,
-      })
-      .from(purchaseItemTable)
-      .where(inArray(purchaseItemTable.purchaseId, ids))
-      .groupBy(purchaseItemTable.purchaseId);
+    const counts =
+      ids.length > 0
+        ? await tx
+            .select({
+              purchaseId: purchaseItemTable.purchaseId,
+              n: sql<number>`count(*)::int`,
+            })
+            .from(purchaseItemTable)
+            .where(inArray(purchaseItemTable.purchaseId, ids))
+            .groupBy(purchaseItemTable.purchaseId)
+        : [];
     const countById = new Map(counts.map((c) => [c.purchaseId, c.n]));
 
-    return rows.map((r) => ({
-      id: r.id,
-      invoiceNumber: r.invoiceNumber,
-      totalInCents: r.totalInCents,
-      paidAt: r.paidAt,
-      paymentMethod: r.paymentMethod,
-      notes: r.notes,
-      createdAt: r.createdAt,
-      supplierId: r.supplierId,
-      supplierName: r.supplierName,
-      itemCount: countById.get(r.id) ?? 0,
-    }));
+    return {
+      rows: rows.map((r) => ({
+        id: r.id,
+        invoiceNumber: r.invoiceNumber,
+        totalInCents: r.totalInCents,
+        paidAt: r.paidAt,
+        paymentMethod: r.paymentMethod,
+        notes: r.notes,
+        createdAt: r.createdAt,
+        supplierId: r.supplierId,
+        supplierName: r.supplierName,
+        itemCount: countById.get(r.id) ?? 0,
+      })),
+      total,
+      totalInCents,
+      page,
+      pageSize,
+    };
   });
 }
 
