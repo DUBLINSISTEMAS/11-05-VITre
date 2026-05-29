@@ -56,34 +56,33 @@ Fonte da verdade: `src/components/admin/shell/nav-items.ts`. Se divergir, o cód
 | Estoque | `/admin/estoque` |
 | A receber | `/admin/financeiro/receber` |
 | A pagar | `/admin/financeiro/pagar` |
-| Recados do site | `/admin/contatos` |
 
 > Nova venda = CTA `<NewSaleButton/>` no header de `/admin/pedidos` + atalho F2 global + Ctrl/Cmd+K. `/admin/pdv` segue vivo como fallback de URL.
 
 **Grupo 2 — Cadastros** (monto uma vez)
-Produtos `/admin/produtos` · Categorias · Marcas · Clientes `/admin/clientes` · Grupos de cliente `/admin/clientes/grupos` · Fornecedores
+Produtos `/admin/produtos` · Clientes `/admin/clientes` · Categorias · Marcas · Fornecedores
 
 **Grupo 3 — Gestão** (olho pra decidir)
 | Item | Rota |
 |---|---|
 | Resultado | `/admin/relatorios/resultado` |
 | Relatórios | `/admin/relatorios` |
-| Estoque parado | `/admin/estoque/parado` |
-| Estoque vencendo | `/admin/estoque/vencendo` |
 | Compras | `/admin/compras` |
-| Preencher custos | `/admin/produtos/custos` |
 
-**Grupo 4 — Loja online + Configurações**
+**Grupo 4 — Loja online**
 Aparência · Banners · Vitrines `/admin/colecoes` · Códigos de desconto `/admin/promocoes/cupons` · Formas de pagamento `/admin/pagamento` · Dados da loja `/admin/configuracoes`
 
 **Suporte** no footer.
-**Escondidos do menu (régua funciona-ou-esconde, vivos por URL):** `/admin/atributos`, `/admin/equipe`, `/admin/assinatura`.
+**Escondidos do menu (régua funciona-ou-esconde, vivos por URL):** `/admin/estoque/parado`, `/admin/estoque/vencendo` (viram tab interna na Onda 4), `/admin/clientes/grupos` (vira tab interna em /clientes), `/admin/atributos`, `/admin/equipe`, `/admin/assinatura`.
+**Deletados em Onda L1 (2026-05-29):** `/admin/contatos` (Recados do site — feature morta, removida da UI inteira; tabela `lead` preservada porque storefront ainda recebe form de contato), `/admin/produtos/custos` (duplicava /admin/produtos; custo agora vive na aba "Preço & custo" do ProductFormModal).
 
 ---
 
 ## Vocabulário canônico (só em labels de UI — nunca em arquivos/rotas/colunas)
 
-Pedido→Venda · Coleção→Vitrine · Lead/Contato→Recado do site · Cupom→Código de desconto · Storefront→Loja online · Tenant/Store→Loja · Stock movement→Movimentação de estoque.
+Pedido→Venda · Coleção→Vitrine · Cupom→Código de desconto · Storefront→Loja online · Tenant/Store→Loja · Stock movement→Movimentação de estoque.
+
+> "Lead/Contato→Recado do site" REMOVIDO em Onda L1 (2026-05-29) — feature morta, UI admin deletada.
 
 > "Atributo→Filtro da loja" está CONGELADO: a feature de atributos foi escondida (integração storefront quebrada). Não usar essa label até reativar.
 
@@ -137,16 +136,16 @@ Muda/cria tabela · consequência irreversível em ≤30 dias · outro dev preci
 
 ---
 
-## Estado atual VERIFICADO (2026-05-28)
+## Estado atual VERIFICADO (2026-05-29)
 
 > Substitui o changelog antigo. Mantém só o que é verdade hoje, conferido no código.
 
 - **Motor de lucro**: `lib/pricing/net-profit.ts` + `load-dre.ts` deduzem CMV+taxa+despesa+devolução. Snapshots gravados na venda. ✅ honesto.
-- **Cadastro de produto**: abre como workspace largo (`ProductFormDrawer` 1180px), não gaveta estreita. Materiais somados atualizam o custo do produto no form e no banco.
+- **Cadastro de produto**: abre como modal fullscreen (`ProductFormModal` 92vh/1400px max, Bloco F 2026-05-29 — substituiu Drawer Sheet) com 7 abas. Materiais somados atualizam o custo do produto no form e no banco. CTA "abrir produto" aceita `initialTab` pra deep-link em aba específica.
 - **Canais reais**: enum `order_channel` só tem `whatsapp` + `balcao`. "Venda externa/InfinitePay" e "Loja online" como canal próprio NÃO existem no banco. ⚠️
-- **Faxina 2026-05-28 fechada** (wrap commit + bugs P0): links para `?edit=/?customer=/?detail=`, delete→arquivar, margem expõe lucro líquido real, CSV server-side, CTA "Nova venda" replantado no header de Vendas, triângulo amarelo de "Preencher custos" corrigido (parser distingue vazio/inválido + debounce 2.5s), sidebar longest-match (sem "tudo verde"), orçamentos grid + CTA "Renovar e criar venda" pra expirado, `/admin/relatorios` sem `ReportView` duplicado.
-- **Onda 1.5 fechada** (2026-05-28): `drizzle/0036_reconcile_supabase_sql.sql` consolida 11 SQLs manuais (70-79+82) como migration idempotente; journal completa entries 34/35/36; sentinela 83 (`product_cost_component`) adicionada. Não aplicada em prod por padrão — `IF NOT EXISTS` torna no-op quando já está aplicado.
-- **Onda 2 fechada** (2026-05-28) — lucro líquido completo: PDV grava `commission_snapshot_in_cents` no `order_item` em todos os 3 INSERTs (sale + fiado + quote) usando snapshot fixo; `sellerId` agora plantado também no branch `sale` (estava só em quote/fiado); `load-dre.ts` agrega `SUM(commission_snapshot)` e expõe `sellerCommissionInCents`; `/admin/relatorios/resultado` mostra linha "Comissão de vendedoras" no waterfall e CSV; tela "Preencher custos" troca coluna "Margem%" enganosa por "Lucro líq. (à vista)" usando `calculateNetProfit` canônico; migration `0037_product_archived_deleted.sql` + colunas `archivedAt/deletedAt` no schema TS (uso na Onda 3). **Pendente**: UI selector de vendedora no PDV (Onda 3 — schema `store_membership` pronto) + frição P1 (Onda 3) + docs subdomínio Vercel/DNS (Onda 4).
+- **Onda L1 fechada (2026-05-29)** — limpeza estrutural pedida pelo founder: **DELETADAS** `/admin/contatos` (Recados do site — feature morta) e `/admin/produtos/custos` (cards grandes duplicando /admin/produtos). Sidebar minimalista: 4 grupos com 17 itens visíveis (era 25). 3 referências de link pra `/admin/produtos/custos` redirecionadas pra `/admin/produtos`. `loadCustoProducts`, `update-cost-batch`, `LeadsReport`, `leadsAgg` (dashboard) e tudo da UI admin de leads removido. Tabela `lead` preservada (storefront ainda recebe via `submitContact`). Migration 0037+0038+0039 aplicadas no banco do founder (estavam pendentes).
+- **Onda 2 fechada** (2026-05-28) — lucro líquido completo: PDV grava `commission_snapshot_in_cents` no `order_item` em todos os 3 INSERTs (sale + fiado + quote); `load-dre.ts` agrega `SUM(commission_snapshot)`; `/admin/relatorios/resultado` mostra linha "Comissão de vendedoras" no waterfall.
+- **Pendente Ondas L2-L6** (plano alinhado com founder 2026-05-29): L2 Financeiro como planilha (4 verbos: A receber, A pagar, Lançar despesa, Lançar pagamento), L3 Produto enxuto (ProductForm cai pra 3-4 abas + planilha densa em /admin/produtos com coluna custo+filtro "sem custo"), L4 Estoque consolidado (parado/vencendo/contagem viram tabs internas), L5 Loja online opt-in, L6 Cleanup vocabulário.
 - **Construir** (norte do empresário): canal venda externa · meta mensal · comparação anual · automação proativa.
 
 Histórico congelado em `docs/sessoes/` e `docs/decisoes/` (ADRs). Norte vivo sobrescreve ADR conflitante.

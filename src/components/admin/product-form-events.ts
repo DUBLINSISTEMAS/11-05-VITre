@@ -22,9 +22,10 @@ export interface OpenProductFormEventDetail {
   productId: string | null;
   /**
    * Bloco F.1 (2026-05-29) — aba inicial. Quando setada, o ProductForm
-   * abre direto naquela aba (em vez do default "basico"). Usado pelo
-   * card de /admin/produtos/custos pra abrir direto em "Preço & custo"
-   * via CTA "Preencher custo".
+   * abre direto naquela aba (em vez do default "basico"). Util pra
+   * qualquer ponto da UI que queira mandar o lojista direto pra uma
+   * aba especifica (ex: dashboard avisando produto sem foto -> "imagens",
+   * relatorio de margem -> "preco").
    */
   initialTab?: "basico" | "imagens" | "preco" | "precificacao" | "estoque" | "variantes" | "loja";
 }

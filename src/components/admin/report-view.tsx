@@ -15,13 +15,6 @@ const PAYMENT_LABEL: Record<string, string> = {
   other: "Outro",
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  new: "Novos",
-  contacted: "Contatados",
-  converted: "Convertidos",
-  lost: "Perdidos",
-};
-
 export function ReportView({
   report,
   filters,
@@ -95,13 +88,6 @@ export function ReportView({
       add(
         `${csvEscape(c.name)},${c.orderCount},${(c.totalSpentInCents / 100).toFixed(2)}`,
       );
-    }
-    add("");
-    // S4.8 (2026-05-26) — vocabulário canônico: "Leads" → "Recados do site".
-    add("RECADOS DO SITE");
-    add(`Total,${report.leads.totalLeads}`);
-    for (const l of report.leads.byStatus) {
-      add(`${STATUS_LABEL[l.status] ?? l.status},${l.count}`);
     }
     add("");
     add("ESTOQUE ZERADO");
@@ -292,22 +278,6 @@ export function ReportView({
                   c.orderCount.toString(),
                   formatBRL(c.totalSpentInCents),
                 ])}
-            />
-          )}
-        </ReportCard>
-        {/* S4.8 (2026-05-26) — vocabulário canônico. Conversão removida
-            do header porque não há fluxo de "marcar como convertido" no
-            módulo Recados (Sprint Relatórios audit detectou inconsistência). */}
-        <ReportCard title="Recados do site">
-          {report.leads.totalLeads === 0 ? (
-            <Empty />
-          ) : (
-            <Table
-              headers={["Status", "Qtd"]}
-              rows={report.leads.byStatus.map((l) => [
-                STATUS_LABEL[l.status] ?? l.status,
-                l.count.toString(),
-              ])}
             />
           )}
         </ReportCard>

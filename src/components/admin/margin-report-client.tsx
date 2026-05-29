@@ -253,8 +253,8 @@ export function MarginReportClient({
             </strong>{" "}
             produtos vendidos têm custo cadastrado ({coverage}% de cobertura).
             Margem global e linhas com travessão indicam falta de custo —{" "}
-            <Link href="/admin/produtos/custos" prefetch className="underline">
-              cadastrar custos em massa
+            <Link href="/admin/produtos" prefetch className="underline">
+              cadastrar custos em produtos
             </Link>
             .
           </div>

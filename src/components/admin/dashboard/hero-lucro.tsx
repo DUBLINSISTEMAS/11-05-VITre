@@ -302,7 +302,7 @@ function HeroFooter({ yesterday, thisWeek }: HeroFooterProps) {
         ⚠ Apenas <strong>{coverage}%</strong> dos itens vendidos têm custo
         cadastrado. Os números acima excluem peças sem custo — pra ficar
         ainda mais honesto,{" "}
-        <Link href="/admin/produtos/custos" className="underline font-medium">
+        <Link href="/admin/produtos" className="underline font-medium">
           preencha o custo dos produtos
         </Link>
         .

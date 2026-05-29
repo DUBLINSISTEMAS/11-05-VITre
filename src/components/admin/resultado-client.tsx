@@ -348,11 +348,11 @@ export function ResultadoClient({
           {current.cogsCoveragePercent}% dos produtos vendidos têm custo
           cadastrado. Preencha custos em{" "}
           <Link
-            href="/admin/produtos/custos"
+            href="/admin/produtos"
             className="font-semibold underline"
             prefetch
           >
-            /admin/produtos/custos
+            /admin/produtos
           </Link>{" "}
           pra esse número ficar 100% honesto.
         </div>

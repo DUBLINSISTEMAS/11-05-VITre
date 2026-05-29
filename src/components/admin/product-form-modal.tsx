@@ -55,8 +55,8 @@ interface ProductFormModalProps {
   storeSlug: string;
   /**
    * Bloco F.1 (2026-05-29) — aba inicial do form. Passada pelo listener
-   * a partir do `initialTab` do CustomEvent. Usado pelo CTA "Preencher
-   * custo" dos cards de /admin/produtos/custos.
+   * a partir do `initialTab` do CustomEvent. Util pra deep-link
+   * "abrir produto X direto na aba Y".
    */
   initialTab?:
     | "basico"

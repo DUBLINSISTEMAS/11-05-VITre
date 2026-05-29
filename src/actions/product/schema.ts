@@ -532,40 +532,7 @@ export type BulkDeleteProductsInput = z.infer<typeof bulkDeleteProductsSchema>;
 
 // ---------- Bulk update custo (ADR-0034 Camada 2 — /admin/produtos/custos) ----------
 
-/**
- * Linha do batch de atualização de custo. Cada linha representa um produto
- * que o lojista editou na grid bulk-edit. Linhas com `null` em ambos os
- * campos viram no-op (lojista limpou ambos os campos).
- *
- * `costPriceInCents` undefined = "não tocou" (mantém valor atual no DB).
- * `costPriceInCents` null = "limpou explicitamente" (zera no DB).
- * Mesma semântica pra `defaultCommissionBps`.
- */
-export const productCostBatchRowSchema = z.object({
-  productId: z.string().uuid(),
-  costPriceInCents: z
-    .number()
-    .int()
-    .min(0, "Custo não pode ser negativo.")
-    .max(999_999_999, "Custo acima do máximo permitido.")
-    .nullable()
-    .optional(),
-  defaultCommissionBps: z
-    .number()
-    .int()
-    .min(0, "Comissão não pode ser negativa.")
-    .max(10000, "Comissão máxima 100%.")
-    .nullable()
-    .optional(),
-});
-export type ProductCostBatchRow = z.infer<typeof productCostBatchRowSchema>;
-
-export const updateProductCostBatchSchema = z.object({
-  rows: z
-    .array(productCostBatchRowSchema)
-    .min(1, "Nenhuma alteração pra salvar.")
-    .max(BULK_PRODUCTS_MAX, `Máximo ${BULK_PRODUCTS_MAX} produtos por vez.`),
-});
-export type UpdateProductCostBatchInput = z.infer<
-  typeof updateProductCostBatchSchema
->;
+// Onda L1 (2026-05-29) — productCostBatchRowSchema + updateProductCostBatchSchema
+// removidos. Eram consumidos pela action update-cost-batch.ts e pelo card
+// de /admin/produtos/custos (autosave inline). Ambos foram deletados — custo
+// agora vive na aba "Preço & custo" do ProductFormModal (Bloco F).

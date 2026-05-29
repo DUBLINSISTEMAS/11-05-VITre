@@ -1,18 +1,15 @@
 // Estrutura de navegação do admin — Início + 4 grupos colapsáveis (accordion).
 // soon:true → renderizado como disabled com badge "em breve" pelo sidebar-content.
 import {
-  AlertTriangleIcon,
   ArrowLeftRightIcon,
   BarChart2Icon,
   BookOpenIcon,
   Building2Icon,
-  CalculatorIcon,
   ClockIcon,
   CreditCardIcon,
   FileTextIcon,
   FolderIcon,
   ImageIcon,
-  InboxIcon,
   LayoutDashboardIcon,
   LayoutGridIcon,
   LifeBuoyIcon,
@@ -27,7 +24,6 @@ import {
   TrendingUpIcon,
   TruckIcon,
   UsersIcon,
-  UsersRoundIcon,
   WalletIcon,
   ZapIcon,
 } from "lucide-react";
@@ -69,31 +65,34 @@ export const ADMIN_NAV_HOME: AdminNavItem = {
   exact: true,
 };
 
+// Onda L1 (2026-05-29) — sidebar minimalista. Founder reportou
+// "feio, sem logica, polui o dia-a-dia" no estado anterior (4 grupos,
+// ~25 itens, vocabulario inconsistente). Regra "funciona ou esconde"
+// aplicada com forca: cada item exposto ENTREGA fluxo ponta-a-ponta.
+//
+// Escondidos da nav (rotas seguem vivas por URL pra deep-link e fallback):
+//   /admin/contatos          — Recados do site (feature morta, removida da UI)
+//   /admin/produtos/custos   — duplicava /admin/produtos (custo ja vive la)
+//   /admin/estoque/parado    — tab interna de /admin/estoque (planejado)
+//   /admin/estoque/vencendo  — tab interna de /admin/estoque (planejado)
+//   /admin/clientes/grupos   — tab interna de /admin/clientes (planejado)
+//   /admin/equipe            — RBAC nao chegou (storeMembership pendente)
+//   /admin/assinatura        — Stripe nao integrado
+//
+// Estrutura: Inicio + 4 grupos (Operacao, Cadastros, Gestao, Loja online).
+// Total: 17 itens visiveis vs 25 anteriores.
 export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
   {
-    // "Venda balcão" (PDV full-page) removida em 2026-05-21 — consolidada
-    // em "Vendas". Nova venda agora abre como modal a partir do listing
-    // (/admin/pedidos). Rota /admin/pdv segue viva como fallback de URL
-    // direta. Ver `new-sale-modal.tsx`.
     k: "operacao",
     label: "Operação",
     icon: ZapIcon,
     items: [
-      { k: "vendas",     label: "Vendas",                icon: ReceiptIcon,        href: "/admin/pedidos"               },
-      // Semana 5 da ressignificação (2026-05-28) — orçamento ganha rota
-      // dedicada (era misturado em /admin/pedidos com filtro). Joalheiro
-      // recebe pedido de orçamento o dia inteiro; merece atalho próprio.
-      { k: "orcamentos", label: "Orçamentos",            icon: FileTextIcon,       href: "/admin/orcamentos"            },
-      { k: "caixa",      label: "Caixa do dia",          icon: WalletIcon,         href: "/admin/pdv/caixa"             },
-      // Onda 1.4 (2026-05-24) — label simplificado de "Movimentação de
-      // estoque" pra "Estoque" só. Lojista procura "estoque", não
-      // "movimentação". A tela /admin/estoque agora tem 2 views (saldo +
-      // histórico de movimentações) então o label antigo não cabe.
-      { k: "estoque",  label: "Estoque",                 icon: ArrowLeftRightIcon, href: "/admin/estoque",   exact: true },
-      { k: "receber",  label: "A receber",               icon: ClockIcon,          href: "/admin/financeiro/receber"    },
-      // S2.2 (2026-05-26) — Contas a pagar destrava DRE honesto.
-      { k: "pagar",    label: "A pagar",                 icon: ClockIcon,          href: "/admin/financeiro/pagar"      },
-      { k: "contatos", label: "Recados do site",         icon: InboxIcon,          href: "/admin/contatos"              },
+      { k: "vendas",     label: "Vendas",         icon: ReceiptIcon,        href: "/admin/pedidos"            },
+      { k: "orcamentos", label: "Orçamentos",     icon: FileTextIcon,       href: "/admin/orcamentos"         },
+      { k: "caixa",      label: "Caixa do dia",   icon: WalletIcon,         href: "/admin/pdv/caixa"          },
+      { k: "estoque",    label: "Estoque",        icon: ArrowLeftRightIcon, href: "/admin/estoque", exact: true },
+      { k: "receber",    label: "A receber",      icon: ClockIcon,          href: "/admin/financeiro/receber" },
+      { k: "pagar",      label: "A pagar",        icon: ClockIcon,          href: "/admin/financeiro/pagar"   },
     ],
   },
   {
@@ -101,12 +100,11 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
     label: "Cadastros",
     icon: BookOpenIcon,
     items: [
-      { k: "produtos",       label: "Produtos",          icon: PackageIcon,    href: "/admin/produtos",       exact: true },
-      { k: "categorias",     label: "Categorias",        icon: FolderIcon,     href: "/admin/categorias"                  },
-      { k: "marcas",         label: "Marcas",            icon: TagIcon,        href: "/admin/marcas"                      },
-      { k: "clientes",       label: "Clientes",          icon: UsersIcon,      href: "/admin/clientes",       exact: true },
-      { k: "grupos-cliente", label: "Grupos de cliente", icon: UsersRoundIcon, href: "/admin/clientes/grupos"             },
-      { k: "fornecedores",   label: "Fornecedores",      icon: TruckIcon,      href: "/admin/fornecedores"                },
+      { k: "produtos",     label: "Produtos",     icon: PackageIcon, href: "/admin/produtos",     exact: true },
+      { k: "clientes",     label: "Clientes",     icon: UsersIcon,   href: "/admin/clientes",     exact: true },
+      { k: "categorias",   label: "Categorias",   icon: FolderIcon,  href: "/admin/categorias"                },
+      { k: "marcas",       label: "Marcas",       icon: TagIcon,     href: "/admin/marcas"                    },
+      { k: "fornecedores", label: "Fornecedores", icon: TruckIcon,   href: "/admin/fornecedores"              },
     ],
   },
   {
@@ -114,55 +112,22 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
     label: "Gestão",
     icon: TrendingUpIcon,
     items: [
-      // Bloco E da ressignificação (2026-05-27): topo do grupo Gestão.
-      // Responde a pergunta-mãe "Quanto sobrou?" — primeiro item porque
-      // é o que o lojista mais procura e merece atalho direto.
-      { k: "resultado",    label: "Resultado",      icon: TrendingUpIcon,    href: "/admin/relatorios/resultado" },
-      { k: "relatorios",    label: "Relatórios",     icon: BarChart2Icon,     href: "/admin/relatorios"        },
-      // S3.6 (2026-05-26) — capital empatado em produto que nao vende ha 60d+.
-      { k: "estoque-parado", label: "Estoque parado", icon: AlertTriangleIcon, href: "/admin/estoque/parado"   },
-      // S3.4 (2026-05-26) — lotes vencendo (perfumaria/cosmetico).
-      { k: "estoque-vencendo", label: "Estoque vencendo", icon: ClockIcon, href: "/admin/estoque/vencendo" },
-      { k: "compras",       label: "Compras",        icon: ShoppingCartIcon,  href: "/admin/compras"           },
-      // Renomeado de "Custo & margem" → "Preencher custos" (2026-05-28).
-      // Label antigo soava "relatório de margem"; tela é workbench pra
-      // lojista cadastrar custo dos produtos que ainda não têm — alimenta
-      // CMV honesto na tela Resultado.
-      { k: "custos",        label: "Preencher custos", icon: CalculatorIcon,    href: "/admin/produtos/custos"   },
+      { k: "resultado",  label: "Resultado",  icon: TrendingUpIcon,   href: "/admin/relatorios/resultado" },
+      { k: "relatorios", label: "Relatórios", icon: BarChart2Icon,    href: "/admin/relatorios"           },
+      { k: "compras",    label: "Compras",    icon: ShoppingCartIcon, href: "/admin/compras"              },
     ],
   },
   {
     k: "loja-config",
-    label: "Loja online + Configurações",
+    label: "Loja online",
     icon: StoreIcon,
     items: [
       { k: "aparencia",  label: "Aparência",           icon: PaletteIcon,       href: "/admin/aparencia"        },
       { k: "banners",    label: "Banners",             icon: ImageIcon,         href: "/admin/banners"          },
       { k: "vitrines",   label: "Vitrines",            icon: LayoutGridIcon,    href: "/admin/colecoes"         },
-      // "Filtros da loja" (/admin/atributos) removido em 2026-05-27 (Bloco A
-      // da ressignificação). CRUD funcionava mas integração storefront tava
-      // quebrada há 2 sprints (junction product_attribute_value sem UI de
-      // vinculação produto↔valor + sem filtros dinâmicos no /categoria).
-      // Régua "funciona ou esconde" reativada com força total. Schema
-      // (attribute, attribute_value, product_attribute_value) preservado pra
-      // reativar quando integração storefront landar (sprint dedicada).
       { k: "cupons",     label: "Códigos de desconto", icon: TicketPercentIcon, href: "/admin/promocoes/cupons" },
       { k: "pagamento",  label: "Formas de pagamento", icon: CreditCardIcon,    href: "/admin/pagamento"        },
-      // "Equipe" escondida do menu em 2026-05-24 (Onda 1.2 do plano 4 ondas).
-      // Motivo: storeMembership existe no schema mas getCurrentStore filtra
-      // ownerId=userId em store-context.ts:26 — membros não-owner não entram
-      // no admin. Feature visível na UI tem que entregar ponta-a-ponta no
-      // fluxo comum (régua "funciona-ou-esconde"). Rota /admin/equipe segue
-      // viva por URL direto (owner consegue acessar pra futuro CRUD), mas
-      // não promete na navegação. Volta ao menu na Onda 5+ quando RBAC real.
-      // { k: "equipe",     label: "Equipe",              icon: UserCogIcon,       href: "/admin/equipe"           },
       { k: "dados-loja", label: "Dados da loja",       icon: Building2Icon,     href: "/admin/configuracoes"    },
-      // "Plano e assinatura" escondido do menu em 2026-05-24 — Fase 3 ainda
-      // não chegou (Stripe não integrado). UI atual mostra 3 cards de plano
-      // com CTA disabled → lojista clica e nada acontece → "funciona-ou-esconde".
-      // Rota /admin/assinatura segue viva por URL. Volta quando Stripe + planos
-      // pagos forem ligados (Fase 3 — Monetização).
-      // { k: "assinatura", label: "Plano e assinatura",  icon: ReceiptTextIcon,   href: "/admin/assinatura"       },
     ],
   },
 ] as const;

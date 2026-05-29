@@ -146,9 +146,9 @@ interface ProductFormProps {
    */
   storeNiche?: "roupa_feminina" | "joia" | "semijoia" | "perfumaria" | "outro";
   /**
-   * Bloco F.1 (2026-05-29) — aba ativa inicial. Default "basico". Usado
-   * pelo CTA "Preencher custo" do /admin/produtos/custos pra abrir o
-   * drawer direto na aba "Preço & custo" (initialTab="preco").
+   * Bloco F.1 (2026-05-29) — aba ativa inicial. Default "basico".
+   * Permite que qualquer ponto da UI abra o drawer numa aba especifica
+   * (ex: relatorio de margem -> "preco", aviso de produto sem foto -> "imagens").
    */
   initialTab?: TabKey;
   /** Lista de categorias da loja, pra popular o Select. Pode ser vazia. */

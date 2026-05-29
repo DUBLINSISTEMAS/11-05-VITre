@@ -7,7 +7,6 @@ import { z } from "zod";
 import { COUNTABLE_STATUSES } from "@/actions/order/constants";
 import {
   customerTable,
-  leadTable,
   orderItemTable,
   orderTable,
   productTable,
@@ -19,7 +18,6 @@ import { withTenant } from "@/lib/tenant";
 import type {
   CustomersReport,
   FullReport,
-  LeadsReport,
   ProductsReport,
   ReportRange,
   SalesReport,
@@ -197,29 +195,9 @@ export async function loadFullReport(
       newCustomers: newCustomers[0]?.c ?? 0,
     };
 
-    // 4. Leads
-    const leadsAgg = await tx
-      .select({
-        status: leadTable.status,
-        count: count(),
-      })
-      .from(leadTable)
-      .where(
-        and(
-          eq(leadTable.storeId, store.id),
-          gte(leadTable.createdAt, range.start),
-          lte(leadTable.createdAt, range.end),
-        ),
-      )
-      .groupBy(leadTable.status);
-
-    const totalLeads = leadsAgg.reduce((acc, l) => acc + l.count, 0);
-    const converted = leadsAgg.find((l) => l.status === "converted")?.count ?? 0;
-    const leads: LeadsReport = {
-      totalLeads,
-      byStatus: leadsAgg,
-      conversionRate: totalLeads > 0 ? converted / totalLeads : 0,
-    };
+    // Onda L1 (2026-05-29) — bloco "Leads/Recados do site" removido.
+    // Storefront ainda aceita form de contato (lead.submit-contact preserva
+    // dados na tabela), mas nao ha mais painel admin que consuma.
 
     // 5. Stock (snapshot atual, não filtrado por período — sempre "agora")
     //
@@ -274,6 +252,6 @@ export async function loadFullReport(
       })),
     };
 
-    return { range, sales, products, customers, leads, stock };
+    return { range, sales, products, customers, stock };
   });
 }

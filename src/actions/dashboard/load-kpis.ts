@@ -25,7 +25,6 @@ import { headers } from "next/headers";
 
 import {
   customerTable,
-  leadTable,
   orderTable,
   productImageTable,
   productTable,
@@ -51,8 +50,6 @@ export interface DashboardKpis {
 }
 
 export interface DashboardLojaOnline {
-  /** Lead.status='new' — clientes esperando contato. */
-  recadosPendentes: number;
   /** Produtos publicados na vitrine pública (is_active + is_published). */
   produtosPublicados: number;
   /** Produtos publicados que NÃO têm nenhuma imagem (UX vergonhoso). */
@@ -141,14 +138,9 @@ export async function loadDashboardKpis(
       .from(customerTable)
       .where(eq(customerTable.storeId, store.id));
 
-    // === LOJA ONLINE: 3 counts em paralelo (mas mesma transação seq) ===
-    const [leadsAgg] = await tx
-      .select({ count: sql<number>`count(*)::int` })
-      .from(leadTable)
-      .where(
-        and(eq(leadTable.storeId, store.id), eq(leadTable.status, "new")),
-      );
-
+    // === LOJA ONLINE: 2 counts em paralelo (mesma transação seq) ===
+    // Onda L1 (2026-05-29) — query de leads/recados removida; UI admin
+    // nao consome mais esse contador.
     const [publishedAgg] = await tx
       .select({ count: sql<number>`count(*)::int` })
       .from(productTable)
@@ -197,7 +189,6 @@ export async function loadDashboardKpis(
         },
       },
       lojaOnline: {
-        recadosPendentes: Number(leadsAgg?.count ?? 0),
         produtosPublicados: Number(publishedAgg?.count ?? 0),
         produtosSemFoto: Number(noPhotoAgg?.count ?? 0),
         storeSlug: store.slug,

@@ -261,25 +261,20 @@ export type CustomersReport = {
   newCustomers: number;
 };
 
-export type LeadsReport = {
-  totalLeads: number;
-  byStatus: {
-    status: "new" | "contacted" | "converted" | "lost";
-    count: number;
-  }[];
-  conversionRate: number; // 0..1
-};
-
 export type StockReport = {
   zeroStock: { id: string; name: string }[];
   lowStock: { id: string; name: string; quantity: number }[];
 };
+
+// Onda L1 (2026-05-29) — "Recados do site" removido por completo da UI
+// admin. Storefront ainda aceita form de contato (lead.submit-contact),
+// mas nao ha mais painel/dashboard/relatorio que consuma. Tabela `lead`
+// preservada no banco pra nao perder dados historicos.
 
 export type FullReport = {
   range: ReportRange;
   sales: SalesReport;
   products: ProductsReport;
   customers: CustomersReport;
-  leads: LeadsReport;
   stock: StockReport;
 };
