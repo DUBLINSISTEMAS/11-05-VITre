@@ -63,6 +63,9 @@ const READS_AND_HELPERS_ALLOWLIST: ReadonlyArray<string> = [
   "load-sinais.ts", // F.2.2: 4 checks de "pegando fogo agora" (caixa, fiado, etc)
   // "load-bombando.ts" removida em Onda M4 (2026-05-29) — ProdutosBombando deletado.
   "load-kpis.ts", // F.2.4 + F.2.5: KPIs tabulares + mini-snapshot loja online
+  // Onda Relatórios A4 (2026-05-29) — reads para imprimir
+  "load-expenses-report.ts", // reports/load-expenses-report.ts — despesas categorizadas
+  "load-comparative-report.ts", // reports/load-comparative-report.ts — matriz mês-a-mês
   "global.ts", // search/global.ts — busca admin cmd+K
   "filter-options.ts", // Sprint 4.2 — read pra dropdowns de categoria/marca
   // Tipos exportados (não são actions)

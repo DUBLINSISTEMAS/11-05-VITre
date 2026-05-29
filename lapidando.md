@@ -154,9 +154,10 @@ Layout impressão: header padrão (logo loja, CNPJ, data de geração, operador)
 - ✅ **R5** Despesas UX (dialogs host global em qualquer tab) + KPIs Stripe-style
 - ✅ **R4** Dashboard limpo (`ProfitSummary` substitui HeroLucro splash)
 
-**Sessão 2 (próxima):**
-- **R6** Coluna SOBRA dupla na /admin/produtos (à vista + 6× crédito)
-- **Relatórios A4** — Lucro + Despesas + Comparativo
+**Sessão 2 (em andamento — 2 commits):**
+- ✅ Hotfix `6f0b1d9` — TDZ em pedidos page (Maps fora do `if (orderIds>0)`) + guard `margin.toFixed(null)` no ProfitSummary
+- ✅ **R6** `e6d234e` — Coluna SOBRA dupla (à vista + 6× crédito) + raiz do bug R4 (campo `netProfitInCents` não existia em DreSimpleSummary; agora usa `operationalProfitInCents` canônico)
+- **Relatórios A4** (próximo) — Lucro + Despesas + Comparativo
 
 **Sessão 3 (decisão tua):**
 - **R1** Migrations unificadas → pré-requisito do reset

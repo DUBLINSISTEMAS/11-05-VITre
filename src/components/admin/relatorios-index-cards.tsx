@@ -10,12 +10,14 @@
  */
 import {
   AlertTriangleIcon,
+  BarChart3Icon,
   CalculatorIcon,
   ChevronRightIcon,
   HandCoinsIcon,
   LineChartIcon,
   type LucideIcon,
   ReceiptIcon,
+  ReceiptTextIcon,
   TrendingUpIcon,
   UsersIcon,
 } from "lucide-react";
@@ -49,6 +51,28 @@ const REPORTS: ReportCard[] = [
     icon: ReceiptIcon,
     description:
       "Lista venda-a-venda com cliente, canal e método. Total + ticket médio.",
+  },
+  // Onda Relatórios A4 (2026-05-29) — despesas categorizado. Responde
+  // "Quanto gastei de aluguel ano todo?" + destaque de despesas
+  // recorrentes (gasto fixo do mês). Imprimível.
+  {
+    k: "despesas",
+    label: "Despesas por categoria",
+    href: "/admin/relatorios/despesas",
+    icon: ReceiptTextIcon,
+    description:
+      "Aluguel, salário, luz, taxa de máquina. Quanto foi cada uma + o que é recorrente.",
+  },
+  // Onda Relatórios A4 — comparativo mês a mês. Matriz densa que
+  // responde "vendi mais em Janeiro que Fevereiro? Margem caindo?".
+  // Sem perder o lojista em filtros — 1 click, janela ajustável.
+  {
+    k: "comparativo",
+    label: "Comparativo mensal",
+    href: "/admin/relatorios/comparativo",
+    icon: BarChart3Icon,
+    description:
+      "Receita, despesa, lucro e margem dos últimos 3, 6 ou 12 meses — lado a lado.",
   },
   // S4.8 (2026-05-26) — card "Vendas por canal" removido (regua funciona-ou-esconde).
   // Rota /admin/relatorios/vendas-canal segue como stub via URL; quando virar feature
