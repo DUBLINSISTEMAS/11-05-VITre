@@ -3,6 +3,7 @@ import {
   ClipboardListIcon,
   InfoIcon,
   SearchXIcon,
+  TicketPercentIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -15,6 +16,8 @@ import {
   loadStockSnapshot,
   loadStockSnapshotCounts,
 } from "@/actions/stock/load";
+import { loadStockAging } from "@/actions/stock/load-aging";
+import { loadExpiringBatches } from "@/actions/stock/load-expiring";
 import type {
   StockMovement,
   StockSnapshotSort,
@@ -28,6 +31,7 @@ import { StockSnapshotTable } from "@/components/admin/stock-snapshot-table";
 import { StockSnapshotToolbar } from "@/components/admin/stock-snapshot-toolbar";
 import { StockToolbar } from "@/components/admin/stock-toolbar";
 import { Pagination } from "@/components/common/pagination";
+import { formatBRL } from "@/lib/pricing";
 import {
   dateOrNullSchema,
   enumOrNull,
@@ -63,9 +67,16 @@ const SNAPSHOT_SORT_VALUES = [
   "min-desc",
 ] as const satisfies ReadonlyArray<StockSnapshotSort>;
 
-// PP9 (handoff 2026-05-25) — "alertas" volta como tab dedicada (handoff
-// tem 3 tabs: Saldo / Movimentações / Alertas).
-const VIEW_VALUES = ["saldo", "historico", "alertas"] as const;
+// PP9 (handoff 2026-05-25) — "alertas" volta como tab dedicada.
+// Onda L4 (2026-05-29): +parado +vencendo. Eram rotas separadas
+// (/admin/estoque/parado, /admin/estoque/vencendo) — viraram tabs.
+const VIEW_VALUES = [
+  "saldo",
+  "historico",
+  "alertas",
+  "parado",
+  "vencendo",
+] as const;
 
 const estoqueSearchSchema = z.object({
   view: z.enum(VIEW_VALUES).catch("saldo"),
@@ -113,26 +124,31 @@ export default async function EstoquePage({ searchParams }: EstoquePageProps) {
   const params = estoqueSearchSchema.parse(await searchParams);
   const isFeed = params.view === "historico";
   const isAlerts = params.view === "alertas";
+  const isParked = params.view === "parado";
+  const isExpiring = params.view === "vencendo";
 
-  // KPIs sempre — visão geral fica em cima das três views.
+  // KPIs sempre — visão geral fica em cima das views.
   const kpis = await loadStockKpis();
 
-  // PP9 — count de alertas (zerados + abaixo do min) pra pill na tab.
-  // Usa loadStockSnapshotCounts (já existente — retorna { all, zero, low,
-  // ... }) — sem query nova.
-  const snapshotCounts = await loadStockSnapshotCounts();
+  // Counts pras pills das tabs. Tres queries leves (paralelas porque sao
+  // metodos diferentes). Onda L4: parked+expiring vem dos loaders deles.
+  const [snapshotCounts, parkedData, expiringData] = await Promise.all([
+    loadStockSnapshotCounts(),
+    loadStockAging(),
+    loadExpiringBatches(60),
+  ]);
   const alertCount =
     (snapshotCounts.zero ?? 0) + (snapshotCounts.low ?? 0);
+  const parkedCount = parkedData.rows.length;
+  const expiringCount = expiringData.rows.length;
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* H1 + sub + CTAs. S6 (handoff pixel-perfect 2026-05-25): vira
-          `.b3-page-title` + `.b3-page-sub` (handoff estoque.jsx:12-13). */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="b3-page-title">Estoque</h1>
           <p className="b3-page-sub">
-            Saldo atual, movimentações e alertas de produtos abaixo do mínimo
+            Saldo, movimentações, alertas, capital parado e lotes vencendo
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -166,9 +182,14 @@ export default async function EstoquePage({ searchParams }: EstoquePageProps) {
       {/* KPIs sempre visíveis */}
       <StockKpiCards kpis={kpis} />
 
-      {/* Tabs primárias — Saldo (default) | Movimentações | Alertas (PP9) */}
+      {/* Tabs primárias — Onda L4: 5 views (Saldo / Movimentações /
+          Alertas / Parado / Vencendo). */}
       <Suspense fallback={<div className="b3-tabs h-12" />}>
-        <EstoqueViewTabs alertCount={alertCount} />
+        <EstoqueViewTabs
+          alertCount={alertCount}
+          parkedCount={parkedCount}
+          expiringCount={expiringCount}
+        />
       </Suspense>
 
       {isFeed ? (
@@ -186,6 +207,10 @@ export default async function EstoquePage({ searchParams }: EstoquePageProps) {
           categoryId={params.categoryId}
           sort={params.sort ?? "stock-asc"}
         />
+      ) : isParked ? (
+        <ParkedView data={parkedData} />
+      ) : isExpiring ? (
+        <ExpiringView data={expiringData} />
       ) : (
         <SnapshotView
           page={params.page}
@@ -581,6 +606,278 @@ function NoResults() {
       <p className="text-ink-4 max-w-sm text-sm">
         Confira o filtro ou limpe a busca.
       </p>
+    </div>
+  );
+}
+
+// ============================================================
+// View: PARADO (Onda L4 — antes era rota separada /estoque/parado)
+// Capital empatado em produto sem venda ha 60+ dias.
+// ============================================================
+
+const PARKED_COHORT_LABEL = {
+  "60-90": "60 a 90 dias",
+  "90-180": "90 a 180 dias",
+  "180+": "Mais de 180 dias",
+} as const;
+
+function ParkedView({
+  data,
+}: {
+  data: Awaited<ReturnType<typeof loadStockAging>>;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="b3-card p-4">
+          <p className="text-ink-3 text-xs">Total parado 60d+</p>
+          <p className="text-ink-1 mt-1 text-2xl font-semibold">
+            {formatBRL(data.kpi.parked60PlusInCents)}
+          </p>
+        </div>
+        <div className="b3-card p-4">
+          <p className="text-ink-3 text-xs">60 a 90 dias</p>
+          <p className="text-ink-1 mt-1 text-2xl font-semibold">
+            {formatBRL(data.kpi.parked60to90InCents)}
+          </p>
+        </div>
+        <div className="b3-card p-4">
+          <p className="text-ink-3 text-xs">90 a 180 dias</p>
+          <p className="text-ink-1 mt-1 text-2xl font-semibold">
+            {formatBRL(data.kpi.parked90to180InCents)}
+          </p>
+        </div>
+        <div className="b3-card p-4">
+          <p className="text-ink-3 text-xs">+ de 180 dias</p>
+          <p className="text-destructive mt-1 text-2xl font-semibold">
+            {formatBRL(data.kpi.parked180PlusInCents)}
+          </p>
+        </div>
+      </div>
+
+      {data.rows.length === 0 ? (
+        <div className="b3-card p-8 text-center">
+          <p className="text-ink-3 text-sm">
+            Nenhum produto parado há 60+ dias.
+          </p>
+          <p className="text-ink-4 mt-1 text-xs">
+            Tudo que tem estoque está girando — ótimo sinal.
+          </p>
+        </div>
+      ) : (
+        <div className="b3-card overflow-x-auto">
+          <table className="b3-table w-full">
+            <thead>
+              <tr>
+                <th className="text-left">Produto</th>
+                <th className="text-right">Estoque</th>
+                <th className="text-right">Custo unit.</th>
+                <th className="text-right">Capital parado</th>
+                <th className="text-right">Última venda</th>
+                <th className="text-left">Faixa</th>
+                <th className="text-center" style={{ width: 120 }}>
+                  Ações
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.rows.map((r) => (
+                <tr key={r.productId}>
+                  <td>
+                    <Link
+                      href={`/admin/produtos?edit=${r.productId}`}
+                      className="text-ink-1 text-sm hover:underline"
+                    >
+                      {r.productName}
+                    </Link>
+                  </td>
+                  <td className="text-ink-2 mono text-right text-sm">
+                    {r.stockQuantity}
+                  </td>
+                  <td className="text-ink-2 mono text-right text-sm">
+                    {r.unitCostInCents !== null
+                      ? formatBRL(r.unitCostInCents)
+                      : "—"}
+                  </td>
+                  <td className="text-ink-1 mono text-right text-sm font-semibold">
+                    {r.parkedValueInCents !== null
+                      ? formatBRL(r.parkedValueInCents)
+                      : "—"}
+                  </td>
+                  <td className="text-ink-3 text-right text-sm">
+                    {r.daysSinceLastSale === null
+                      ? "nunca"
+                      : `${r.daysSinceLastSale}d atrás`}
+                  </td>
+                  <td>
+                    <span
+                      className={`b3-pill inline-flex items-center ${
+                        r.cohort === "180+"
+                          ? "b3-pill--danger"
+                          : r.cohort === "90-180"
+                            ? "b3-pill--warn"
+                            : "b3-pill--brand"
+                      }`}
+                    >
+                      {PARKED_COHORT_LABEL[r.cohort]}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="flex items-center justify-center">
+                      <Link
+                        href={`/admin/promocoes/cupons?produto=${r.productId}`}
+                        prefetch={false}
+                        className="b3-btn b3-btn--sm"
+                        title={`Criar código de desconto pra liquidar ${r.productName}`}
+                      >
+                        <TicketPercentIcon size={12} aria-hidden /> Promo
+                      </Link>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// View: VENCENDO (Onda L4 — antes era rota separada /estoque/vencendo)
+// Lotes vencendo em ate 60 dias (FEFO — perfumaria/cosmetico).
+// ============================================================
+
+function ExpiringView({
+  data,
+}: {
+  data: Awaited<ReturnType<typeof loadExpiringBatches>>;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="b3-card border-destructive/50 p-4">
+          <p className="text-ink-3 text-xs">Já vencidos</p>
+          <p className="text-destructive mt-1 text-2xl font-semibold">
+            {data.kpi.expiredCount}
+          </p>
+          <p className="text-ink-4 mt-1 text-[11px]">
+            Capital: {formatBRL(data.kpi.expiredValueInCents)} — descarte ou
+            doação
+          </p>
+        </div>
+        <div className="b3-card p-4">
+          <p className="text-ink-3 text-xs">Vencem em 30 dias</p>
+          <p className="text-ink-1 mt-1 text-2xl font-semibold">
+            {data.kpi.expiringIn30Count}
+          </p>
+          <p className="text-ink-4 mt-1 text-[11px]">
+            Capital: {formatBRL(data.kpi.expiringIn30ValueInCents)} — promo
+            urgente
+          </p>
+        </div>
+        <div className="b3-card p-4">
+          <p className="text-ink-3 text-xs">Vencem em 60 dias</p>
+          <p className="text-ink-1 mt-1 text-2xl font-semibold">
+            {data.kpi.expiringIn60Count}
+          </p>
+          <p className="text-ink-4 mt-1 text-[11px]">
+            Capital: {formatBRL(data.kpi.expiringIn60ValueInCents)} — vender
+            primeiro
+          </p>
+        </div>
+      </div>
+
+      {data.rows.length === 0 ? (
+        <div className="b3-card p-8 text-center">
+          <p className="text-ink-3 text-sm">
+            Nenhum lote vencendo em 60 dias.
+          </p>
+          <p className="text-ink-4 mt-1 text-xs">
+            Esta view mostra lotes de produtos comprados via{" "}
+            <Link href="/admin/compras" className="font-medium underline">
+              Compras
+            </Link>{" "}
+            que tenham lote e validade. Faz sentido pra perfumaria, cosmético,
+            alimento. Marque a categoria como &ldquo;rastrear lote&rdquo; no
+            cadastro pra os campos aparecerem na próxima compra.
+          </p>
+        </div>
+      ) : (
+        <div className="b3-card overflow-x-auto">
+          <table className="b3-table w-full">
+            <thead>
+              <tr>
+                <th className="text-left">Produto</th>
+                <th className="text-left">Lote</th>
+                <th className="text-left">Vencimento</th>
+                <th className="text-right">Quantidade</th>
+                <th className="text-right">Valor</th>
+                <th className="text-left">Situação</th>
+                <th className="text-center" style={{ width: 120 }}>
+                  Ações
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.rows.map((r) => (
+                <tr key={r.purchaseItemId}>
+                  <td>
+                    <Link
+                      href={`/admin/produtos?edit=${r.productId}`}
+                      className="text-ink-1 text-sm hover:underline"
+                    >
+                      {r.productName}
+                    </Link>
+                  </td>
+                  <td className="text-ink-2 mono text-sm">
+                    {r.batchNumber ?? "—"}
+                  </td>
+                  <td className="text-ink-2 mono text-sm">
+                    {new Date(r.expiresAt).toLocaleDateString("pt-BR", {
+                      timeZone: "UTC",
+                    })}
+                  </td>
+                  <td className="text-ink-2 mono text-right text-sm">
+                    {r.quantityPurchased}
+                  </td>
+                  <td className="text-ink-1 mono text-right text-sm font-medium">
+                    {formatBRL(r.parkedValueInCents)}
+                  </td>
+                  <td>
+                    {r.daysToExpiry < 0 ? (
+                      <span className="b3-pill b3-pill--danger inline-flex items-center">
+                        Vencido há {-r.daysToExpiry}d
+                      </span>
+                    ) : r.daysToExpiry <= 30 ? (
+                      <span className="b3-pill b3-pill--warn inline-flex items-center">
+                        Vence em {r.daysToExpiry}d
+                      </span>
+                    ) : (
+                      <span className="b3-pill b3-pill--brand inline-flex items-center">
+                        Vence em {r.daysToExpiry}d
+                      </span>
+                    )}
+                  </td>
+                  <td>
+                    <div className="flex items-center justify-center">
+                      <Link
+                        href={`/admin/promocoes/cupons?produto=${r.productId}`}
+                        prefetch={false}
+                        className="b3-btn b3-btn--sm"
+                        title={`Criar código de desconto pra liquidar ${r.productName} antes do vencimento`}
+                      >
+                        <TicketPercentIcon size={12} aria-hidden /> Promo
+                      </Link>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
