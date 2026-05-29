@@ -22,6 +22,10 @@ const TABS = [
   // vê aqui o que NÃO entra em relatório de estoque pra revisar decisão
   // consciente (serviço/encomenda) vs esquecimento de cadastro.
   { kind: "status", value: "no-tracking", label: "Sem controle", countKey: "no-tracking" },
+  // Onda L3 (2026-05-29): substitui a tela /admin/produtos/custos deletada
+  // em L1. Lojista entra aqui, filtra "Sem custo", abre produto e cadastra
+  // pra DRE fechar honesto.
+  { kind: "status", value: "no-cost", label: "Sem custo", countKey: "no-cost" },
 ] as const;
 
 export interface ProductsStatusTabsCounts {
@@ -31,6 +35,7 @@ export interface ProductsStatusTabsCounts {
   draft: number;
   "no-stock": number;
   "no-tracking": number;
+  "no-cost": number;
   promo: number;
 }
 

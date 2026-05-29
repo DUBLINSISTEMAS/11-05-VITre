@@ -58,14 +58,8 @@ interface ProductFormModalProps {
    * a partir do `initialTab` do CustomEvent. Util pra deep-link
    * "abrir produto X direto na aba Y".
    */
-  initialTab?:
-    | "basico"
-    | "imagens"
-    | "preco"
-    | "precificacao"
-    | "estoque"
-    | "variantes"
-    | "loja";
+  // Onda L3 (2026-05-29) — 4 tabs consolidadas (era 7).
+  initialTab?: "basico" | "preco" | "estoque" | "mais";
 }
 
 export function ProductFormModal({

@@ -3,15 +3,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   DollarSignIcon,
-  ImageIcon,
-  LayoutGridIcon,
   Loader2Icon,
+  MoreHorizontalIcon,
   PackageIcon,
   PlusCircleIcon,
   SaveIcon,
-  StoreIcon,
   TagIcon,
-  TrendingUpIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
@@ -202,43 +199,31 @@ interface ProductFormProps {
   onSubmittingChange?: (pending: boolean) => void;
 }
 
-// PP1 (handoff pixel-perfect 2026-05-25): 6 abas com sidebar 180px à
-// esquerda + form panel à direita. Bate o ProductFormDrawer do bundle
-// (drawers.jsx linha 209-216).
-//
-// Bloco G da ressignificação (2026-05-27): +1 aba "Precificação" entre
-// "Preço & custo" e "Estoque". É view read-only que calcula lucro por
-// forma de pagamento — atende pedido direto do cliente joalheiro.
+// Onda L3 (2026-05-29) — consolidacao 7 -> 4 abas. Ver shared.tsx pro
+// motivo. "Basico" agora absorve Imagens (foto + identidade na mesma
+// view), "Preco & Custo" absorve Precificacao (margem inline), "Estoque"
+// absorve Variantes (variante = SKU de estoque), e "Mais" recolhe loja
+// online + promo + atacado + NCM (campos secundarios, pouco usados pelo
+// lojista pequeno BR).
 const TAB_NAV: {
   key: TabKey;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
 }[] = [
-  { key: "basico", label: "Básico", icon: TagIcon },
-  { key: "imagens", label: "Imagens", icon: ImageIcon },
-  { key: "preco", label: "Preço & custo", icon: DollarSignIcon },
-  { key: "precificacao", label: "Precificação", icon: TrendingUpIcon },
-  { key: "estoque", label: "Estoque", icon: PackageIcon },
-  { key: "variantes", label: "Variantes", icon: LayoutGridIcon },
-  // Renomeada de "Loja online" pra "Catálogo público" em 2026-05-28
-  // (R1 Semana 4 da ressignificação). Reflete que esta aba contém SOMENTE
-  // campos exclusivos do storefront público (publicação, slug, meta,
-  // composição/modelagem/forro/lavagem). Overrides de preço/cartão saíram
-  // daqui pra "Preço & custo" no Bloco F.0 — sem ambiguidade restante.
-  { key: "loja", label: "Catálogo público", icon: StoreIcon },
+  { key: "basico",  label: "Básico",        icon: TagIcon },
+  { key: "preco",   label: "Preço & Custo", icon: DollarSignIcon },
+  { key: "estoque", label: "Estoque",       icon: PackageIcon },
+  { key: "mais",    label: "Mais",          icon: MoreHorizontalIcon },
 ];
 
 /**
  * Form de edição/criação de produto.
  *
- * PP1 redesign 2026-05-25: 6 abas em sidebar vertical 180px à esquerda
- * (bate drawers.jsx do handoff). Antes era 3 abas horizontais.
- *   1. Básico       — Nome, descrição, classificação (marca+categoria)
- *   2. Imagens      — ImageUploader (extraído da Identidade)
- *   3. Preço & custo — Venda + custo + margem live + simulador markup/margem
- *   4. Estoque      — Controle on/off + qty + min/max + localização
- *   5. Variantes    — VariantEditor standalone (antes era dobrável)
- *   6. Loja online  — Publicação + promo + atacado + comissão + NCM + apparel
+ * Onda L3 (2026-05-29): 4 abas em sidebar vertical 180px à esquerda.
+ *   1. Básico       — Nome, descrição, marca, categoria + fotos
+ *   2. Preço & Custo — Preço, custo, comissão, simulador de margem inline
+ *   3. Estoque      — Controle on/off + qty + min/max + variantes
+ *   4. Mais         — Catálogo publico, promo, atacado, NCM, apparel
  *
  * Comportamento preservado: Zod schema, server actions, staged uploads,
  * cadastro contínuo via sessionStorage, sticky save mobile/desktop,
@@ -376,7 +361,9 @@ export function ProductForm({
   const currentKind = watch("kind");
   const visibleTabs = useMemo(() => {
     if (currentKind === "raw_material") {
-      const HIDDEN: TabKey[] = ["preco", "precificacao", "loja"];
+      // Onda L3 — raw_material esconde Preco (nao vende) e Mais
+      // (catalogo publico). Basico + Estoque cobrem matéria-prima.
+      const HIDDEN: TabKey[] = ["preco", "mais"];
       return TAB_NAV.filter((t) => !HIDDEN.includes(t.key));
     }
     return TAB_NAV;
@@ -625,8 +612,11 @@ export function ProductForm({
           })}
         </nav>
 
-        {/* === Form panel — 6 seções, uma visível por vez === */}
+        {/* === Form panel (Onda L3) — 4 secoes consolidadas === */}
         <div className="min-w-0">
+          {/* Basico = Identidade (nome/marca/categoria/descricao) + Imagens
+              (uploader). Antes eram 2 abas separadas; founder rejeitou
+              a fragmentacao. TabIdentidade ja tinha view="all". */}
           <div hidden={activeTab !== "basico"} className="space-y-4">
             <TabIdentidade
               control={control}
@@ -647,41 +637,14 @@ export function ProductForm({
                   [...prev, b].sort((a, b) => a.name.localeCompare(b.name)),
                 )
               }
-              view="basico"
+              view="all"
             />
           </div>
 
-          <div hidden={activeTab !== "imagens"} className="space-y-4">
-            <TabIdentidade
-              control={control}
-              register={register}
-              errors={errors}
-              isPending={isPending}
-              productId={initialData.productId}
-              images={images}
-              onImagesChange={handleImagesChange}
-              isCreating={isCreating}
-              stagedFiles={stagedFiles}
-              onStagedChange={setStagedFiles}
-              localCategories={localCategories}
-              onCategoryCreated={handleCategoryCreated}
-              localBrands={localBrands}
-              onBrandCreated={(b) =>
-                setLocalBrands((prev) =>
-                  [...prev, b].sort((a, b) => a.name.localeCompare(b.name)),
-                )
-              }
-              view="imagens"
-            />
-          </div>
-
-          <div hidden={activeTab !== "preco"} className="space-y-4">
-            {/* Ressignificação 2026-05-27 — aba "Preço & Custo" agora mostra
-                TUDO sobre dinheiro do produto: essencial (preço/custo/margem)
-                + avançado (promo/atacado/parcelamento/desconto-vista/comissão/NCM).
-                Razão: princípio 8 + decisão #7 do paradigma — o produto é nó
-                central que alimenta TODOS os canais, e o lojista precisa de UM
-                lugar pra entender o financeiro completo do SKU. */}
+          {/* Preco & Custo = TabPrecoCusto (campos editaveis: preco, custo,
+              comissao, etc) + TabPrecificacao (view read-only de margem por
+              forma de pagamento). Antes eram 2 abas separadas. */}
+          <div hidden={activeTab !== "preco"} className="space-y-6">
             <TabPrecoCusto
               control={control}
               register={register}
@@ -690,13 +653,12 @@ export function ProductForm({
               setValue={setValue}
               productId={initialData.productId}
             />
-          </div>
-
-          <div hidden={activeTab !== "precificacao"} className="space-y-4">
             <TabPrecificacao control={control} storeFees={storeFees} />
           </div>
 
-          <div hidden={activeTab !== "estoque"} className="space-y-4">
+          {/* Estoque = TabEstoque + TabVariantes. Variante = SKU de
+              estoque, faz sentido na mesma aba. */}
+          <div hidden={activeTab !== "estoque"} className="space-y-6">
             <TabEstoque
               control={control}
               register={register}
@@ -705,9 +667,6 @@ export function ProductForm({
               isCreating={isCreating}
               originalStockQuantity={initialData.stockQuantity}
             />
-          </div>
-
-          <div hidden={activeTab !== "variantes"} className="space-y-4">
             <TabVariantes
               control={control}
               isPending={isPending}
@@ -715,13 +674,16 @@ export function ProductForm({
             />
           </div>
 
-          <div hidden={activeTab !== "loja"} className="space-y-4">
+          {/* Mais = Catalogo publico (publish, slug, meta) + apparel
+              (composicao/modelagem/forro/lavagem). Campos secundarios
+              pra lojista pequeno BR, raramente tocados. Promo/atacado/NCM
+              continuam dentro de TabLojaOnline. */}
+          <div hidden={activeTab !== "mais"} className="space-y-4">
             <div className="rounded-xl border border-dashed border-line bg-bg-app p-3 text-[12.5px] text-ink-4">
-              Publicação na vitrine pública e detalhes editoriais (composição,
-              modelagem, forro, lavagem quando aplicável). Preço, parcelamento
-              e desconto à vista deste produto ficam na aba{" "}
-              <strong className="text-ink-2">Preço &amp; Custo</strong> — eles
-              valem em todos os canais (PDV, WhatsApp, vitrine).
+              Catálogo público (publicação na vitrine, slug, meta editorial)
+              e atacado/promo/NCM. Preço, parcelamento e desconto à vista
+              ficam na aba <strong className="text-ink-2">Preço &amp; Custo</strong>
+              {" "}— eles valem em todos os canais.
             </div>
             <TabLojaOnline
               control={control}

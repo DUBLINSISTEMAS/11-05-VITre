@@ -27,5 +27,6 @@ export interface OpenProductFormEventDetail {
    * aba especifica (ex: dashboard avisando produto sem foto -> "imagens",
    * relatorio de margem -> "preco").
    */
-  initialTab?: "basico" | "imagens" | "preco" | "precificacao" | "estoque" | "variantes" | "loja";
+  // Onda L3 (2026-05-29) — 4 tabs consolidadas (era 7).
+  initialTab?: "basico" | "preco" | "estoque" | "mais";
 }

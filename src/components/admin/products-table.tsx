@@ -143,7 +143,7 @@ export function ProductsTable({ products }: ProductsTableProps) {
             <th style={{ textAlign: "right" }}>ESTOQUE</th>
             <th style={{ textAlign: "right" }}>CUSTO</th>
             <th style={{ textAlign: "right" }}>PREÇO</th>
-            <th style={{ textAlign: "right" }}>MARGEM</th>
+            <th style={{ textAlign: "right" }}>SOBRA</th>
             <th>STATUS</th>
           </tr>
         </thead>
@@ -257,7 +257,7 @@ export function ProductsTable({ products }: ProductsTableProps) {
                   )}
                 </td>
                 <td className="mono" style={{ textAlign: "right", fontWeight: 600 }}>
-                  <MarginCell
+                  <SobraCell
                     basePriceInCents={p.basePriceInCents}
                     promoPriceInCents={onPromoNow ? p.promoPriceInCents : null}
                     costPriceInCents={p.costPriceInCents}
@@ -353,13 +353,20 @@ function StockCell({
 }
 
 /**
- * Coluna MARGEM — calcula margem bruta ((preço − custo) / preço * 100).
- * Quando há promo ativa, usa o preço promocional (lojista quer ver
- * margem REAL praticada no momento). Cor semafórica: >40% verde, >20%
- * amarelo, ≤20% vermelho, <0 vermelho. Sem custo cadastrado ou preço
- * zero → "—". Handoff PP7.
+ * Coluna SOBRA — Onda L3 (2026-05-29). Refatora a MarginCell antiga
+ * (que mostrava porcentagem). Founder pediu valor absoluto: lojista
+ * pequeno BR entende "essa peca da R$ 12,00" melhor que "margem 35%".
+ *
+ * Calcula `preco − custo` (sem taxa cartao porque cartao varia por
+ * canal/parcela; a simulacao detalhada vive no card "Sobra por venda"
+ * dentro do drawer). Cor semaforica:
+ *   prejuizo (sobra < 0) -> vermelho
+ *   apertado (margem < 10%) -> amarelo
+ *   confortavel (>= 10%) -> verde
+ *
+ * Sem custo cadastrado -> placeholder + dica de clicar pra cadastrar.
  */
-function MarginCell({
+function SobraCell({
   basePriceInCents,
   promoPriceInCents,
   costPriceInCents,
@@ -369,23 +376,30 @@ function MarginCell({
   costPriceInCents?: number | null;
 }) {
   if (typeof costPriceInCents !== "number" || costPriceInCents < 0) {
-    return <span className="text-ink-4">—</span>;
+    return (
+      <span
+        className="text-amber-600 text-[11px] italic"
+        title="Sem custo cadastrado — abra o produto e preencha pra ver a sobra real"
+      >
+        Sem custo
+      </span>
+    );
   }
   const price = promoPriceInCents ?? basePriceInCents;
   if (price <= 0) {
     return <span className="text-ink-4">—</span>;
   }
-  const profit = price - costPriceInCents;
-  const marginPct = (profit / price) * 100;
+  const sobra = price - costPriceInCents;
+  const marginPct = (sobra / price) * 100;
   const color =
-    marginPct > 40
-      ? "var(--ok)"
-      : marginPct > 20
+    sobra < 0
+      ? "var(--danger)"
+      : marginPct < 10
         ? "var(--warn)"
-        : "var(--danger)";
+        : "var(--ok)";
   return (
     <span className="tabular-nums" style={{ color }}>
-      {marginPct.toFixed(0)}%
+      {formatBRL(sobra)}
     </span>
   );
 }

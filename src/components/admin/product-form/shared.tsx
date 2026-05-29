@@ -230,60 +230,56 @@ export function bumpSessionCounter(): number {
 // Mapping aba → campos do form (pra count de erros por aba).
 // ============================================================================
 
-// PP1 (handoff pixel-perfect 2026-05-25): 3 abas → 6 abas conforme
-// drawers.jsx do bundle. Reverte parcialmente a consolidação 2.1 pra
-// match 1:1 do protótipo. Lojista navega por sidebar 180px no drawer.
+// Onda L3 (2026-05-29) — consolidação 7 → 4 abas. Founder rejeitou a
+// densidade anterior ("7 abas pra cadastrar produto é exagero"). Mantem
+// principio 8 do CLAUDE.md (produto como nó central) mas com hierarquia
+// honesta: 80% do trabalho do lojista cabe em Basico+Preco+Estoque; o
+// resto vai pra "Mais" (catalogo publico, atacado, promo, fiscal).
 //
-// Bloco G da ressignificação (2026-05-27): +1 aba "precificacao" — view
-// read-only consumindo o helper canônico `calculateNetProfit`. Sem campos
-// próprios (TAB_FIELDS.precificacao = []), zero count de erros.
-export type TabKey =
-  | "basico"
-  | "imagens"
-  | "preco"
-  | "precificacao"
-  | "estoque"
-  | "variantes"
-  | "loja";
+// Consolidacao:
+//   imagens     -> merge em "basico" (foto + identidade na mesma view)
+//   precificacao -> merge em "preco" (margem inline ao lado do custo)
+//   variantes   -> merge em "estoque" (variante e SKU de estoque)
+//   loja        -> renomeada "mais" + recebe promo/wholesale/NCM
+export type TabKey = "basico" | "preco" | "estoque" | "mais";
 
 const TAB_FIELDS: Record<TabKey, Array<keyof ProductFormValues>> = {
   basico: ["name", "description", "categoryId", "brand"],
-  imagens: [], // imagens são state separado (não campo do RHF)
-  // Ressignificação 2026-05-27 — installmentsOverride e cashDiscountOverrideBps
-  // migraram de "loja" pra cá porque afetam TODOS os canais (não só vitrine).
+  // Preco & Custo agora absorve Precificacao (sem campos proprios,
+  // continua read-only via TabPrecificacao renderizado inline).
   preco: [
     "basePriceInCents",
     "costPriceInCents",
     "gtin",
     "internalCode",
     "unit",
-    "promoPriceInCents",
-    "wholesalePriceInCents",
     "installmentsOverride",
     "cashDiscountOverrideBps",
     "defaultCommissionBps",
-    "ncm",
     "weightGrams",
   ],
-  precificacao: [], // view read-only — sem campos do form
+  // Estoque agora inclui variantes (variant = SKU de estoque).
   estoque: [
     "trackStock",
     "stockQuantity",
     "minStockQuantity",
     "maxStockQuantity",
+    "variants",
   ],
-  variantes: ["variants"],
-  // Pós-ressignificação, "loja" fica SOMENTE com campos exclusivos da vitrine
-  // pública: publicação + meta editorial. Promo/atacado/comissão/NCM saíram
-  // pro bloco "Avançado" da aba "Preço & Custo" também (Onda 2.2).
-  loja: [
+  // "Mais" recolhe tudo que e secundario: catalogo publico + atacado +
+  // promo + meta editorial (apparel) + NCM fiscal. Lojista pequeno BR
+  // raramente entra aqui.
+  mais: [
     "isActive",
     "isPublishedToStorefront",
     "isFeatured",
+    "promoPriceInCents",
+    "wholesalePriceInCents",
     "composition",
     "modeling",
     "lining",
     "washing",
+    "ncm",
   ],
 };
 

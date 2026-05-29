@@ -59,6 +59,10 @@ const STATUS_VALUES = [
   "draft",
   "no-stock",
   "no-tracking",
+  // Onda L3 (2026-05-29) — filtro pra produtos sem custo cadastrado.
+  // Substitui a tela /admin/produtos/custos deletada em L1. Lojista
+  // entra aqui, filtra "Sem custo", abre o produto e cadastra.
+  "no-cost",
 ] as const;
 type StatusFilter = (typeof STATUS_VALUES)[number];
 
@@ -182,6 +186,15 @@ export default async function ProdutosPage({
       // entram em relatório de estoque pra decidir se foi consciente
       // (serviço/encomenda) ou esquecimento de cadastro.
       return [eq(productTable.trackStock, false), ...NOT_DRAFT];
+    }
+    if (s === "no-cost") {
+      // Onda L3 — produtos sem custo cadastrado. Substitui a tela
+      // /admin/produtos/custos (deletada em L1). DRE so fecha honesto
+      // quando todos tem custo; lojista trabalha o filtro pra zerar.
+      return [
+        sql`${productTable.costPriceInCents} is null`,
+        ...NOT_DRAFT,
+      ];
     }
     return NOT_DRAFT;
   };
@@ -337,6 +350,9 @@ export default async function ProdutosPage({
         // Onda 1.4 — bucket "Sem controle" (trackStock=false). Ortogonal
         // a "no-stock" (que exige trackStock=true). Ambos podem coexistir.
         noTracking: sql<number>`count(*) filter (where ${productTable.trackStock} = false and ${notDraftCond})::int`,
+        // Onda L3 — bucket "Sem custo". Conta produtos com cost NULL
+        // (descontando rascunhos). Substitui /admin/produtos/custos.
+        noCost: sql<number>`count(*) filter (where ${productTable.costPriceInCents} is null and ${notDraftCond})::int`,
         promo: sql<number>`count(*) filter (where ${promoActiveCond} and ${notDraftCond})::int`,
       })
       .from(productTable)
@@ -349,6 +365,7 @@ export default async function ProdutosPage({
       draft: 0,
       noStock: 0,
       noTracking: 0,
+      noCost: 0,
       promo: 0,
     };
 
@@ -371,6 +388,7 @@ export default async function ProdutosPage({
       draft: agg.draft,
       "no-stock": agg.noStock,
       "no-tracking": agg.noTracking,
+      "no-cost": agg.noCost,
       promo: agg.promo,
     };
 
