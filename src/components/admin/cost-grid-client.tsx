@@ -30,6 +30,11 @@ import { toast } from "sonner";
 
 import type { ProductCostBatchRow } from "@/actions/product/schema";
 import { updateProductCostBatch } from "@/actions/product/update-cost-batch";
+import { ProductCreateButton } from "@/components/admin/product-create-button";
+import {
+  OPEN_PRODUCT_FORM_EVENT,
+  type OpenProductFormEventDetail,
+} from "@/components/admin/product-form-events";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { logger } from "@/lib/logger";
@@ -375,22 +380,27 @@ export function CostGridClient({ initialRows }: CostGridClientProps) {
             <span className="text-ink-4">Tudo salvo.</span>
           )}
         </div>
-        <Button
-          type="button"
-          size="sm"
-          onClick={handleSaveAll}
-          disabled={isSavingAll || dirtyRows.length === 0}
-        >
-          {isSavingAll ? (
-            <>
-              <Loader2Icon className="animate-spin size-3.5" /> Salvando…
-            </>
-          ) : (
-            <>
-              <SaveIcon className="size-3.5" /> Salvar tudo
-            </>
-          )}
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Onda Bloco A (2026-05-28): atalho pra criar produto sem sair
+              da tela. Founder reclamou que daqui não dava pra criar nada. */}
+          <ProductCreateButton />
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleSaveAll}
+            disabled={isSavingAll || dirtyRows.length === 0}
+          >
+            {isSavingAll ? (
+              <>
+                <Loader2Icon className="animate-spin size-3.5" /> Salvando…
+              </>
+            ) : (
+              <>
+                <SaveIcon className="size-3.5" /> Salvar tudo
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
@@ -489,7 +499,22 @@ export function CostGridClient({ initialRows }: CostGridClientProps) {
                   className="border-b border-line/60 transition-colors hover:bg-bg-app/60"
                 >
                   <td className="py-1.5 pr-3 align-middle">
-                    <div className="flex flex-col">
+                    {/* Onda Bloco A (2026-05-28): nome vira botão que abre
+                        o drawer do produto (editar nome / arquivar / mexer
+                        em tudo). Sem isto a tela ficava só leitura + 2 inputs. */}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        window.dispatchEvent(
+                          new CustomEvent<OpenProductFormEventDetail>(
+                            OPEN_PRODUCT_FORM_EVENT,
+                            { detail: { productId: row.id } },
+                          ),
+                        )
+                      }
+                      className="flex flex-col items-start text-left transition-colors hover:text-mangos-green-800"
+                      title="Abrir produto pra editar / arquivar"
+                    >
                       <span className="text-ink-1 font-medium leading-tight">
                         {row.name}
                       </span>
@@ -498,7 +523,7 @@ export function CostGridClient({ initialRows }: CostGridClientProps) {
                           .filter(Boolean)
                           .join(" · ") || "—"}
                       </span>
-                    </div>
+                    </button>
                   </td>
                   <td className="py-1.5 px-2 text-right align-middle text-ink-2">
                     {formatBRL(row.basePriceInCents)}
@@ -567,10 +592,10 @@ export function CostGridClient({ initialRows }: CostGridClientProps) {
       </div>
 
       <p className="text-ink-4 text-[11px] leading-tight">
-        Dica: Tab pula pra próxima célula. Salva automaticamente 2,5s após
-        parar de digitar. Use &ldquo;Salvar tudo&rdquo; pra forçar sync
-        imediato. Lucro líquido aqui é à vista (não desconta cartão); o
-        número completo aparece em Resultado.
+        Dica: clique no nome do produto pra editar / arquivar. Tab pula pra
+        próxima célula. Salva automaticamente 2,5s após parar de digitar; ou
+        force com &ldquo;Salvar tudo&rdquo;. Lucro líquido aqui é à vista
+        (não desconta cartão); o número completo aparece em Resultado.
       </p>
     </div>
   );

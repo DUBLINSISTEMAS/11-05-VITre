@@ -188,6 +188,12 @@ interface ProductFormProps {
    * em DEFAULT_STORE_FEES (médias Stone/Cielo 2025).
    */
   storeFees?: StoreFeeConfig;
+  /**
+   * Bloco A UX (2026-05-28) — quando o form está salvando, o pai (drawer)
+   * precisa saber pra mostrar spinner no botão Salvar do footer. Sem isto
+   * o footer ficava sem feedback durante o INSERT/UPDATE.
+   */
+  onSubmittingChange?: (pending: boolean) => void;
 }
 
 // PP1 (handoff pixel-perfect 2026-05-25): 6 abas com sidebar 180px à
@@ -250,6 +256,7 @@ export function ProductForm({
   embedded = false,
   submitRef,
   storeFees,
+  onSubmittingChange,
 }: ProductFormProps) {
   // Onda 2.3 — campos "Composição/Modelagem/Forro/Lavagem" só fazem
   // sentido pra roupa. Pra joia, semijoia, perfumaria, outro: escondemos.
@@ -330,6 +337,12 @@ export function ProductForm({
     "save",
   );
   const [activeTab, setActiveTab] = useState<TabKey>("basico");
+
+  // Bloco A UX (2026-05-28) — propaga estado de salvamento pro drawer host
+  // mostrar spinner no botão Salvar do footer.
+  useEffect(() => {
+    onSubmittingChange?.(isPending);
+  }, [isPending, onSubmittingChange]);
 
   // Onda 2.9 (2026-05-22) — autosave de rascunho. Só faz sentido em
   // criação (modo Detalhado de novo produto). Em edit o estado do form
@@ -507,6 +520,24 @@ export function ProductForm({
     }
   }
 
+  // Bloco A UX (2026-05-28) — Zod falhou. Antes do fix, click Salvar com erro
+  // em aba inativa não dava feedback visível (badge vermelho na aba escondida
+  // + nada na aba atual + sem toast). Agora: toast claro + pula pra primeira
+  // aba com erro pra lojista corrigir sem caçar.
+  const onInvalid = () => {
+    const firstWithError = visibleTabs.find(
+      (t) => getTabErrorCount(t.key, errors) > 0,
+    );
+    if (firstWithError && firstWithError.key !== activeTab) {
+      setActiveTab(firstWithError.key);
+    }
+    toast.error(
+      firstWithError
+        ? `Verifique os campos marcados em "${firstWithError.label}".`
+        : "Há campos pendentes. Confira as abas marcadas em vermelho.",
+    );
+  };
+
   const handleImagesChange = useCallback((next: ProductImageData[]) => {
     setImages(next);
   }, []);
@@ -525,7 +556,7 @@ export function ProductForm({
 
   return (
     <form
-      onSubmit={handleSubmit(onSubmit)}
+      onSubmit={handleSubmit(onSubmit, onInvalid)}
       // Padding-bottom em mobile pra clear do sticky save mobile (3.5rem nav +
       // 0.25rem gap + altura do save). Desktop: pb-28 pra clear da bottom
       // action bar fixa (h-20 + buffer). PP1: form vai full-width até xl

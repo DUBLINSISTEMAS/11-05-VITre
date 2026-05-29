@@ -69,6 +69,9 @@ export function ProductFormDrawer({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isLoading, startLoad] = useTransition();
   const [isDeleting, startDelete] = useTransition();
+  // Bloco A UX (2026-05-28) — recebe `isPending` do ProductForm via callback
+  // pra mostrar spinner no botão Salvar do footer durante o save.
+  const [isSaving, setIsSaving] = useState(false);
   const submitRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
@@ -185,6 +188,7 @@ export function ProductFormDrawer({
                 onCreateProduct={
                   data.mode === "new" ? createProductFromValues : undefined
                 }
+                onSubmittingChange={setIsSaving}
                 onAfterSave={(opts) => {
                   if (opts.continueCreating) return; // segue no drawer
                   onOpenChange(false);
@@ -227,10 +231,22 @@ export function ProductFormDrawer({
               <button
                 type="button"
                 onClick={() => submitRef.current?.click()}
+                disabled={isSaving}
                 className="b3-btn b3-btn--sm b3-btn--primary"
               >
-                <SaveIcon className="size-3.5" aria-hidden />
-                {data.mode === "new" ? "Salvar produto" : "Salvar"}
+                {isSaving ? (
+                  <Loader2Icon
+                    className="size-3.5 animate-spin"
+                    aria-hidden
+                  />
+                ) : (
+                  <SaveIcon className="size-3.5" aria-hidden />
+                )}
+                {isSaving
+                  ? "Salvando…"
+                  : data.mode === "new"
+                    ? "Salvar produto"
+                    : "Salvar"}
               </button>
             </div>
           ) : null}

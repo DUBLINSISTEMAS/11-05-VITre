@@ -16,6 +16,7 @@ import { asc, eq, sql } from "drizzle-orm";
 import { CalculatorIcon } from "lucide-react";
 
 import { CostGridClient } from "@/components/admin/cost-grid-client";
+import { ProductCreateButton } from "@/components/admin/product-create-button";
 import { productTable } from "@/db/schema";
 import { requireSession } from "@/lib/auth-server";
 import { getCurrentStore } from "@/lib/store-context";
@@ -124,12 +125,19 @@ export default async function ProdutosCustosPage() {
       </header>
 
       {totalProducts === 0 ? (
-        <div className="b3-card flex flex-col items-center gap-2 rounded-2xl p-12 text-center">
-          <p className="text-ink-2 font-medium">Nenhum produto cadastrado ainda.</p>
-          <p className="text-ink-4 text-[12.5px]">
-            Cadastre produtos em &ldquo;Produtos&rdquo; pra começar a preencher
-            custo e comissão.
-          </p>
+        <div className="b3-card flex flex-col items-center gap-4 rounded-2xl p-12 text-center">
+          <div className="space-y-1">
+            <p className="text-ink-1 text-[15px] font-semibold">
+              Nenhum produto cadastrado ainda.
+            </p>
+            <p className="text-ink-4 max-w-sm text-[12.5px] leading-snug">
+              Esta tela é pra preencher custo e comissão em massa de produtos
+              que você já tem. Comece cadastrando o primeiro produto.
+            </p>
+          </div>
+          <ProductCreateButton size="lg">
+            Cadastrar primeiro produto
+          </ProductCreateButton>
         </div>
       ) : (
         <>
