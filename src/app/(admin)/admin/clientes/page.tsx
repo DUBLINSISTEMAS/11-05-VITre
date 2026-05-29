@@ -44,7 +44,25 @@ const clientesSearchSchema = z.object({
   page: pageNumberSchema,
   /** ADR-0021 — filtro PF/PJ. Vazio/inválido = todos. */
   type: z.enum(["individual", "company"]).nullish().catch(null),
+  /**
+   * Bloco I.3 (2026-05-29) — ordenação URL-driven. Default `recent` =
+   * createdAt desc. Sort por agregados (orders/fiado/last-purchase) roda
+   * em memória pós-fetch — escala atual ≤ alguns milhares de clientes
+   * por loja, código fica linear em vez de espalhar correlated subquery
+   * por todo orderBy.
+   */
+  sort: z
+    .enum(["recent", "name", "orders", "fiado", "last-purchase"])
+    .nullish()
+    .catch(null),
+  /**
+   * Bloco I.4 (2026-05-29) — filtro do KPI clicável "Fiado em aberto".
+   * `?fiado=open` mostra só clientes com saldo devedor > 0.
+   */
+  fiado: z.enum(["open"]).nullish().catch(null),
 });
+
+type SortValue = "recent" | "name" | "orders" | "fiado" | "last-purchase";
 
 interface ClientesPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -76,8 +94,11 @@ export default async function ClientesPage({
     q: rawQ,
     page,
     type: typeFilter,
+    sort: rawSort,
+    fiado: fiadoFilter,
   } = clientesSearchSchema.parse(await searchParams);
   const q = rawQ.trim();
+  const sort: SortValue = rawSort ?? "recent";
 
   const conditions: SQL[] = [eq(customerTable.storeId, store.id)];
   if (q) {
@@ -89,9 +110,12 @@ export default async function ClientesPage({
       queryDigits.length >= 3
         ? ilike(customerTable.document, `%${queryDigits}%`)
         : undefined;
+    // Bloco I.10 (2026-05-29) — busca cobre email também (lojista costuma
+    // achar "joao@" mais rápido que digitar o nome completo).
     const condition = or(
       ilike(customerTable.name, `%${safeQ}%`),
       ilike(customerTable.phone, `%${safeQ}%`),
+      ilike(customerTable.email, `%${safeQ}%`),
       docMatch,
     );
     if (condition) conditions.push(condition);
@@ -100,18 +124,24 @@ export default async function ClientesPage({
     conditions.push(eq(customerTable.type, typeFilter));
   }
   const whereClause = and(...conditions);
-
-  const offset = (page - 1) * PAGE_SIZE;
   // Janela de 30 dias pra "Novos esse mês" + "Ticket médio do mês" — alinhado
   // com a forma como o lojista pensa ("últimos 30 dias" > "mês civil arbitrário").
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
 
-  const { customers, total, kpis, perCustomerAgg } = await withTenant(
+  const { customersAll, kpis, perCustomerAgg } = await withTenant(
     store.id,
     session.user.id,
     async (tx) => {
       // SÉRIE — `pg` deprecou queries paralelas no mesmo client tx.
-      const customers = await tx
+      //
+      // Bloco I.3 (2026-05-29) — antes paginávamos no SQL com LIMIT/OFFSET
+      // ordenado por createdAt. Pra suportar sort por agregados (orders,
+      // fiado, last-purchase) + filtro fiado=open, agora carregamos TODOS
+      // os clientes que batem com os filtros base (storeId + q + type) e
+      // aplicamos sort/slice em memória. Escala atual (≤ alguns milhares
+      // por loja) torna isso aceitável e dramaticamente mais simples que
+      // espalhar correlated subqueries por todo orderBy.
+      const customersAll = await tx
         .select({
           id: customerTable.id,
           name: customerTable.name,
@@ -125,19 +155,12 @@ export default async function ClientesPage({
         })
         .from(customerTable)
         .where(whereClause)
-        .orderBy(desc(customerTable.createdAt), asc(customerTable.name))
-        .limit(PAGE_SIZE)
-        .offset(offset);
+        .orderBy(desc(customerTable.createdAt), asc(customerTable.name));
 
-      const totalRows = await tx
-        .select({ value: count() })
-        .from(customerTable)
-        .where(whereClause);
-
-      // PP8 (handoff 2026-05-25) — agregações por-customer pras 3 colunas
-      // novas (Último pedido / Pedidos / Fiado). Restringe aos clientes
-      // visíveis da página + storeId pra não escanear toda a base.
-      const customerIds = customers.map((c) => c.id);
+      // Agregações por-customer pras colunas Último pedido / Pedidos /
+      // Fiado. Rodam pra TODOS os clientes filtrados (não só os da página)
+      // porque o sort em memória precisa do agregado de cada um.
+      const customerIds = customersAll.map((c) => c.id);
       const orderAggByCustomer = new Map<
         string,
         { orderCount: number; lastOrderAt: Date | null }
@@ -284,16 +307,53 @@ export default async function ClientesPage({
       };
 
       return {
-        customers,
-        total: totalRows[0]?.value ?? 0,
+        customersAll,
         kpis,
         perCustomerAgg: { orderAggByCustomer, fiadoByCustomer },
       };
     },
   );
 
+  // ----- Bloco I.3/I.4 (2026-05-29) — filtro fiado + sort + slice em memória.
+  const { orderAggByCustomer, fiadoByCustomer } = perCustomerAgg;
+  const customersFilteredByFiado =
+    fiadoFilter === "open"
+      ? customersAll.filter((c) => (fiadoByCustomer.get(c.id) ?? 0) > 0)
+      : customersAll;
+
+  const sortedCustomers = [...customersFilteredByFiado].sort((a, b) => {
+    switch (sort) {
+      case "name":
+        return a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" });
+      case "orders": {
+        const av = orderAggByCustomer.get(a.id)?.orderCount ?? 0;
+        const bv = orderAggByCustomer.get(b.id)?.orderCount ?? 0;
+        if (bv !== av) return bv - av;
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      }
+      case "fiado": {
+        const av = fiadoByCustomer.get(a.id) ?? 0;
+        const bv = fiadoByCustomer.get(b.id) ?? 0;
+        if (bv !== av) return bv - av;
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      }
+      case "last-purchase": {
+        const av = orderAggByCustomer.get(a.id)?.lastOrderAt?.getTime() ?? 0;
+        const bv = orderAggByCustomer.get(b.id)?.lastOrderAt?.getTime() ?? 0;
+        if (bv !== av) return bv - av;
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      }
+      case "recent":
+      default:
+        return b.createdAt.getTime() - a.createdAt.getTime();
+    }
+  });
+
+  const total = sortedCustomers.length;
+  const offset = (page - 1) * PAGE_SIZE;
+  const customers = sortedCustomers.slice(offset, offset + PAGE_SIZE);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const hasFilters = q !== "" || typeFilter != null;
+  const hasFilters = q !== "" || typeFilter != null || fiadoFilter != null;
 
   const rangeStart = total === 0 ? 0 : offset + 1;
   const rangeEnd = Math.min(offset + PAGE_SIZE, total);
@@ -304,6 +364,8 @@ export default async function ClientesPage({
     const usp = new URLSearchParams();
     if (q) usp.set("q", q);
     if (typeFilter) usp.set("type", typeFilter);
+    if (sort !== "recent") usp.set("sort", sort);
+    if (fiadoFilter) usp.set("fiado", fiadoFilter);
     if (nextPage > 1) usp.set("page", String(nextPage));
     const qs = usp.toString();
     return qs ? `?${qs}` : "?";
@@ -334,8 +396,9 @@ export default async function ClientesPage({
       </div>
 
       {/* KPI strip — 4 cards horizontais sempre visíveis (também na busca
-          vazia pra dar contexto). */}
-      <CustomersKpiStrip kpis={kpis} />
+          vazia pra dar contexto). Bloco I.4 (2026-05-29) — "Fiado em
+          aberto" é clicável: filtra a lista pra só devedores. */}
+      <CustomersKpiStrip kpis={kpis} fiadoActive={fiadoFilter === "open"} />
 
       {customers.length === 0 && !hasFilters ? (
         <EmptyState />

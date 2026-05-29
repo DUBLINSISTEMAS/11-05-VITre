@@ -18,10 +18,17 @@
 // - Handoff tem checkbox master + refresh button — checkbox preservado
 //   disabled; refresh OMITIDO (não há ação clara fora da page reload).
 
-import { SearchIcon } from "lucide-react";
+import { ArrowDownUpIcon, SearchIcon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 interface CustomersToolbarProps {
@@ -30,6 +37,15 @@ interface CustomersToolbarProps {
 }
 
 type TypeFilter = "all" | "individual" | "company";
+type SortValue = "recent" | "name" | "orders" | "fiado" | "last-purchase";
+
+const SORT_OPTIONS: { value: SortValue; label: string }[] = [
+  { value: "recent", label: "Mais recentes" },
+  { value: "name", label: "Nome (A → Z)" },
+  { value: "orders", label: "Mais pedidos" },
+  { value: "fiado", label: "Maior fiado" },
+  { value: "last-purchase", label: "Última compra" },
+];
 
 export function CustomersToolbar({ rangeLabel }: CustomersToolbarProps) {
   const router = useRouter();
@@ -51,6 +67,22 @@ export function CustomersToolbar({ rangeLabel }: CustomersToolbarProps) {
     const usp = new URLSearchParams(window.location.search);
     if (next === "all") usp.delete("type");
     else usp.set("type", next);
+    usp.delete("page");
+    startTransition(() => {
+      router.replace(`?${usp.toString()}`, { scroll: false });
+    });
+  };
+
+  // Bloco I.3 (2026-05-29) — ordenação URL-driven; default omite o param.
+  const rawSort = searchParams.get("sort");
+  const currentSort: SortValue = SORT_OPTIONS.find(
+    (o) => o.value === rawSort,
+  )?.value ?? "recent";
+
+  const setSort = (next: SortValue) => {
+    const usp = new URLSearchParams(window.location.search);
+    if (next === "recent") usp.delete("sort");
+    else usp.set("sort", next);
     usp.delete("page");
     startTransition(() => {
       router.replace(`?${usp.toString()}`, { scroll: false });
@@ -123,7 +155,21 @@ export function CustomersToolbar({ rangeLabel }: CustomersToolbarProps) {
         })}
       </div>
 
-      {/* Onda C #12 (auditoria 2026-05-19): "Em breve" buttons removidos. */}
+      {/* Bloco I.3 (2026-05-29) — Select de ordenação URL-driven (sort=). */}
+      <Select value={currentSort} onValueChange={(v) => setSort(v as SortValue)}>
+        <SelectTrigger className="h-8 min-w-[170px]" aria-label="Ordenar por">
+          <ArrowDownUpIcon className="size-3.5" aria-hidden />
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {SORT_OPTIONS.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
       <div className="flex-1" />
 
       <span className="mono text-[12px] text-ink-4">{rangeLabel}</span>
