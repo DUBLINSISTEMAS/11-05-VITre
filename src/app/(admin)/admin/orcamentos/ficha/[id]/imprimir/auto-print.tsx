@@ -1,31 +1,40 @@
 "use client";
 
 /**
- * Auto-print on mount + botão "Imprimir novamente". Pequeno trigger local
- * pra rota da ficha de orçamento — espelha o pattern de /admin/pedidos/[id]/imprimir.
+ * Sticky bar com toggle de formato + auto-print on mount + botão "Imprimir
+ * novamente". Espelha pattern de /admin/pedidos/[id]/imprimir/print-trigger.
  *
- * Mantido inline na rota pra evitar refactor cross-routes; quando entrar a
- * terceira rota imprimível seguindo o mesmo pattern, extrai pra
- * `components/admin/print/`.
+ * `formatKey` força re-disparo do print() quando o lojista troca A4↔térmica
+ * (sem ele, [] mount-only não dispara de novo após a navegação).
  */
 import { PrinterIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect } from "react";
 
-export function AutoPrintBar({ backHref }: { backHref: string }) {
+interface AutoPrintBarProps {
+  backHref: string;
+  children?: React.ReactNode;
+  /** Muda quando o formato muda — força re-disparo do print(). */
+  formatKey?: string;
+}
+
+export function AutoPrintBar({ backHref, children, formatKey }: AutoPrintBarProps) {
   useEffect(() => {
     const id = window.setTimeout(() => window.print(), 200);
     return () => window.clearTimeout(id);
-  }, []);
+  }, [formatKey]);
 
   return (
     <div className="sticky top-2 z-10 mx-auto flex max-w-[700px] items-center justify-between gap-2 px-6 py-3 print:hidden">
-      <Link
-        href={backHref}
-        className="text-[12.5px] text-black/60 underline-offset-2 hover:underline"
-      >
-        ← Voltar
-      </Link>
+      <div className="flex items-center gap-3">
+        <Link
+          href={backHref}
+          className="text-[12.5px] text-black/60 underline-offset-2 hover:underline"
+        >
+          ← Voltar
+        </Link>
+        {children}
+      </div>
       <button
         type="button"
         onClick={() => window.print()}

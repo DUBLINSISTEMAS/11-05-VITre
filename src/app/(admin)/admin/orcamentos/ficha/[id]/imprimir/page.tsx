@@ -1,14 +1,17 @@
 /**
- * /admin/orcamentos/ficha/[id]/imprimir — visualização imprimível A4 da
- * ficha de orçamento de balcão (2026-05-28).
+ * /admin/orcamentos/ficha/[id]/imprimir — ficha de balcão imprimível
+ * (2026-05-28, redesign 2026-05-29).
  *
- * Layout estilo "talão de papel" do joalheiro:
- *   header da loja (logo + CNPJ + tel + endereço) → bloco cliente →
- *   bloco datas → discriminação (borda larga) → grid valores+assinaturas
- *   lado a lado → rodapé com aviso configurável.
+ * Layout estilo carta-comercial do joalheiro: faixa cor primária no topo →
+ * logo + nome destacado + dados de contato → bloco cliente → datas →
+ * discriminação → grid valores+assinaturas → aviso → rodapé com Mangos
+ * Pay discreto.
  *
- * Auto-print no mount. CSS @media print esconde o chrome do admin
- * (`[data-admin-chrome]`) e força fundo branco.
+ * Suporta dois formatos via `?formato=`:
+ *   - `?formato=termica` → cupom 80mm preto-e-branco
+ *   - default (a4)       → A4 com cor primária da loja como acento
+ *
+ * Auto-print no mount; troca de formato força re-disparo.
  */
 import { notFound } from "next/navigation";
 
@@ -19,11 +22,17 @@ import { formatBRL } from "@/lib/pricing";
 import { getCurrentStore } from "@/lib/store-context";
 
 import { AutoPrintBar } from "./auto-print";
+import { type PrintFormat, PrintFormatToggle } from "./format-toggle";
 
 export const dynamic = "force-dynamic";
 
 interface ImprimirFichaPageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ formato?: string }>;
+}
+
+function parseFormat(raw: string | undefined): PrintFormat {
+  return raw === "termica" ? "termica" : "a4";
 }
 
 function formatDate(d: Date | null): string {
@@ -46,10 +55,19 @@ function formatBRDocument(d: string | null): string | null {
   return d;
 }
 
+function safeHex(raw: string | null | undefined, fallback: string): string {
+  if (!raw) return fallback;
+  return /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : fallback;
+}
+
 export default async function ImprimirFichaPage({
   params,
+  searchParams,
 }: ImprimirFichaPageProps) {
   const { id } = await params;
+  const sp = await searchParams;
+  const format = parseFormat(sp.formato);
+
   const session = await requireSession();
   const store = await getCurrentStore(session.user.id);
   if (!store) {
@@ -61,6 +79,113 @@ export default async function ImprimirFichaPage({
   const q = result.quoteSheet;
 
   const customerDoc = formatBRDocument(q.customerDocument);
+  const primary = safeHex(store.primaryColor, "#1E3FE6");
+
+  if (format === "termica") {
+    return (
+      <>
+        <style>{`
+          @media print {
+            @page { size: 80mm auto; margin: 0; }
+            html, body { background: white !important; color: black !important; margin: 0; padding: 0; }
+            [data-admin-chrome] { display: none !important; }
+          }
+          @media screen { body { background: #efefef; } }
+        `}</style>
+
+        <AutoPrintBar backHref="/admin/orcamentos" formatKey={format}>
+          <PrintFormatToggle current={format} />
+        </AutoPrintBar>
+
+        <article className="mx-auto my-4 max-w-[80mm] bg-white px-3 py-3 text-[11px] text-black shadow-md print:my-0 print:max-w-none print:shadow-none">
+          <PrintStoreHeader store={store} variant="thermal" />
+
+          <div className="my-2 border-t border-dashed border-black/40" />
+
+          <h2 className="text-center text-[12px] font-bold uppercase tracking-wider">
+            Orçamento #{q.shortCode}
+          </h2>
+          <p className="text-center text-[10px] text-black/60">
+            {q.createdAt.toLocaleString("pt-BR", {
+              dateStyle: "short",
+              timeStyle: "short",
+            })}
+          </p>
+
+          <div className="my-2 border-t border-dashed border-black/40" />
+
+          <dl className="space-y-0.5 text-[10.5px]">
+            <ThermalRow label="Cliente" value={q.customerName} bold />
+            {q.customerPhone ? (
+              <ThermalRow label="Telefone" value={q.customerPhone} />
+            ) : null}
+            {customerDoc ? (
+              <ThermalRow label="CPF/CNPJ" value={customerDoc} />
+            ) : null}
+            {q.customerCity ? (
+              <ThermalRow label="Cidade" value={q.customerCity} />
+            ) : null}
+            {q.receivedAt ? (
+              <ThermalRow label="Recebido" value={formatDate(q.receivedAt)} />
+            ) : null}
+            {q.deliveryAt ? (
+              <ThermalRow label="Entrega" value={formatDate(q.deliveryAt)} />
+            ) : null}
+          </dl>
+
+          <div className="my-2 border-t border-dashed border-black/40" />
+
+          <p className="text-[9.5px] uppercase tracking-wider text-black/60">
+            Discriminação
+          </p>
+          <p className="mt-1 whitespace-pre-wrap text-[11px] leading-snug">
+            {q.description}
+          </p>
+
+          <div className="my-2 border-t border-dashed border-black/40" />
+
+          <dl className="space-y-0.5 text-[11px]">
+            <ThermalRow label="Valor" value={formatBRL(q.totalInCents)} bold />
+            <ThermalRow
+              label="Entrada"
+              value={formatBRL(q.downPaymentInCents)}
+            />
+            {q.downPaymentNote ? (
+              <p className="text-[10px] italic text-black/70">
+                Forma: {q.downPaymentNote}
+              </p>
+            ) : null}
+            <ThermalRow
+              label="Restante"
+              value={formatBRL(q.remainderInCents)}
+              bold
+            />
+          </dl>
+
+          <div className="my-2 border-t border-dashed border-black/40" />
+
+          {/* Assinaturas — térmica é mais compacta, uma linha cada */}
+          <div className="space-y-3 pt-1">
+            <ThermalSignature label="Cliente" />
+            <ThermalSignature label="Responsável" />
+          </div>
+
+          {q.noticeText ? (
+            <>
+              <div className="my-2 border-t border-dashed border-black/40" />
+              <p className="whitespace-pre-wrap text-[9.5px] leading-snug text-black/70">
+                {q.noticeText}
+              </p>
+            </>
+          ) : null}
+
+          <p className="mt-3 text-center text-[8.5px] text-black/40">
+            Mangos Pay · vitre.site/{store.slug}
+          </p>
+        </article>
+      </>
+    );
+  }
 
   return (
     <>
@@ -72,36 +197,48 @@ export default async function ImprimirFichaPage({
         }
       `}</style>
 
-      <AutoPrintBar backHref="/admin/orcamentos" />
+      <AutoPrintBar backHref="/admin/orcamentos" formatKey={format}>
+        <PrintFormatToggle current={format} />
+      </AutoPrintBar>
 
       <article className="mx-auto max-w-[700px] bg-white px-6 py-8 text-black print:px-0 print:py-0">
-        {/* Cabeçalho da loja (logo + CNPJ + endereço + tel) */}
-        <div className="border-b border-black/20 pb-4">
-          <PrintStoreHeader store={store} variant="a4" />
-        </div>
+        {/* Cabeçalho com cor primária da loja */}
+        <PrintStoreHeader store={store} variant="a4" />
 
-        {/* Título do documento */}
-        <header className="border-b border-black/20 pb-3 pt-4">
-          <div className="flex items-baseline justify-between gap-4">
-            <h2 className="text-lg font-bold tracking-tight">
-              ORÇAMENTO #{q.shortCode}
-            </h2>
-            <span className="font-mono text-[12px] uppercase tracking-wider">
-              Ficha de balcão
-            </span>
-          </div>
-          <p className="mt-1 text-[12.5px] text-black/70">
-            Emitido em{" "}
-            {q.createdAt.toLocaleString("pt-BR", {
-              dateStyle: "short",
-              timeStyle: "short",
-            })}
-          </p>
+        {/* Título do documento — também com primary color sutil */}
+        <header className="mt-5 flex items-baseline justify-between gap-4 border-b border-black/15 pb-3">
+          <h2
+            className="text-[18px] font-bold tracking-tight"
+            style={{
+              color: primary,
+              WebkitPrintColorAdjust: "exact",
+              printColorAdjust: "exact",
+            }}
+          >
+            ORÇAMENTO #{q.shortCode}
+          </h2>
+          <span className="font-mono text-[11px] uppercase tracking-wider text-black/60">
+            Ficha de balcão
+          </span>
         </header>
+        <p className="mt-1 text-[12px] text-black/60">
+          Emitido em{" "}
+          {q.createdAt.toLocaleString("pt-BR", {
+            dateStyle: "short",
+            timeStyle: "short",
+          })}
+        </p>
 
         {/* Cliente — grid 2col */}
         <section className="mt-5 break-inside-avoid">
-          <h3 className="font-mono text-[10.5px] uppercase tracking-[0.5px] text-black/60">
+          <h3
+            className="font-mono text-[10.5px] uppercase tracking-[0.5px]"
+            style={{
+              color: primary,
+              WebkitPrintColorAdjust: "exact",
+              printColorAdjust: "exact",
+            }}
+          >
             Cliente
           </h3>
           <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1.5 text-[13px]">
@@ -115,14 +252,29 @@ export default async function ImprimirFichaPage({
         {/* Datas */}
         <section className="mt-5 break-inside-avoid">
           <dl className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-[13px]">
-            <FieldRow label="Data de recebimento" value={formatDate(q.receivedAt)} mono />
-            <FieldRow label="Data de entrega" value={formatDate(q.deliveryAt)} mono />
+            <FieldRow
+              label="Data de recebimento"
+              value={formatDate(q.receivedAt)}
+              mono
+            />
+            <FieldRow
+              label="Data de entrega"
+              value={formatDate(q.deliveryAt)}
+              mono
+            />
           </dl>
         </section>
 
         {/* Discriminação — borda larga, texto livre */}
         <section className="mt-6 break-inside-avoid">
-          <h3 className="font-mono text-[10.5px] uppercase tracking-[0.5px] text-black/60">
+          <h3
+            className="font-mono text-[10.5px] uppercase tracking-[0.5px]"
+            style={{
+              color: primary,
+              WebkitPrintColorAdjust: "exact",
+              printColorAdjust: "exact",
+            }}
+          >
             Discriminação
           </h3>
           <div className="mt-2 min-h-[120px] whitespace-pre-wrap rounded border border-black/40 p-3 text-[13px] leading-relaxed">
@@ -130,26 +282,33 @@ export default async function ImprimirFichaPage({
           </div>
         </section>
 
-        {/* Grid lado a lado: valores (esquerda) + assinaturas (direita) */}
+        {/* Valores (esquerda) + assinaturas (direita) */}
         <section className="mt-6 grid grid-cols-2 gap-6 break-inside-avoid">
-          {/* Valores */}
           <div>
-            <h3 className="font-mono text-[10.5px] uppercase tracking-[0.5px] text-black/60">
+            <h3
+              className="font-mono text-[10.5px] uppercase tracking-[0.5px]"
+              style={{
+                color: primary,
+                WebkitPrintColorAdjust: "exact",
+                printColorAdjust: "exact",
+              }}
+            >
               Valores
             </h3>
             <dl className="mt-2 space-y-1.5 text-[13px]">
-              <FieldRow label="Valor" value={formatBRL(q.totalInCents)} mono strong />
+              <FieldRow
+                label="Valor"
+                value={formatBRL(q.totalInCents)}
+                mono
+                strong
+              />
               <FieldRow
                 label="Entrada"
                 value={formatBRL(q.downPaymentInCents)}
                 mono
               />
               {q.downPaymentNote ? (
-                <FieldRow
-                  label="Forma"
-                  value={q.downPaymentNote}
-                  small
-                />
+                <FieldRow label="Forma" value={q.downPaymentNote} small />
               ) : null}
               <FieldRow
                 label="Restante"
@@ -160,25 +319,31 @@ export default async function ImprimirFichaPage({
             </dl>
           </div>
 
-          {/* Assinaturas */}
           <div className="space-y-6">
             <SignatureBlock label="Assinatura do cliente" />
             <SignatureBlock label="Assinatura do responsável" />
           </div>
         </section>
 
-        {/* Aviso configurável (rodapé) */}
+        {/* Aviso configurável */}
         {q.noticeText ? (
-          <section className="mt-8 break-inside-avoid border-t border-black/20 pt-3">
-            <p className="text-[11.5px] leading-snug text-black/70 whitespace-pre-wrap">
+          <section className="mt-8 break-inside-avoid border-t border-black/15 pt-3">
+            <p className="whitespace-pre-wrap text-[11.5px] leading-snug text-black/70">
               {q.noticeText}
             </p>
           </section>
         ) : null}
 
-        {/* Rodapé fixo — referência do código */}
-        <footer className="mt-6 border-t border-black/10 pt-2 text-[10.5px] text-black/40">
-          Ficha #{q.shortCode} · {store.name}
+        {/* Rodapé — Mangos discreto + ID da ficha */}
+        <footer className="mt-8 border-t border-black/10 pt-2 text-[10px] text-black/40">
+          <div className="flex items-baseline justify-between gap-2">
+            <span>
+              Ficha #{q.shortCode} · {store.name}
+            </span>
+            <span className="font-mono">
+              Mangos Pay · vitre.site/{store.slug}
+            </span>
+          </div>
         </footer>
       </article>
     </>
@@ -223,6 +388,36 @@ function SignatureBlock({ label }: { label: string }) {
     <div>
       <div className="h-10 border-b border-black/60" aria-hidden />
       <p className="mt-1 text-center text-[10.5px] uppercase tracking-wider text-black/60">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function ThermalRow({
+  label,
+  value,
+  bold,
+}: {
+  label: string;
+  value: string;
+  bold?: boolean;
+}) {
+  return (
+    <div className="flex justify-between gap-2">
+      <span className="text-black/60">{label}</span>
+      <span className={bold ? "font-bold tabular-nums" : "tabular-nums"}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function ThermalSignature({ label }: { label: string }) {
+  return (
+    <div>
+      <div className="h-6 border-b border-black/60" aria-hidden />
+      <p className="mt-0.5 text-center text-[8.5px] uppercase tracking-wider text-black/60">
         {label}
       </p>
     </div>

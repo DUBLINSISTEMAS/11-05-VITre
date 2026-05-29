@@ -108,6 +108,11 @@ export default async function ImprimirPedidoPage({
   const { order, items, payments } = result;
   const itemCount = items.reduce((s, it) => s + it.quantity, 0);
   const statusLabel = STATUS_LABELS[order.status] ?? order.status;
+  // Cor primária da loja pinta o título do documento (mesmo accent do
+  // PrintStoreHeader). Hex validado pra impedir style injection.
+  const primaryColor = /^#[0-9a-fA-F]{6}$/.test(store.primaryColor)
+    ? store.primaryColor
+    : "#1E3FE6";
   // Breakdown coerente com server (audit 2026-05-21): subtotal bruto −
   // descontos por linha = subtotal líquido. Aplicar desconto geral +
   // acréscimo em cima do líquido fecha matematicamente com totalInCents.
@@ -239,10 +244,18 @@ export default async function ImprimirPedidoPage({
           <PrintStoreHeader store={store} variant="a4" />
         </div>
 
-        {/* Cabeçalho do documento — Sprint 1A Fase 4: orçamento diferenciado */}
+        {/* Cabeçalho do documento — Sprint 1A Fase 4: orçamento diferenciado.
+            Redesign 2026-05-29: título recebe cor primária da loja como accent. */}
         <header className="border-b border-black/20 pb-3 pt-4">
           <div className="flex items-baseline justify-between gap-4">
-            <h2 className="text-lg font-bold tracking-tight">
+            <h2
+              className="text-lg font-bold tracking-tight"
+              style={{
+                color: primaryColor,
+                WebkitPrintColorAdjust: "exact",
+                printColorAdjust: "exact",
+              }}
+            >
               {order.status === "quote" ? "ORÇAMENTO" : "Venda"} #{order.shortCode}
             </h2>
             <span className="font-mono text-[12px] uppercase tracking-wider">
