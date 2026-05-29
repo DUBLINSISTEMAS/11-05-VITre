@@ -58,7 +58,7 @@ Fonte da verdade: `src/components/admin/shell/nav-items.ts`. Se divergir, o cód
 | A pagar | `/admin/financeiro/pagar` |
 | Recados do site | `/admin/contatos` |
 
-> Nova venda = modal "Nova venda" do topbar / F2. `/admin/pdv` segue vivo como fallback de URL.
+> Nova venda = CTA `<NewSaleButton/>` no header de `/admin/pedidos` + atalho F2 global + Ctrl/Cmd+K. `/admin/pdv` segue vivo como fallback de URL.
 
 **Grupo 2 — Cadastros** (monto uma vez)
 Produtos `/admin/produtos` · Categorias · Marcas · Clientes `/admin/clientes` · Grupos de cliente `/admin/clientes/grupos` · Fornecedores
@@ -144,7 +144,7 @@ Muda/cria tabela · consequência irreversível em ≤30 dias · outro dev preci
 - **Motor de lucro**: `lib/pricing/net-profit.ts` + `load-dre.ts` deduzem CMV+taxa+despesa+devolução. Snapshots gravados na venda. ✅ honesto.
 - **Cadastro de produto**: abre como workspace largo (`ProductFormDrawer` 1180px), não gaveta estreita. Materiais somados atualizam o custo do produto no form e no banco.
 - **Canais reais**: enum `order_channel` só tem `whatsapp` + `balcao`. "Venda externa/InfinitePay" e "Loja online" como canal próprio NÃO existem no banco. ⚠️
-- **Faxina pendente** (ver `docs/sessoes/FAXINA-2026-05-28.md`): matar 3 relatórios stub + 2 botões stub + rotas mortas; renomear "Custo & margem"→"Preencher custos"; gerar migration faltante (schema tem colunas sem migration commitada).
+- **Faxina 2026-05-28 fechada** (wrap commit + bugs P0): links para `?edit=/?customer=/?detail=`, delete→arquivar, margem expõe lucro líquido real, CSV server-side, CTA "Nova venda" replantado no header de Vendas, triângulo amarelo de "Preencher custos" corrigido (parser distingue vazio/inválido + debounce 2.5s), sidebar longest-match (sem "tudo verde"), orçamentos grid + CTA "Renovar e criar venda" pra expirado, `/admin/relatorios` sem `ReportView` duplicado. **Pendente**: migration `archivedAt/deletedAt` + reconciliação drizzle↔supabase (Onda 1.5) + comissão/vendedora no lucro líquido (Onda 2).
 - **Construir** (norte do empresário): canal venda externa · meta mensal · comparação anual · automação proativa.
 
 Histórico congelado em `docs/sessoes/` e `docs/decisoes/` (ADRs). Norte vivo sobrescreve ADR conflitante.

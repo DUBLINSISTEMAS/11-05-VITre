@@ -183,15 +183,66 @@ export function isSubItemActive(sub: AdminNavSubItem, pathname: string): boolean
   return pathname === sub.href || pathname.startsWith(sub.href + "/");
 }
 
-/** Acha se um item está ativo (link direto ou algum sub). */
-export function isItemActive(item: AdminNavItem, pathname: string): boolean {
+/**
+ * Match teste para 1 item de menu — sem desempate longest-prefix.
+ * `pickActiveItemKey` cuida do desempate quando há vários candidatos.
+ */
+function matchesItem(item: AdminNavItem, pathname: string): boolean {
   if (item.href) {
-    return item.exact ? pathname === item.href : pathname.startsWith(item.href);
+    if (item.exact) return pathname === item.href;
+    return pathname === item.href || pathname.startsWith(item.href + "/");
   }
   if (item.subs) {
     return item.subs.some((s) => isSubItemActive(s, pathname));
   }
   return false;
+}
+
+/**
+ * Audit 2026-05-28 — fix do "tudo verde": dado pathname e um escopo de items,
+ * devolve o `k` do item com HREF MAIS LONGO que matcha. Sem isto, quando
+ * lojista entra em /admin/relatorios/resultado, tanto "Relatórios"
+ * (/admin/relatorios) quanto "Resultado" ficam com data-active=true →
+ * CSS verde em ambos. Mesma falha em Estoque/Estoque parado/vencendo.
+ */
+export function pickActiveItemKey(
+  pathname: string,
+  items: readonly AdminNavItem[],
+): string | null {
+  let bestK: string | null = null;
+  let bestLen = -1;
+  for (const item of items) {
+    if (!matchesItem(item, pathname)) continue;
+    const len = item.href ? item.href.length : 0;
+    if (len > bestLen) {
+      bestK = item.k;
+      bestLen = len;
+    }
+  }
+  return bestK;
+}
+
+/**
+ * Acha se um item está ativo (link direto ou algum sub).
+ * Com `scope`: aplica longest-match (item só é ativo se for o mais específico).
+ * Sem `scope`: comportamento legado (qualquer match conta).
+ */
+export function isItemActive(
+  item: AdminNavItem,
+  pathname: string,
+  scope?: readonly AdminNavItem[],
+): boolean {
+  if (scope) return pickActiveItemKey(pathname, scope) === item.k;
+  return matchesItem(item, pathname);
+}
+
+/** Concatena Início + items de todas as seções + Suporte. Usado como scope
+ *  do longest-match na sidebar. */
+export function getAllNavItems(): readonly AdminNavItem[] {
+  const all: AdminNavItem[] = [ADMIN_NAV_HOME];
+  for (const section of ADMIN_NAV_SECTIONS) all.push(...section.items);
+  all.push(ADMIN_NAV_SUPPORT);
+  return all;
 }
 
 /**
@@ -201,7 +252,7 @@ export function isItemActive(item: AdminNavItem, pathname: string): boolean {
  */
 export function findActiveSectionKey(pathname: string): string | null {
   for (const section of ADMIN_NAV_SECTIONS) {
-    if (section.items.some((item) => isItemActive(item, pathname))) {
+    if (section.items.some((item) => matchesItem(item, pathname))) {
       return section.k;
     }
   }

@@ -114,8 +114,13 @@ function shortDate(d: Date): string {
   return `${day} ${monthShort}`;
 }
 
-const GRID_COLS =
-  "grid-cols-[100px_minmax(0,1.4fr)_minmax(0,100px)_60px_minmax(0,110px)_minmax(0,140px)_20px]";
+// Audit 2026-05-28: era `md:${GRID_COLS}` interpolado — Tailwind JIT NÃO
+// resolve classes que vêm de template literal em runtime. O resultado:
+// header pegava 7 colunas, linhas caíam pra grid genérico, layout quebrava.
+// Solução: `gridTemplateColumns` inline via style. Sem display:grid no
+// mobile (lista vertical via flex), grid só ativa em md+.
+const GRID_TEMPLATE_COLUMNS =
+  "100px minmax(0,1.4fr) minmax(0,100px) 60px minmax(0,110px) minmax(0,140px) 20px";
 
 export function QuotesTable({ quotes }: QuotesTableProps) {
   const now = new Date();
@@ -137,7 +142,8 @@ export function QuotesTable({ quotes }: QuotesTableProps) {
   return (
     <div className="b3-card overflow-hidden">
       <div
-        className={`text-ink-4 hidden border-b border-line bg-bg-app/40 px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-wider md:grid ${GRID_COLS} gap-3`}
+        className="text-ink-4 hidden border-b border-line bg-bg-app/40 px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-wider md:grid md:gap-3"
+        style={{ gridTemplateColumns: GRID_TEMPLATE_COLUMNS }}
       >
         <span>Código</span>
         <span>Cliente</span>
@@ -157,7 +163,8 @@ export function QuotesTable({ quotes }: QuotesTableProps) {
                 href={`/admin/pedidos/${q.id}/imprimir`}
                 onClick={(e) => handleRowClick(e, q.id)}
                 prefetch={false}
-                className={`hover:bg-bg-app/60 grid items-center gap-3 px-4 py-3 text-[13px] transition-colors md:${GRID_COLS}`}
+                className="hover:bg-bg-app/60 flex flex-col gap-1 px-4 py-3 text-[13px] transition-colors md:grid md:items-center md:gap-3"
+                style={{ gridTemplateColumns: GRID_TEMPLATE_COLUMNS }}
               >
                 <span className="mono text-ink-2 font-medium tabular-nums">
                   #{q.shortCode}

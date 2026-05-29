@@ -46,8 +46,15 @@ import {
   ADMIN_NAV_SECTIONS,
   ADMIN_NAV_SUPPORT,
   type AdminNavItem,
+  getAllNavItems,
   isItemActive,
 } from "./nav-items";
+
+// Audit 2026-05-28: scope congelado no escopo do módulo. Passado em todas as
+// chamadas de `isItemActive` pra ativar longest-prefix matching e evitar o
+// bug "tudo verde" (Relatórios + Resultado ativando juntos, Estoque + parado
+// idem). Lista é determinística (config); computar 1 vez.
+const NAV_SCOPE = getAllNavItems();
 
 export interface SidebarContentProps {
   ownerName: string;
@@ -252,7 +259,7 @@ function NavItemRow({
   collapsed = false,
 }: NavItemRowProps) {
   const Icon = item.icon;
-  const isActive = isItemActive(item, pathname);
+  const isActive = isItemActive(item, pathname, NAV_SCOPE);
   const tooltip = collapsed ? item.label : undefined;
 
   if (item.soon) {
@@ -327,7 +334,7 @@ function SupportFooterLink({
   collapsed?: boolean;
 }) {
   const Icon = ADMIN_NAV_SUPPORT.icon;
-  const isActive = isItemActive(ADMIN_NAV_SUPPORT, pathname);
+  const isActive = isItemActive(ADMIN_NAV_SUPPORT, pathname, NAV_SCOPE);
   return (
     <div className="px-2 py-1">
       <Link

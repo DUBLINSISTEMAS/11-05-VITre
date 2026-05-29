@@ -583,14 +583,20 @@ function DrawerContent({
             principal do drawer (movido pra topo, verde, com ícone).
             Decisão #4 do paradigma: vendedor cria venda separada (não
             converte status diretamente). PDV abre com itens pré-
-            carregados; vendedor reconfere e fecha como venda real. */}
-        {order.status === "quote" &&
-        order.quoteValidUntil &&
-        order.quoteValidUntil > new Date() ? (
+            carregados; vendedor reconfere e fecha como venda real.
+
+            Audit 2026-05-28: o CTA fica visível MESMO se a validade
+            expirou — joalheiro frequentemente renegocia orçamento
+            antigo. Texto vira "Renovar e criar venda" para sinalizar
+            que vendedor precisa reconferir preço/condição. */}
+        {order.status === "quote" ? (
           <Button asChild size="sm" className="w-full gap-1.5">
             <a href={`/admin/pdv?fromQuote=${order.id}`}>
               <CheckCircle2Icon className="size-4" aria-hidden />
-              Aceitar e criar venda
+              {order.quoteValidUntil &&
+              order.quoteValidUntil <= new Date()
+                ? "Renovar e criar venda"
+                : "Aceitar e criar venda"}
             </a>
           </Button>
         ) : null}

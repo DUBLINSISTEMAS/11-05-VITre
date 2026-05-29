@@ -62,7 +62,10 @@ interface RowState {
   lastEditAt: number;
 }
 
-const AUTOSAVE_DEBOUNCE_MS = 1200;
+// Audit 2026-05-28: debounce subiu de 1200 → 2500ms. Lojista do interior
+// digita devagar; com 1200ms autosave disparava com input parcial e
+// gravava NULL → triângulo amarelo. 2.5s deixa frase terminar.
+const AUTOSAVE_DEBOUNCE_MS = 2500;
 
 function formatBRL(cents: number | null): string {
   if (cents === null) return "—";
@@ -76,22 +79,31 @@ function formatPercent(value: number): string {
   })}%`;
 }
 
-function parseCurrencyInput(raw: string): number | null {
+// Retornos:
+//   null      → vazio explícito (lojista apagou o campo)
+//   undefined → input parcial/inválido (NÃO persiste, mantém valor anterior)
+//   number    → valor em centavos
+// Aceita "1.234,56" (separador BR de milhar) e "1234.56" (formato máquina).
+function parseCurrencyInput(raw: string): number | null | undefined {
   const trimmed = raw.trim();
   if (!trimmed) return null;
-  // Aceita "12,34" ou "12.34". Remove R$, espaços.
-  const cleaned = trimmed.replace(/[R$\s]/g, "").replace(",", ".");
+  const cleaned = trimmed
+    .replace(/[R$\s]/g, "")
+    .replace(/\./g, "")
+    .replace(",", ".");
+  if (!cleaned) return null;
   const num = Number(cleaned);
-  if (!Number.isFinite(num) || num < 0) return null;
+  if (!Number.isFinite(num) || num < 0) return undefined;
   return Math.round(num * 100);
 }
 
-function parsePercentInput(raw: string): number | null {
+function parsePercentInput(raw: string): number | null | undefined {
   const trimmed = raw.trim();
   if (!trimmed) return null;
   const cleaned = trimmed.replace("%", "").replace(",", ".");
+  if (!cleaned) return null;
   const num = Number(cleaned);
-  if (!Number.isFinite(num) || num < 0 || num > 100) return null;
+  if (!Number.isFinite(num) || num < 0 || num > 100) return undefined;
   return Math.round(num * 100); // bps
 }
 
@@ -218,6 +230,7 @@ export function CostGridClient({ initialRows }: CostGridClientProps) {
 
   const handleCostChange = (productId: string, raw: string) => {
     const cents = parseCurrencyInput(raw);
+    if (cents === undefined) return; // parcial/inválido: mantém estado anterior
     setStates((prev) => {
       const cur = prev[productId];
       if (!cur) return prev;
@@ -236,6 +249,7 @@ export function CostGridClient({ initialRows }: CostGridClientProps) {
 
   const handleCommissionChange = (productId: string, raw: string) => {
     const bps = parsePercentInput(raw);
+    if (bps === undefined) return; // parcial/inválido: mantém estado anterior
     setStates((prev) => {
       const cur = prev[productId];
       if (!cur) return prev;
@@ -497,8 +511,8 @@ export function CostGridClient({ initialRows }: CostGridClientProps) {
       </div>
 
       <p className="text-ink-4 text-[11px] leading-tight">
-        Dica: Tab pula pra próxima célula. Salva automaticamente 1,2s após
-        sair do foco. Use o botão &ldquo;Salvar tudo&rdquo; pra forçar sync
+        Dica: Tab pula pra próxima célula. Salva automaticamente 2,5s após
+        parar de digitar. Use &ldquo;Salvar tudo&rdquo; pra forçar sync
         imediato.
       </p>
     </div>
