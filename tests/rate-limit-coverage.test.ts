@@ -56,6 +56,7 @@ const READS_AND_HELPERS_ALLOWLIST: ReadonlyArray<string> = [
   "load-sellers.ts", // reports/load-sellers.ts — S3.1: vendas por vendedora read-only
   "load-expiring.ts", // stock/load-expiring.ts — S3.4: lotes vencendo read-only
   "load-list.ts", // quote-sheet/load-list.ts — listagem read-only de orçamentos
+  "load-for-custo.ts", // product/load-for-custo.ts — Bloco F card-view de Custos
   // Bloco F.2 da ressignificação (dashboard cérebro de gestão) — todos reads
   "load-dashboard-lucro.ts", // F.2.1: agrega DRE de ontem + semana via loadDreSimple
   "load-sinais.ts", // F.2.2: 4 checks de "pegando fogo agora" (caixa, fiado, etc)
