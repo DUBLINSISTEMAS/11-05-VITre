@@ -40,8 +40,19 @@ import {
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import {
+  calculateNetProfit,
+  type PaymentMethodCategory,
+} from "@/lib/pricing/net-profit";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
+
+const COUNTS_AS_SALE = new Set([
+  "confirmed",
+  "fulfilled",
+  "awaiting_whatsapp",
+  "returned",
+]);
 
 export const dynamic = "force-dynamic";
 
@@ -106,6 +117,9 @@ export async function GET(_req: Request, { params }: Params) {
             imageUrlSnapshot: orderItemTable.imageUrlSnapshot,
             priceInCentsSnapshot: orderItemTable.priceInCentsSnapshot,
             quantity: orderItemTable.quantity,
+            // Onda R3 — snapshots pra calcular lucro liquido.
+            unitCostSnapshotInCents: orderItemTable.unitCostSnapshotInCents,
+            commissionSnapshotInCents: orderItemTable.commissionSnapshotInCents,
           })
           .from(orderItemTable)
           .where(eq(orderItemTable.orderId, orderId)),
@@ -136,6 +150,7 @@ export async function GET(_req: Request, { params }: Params) {
             cashReceivedInCents: orderPaymentTable.cashReceivedInCents,
             installments: orderPaymentTable.installments,
             notes: orderPaymentTable.notes,
+            cardFeeSnapshotInCents: orderPaymentTable.cardFeeSnapshotInCents,
           })
           .from(orderPaymentTable)
           .where(
@@ -206,6 +221,60 @@ export async function GET(_req: Request, { params }: Params) {
       logger.warn("api.order.detail_slow", { orderId, elapsedMs: elapsed });
     }
 
+    // Onda R3 — agrega cost/commission/cardFee + calcula lucro liquido.
+    const profitAgg = result.items.reduce(
+      (acc, it) => {
+        const cost = it.unitCostSnapshotInCents ?? 0;
+        const commission = it.commissionSnapshotInCents ?? 0;
+        acc.totalCostInCents += cost * it.quantity;
+        acc.totalCommissionInCents += commission;
+        acc.qtyTotal += it.quantity;
+        if (it.unitCostSnapshotInCents !== null) {
+          acc.qtyWithCost += it.quantity;
+        }
+        return acc;
+      },
+      {
+        totalCostInCents: 0,
+        totalCommissionInCents: 0,
+        qtyTotal: 0,
+        qtyWithCost: 0,
+      },
+    );
+    const totalCardFeeInCents = result.payments.reduce(
+      (s, p) => s + (p.cardFeeSnapshotInCents ?? 0),
+      0,
+    );
+    const costCoveragePct =
+      profitAgg.qtyTotal === 0
+        ? 0
+        : Math.round((profitAgg.qtyWithCost / profitAgg.qtyTotal) * 100);
+
+    let netProfitInCents: number | null = null;
+    let netMarginPct: number | null = null;
+    if (COUNTS_AS_SALE.has(result.order.status)) {
+      const calc = calculateNetProfit({
+        revenueInCents: result.order.totalInCents,
+        costInCents: profitAgg.totalCostInCents,
+        paymentMethod: "other" as PaymentMethodCategory,
+        installments: 1,
+        commissionBps: 0,
+        taxBps: 0,
+        storeFees: {
+          cardRealFeeBpsDebit: store.cardRealFeeBpsDebit,
+          cardRealFeeBpsCredit1x: store.cardRealFeeBpsCredit1x,
+          cardRealFeeBpsCredit2xTo6x: store.cardRealFeeBpsCredit2xTo6x,
+          cardRealFeeBpsCredit7xTo12x: store.cardRealFeeBpsCredit7xTo12x,
+        },
+      });
+      netProfitInCents =
+        calc.netProfitInCents - totalCardFeeInCents - profitAgg.totalCommissionInCents;
+      netMarginPct =
+        result.order.totalInCents > 0
+          ? (netProfitInCents / result.order.totalInCents) * 100
+          : 0;
+    }
+
     const orderDetail: OrderDetail = {
       ...result.order,
       status: result.order.status as (typeof ORDER_STATUS_VALUES)[number],
@@ -214,6 +283,13 @@ export async function GET(_req: Request, { params }: Params) {
       payments: result.payments,
       linkedCustomer: result.linkedCustomer,
       returns: result.returns,
+      // Onda R3 — fields novos.
+      netProfitInCents,
+      netMarginPct,
+      costCoveragePct,
+      totalCostInCents: profitAgg.totalCostInCents,
+      totalCommissionInCents: profitAgg.totalCommissionInCents,
+      totalCardFeeInCents,
     };
 
     return NextResponse.json({ ok: true, order: orderDetail });

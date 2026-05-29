@@ -13,10 +13,21 @@ import {
   orderTable,
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import {
+  calculateNetProfit,
+  type PaymentMethodCategory,
+} from "@/lib/pricing/net-profit";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
 import type { ORDER_STATUS_VALUES } from "./schema";
+
+const COUNTS_AS_SALE = new Set([
+  "confirmed",
+  "fulfilled",
+  "awaiting_whatsapp",
+  "returned",
+]);
 
 export type OrderDetailItem = {
   id: string;
@@ -31,6 +42,18 @@ export type OrderDetailItem = {
    * = quantity - quantityReturned.
    */
   quantityReturned: number;
+  /**
+   * Onda R3 (2026-05-29) — snapshot do custo unitario no momento da venda
+   * (em centavos). NULL quando produto nao tinha custo cadastrado. Usado
+   * pelo helper `calculateNetProfit` pra computar CMV histórico.
+   */
+  unitCostSnapshotInCents: number | null;
+  /**
+   * Onda R3 — snapshot da comissao TOTAL desta linha (em centavos, ja
+   * computada `priceInCents * quantity * commissionBps`). NULL quando
+   * a vendedora nao foi atribuida ou produto nao tem commission default.
+   */
+  commissionSnapshotInCents: number | null;
 };
 
 /**
@@ -71,6 +94,13 @@ export type OrderDetailPayment = {
    */
   installments: number;
   notes: string | null;
+  /**
+   * Onda R3 (2026-05-29) — snapshot da taxa real cobrada pela maquininha
+   * em centavos (calculado no INSERT via `computeCardFeeSnapshot`). NULL
+   * quando method = cash/pix/fiado/other (sem taxa). Usado pra deduzir
+   * no lucro liquido sem ter que recomputar.
+   */
+  cardFeeSnapshotInCents: number | null;
 };
 
 export type OrderDetail = {
@@ -96,6 +126,25 @@ export type OrderDetail = {
   payments: OrderDetailPayment[];
   /** Pre-Sprint-6 C — lista de devoluções (vazia quando venda não foi devolvida). */
   returns: OrderDetailReturn[];
+  /**
+   * Onda R3 (2026-05-29) — lucro liquido REAL da venda, calculado
+   * server-side via helper canonico `calculateNetProfit`. NULL quando o
+   * status NAO conta como venda efetiva (quote/canceled/expired).
+   */
+  netProfitInCents: number | null;
+  /** Margem em % (0..100, ou negativa). NULL quando netProfit NULL. */
+  netMarginPct: number | null;
+  /**
+   * 0..100 — cobertura CMV (% itens com custo cadastrado). 100 = lucro
+   * totalmente confiavel. <100 = otimista (subestima CMV).
+   */
+  costCoveragePct: number;
+  /** Custo total CMV (snapshot). 0 quando nenhum item tem custo. */
+  totalCostInCents: number;
+  /** Comissao total (snapshot). 0 quando vendedora nao foi atribuida. */
+  totalCommissionInCents: number;
+  /** Taxa cartao total (snapshot). 0 quando metodo nao tem taxa (cash/pix). */
+  totalCardFeeInCents: number;
 };
 
 export type LoadOrderDetailResult =
@@ -162,6 +211,9 @@ export async function loadOrderDetail(
           imageUrlSnapshot: orderItemTable.imageUrlSnapshot,
           priceInCentsSnapshot: orderItemTable.priceInCentsSnapshot,
           quantity: orderItemTable.quantity,
+          // Onda R3 — snapshots de custo e comissao por linha.
+          unitCostSnapshotInCents: orderItemTable.unitCostSnapshotInCents,
+          commissionSnapshotInCents: orderItemTable.commissionSnapshotInCents,
         })
         .from(orderItemTable)
         .where(eq(orderItemTable.orderId, orderId)),
@@ -194,6 +246,8 @@ export async function loadOrderDetail(
           cashReceivedInCents: orderPaymentTable.cashReceivedInCents,
           installments: orderPaymentTable.installments,
           notes: orderPaymentTable.notes,
+          // Onda R3 — snapshot de taxa cartao por pagamento.
+          cardFeeSnapshotInCents: orderPaymentTable.cardFeeSnapshotInCents,
         })
         .from(orderPaymentTable)
         .where(
@@ -259,6 +313,66 @@ export async function loadOrderDetail(
 
   if (!result) return { ok: false, error: "Pedido não encontrado." };
 
+  // Onda R3 — calcular lucro liquido usando snapshots ja gravados.
+  // Helper canonico. Quando status nao conta como venda, retorna NULL
+  // pra UI esconder a celula.
+  const { totalCostInCents, totalCommissionInCents, totalCardFeeInCents,
+    qtyTotal, qtyWithCost } = result.items.reduce(
+    (acc, it) => {
+      const cost = it.unitCostSnapshotInCents ?? 0;
+      const commission = it.commissionSnapshotInCents ?? 0;
+      acc.totalCostInCents += cost * it.quantity;
+      acc.totalCommissionInCents += commission;
+      acc.qtyTotal += it.quantity;
+      if (it.unitCostSnapshotInCents !== null) {
+        acc.qtyWithCost += it.quantity;
+      }
+      return acc;
+    },
+    {
+      totalCostInCents: 0,
+      totalCommissionInCents: 0,
+      totalCardFeeInCents: 0,
+      qtyTotal: 0,
+      qtyWithCost: 0,
+    },
+  );
+  const cardFeeSum = result.payments.reduce(
+    (s, p) => s + (p.cardFeeSnapshotInCents ?? 0),
+    0,
+  );
+  const totalCardFee = cardFeeSum;
+  const costCoveragePct =
+    qtyTotal === 0 ? 0 : Math.round((qtyWithCost / qtyTotal) * 100);
+
+  let netProfitInCents: number | null = null;
+  let netMarginPct: number | null = null;
+  if (COUNTS_AS_SALE.has(result.order.status)) {
+    // Helper consome snapshots: cardFee + commission ja calculados em
+    // centavos, entao passamos paymentMethod="other" pra zerar recalculo
+    // e somamos manualmente abaixo.
+    const calc = calculateNetProfit({
+      revenueInCents: result.order.totalInCents,
+      costInCents: totalCostInCents,
+      paymentMethod: "other" as PaymentMethodCategory,
+      installments: 1,
+      commissionBps: 0,
+      taxBps: 0,
+      storeFees: {
+        cardRealFeeBpsDebit: store.cardRealFeeBpsDebit,
+        cardRealFeeBpsCredit1x: store.cardRealFeeBpsCredit1x,
+        cardRealFeeBpsCredit2xTo6x: store.cardRealFeeBpsCredit2xTo6x,
+        cardRealFeeBpsCredit7xTo12x: store.cardRealFeeBpsCredit7xTo12x,
+      },
+    });
+    netProfitInCents =
+      calc.netProfitInCents - totalCardFee - totalCommissionInCents;
+    netMarginPct =
+      result.order.totalInCents > 0
+        ? (netProfitInCents / result.order.totalInCents) * 100
+        : 0;
+  }
+
   return {
     ok: true,
     order: {
@@ -269,6 +383,13 @@ export async function loadOrderDetail(
       payments: result.payments,
       linkedCustomer: result.linkedCustomer,
       returns: result.returns,
+      // Onda R3
+      netProfitInCents,
+      netMarginPct,
+      costCoveragePct,
+      totalCostInCents,
+      totalCommissionInCents,
+      totalCardFeeInCents: totalCardFee,
     },
   };
 }

@@ -35,6 +35,10 @@ import {
   pageNumberSchema,
   searchTextSchema,
 } from "@/lib/page-search-params";
+import {
+  calculateNetProfit,
+  type PaymentMethodCategory,
+} from "@/lib/pricing/net-profit";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
@@ -170,6 +174,10 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
     paymentCountsByOrderId,
     creditOutstandingByOrderId,
     itemQtyByOrderId,
+    costByOrderId,
+    qtyWithCostByOrderId,
+    commissionByOrderId,
+    cardFeeByOrderId,
     periodSummary,
   } = await withTenant(
     store.id,
@@ -242,17 +250,49 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
           paymentCountsByOrderId.set(r.orderId, Number(r.cnt));
         }
 
-        // Soma quantity de order_item por order. 1 query batch.
+        // Soma quantity de order_item por order — 1 query batch agora
+        // tambem agrega CUSTO + COMISSAO + COBERTURA pra cada venda
+        // (Onda R3 — lucro real por venda inline). Snapshots ja gravados
+        // no INSERT da venda (commission_snapshot_in_cents,
+        // unit_cost_snapshot_in_cents) — calculateNetProfit consome.
         const itemRows = await tx
           .select({
             orderId: orderItemTable.orderId,
             qty: sql<number>`coalesce(sum(${orderItemTable.quantity}), 0)::int`,
+            // CMV total: SUM(unit_cost_snapshot * quantity) WHERE snapshot NOT NULL
+            costTotal: sql<number>`coalesce(sum(${orderItemTable.unitCostSnapshotInCents} * ${orderItemTable.quantity}) filter (where ${orderItemTable.unitCostSnapshotInCents} is not null), 0)::int`,
+            // Qty com custo cadastrado / qty total = cobertura CMV
+            qtyWithCost: sql<number>`coalesce(sum(${orderItemTable.quantity}) filter (where ${orderItemTable.unitCostSnapshotInCents} is not null), 0)::int`,
+            // Comissao total ja calculada por linha no INSERT (snapshot fixo)
+            commissionTotal: sql<number>`coalesce(sum(${orderItemTable.commissionSnapshotInCents}) filter (where ${orderItemTable.commissionSnapshotInCents} is not null), 0)::int`,
           })
           .from(orderItemTable)
           .where(inArray(orderItemTable.orderId, orderIds))
           .groupBy(orderItemTable.orderId);
+        const costByOrderId = new Map<string, number>();
+        const qtyWithCostByOrderId = new Map<string, number>();
+        const commissionByOrderId = new Map<string, number>();
         for (const r of itemRows) {
           itemQtyByOrderId.set(r.orderId, Number(r.qty));
+          costByOrderId.set(r.orderId, Number(r.costTotal));
+          qtyWithCostByOrderId.set(r.orderId, Number(r.qtyWithCost));
+          commissionByOrderId.set(r.orderId, Number(r.commissionTotal));
+        }
+
+        // Taxa cartao snapshot: SUM(card_fee_snapshot) por order. Onda 1.3
+        // grava snapshot fixo no INSERT do payment. Para vendas pre-snapshot
+        // (pedidos antigos), fallback recalcula via storeFees no helper.
+        const cardFeeRows = await tx
+          .select({
+            orderId: orderPaymentTable.orderId,
+            cardFeeTotal: sql<number>`coalesce(sum(${orderPaymentTable.cardFeeSnapshotInCents}) filter (where ${orderPaymentTable.cardFeeSnapshotInCents} is not null), 0)::int`,
+          })
+          .from(orderPaymentTable)
+          .where(inArray(orderPaymentTable.orderId, orderIds))
+          .groupBy(orderPaymentTable.orderId);
+        const cardFeeByOrderId = new Map<string, number>();
+        for (const r of cardFeeRows) {
+          cardFeeByOrderId.set(r.orderId, Number(r.cardFeeTotal));
         }
 
         const creditRows = await tx
@@ -349,28 +389,103 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
         paymentCountsByOrderId,
         creditOutstandingByOrderId,
         itemQtyByOrderId,
+        // Onda R3 — agregacoes pra lucro real por venda.
+        costByOrderId,
+        qtyWithCostByOrderId,
+        commissionByOrderId,
+        cardFeeByOrderId,
         periodSummary,
       };
     },
   );
 
-  // Enriquecer rows com paymentCount + saldo fiado pra renderizar
-  // "Misto" e "Fiado R$X" sem precisar abrir cada venda.
-  const orderRows: OrderTableRow[] = orders.map((o) => ({
-    id: o.id,
-    shortCode: o.shortCode,
-    customerName: o.customerName,
-    customerPhone: o.customerPhone,
-    totalInCents: o.totalInCents,
-    status: o.status,
-    channel: o.channel,
-    paymentMethod: o.paymentMethod,
-    notes: o.customerNotes,
-    createdAt: o.createdAt,
-    paymentCount: paymentCountsByOrderId.get(o.id) ?? 0,
-    creditOutstandingInCents: creditOutstandingByOrderId.get(o.id) ?? 0,
-    itemQuantity: itemQtyByOrderId.get(o.id) ?? 0,
-  }));
+  // Status que CONTAM como venda efetiva (lucro faz sentido). Quote/canceled/
+  // expired nao contam — net_profit fica null. Lojista nao precisa ver
+  // "lucro de venda cancelada".
+  const COUNTS_AS_SALE = new Set([
+    "confirmed",
+    "fulfilled",
+    "awaiting_whatsapp",
+    "returned",
+  ]);
+
+  // Storefees pra fallback do helper quando a venda nao tem snapshot de taxa
+  // (pedidos antigos pre-SQL 82). Tipa pra compatibilidade com `calculateNetProfit`.
+  const storeFees = {
+    cardRealFeeBpsDebit: store.cardRealFeeBpsDebit,
+    cardRealFeeBpsCredit1x: store.cardRealFeeBpsCredit1x,
+    cardRealFeeBpsCredit2xTo6x: store.cardRealFeeBpsCredit2xTo6x,
+    cardRealFeeBpsCredit7xTo12x: store.cardRealFeeBpsCredit7xTo12x,
+  };
+
+  // Onda R3 — pre-calcula lucro real por venda server-side. Evita
+  // N+1 e mantem coerencia com `calculateNetProfit` canonico. UI consome
+  // valor pronto.
+  const orderRows: OrderTableRow[] = orders.map((o) => {
+    const itemQty = itemQtyByOrderId.get(o.id) ?? 0;
+    const qtyWithCost = qtyWithCostByOrderId.get(o.id) ?? 0;
+    const costInCents = costByOrderId.get(o.id) ?? 0;
+    const commissionInCents = commissionByOrderId.get(o.id) ?? 0;
+    const cardFeeInCents = cardFeeByOrderId.get(o.id) ?? 0;
+    const countsAsSale = COUNTS_AS_SALE.has(o.status);
+
+    // Cobertura CMV: % de qty com custo snapshot. 100 = todos os itens
+    // tinham custo cadastrado no momento da venda. 0 = nenhum.
+    const costCoveragePct =
+      itemQty === 0 ? 0 : Math.round((qtyWithCost / itemQty) * 100);
+
+    let netProfitInCents: number | null = null;
+    let netMarginPct: number | null = null;
+
+    if (countsAsSale) {
+      // Usa snapshots gravados na venda. Quando snapshot de cardFee nao existe
+      // (pedido pre-SQL 82), o helper calcula via storeFees + paymentMethod.
+      const result = calculateNetProfit({
+        revenueInCents: o.totalInCents,
+        costInCents,
+        // Quando ha cardFee snapshot, passamos "other" pra zerar recalculo
+        // do helper e somamos manualmente. Caso contrario passa method real.
+        paymentMethod: cardFeeInCents > 0
+          ? "other"
+          : (o.paymentMethod ?? "cash") as PaymentMethodCategory,
+        installments: 1,
+        commissionBps: 0, // ja embutido em commissionInCents
+        taxBps: 0,
+        storeFees,
+      });
+      // Soma manual: o helper ja desconta cost; precisamos somar cardFee
+      // (snapshot) + commissao (snapshot) que nao passaram pelo helper.
+      netProfitInCents = result.netProfitInCents - cardFeeInCents - commissionInCents;
+      netMarginPct =
+        o.totalInCents > 0
+          ? (netProfitInCents / o.totalInCents) * 100
+          : 0;
+    }
+
+    return {
+      id: o.id,
+      shortCode: o.shortCode,
+      customerName: o.customerName,
+      customerPhone: o.customerPhone,
+      totalInCents: o.totalInCents,
+      status: o.status,
+      channel: o.channel,
+      paymentMethod: o.paymentMethod,
+      notes: o.customerNotes,
+      createdAt: o.createdAt,
+      paymentCount: paymentCountsByOrderId.get(o.id) ?? 0,
+      creditOutstandingInCents: creditOutstandingByOrderId.get(o.id) ?? 0,
+      itemQuantity: itemQty,
+      // Onda R3 — lucro real por venda.
+      netProfitInCents,
+      netMarginPct,
+      costCoveragePct,
+    };
+  });
+
+  // Agregados pra pill global "X de Y com custo incompleto".
+  const salesRows = orderRows.filter((r) => r.netProfitInCents !== null);
+  const incompleteSales = salesRows.filter((r) => (r.costCoveragePct ?? 100) < 100).length;
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const hasFilters =
@@ -449,6 +564,30 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
               dateToIso={dateToIso}
             />
           </Suspense>
+
+          {/* Onda R3 — pill global de cobertura CMV. So aparece quando
+              tem venda incompleta nesta listagem. Sutil pra nao gritar
+              em loja sem custos cadastrados ainda. */}
+          {incompleteSales > 0 ? (
+            <div
+              className="flex items-center justify-between gap-3 rounded-md border border-line bg-bg-app/60 px-3 py-2 text-[12px]"
+              role="status"
+            >
+              <span className="text-ink-3">
+                <span className="font-semibold text-ink-1 tabular-nums">
+                  {incompleteSales}
+                </span>
+                {" "}de {salesRows.length} vendas com{" "}
+                <span className="font-medium">custo incompleto</span> — lucro mostrado é otimista.
+              </span>
+              <a
+                href="/admin/produtos?status=no-cost"
+                className="font-medium text-mangos-green-800 underline-offset-2 hover:underline"
+              >
+                Preencher custos →
+              </a>
+            </div>
+          ) : null}
 
           {/* Tabela ou estado "sem resultados pra filtro" — o drawer
               de detalhe é montado globalmente em admin-shell e lê

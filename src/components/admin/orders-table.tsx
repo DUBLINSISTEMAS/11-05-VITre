@@ -19,7 +19,9 @@ import {
 } from "@/components/admin/order-detail-events";
 import { OrderStatusDropdown } from "@/components/admin/order-status-dropdown";
 import { formatRelativeDate } from "@/lib/format";
+import { Money, profitTone } from "@/components/ui/money";
 import { formatBRL } from "@/lib/pricing";
+import { cn } from "@/lib/utils";
 
 function openOrderDetail(orderId: string) {
   window.dispatchEvent(
@@ -67,6 +69,26 @@ export interface OrderTableRow {
    * 0 quando sem itens (caso degenerado). Renderiza como coluna "Itens".
    */
   itemQuantity?: number;
+  /**
+   * Onda R3 (2026-05-29) — lucro real liquido em centavos. Calculado
+   * server-side via `calculateNetProfit` consumindo snapshots gravados
+   * (custo, comissao, taxa cartao). NULL quando status NAO conta como
+   * venda (quote/canceled/expired) — UI nao mostra coluna nesses casos.
+   * Pode ser negativo (prejuizo).
+   */
+  netProfitInCents?: number | null;
+  /**
+   * Margem em % (0..100, ou negativa em prejuizo). NULL quando
+   * netProfitInCents NULL. Usado pra colorir a celula (verde >=10,
+   * amarelo <10, vermelho prejuizo).
+   */
+  netMarginPct?: number | null;
+  /**
+   * 0..100 — % de itens da venda com custo cadastrado no momento.
+   * 100 = lucro totalmente confiavel. <100 = lucro otimista (CMV
+   * subestima). Renderiza icone discreto na celula quando <100.
+   */
+  costCoveragePct?: number;
 }
 
 export interface OrdersTableProps {
@@ -103,6 +125,14 @@ export function OrdersTable({ orders }: OrdersTableProps) {
             <th>Pagamento</th>
             <th style={{ textAlign: "right" }}>Itens</th>
             <th style={{ textAlign: "right" }}>Total</th>
+            {/* Onda R3 — Lucro real por venda. Escondida em <md pra liberar
+                espaco em mobile (lojista quer ver Cliente+Total primeiro). */}
+            <th
+              style={{ textAlign: "right" }}
+              className="hidden md:table-cell"
+            >
+              Lucro
+            </th>
             <th>Status</th>
             <th>Data</th>
             <th aria-label="Ações" style={{ width: 36 }} />
@@ -184,6 +214,44 @@ export function OrdersTable({ orders }: OrdersTableProps) {
                 }}
               >
                 {formatBRL(o.totalInCents)}
+              </td>
+              {/* Onda R3 — celula Lucro. Tom semantico via helper canonico
+                  profitTone. Quando cobertura CMV < 100, mostra icone tiny
+                  pra sinalizar "estimado" sem ser invasivo. */}
+              <td
+                style={{ textAlign: "right" }}
+                className="hidden md:table-cell"
+              >
+                {o.netProfitInCents !== null && o.netProfitInCents !== undefined ? (
+                  <span className="inline-flex items-center justify-end gap-1">
+                    <Money
+                      valueInCents={o.netProfitInCents}
+                      size="md"
+                      tone={profitTone(
+                        o.netProfitInCents,
+                        o.netMarginPct ?? null,
+                      )}
+                      title={
+                        o.netMarginPct !== null && o.netMarginPct !== undefined
+                          ? `Margem ${o.netMarginPct.toFixed(1).replace(".", ",")}%${
+                              (o.costCoveragePct ?? 100) < 100
+                                ? ` · estimado (${o.costCoveragePct}% dos itens com custo)`
+                                : ""
+                            }`
+                          : undefined
+                      }
+                    />
+                    {(o.costCoveragePct ?? 100) < 100 ? (
+                      <span
+                        aria-hidden
+                        className="size-1.5 rounded-full bg-ink-4/50"
+                        title={`Custo incompleto: apenas ${o.costCoveragePct}% dos itens têm custo cadastrado`}
+                      />
+                    ) : null}
+                  </span>
+                ) : (
+                  <span className="text-ink-4 text-xs">—</span>
+                )}
               </td>
               <td>
                 <div className="flex flex-wrap items-center gap-1">

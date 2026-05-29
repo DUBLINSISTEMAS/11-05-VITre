@@ -43,6 +43,7 @@ import { toast } from "sonner";
 import { type OrderDetail } from "@/actions/order/load-detail";
 import { updateOrderNotes } from "@/actions/order/update-notes";
 import { CustomerLinkSection } from "@/components/admin/customer-link-section";
+import { Money, profitTone } from "@/components/ui/money";
 import { OrderConfirmPaymentDialog } from "@/components/admin/order-confirm-payment-dialog";
 import { OrderStatusActions } from "@/components/admin/order-status-actions";
 import { OrderStatusBadge } from "@/components/admin/order-status-badge";
@@ -509,14 +510,55 @@ function DrawerContent({
               className="mt-2 flex items-baseline justify-between border-t pt-2"
               style={{ borderColor: "var(--brand-line)" }}
             >
-              <span className="text-[13px] font-bold">Total</span>
-              <span
-                className="font-mono text-[19px] font-bold tabular-nums"
-                style={{ color: "var(--mangos-green-900)" }}
-              >
-                {formatBRL(order.totalInCents)}
-              </span>
+              <span className="text-[13px] font-semibold">Total</span>
+              <Money
+                valueInCents={order.totalInCents}
+                size="lg"
+                tone="neutral"
+                className="text-mangos-green-900"
+              />
             </div>
+
+            {/* Onda R3 — Lucro liquido REAL da venda. So aparece quando
+                status conta como venda efetiva. Helper canonico ja
+                computou no server. Cor semantica via profitTone.
+                Cobertura CMV < 100 mostra "(estimado)" pra honestidade. */}
+            {order.netProfitInCents !== null ? (
+              <div
+                className="mt-2 flex items-baseline justify-between border-t pt-2"
+                style={{
+                  borderTop: "1px dashed var(--brand-line)",
+                  borderColor: "var(--brand-line)",
+                }}
+              >
+                <span className="inline-flex items-center gap-1.5 text-[12px] text-ink-3">
+                  Lucro líquido
+                  {(order.costCoveragePct ?? 100) < 100 ? (
+                    <span
+                      className="text-[10.5px] italic text-ink-4"
+                      title={`Apenas ${order.costCoveragePct}% dos itens tinham custo cadastrado. Lucro mostrado é otimista.`}
+                    >
+                      (estimado)
+                    </span>
+                  ) : null}
+                </span>
+                <span className="inline-flex items-baseline gap-1.5">
+                  <Money
+                    valueInCents={order.netProfitInCents}
+                    size="lg"
+                    tone={profitTone(
+                      order.netProfitInCents,
+                      order.netMarginPct ?? null,
+                    )}
+                  />
+                  {order.netMarginPct !== null ? (
+                    <span className="text-[11px] tabular-nums text-ink-4">
+                      {order.netMarginPct.toFixed(1).replace(".", ",")}%
+                    </span>
+                  ) : null}
+                </span>
+              </div>
+            ) : null}
             {order.payments.length > 0 ? (
               <div
                 className="text-ink-3 mt-2 border-t pt-2 text-[12px]"
