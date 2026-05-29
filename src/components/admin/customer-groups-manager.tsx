@@ -9,6 +9,16 @@ import {
   upsertCustomerGroup,
 } from "@/actions/customer-group";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogFooter,
@@ -92,13 +102,21 @@ export function CustomerGroupsManager({
     });
   }
 
+  // Bloco I UX (2026-05-29) — AlertDialog substitui window.confirm
+  // (CLAUDE.md proíbe). State local guarda qual grupo está sendo
+  // confirmado; confirmação dispara delete real.
+  const [groupToDelete, setGroupToDelete] = useState<CustomerGroup | null>(
+    null,
+  );
+
   function handleDelete(g: CustomerGroup) {
-    if (
-      !confirm(
-        `Excluir grupo "${g.name}"? Clientes vinculados ficarão sem grupo (não serão removidos).`,
-      )
-    )
-      return;
+    setGroupToDelete(g);
+  }
+
+  function confirmDelete() {
+    const g = groupToDelete;
+    if (!g) return;
+    setGroupToDelete(null);
     startTransition(async () => {
       const res = await deleteCustomerGroup({ id: g.id });
       if (res.ok) toast.success("Grupo excluído.");
@@ -314,6 +332,42 @@ export function CustomerGroupsManager({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bloco I UX (2026-05-29) — AlertDialog substitui window.confirm. */}
+      <AlertDialog
+        open={groupToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setGroupToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Excluir grupo{" "}
+              {groupToDelete ? `"${groupToDelete.name}"` : ""}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Os clientes vinculados a esse grupo ficam sem grupo (não
+              somem). Vendas e fiados continuam intactos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                confirmDelete();
+              }}
+              disabled={isPending}
+              className="bg-danger hover:bg-danger/90 text-white"
+            >
+              {isPending ? "Excluindo..." : "Excluir grupo"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

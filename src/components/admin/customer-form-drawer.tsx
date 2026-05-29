@@ -23,6 +23,16 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { deleteCustomer } from "@/actions/customer/delete";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { loadCustomerDetail } from "@/actions/customer/load";
 import type { CustomerDetail } from "@/actions/customer/types";
 import { loadCustomerGroups } from "@/actions/customer-group";
@@ -146,15 +156,12 @@ export function CustomerFormDrawer({
     };
   }, [target]);
 
-  const handleDelete = () => {
+  // Bloco I UX (2026-05-29) — confirm() proibido pelo CLAUDE.md. AlertDialog
+  // controlado por state local. Trigger explícito via deleteAskOpen.
+  const [deleteAskOpen, setDeleteAskOpen] = useState(false);
+  const confirmDelete = () => {
     if (!detail) return;
-    if (
-      !confirm(
-        `Excluir "${detail.customer.name}"? Vendas vinculadas mantêm o snapshot do nome/telefone.`,
-      )
-    ) {
-      return;
-    }
+    setDeleteAskOpen(false);
     startDelete(async () => {
       const res = await deleteCustomer({ customerId: detail.customer.id });
       if (!res.ok) {
@@ -164,6 +171,10 @@ export function CustomerFormDrawer({
       toast.success("Cliente excluído.");
       onOpenChange(false);
     });
+  };
+  const handleDelete = () => {
+    if (!detail) return;
+    setDeleteAskOpen(true);
   };
 
   const initialData: CustomerInitialData =
@@ -369,6 +380,40 @@ export function CustomerFormDrawer({
           </div>
         ) : null}
       </SheetContent>
+
+      {/* Bloco I UX (2026-05-29) — AlertDialog substitui window.confirm
+          (CLAUDE.md proíbe). Detalhe: vendas vinculadas mantêm o snapshot
+          do nome/telefone — cliente excluído não some do histórico. */}
+      <AlertDialog open={deleteAskOpen} onOpenChange={setDeleteAskOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Excluir{" "}
+              {detail ? `"${detail.customer.name}"` : "este cliente"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Vendas vinculadas mantêm o snapshot do nome e telefone — o
+              histórico não some. O cadastro só sai dos filtros e da
+              listagem de clientes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                confirmDelete();
+              }}
+              disabled={isDeleting}
+              className="bg-danger hover:bg-danger/90 text-white"
+            >
+              {isDeleting ? "Excluindo..." : "Excluir cliente"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sheet>
   );
 }
