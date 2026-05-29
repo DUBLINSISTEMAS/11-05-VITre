@@ -9,10 +9,10 @@
  *
  * Read-only, sem rate limit (autenticado + RLS via withTenant).
  */
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 
-import { brandTable, categoryTable } from "@/db/schema";
+import { brandTable, categoryTable, orderTable, userTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
@@ -25,14 +25,21 @@ export interface ReportFilterOption {
 export interface ReportFilterOptions {
   categories: ReportFilterOption[];
   brands: ReportFilterOption[];
+  /**
+   * R3 Relatórios (2026-05-29) — usuários que figuram como `seller_id`
+   * em ao menos uma venda da loja. Alimenta filtro "Vendedora" em
+   * /admin/relatorios/vendas. Esconde dropdown quando vazio (loja sem
+   * comissão / sem operador atribuído).
+   */
+  sellers: ReportFilterOption[];
 }
 
 export async function loadReportFilterOptions(): Promise<ReportFilterOptions> {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user) return { categories: [], brands: [] };
+  if (!session?.user) return { categories: [], brands: [], sellers: [] };
 
   const store = await getCurrentStore(session.user.id);
-  if (!store) return { categories: [], brands: [] };
+  if (!store) return { categories: [], brands: [], sellers: [] };
 
   return withTenant(store.id, session.user.id, async (tx) => {
     const categories = await tx
@@ -52,6 +59,21 @@ export async function loadReportFilterOptions(): Promise<ReportFilterOptions> {
       .where(eq(brandTable.storeId, store.id))
       .orderBy(asc(brandTable.name));
 
-    return { categories, brands };
+    // R3 — vendedoras DISTINCT a partir de order.sellerId. JOIN com
+    // userTable pra resolver o nome. Ordena alfabético — o cliente vai
+    // mostrar essa lista num <select>.
+    const sellers = await tx
+      .selectDistinct({ id: userTable.id, name: userTable.name })
+      .from(orderTable)
+      .innerJoin(userTable, eq(userTable.id, orderTable.sellerId))
+      .where(
+        and(
+          eq(orderTable.storeId, store.id),
+          sql`${orderTable.sellerId} IS NOT NULL`,
+        ),
+      )
+      .orderBy(asc(userTable.name));
+
+    return { categories, brands, sellers };
   });
 }

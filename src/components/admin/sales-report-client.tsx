@@ -25,7 +25,9 @@ import {
   type ReportStoreInfo,
   type ReportTotal,
 } from "@/components/admin/report/report-layout";
+import { Money, profitTone } from "@/components/ui/money";
 import { formatBRL } from "@/lib/pricing";
+import { cn } from "@/lib/utils";
 
 const CHANNEL_LABEL: Record<string, string> = {
   whatsapp: "WhatsApp",
@@ -60,6 +62,12 @@ const METHOD_FILTERS: { value: string; label: string }[] = [
   { value: "debit", label: "Débito" },
   { value: "credit", label: "Crédito" },
   { value: "other", label: "Outro" },
+];
+
+const CHANNEL_FILTERS: { value: string; label: string }[] = [
+  { value: "all", label: "Todos" },
+  { value: "balcao", label: "Balcão" },
+  { value: "whatsapp", label: "WhatsApp" },
 ];
 
 interface SalesReportClientProps {
@@ -127,6 +135,21 @@ export function SalesReportClient({
       render: (r) => r.customerName,
       exportValue: (r) => r.customerName,
     },
+    // R3 Relatórios (2026-05-29) — vendedora atribuída. Só aparece como
+    // coluna se há AO MENOS UMA venda com seller no período. Loja sem
+    // operador atribuído nunca vê a coluna (não polui A4 com '—' inútil).
+    ...(rows.some((r) => r.sellerName)
+      ? ([
+          {
+            key: "seller",
+            label: "Vendedora",
+            align: "left",
+            width: "110px",
+            render: (r) => r.sellerName ?? "—",
+            exportValue: (r) => r.sellerName ?? "",
+          } satisfies ReportColumn<SalesReportRow>,
+        ] as ReportColumn<SalesReportRow>[])
+      : []),
     {
       key: "channel",
       label: "Canal",
@@ -174,6 +197,46 @@ export function SalesReportClient({
       exportValue: (r) =>
         ((r.totalInCents - r.returnedInCents) / 100).toFixed(2),
     },
+    // R3 Relatórios — coluna Lucro com cor semafórica (Money/profitTone).
+    // Reusa o helper canonico calculateNetProfit ja consumido em /pedidos
+    // e drawer. CSV exporta em reais (com sinal). Quando todas as linhas
+    // tem custo zerado a coluna fica visivel mostrando "—" pra manter
+    // hierarquia A4 (vendas com snapshot custo NULL).
+    {
+      key: "profit",
+      label: "Lucro",
+      align: "right",
+      width: "100px",
+      render: (r) => (
+        <div className="flex flex-col items-end gap-0.5">
+          <Money
+            valueInCents={r.netProfitInCents}
+            size="md"
+            tone={profitTone(r.netProfitInCents, r.netMarginPct)}
+          />
+          {r.netMarginPct !== null ? (
+            <span
+              className={cn(
+                "text-[10.5px] tabular-nums",
+                r.costCoveragePct < 100 ? "text-amber-600" : "text-ink-4",
+              )}
+              title={
+                r.costCoveragePct < 100
+                  ? `Cobertura CMV ${r.costCoveragePct}% — lucro otimista (faltam custos cadastrados)`
+                  : undefined
+              }
+            >
+              {r.netMarginPct.toFixed(1)}%
+              {r.costCoveragePct < 100 ? "*" : ""}
+            </span>
+          ) : null}
+        </div>
+      ),
+      exportValue: (r) =>
+        r.netProfitInCents === null
+          ? ""
+          : (r.netProfitInCents / 100).toFixed(2),
+    },
   ];
 
   const totals: ReportTotal[] = [
@@ -217,8 +280,16 @@ export function SalesReportClient({
   // suporte futuro a multi). "all" significa sem filtro = limpa o param.
   const currentCategory = filters.categoryIds ?? "all";
   const currentBrand = filters.brandIds ?? "all";
+  // R3 Relatórios (2026-05-29) — canal (whatsapp/balcao) + vendedora.
+  // Plano linha 97: "Filtros: data, canal, vendedora".
+  const currentChannel = filters.canal ?? "all";
+  const currentSeller = filters.vendedora ?? "all";
   // Sprint 4.3 — agrupamento por dia.
   const groupByDay = filters.groupBy === "day";
+
+  // Sumário de cobertura — aviso global "X de Y vendas com custo incompleto"
+  // só aparece quando ≥1 venda tem cost<100%. Footer A4 explica o asterisco.
+  const incompleteSalesCount = rows.filter((r) => r.costCoveragePct < 100).length;
 
   return (
     <>
@@ -255,6 +326,27 @@ export function SalesReportClient({
           </div>
           <div className="flex items-center gap-1">
             <span className="text-ink-4 text-[11px] uppercase tracking-wide">
+              Canal
+            </span>
+            <select
+              value={currentChannel}
+              onChange={(e) =>
+                updateParam(
+                  "canal",
+                  e.target.value === "all" ? null : e.target.value,
+                )
+              }
+              className="border-line h-7 rounded-md border bg-surface px-2 text-[12px]"
+            >
+              {CHANNEL_FILTERS.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-ink-4 text-[11px] uppercase tracking-wide">
               Pagamento
             </span>
             <select
@@ -269,6 +361,33 @@ export function SalesReportClient({
               ))}
             </select>
           </div>
+          {/* R3 Relatórios — vendedora. Só renderiza se há sellers
+              cadastrados (loja sem operador atribuído esconde dropdown
+              em vez de mostrar "Todas" sozinho). */}
+          {filterOptions.sellers.length > 0 ? (
+            <div className="flex items-center gap-1">
+              <span className="text-ink-4 text-[11px] uppercase tracking-wide">
+                Vendedora
+              </span>
+              <select
+                value={currentSeller}
+                onChange={(e) =>
+                  updateParam(
+                    "vendedora",
+                    e.target.value === "all" ? null : e.target.value,
+                  )
+                }
+                className="border-line h-7 rounded-md border bg-surface px-2 text-[12px]"
+              >
+                <option value="all">Todas</option>
+                {filterOptions.sellers.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
 
           {/* Sprint 4.2 — categoria + marca. Só renderiza se há opções
               cadastradas (loja nova sem categoria/marca esconde). */}
@@ -341,6 +460,34 @@ export function SalesReportClient({
         </div>
       </div>
 
+      {/* R3 Relatórios — pill global de cobertura CMV. Mesma régua do
+          /admin/pedidos: só aparece quando há venda com custo incompleto
+          nesta listagem; oferece atalho pra preencher custos. Não imprime. */}
+      {incompleteSalesCount > 0 ? (
+        <div
+          className="border-line bg-bg-app/60 mb-4 flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-[12px] print:hidden"
+          role="status"
+        >
+          <span className="text-ink-3">
+            <span className="text-ink-1 font-semibold tabular-nums">
+              {incompleteSalesCount}
+            </span>
+            {" de "}
+            {rows.length}
+            {" "}vendas com{" "}
+            <span className="font-medium">custo incompleto</span> — coluna
+            Lucro marca com asterisco (*).
+          </span>
+          <Link
+            href="/admin/produtos?status=no-cost"
+            prefetch
+            className="text-mangos-green-800 font-medium underline-offset-2 hover:underline"
+          >
+            Preencher custos →
+          </Link>
+        </div>
+      ) : null}
+
       {/* Resumo por canal/método em cards (não imprime — cabe no totals) */}
       {summary.byChannel.length > 0 || summary.byPaymentMethod.length > 0 ? (
         <div className="mb-4 grid gap-3 sm:grid-cols-2 print:hidden">
@@ -387,9 +534,16 @@ export function SalesReportClient({
           emptyMessage="Nenhuma venda no período selecionado."
           operatorName={operatorName}
           notes={
-            rows.length === 5000
-              ? "Limite de 5.000 linhas atingido — refine o período pra ver mais detalhe."
-              : undefined
+            [
+              rows.length === 5000
+                ? "Limite de 5.000 linhas atingido — refine o período pra ver mais detalhe."
+                : null,
+              incompleteSalesCount > 0
+                ? `(*) ${incompleteSalesCount} de ${rows.length} vendas com custo incompleto — lucro é otimista nessas linhas.`
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" ") || undefined
           }
         />
       )}
@@ -516,6 +670,11 @@ function GroupedSalesReport({
                             </td>
                             <td className="py-1 px-2">
                               {r.customerName}
+                              {r.sellerName ? (
+                                <span className="text-ink-3 ml-2 text-[10.5px]">
+                                  · {r.sellerName}
+                                </span>
+                              ) : null}
                             </td>
                             <td className="py-1 px-2 text-[10.5px] text-ink-3">
                               {r.paymentMethod
@@ -530,6 +689,25 @@ function GroupedSalesReport({
                                   −{formatBRL(r.returnedInCents)}
                                 </span>
                               ) : null}
+                            </td>
+                            <td className="py-1 px-2 text-right">
+                              {r.netProfitInCents !== null ? (
+                                <span
+                                  className={cn(
+                                    "font-medium",
+                                    r.netProfitInCents < 0
+                                      ? "text-rose-700"
+                                      : (r.netMarginPct ?? 0) < 10
+                                        ? "text-amber-700"
+                                        : "text-emerald-700",
+                                  )}
+                                >
+                                  {formatBRL(r.netProfitInCents)}
+                                  {r.costCoveragePct < 100 ? "*" : ""}
+                                </span>
+                              ) : (
+                                <span className="text-ink-4">—</span>
+                              )}
                             </td>
                           </tr>
                         ))}

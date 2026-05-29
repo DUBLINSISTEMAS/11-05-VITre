@@ -41,6 +41,26 @@ export interface SalesReportRow {
    * foi devolvido. UI pode mostrar "R$X devolvidos" como badge.
    */
   returnedInCents: number;
+  /**
+   * R3 Relatórios (2026-05-29) — vendedora atribuída na venda. NULL
+   * quando venda foi balcão sem operador (PDV anônimo).
+   */
+  sellerId: string | null;
+  sellerName: string | null;
+  /**
+   * R3 Relatórios — lucro líquido REAL da venda (snapshots: custo + taxa
+   * cartão + comissão). NULL quando status não conta como venda efetiva
+   * (quote/canceled/expired). Mesmo helper canônico `calculateNetProfit`
+   * usado em /admin/pedidos e drawer.
+   */
+  netProfitInCents: number | null;
+  /** Margem % (0..100, ou negativa). NULL quando netProfit NULL. */
+  netMarginPct: number | null;
+  /**
+   * 0..100 — cobertura CMV (% itens com custo cadastrado). <100 = lucro
+   * otimista. Lojista vê o aviso pra preencher custos quando agregado.
+   */
+  costCoveragePct: number;
 }
 
 export interface SalesReportSummary {
