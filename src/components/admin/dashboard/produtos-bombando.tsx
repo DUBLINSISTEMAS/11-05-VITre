@@ -15,7 +15,7 @@
 //
 // Server component (zero bundle client).
 
-import { TrendingUpIcon } from "lucide-react";
+import { ArrowRightIcon, TrendingUpIcon } from "lucide-react";
 import Link from "next/link";
 
 import type { ProdutoBombando } from "@/actions/dashboard/load-bombando";
@@ -27,9 +27,43 @@ interface ProdutosBombandoProps {
 }
 
 export function ProdutosBombando({ items, fallback }: ProdutosBombandoProps) {
-  // Sem dados suficientes ainda — esconde completamente em vez de mostrar
-  // "Nenhum produto bombando" (confunde lojista pequeno com poucos SKUs).
-  if (items.length === 0) return null;
+  // Bloco E4 UX (2026-05-29) — antes `return null` quando vazio quebrava
+  // o grid 2-col do dashboard (Pegando fogo ficava órfão e largo). Hoje
+  // mostra mensagem honesta convidando à ação, mantendo o equilíbrio
+  // visual do layout.
+  if (items.length === 0) {
+    return (
+      <section className="b3-bombando" aria-label="Produtos em destaque">
+        <header className="b3-bombando-hd">
+          <h2 className="b3-bombando-title">
+            <TrendingUpIcon
+              size={14}
+              aria-hidden
+              className="b3-bombando-icon"
+            />
+            Produtos em destaque
+          </h2>
+        </header>
+        <div className="b3-bombando-empty">
+          <p className="text-ink-2 text-[13px] font-medium">
+            Nenhum produto se destacou essa semana.
+          </p>
+          <p className="text-ink-4 mt-1 text-[12px] leading-snug">
+            Bom momento pra revisar a vitrine — confira o que está
+            publicado e considere destacar algum produto novo.
+          </p>
+          <Link
+            href="/admin/produtos?tipo=publico"
+            prefetch
+            className="text-mangos-green-800 hover:text-mangos-green-900 mt-2 inline-flex items-center gap-1 text-[12.5px] font-semibold"
+          >
+            Ver produtos publicados
+            <ArrowRightIcon size={13} aria-hidden />
+          </Link>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="b3-bombando" aria-label="Produtos em destaque">

@@ -15,6 +15,8 @@
 // NÃO é o "hero" — Hero é lucro líquido (F.2.1). Esses 4 são secundários,
 // úteis pra audit/contexto mas não merecem cards individuais.
 
+import Link from "next/link";
+
 import type { DashboardKpis } from "@/actions/dashboard/load-kpis";
 import { formatBRL } from "@/lib/pricing";
 
@@ -53,26 +55,34 @@ export function KpisSecundarios({ kpis, periodoLabel }: KpisSecundariosProps) {
 
   return (
     <section className="b3-kpis-row" aria-label={`Indicadores ${periodoLabel}`}>
+      {/* Bloco E4 UX (2026-05-29) — cada KPI vira link pra rota onde o
+          número é INSPECIONÁVEL/ACIONÁVEL. Antes era leitura passiva e
+          lojista que via "5 devoluções +200%" não tinha caminho rápido
+          pra ver QUAIS foram. */}
       <Kpi
         label="Vendas"
         value={String(kpis.vendas.current)}
         delta={ven}
+        href="/admin/pedidos"
       />
       <Kpi
         label="Faturamento bruto"
         value={formatBRL(kpis.faturamento.current)}
         delta={fat}
+        href="/admin/relatorios/resultado"
       />
       <Kpi
         label="Clientes novos"
         value={String(kpis.clientesNovos.current)}
         delta={cli}
+        href="/admin/clientes"
       />
       <Kpi
         label="Devoluções"
         value={String(kpis.devolucoes.current)}
         delta={dev}
         invertColors
+        href="/admin/pedidos?status=returned"
       />
     </section>
   );
@@ -87,9 +97,11 @@ interface KpiProps {
    * Só usado pra `Devoluções` — outras métricas crescer é positivo.
    */
   invertColors?: boolean;
+  /** Bloco E4 UX (2026-05-29) — quando passado, KPI vira link clicável. */
+  href?: string;
 }
 
-function Kpi({ label, value, delta, invertColors }: KpiProps) {
+function Kpi({ label, value, delta, invertColors, href }: KpiProps) {
   let toneClass = "";
   if (delta.tone === "up") {
     toneClass = invertColors ? "b3-kpi-delta--bad" : "b3-kpi-delta--good";
@@ -101,13 +113,27 @@ function Kpi({ label, value, delta, invertColors }: KpiProps) {
     toneClass = "b3-kpi-delta--none";
   }
 
-  return (
-    <div className="b3-kpi">
+  const inner = (
+    <>
       <span className="b3-kpi-label">{label}</span>
       <div className="b3-kpi-value-row">
         <strong className="b3-kpi-value">{value}</strong>
         <span className={`b3-kpi-delta ${toneClass}`}>{delta.text}</span>
       </div>
-    </div>
+    </>
   );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        prefetch
+        className="b3-kpi hover:bg-bg-app/60 focus-visible:ring-2 focus-visible:ring-mangos-yellow/45 rounded-md outline-none transition-colors"
+        aria-label={`${label}: ${value}, ${delta.text}`}
+      >
+        {inner}
+      </Link>
+    );
+  }
+  return <div className="b3-kpi">{inner}</div>;
 }
