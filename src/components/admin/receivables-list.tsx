@@ -271,6 +271,10 @@ export function ReceivablesList({ rows: initial }: ReceivablesListProps) {
           receivableId={openRow.id}
           initialRemainingInCents={openRow.remainingInCents}
           customerName={openRow.customerName}
+          lateFeeInCents={openRow.lateFeeInCents}
+          interestInCents={openRow.interestInCents}
+          totalDueInCents={openRow.totalDueInCents}
+          daysLate={openRow.daysLate}
           onClose={(didChange) => {
             setOpenId(null);
             if (didChange) {

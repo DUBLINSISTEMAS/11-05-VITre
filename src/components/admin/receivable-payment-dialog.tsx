@@ -89,6 +89,19 @@ interface ReceivablePaymentDialogProps {
   customerName: string;
   /** Chamado quando dialog fecha — parent pode re-fetch. */
   onClose: (didChange: boolean) => void;
+  /**
+   * Bloco C UX (2026-05-28) — quando fiado está vencido, expor multa e
+   * juros calculados (do load-pending) pra que o lojista NÃO esqueça de
+   * cobrar. Aviso visual; o servidor hoje aceita só principal (cobra de
+   * multa/juros vai por fora — PIX adicional, ajuste manual). Implementação
+   * completa exige snapshot em `receivable_payment.late_fee_applied` +
+   * `interest_applied` (colunas já existem em SQL 82) — ficou marcada
+   * como dívida pra próxima onda.
+   */
+  lateFeeInCents?: number;
+  interestInCents?: number;
+  totalDueInCents?: number;
+  daysLate?: number;
 }
 
 export function ReceivablePaymentDialog({
@@ -96,7 +109,13 @@ export function ReceivablePaymentDialog({
   initialRemainingInCents,
   customerName,
   onClose,
+  lateFeeInCents = 0,
+  interestInCents = 0,
+  totalDueInCents,
+  daysLate = 0,
 }: ReceivablePaymentDialogProps) {
+  const hasOverdueFees =
+    (lateFeeInCents ?? 0) + (interestInCents ?? 0) > 0;
   const [detail, setDetail] = useState<ReceivableDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [amountInput, setAmountInput] = useState(
@@ -308,6 +327,50 @@ export function ReceivablePaymentDialog({
               </div>
             </div>
           </div>
+
+          {/* Bloco C UX (2026-05-28) — fiado vencido com multa+juros do
+              SQL 78. Aviso visual pra lojista NÃO esquecer de cobrar.
+              Sistema hoje registra só o principal — combine os extras com
+              o cliente por fora (ajuste manual / PIX adicional). */}
+          {hasOverdueFees && totalDueInCents !== undefined ? (
+            <div className="border-state-warning/30 bg-state-warning/5 mb-4 rounded-md border px-3 py-2.5 text-xs">
+              <div className="text-ink-1 flex items-baseline justify-between gap-3 font-semibold">
+                <span className="flex items-center gap-1.5">
+                  <TriangleAlertIcon
+                    size={12}
+                    className="text-state-warning"
+                  />
+                  Vencido há {daysLate}{" "}
+                  {daysLate === 1 ? "dia" : "dias"} — Total devido
+                </span>
+                <span className="tabular-nums">
+                  {formatBRL(totalDueInCents)}
+                </span>
+              </div>
+              <div className="text-ink-3 mt-1 flex items-center gap-2 text-[11px]">
+                <span>
+                  Principal{" "}
+                  <b className="text-ink-2">
+                    {formatBRL(initialRemainingInCents)}
+                  </b>
+                </span>
+                <span>·</span>
+                <span>
+                  Multa <b className="text-ink-2">{formatBRL(lateFeeInCents)}</b>
+                </span>
+                <span>·</span>
+                <span>
+                  Juros{" "}
+                  <b className="text-ink-2">{formatBRL(interestInCents)}</b>
+                </span>
+              </div>
+              <p className="text-ink-4 mt-1.5 text-[10.5px] leading-snug">
+                O sistema registra apenas o principal abaixo. Cobre a multa
+                e os juros à parte com o cliente (PIX adicional, próxima
+                compra, etc.) — vai entrar como pagamento separado.
+              </p>
+            </div>
+          ) : null}
 
           {detail?.paidAt ? (
             <div className="bg-state-success-wash text-state-success mb-3 flex items-center gap-2 rounded-md px-3 py-2 text-sm">

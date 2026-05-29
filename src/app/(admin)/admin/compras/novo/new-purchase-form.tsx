@@ -28,6 +28,10 @@ interface PurchaseLineUI {
   variantName: string | null;
   quantity: number;
   unitCostInputBRL: string; // "12,50" no input
+  // Bloco C UX (2026-05-28) — perfumaria/cosmético precisa rastrear validade
+  // pra não vender vencido. Joalheria/roupa deixa em branco.
+  batchNumber: string;
+  expiresAtInput: string; // "YYYY-MM-DD" do <input type=date>
 }
 
 const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
@@ -108,6 +112,8 @@ export function NewPurchaseForm({ suppliers }: NewPurchaseFormProps) {
         quantity: 1,
         // Sugere o custo atual do produto, se houver
         unitCostInputBRL: "",
+        batchNumber: "",
+        expiresAtInput: "",
       },
     ]);
     setSearchQ("");
@@ -175,6 +181,8 @@ export function NewPurchaseForm({ suppliers }: NewPurchaseFormProps) {
           variantId: l.variantId,
           quantity: l.quantity,
           unitCostInCents: parseBRLToCents(l.unitCostInputBRL) ?? 0,
+          batchNumber: l.batchNumber.trim() === "" ? null : l.batchNumber.trim(),
+          expiresAt: l.expiresAtInput === "" ? null : l.expiresAtInput,
         })),
       });
 
@@ -335,6 +343,18 @@ export function NewPurchaseForm({ suppliers }: NewPurchaseFormProps) {
                     <th>Produto</th>
                     <th style={{ width: 90, textAlign: "right" }}>Qtd</th>
                     <th style={{ width: 130 }}>Custo unit.</th>
+                    <th style={{ width: 130 }}>
+                      Lote{" "}
+                      <span className="text-ink-4 font-normal text-[10.5px]">
+                        (opc.)
+                      </span>
+                    </th>
+                    <th style={{ width: 140 }}>
+                      Validade{" "}
+                      <span className="text-ink-4 font-normal text-[10.5px]">
+                        (opc.)
+                      </span>
+                    </th>
                     <th style={{ width: 110, textAlign: "right" }}>Subtotal</th>
                     <th style={{ width: 40 }} />
                   </tr>
@@ -386,6 +406,32 @@ export function NewPurchaseForm({ suppliers }: NewPurchaseFormProps) {
                               className="b3-input mono w-full"
                             />
                           </div>
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={l.batchNumber}
+                            onChange={(e) =>
+                              updateLine(l.uiId, {
+                                batchNumber: e.target.value,
+                              })
+                            }
+                            placeholder="Nº lote"
+                            maxLength={60}
+                            className="b3-input mono w-full"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="date"
+                            value={l.expiresAtInput}
+                            onChange={(e) =>
+                              updateLine(l.uiId, {
+                                expiresAtInput: e.target.value,
+                              })
+                            }
+                            className="b3-input mono w-full"
+                          />
                         </td>
                         <td
                           className="mono"

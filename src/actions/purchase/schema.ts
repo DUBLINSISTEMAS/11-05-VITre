@@ -23,6 +23,30 @@ export const purchaseItemInputSchema = z.object({
     .int()
     .nonnegative("Custo unitário não pode ser negativo")
     .max(99_999_999, "Custo unitário acima do máximo"),
+  /**
+   * Bloco C UX (2026-05-28) — lote da NF do fornecedor.
+   * Texto livre até 60 chars (CHECK no SQL 79). Nullable — joalheria/roupa
+   * deixa vazio, perfumaria/cosmético preenche. Alimenta `/estoque/vencendo`.
+   */
+  batchNumber: z
+    .preprocess(
+      (v) => (typeof v === "string" && v.trim() === "" ? null : v),
+      z.string().trim().max(60).nullable(),
+    )
+    .default(null),
+  /**
+   * Data de validade do lote (formato YYYY-MM-DD do `<input type=date>`).
+   * Nullable. Quando preenchida, aparece em `/admin/estoque/vencendo`.
+   */
+  expiresAt: z
+    .preprocess(
+      (v) => (typeof v === "string" && v.trim() === "" ? null : v),
+      z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida")
+        .nullable(),
+    )
+    .default(null),
 });
 export type PurchaseItemInput = z.input<typeof purchaseItemInputSchema>;
 

@@ -358,6 +358,12 @@ export async function createPurchase(
                 variantNameSnapshot: v?.name ?? null,
                 quantity: it.quantity,
                 unitCostInCents: it.unitCostInCents,
+                // Bloco C UX (2026-05-28) — lote + validade opcionais.
+                // Quando preenchidos, alimentam /admin/estoque/vencendo
+                // (FEFO). Coluna existe no DB desde SQL 79 mas até hoje
+                // o form não enviava.
+                batchNumber: it.batchNumber,
+                expiresAt: it.expiresAt,
                 // totalCostInCents é GENERATED ALWAYS no DB (SQL 45).
                 // Drizzle ainda exige o valor no INSERT — passamos calculado;
                 // DB ignora e usa a expressão (qty * unit_cost).
