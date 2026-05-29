@@ -99,7 +99,7 @@ export function CustomerFormDrawer({
 }: CustomerFormDrawerProps) {
   const [detail, setDetail] = useState<CustomerDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, startLoad] = useTransition();
+  const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, startDelete] = useTransition();
   // Audit 2026-05-26 — grupos pra select no form. Carregado 1x ao abrir.
   // Vazio quando lojista não tem nenhum grupo (Select esconde — feature
@@ -110,27 +110,42 @@ export function CustomerFormDrawer({
   const mode: "edit" | "new" | null =
     target === null ? null : target === "new" ? "new" : "edit";
 
+  // Fix 2026-05-29 — mesmo bug do OrderDetailDrawer/ProductFormModal:
+  // useTransition + async + setStates fora da transition perdia o
+  // pending state intermitente, deixando o drawer em "Carregando...".
+  // Substituido por useState manual + cleanup via cancelled flag.
   useEffect(() => {
     if (target === null || target === "new") {
       setDetail(null);
       setError(null);
+      setIsLoading(false);
       return;
     }
+    let cancelled = false;
     setDetail(null);
     setError(null);
-    startLoad(async () => {
-      try {
-        const res = await loadCustomerDetail(target);
+    setIsLoading(true);
+
+    loadCustomerDetail(target)
+      .then((res) => {
+        if (cancelled) return;
+        setIsLoading(false);
         if (!res) {
           setError("Cliente não encontrado.");
           return;
         }
         setDetail(res);
-      } catch (err) {
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setIsLoading(false);
         logger.error("admin.customer.drawer_load_failed", { err, target });
         setError("Não foi possível carregar o cliente.");
-      }
-    });
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [target]);
 
   // Audit 2026-05-26 — carrega grupos quando drawer abre (qualquer modo).
