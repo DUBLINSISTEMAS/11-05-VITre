@@ -47,6 +47,13 @@ export interface PdvProductHit {
 export interface SearchProductsForPdvOptions {
   /** Filtra por categoria. Null/undefined = todas. */
   categoryId?: string | null;
+  /**
+   * Bloco G UX (2026-05-29) — busca exata por IDs. Quando passada, ignora
+   * `q` e `categoryId` e devolve só esses produtos (em qualquer ordem).
+   * Usado pelo new-purchase-form pra pré-popular linha quando lojista vem
+   * da tela de estoque pelo link "Comprar mais".
+   */
+  ids?: string[];
 }
 
 /**
@@ -81,18 +88,26 @@ export async function searchProductsForPdv(
       baseConditions.push(eq(productTable.categoryId, categoryFilter));
     }
 
+    // Bloco G UX (2026-05-29) — busca por IDs prevalece sobre query/categoria.
+    const idsFilter = options?.ids?.filter((id) => id && id.length > 0) ?? [];
+    if (idsFilter.length > 0) {
+      baseConditions.push(inArray(productTable.id, idsFilter));
+    }
+
     const where =
-      trimmed.length > 0
-        ? and(
-            ...baseConditions,
-            or(
-              ilike(productTable.name, `%${safeQ}%`),
-              ilike(productTable.slug, `%${safeQ}%`),
-              // Sprint 1A — match exato em GTIN pra scanner.
-              eq(productTable.gtin, trimmed),
-            ),
-          )
-        : and(...baseConditions);
+      idsFilter.length > 0
+        ? and(...baseConditions)
+        : trimmed.length > 0
+          ? and(
+              ...baseConditions,
+              or(
+                ilike(productTable.name, `%${safeQ}%`),
+                ilike(productTable.slug, `%${safeQ}%`),
+                // Sprint 1A — match exato em GTIN pra scanner.
+                eq(productTable.gtin, trimmed),
+              ),
+            )
+          : and(...baseConditions);
 
     const products = await tx
       .select({

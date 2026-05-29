@@ -25,6 +25,7 @@ import {
   ChevronRightIcon,
   PackageIcon,
   PlusIcon,
+  ShoppingCartIcon,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -169,7 +170,7 @@ export function StockSnapshotTable({
           <th style={{ textAlign: "right", paddingRight: 12 }}>DIF</th>
           <th style={{ textAlign: "right", paddingRight: 12 }}>VALOR</th>
           <th style={{ paddingLeft: 12 }}>STATUS</th>
-          <th style={{ width: 80, textAlign: "center" }}>AÇÃO</th>
+          <th style={{ width: 110, textAlign: "center" }}>AÇÕES</th>
         </tr>
       </thead>
       <tbody>
@@ -401,27 +402,43 @@ function ActionCell({ row }: { row: StockSnapshotRow }) {
     );
   }
 
+  // Bloco G UX (2026-05-29) — ações inline: Ajustar (movement dialog)
+  // + Comprar (vai pra /admin/compras/novo com productId pré-populado).
+  // Antes o "+" sozinho deixava lojista sem caminho rápido pra repor;
+  // agente reportou "vê zerado e fica olhando".
   return (
-    <StockMovementDialog
-      productId={row.productId}
-      productName={row.productName}
-      variants={trackedVariants}
-      currentStockQuantity={row.stockQuantity ?? 0}
-      unit={row.unit}
-      trigger={
-        <button
-          type="button"
-          className="b3-btn b3-btn--sm size-7 p-0"
-          title={
-            trackedVariants.length > 0
-              ? "Lançar movimentação na variante específica (entrada, saída ou ajuste)"
-              : "Lançar movimentação rápida (entrada, saída ou ajuste)"
-          }
-          aria-label="Movimentar estoque"
-        >
-          <PlusIcon size={13} aria-hidden />
-        </button>
-      }
-    />
+    <div className="inline-flex items-center justify-center gap-1">
+      <StockMovementDialog
+        productId={row.productId}
+        productName={row.productName}
+        variants={trackedVariants}
+        currentStockQuantity={row.stockQuantity ?? 0}
+        unit={row.unit}
+        trigger={
+          <button
+            type="button"
+            className="b3-btn b3-btn--sm size-7 p-0"
+            title={
+              trackedVariants.length > 0
+                ? "Ajustar saldo da variante (entrada, saída ou contagem)"
+                : "Ajustar saldo (entrada, saída ou contagem)"
+            }
+            aria-label="Ajustar estoque"
+          >
+            <PlusIcon size={13} aria-hidden />
+          </button>
+        }
+      />
+      <Link
+        href={`/admin/compras/novo?productId=${row.productId}`}
+        prefetch={false}
+        className="b3-btn b3-btn--sm size-7 p-0"
+        title={`Comprar mais ${row.productName} (abre nova compra com o produto já adicionado)`}
+        aria-label="Lançar compra deste produto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <ShoppingCartIcon size={13} aria-hidden />
+      </Link>
+    </div>
   );
 }

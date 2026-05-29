@@ -26,7 +26,7 @@ import {
   SearchIcon,
   XCircleIcon,
 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { recordPhysicalInventory } from "@/actions/stock/record-physical-inventory";
@@ -56,6 +56,32 @@ function parseCountInput(raw: string): number | null {
   return n;
 }
 
+/**
+ * Bloco G UX (2026-05-29) — chave de localStorage pra auto-save de
+ * rascunho. Contagem em loja média leva 1-2h; sem isso, lojista
+ * interrompido por cliente perde tudo.
+ *
+ * Sufixo da chave fica como `physical-inventory-draft:v1`; mudou de schema
+ * (ex: novos campos no EntryState), sobe pra `:v2` pra invalidar rascunhos
+ * antigos sem dores.
+ */
+const DRAFT_KEY = "mangos:physical-inventory-draft:v1";
+const DRAFT_TTL_HOURS = 24;
+const DRAFT_DEBOUNCE_MS = 1000;
+
+interface DraftPayload {
+  entries: Record<string, EntryState>;
+  notes: string;
+  savedAt: number; // epoch ms
+}
+
+function formatTime(ts: number): string {
+  const d = new Date(ts);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
 export function PhysicalInventoryForm({ items }: PhysicalInventoryFormProps) {
   const [entries, setEntries] = useState<Record<string, EntryState>>({});
   const [notes, setNotes] = useState("");
@@ -63,6 +89,78 @@ export function PhysicalInventoryForm({ items }: PhysicalInventoryFormProps) {
   const [submitting, setSubmitting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const restoredRef = useRef(false);
+  const draftDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Bloco G UX (2026-05-29) — restore do rascunho no mount UMA VEZ.
+  // Lê localStorage; se válido (< 24h) e tem entries, popula + toast.
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as DraftPayload;
+      if (!parsed || typeof parsed.savedAt !== "number") return;
+      const ageHours = (Date.now() - parsed.savedAt) / (1000 * 60 * 60);
+      if (ageHours > DRAFT_TTL_HOURS) {
+        window.localStorage.removeItem(DRAFT_KEY);
+        return;
+      }
+      const entryCount = Object.values(parsed.entries ?? {}).filter(
+        (e) => (e?.raw ?? "").trim() !== "",
+      ).length;
+      if (entryCount === 0) return;
+      setEntries(parsed.entries);
+      setNotes(parsed.notes ?? "");
+      toast.info(
+        `Rascunho de ${formatTime(parsed.savedAt)} restaurado (${entryCount} ${entryCount === 1 ? "item" : "itens"} contados). Limpe a contagem se quiser começar do zero.`,
+        { duration: 6000 },
+      );
+    } catch {
+      // localStorage corrompido — limpa silenciosamente
+      try {
+        window.localStorage.removeItem(DRAFT_KEY);
+      } catch {
+        /* noop */
+      }
+    }
+  }, []);
+
+  // Bloco G UX (2026-05-29) — auto-save debounced 1s. Save NÃO acontece
+  // se entries e notes estão ambos vazios (evita lixo em localStorage).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (draftDebounceRef.current) clearTimeout(draftDebounceRef.current);
+    draftDebounceRef.current = setTimeout(() => {
+      const entryCount = Object.values(entries).filter(
+        (e) => (e?.raw ?? "").trim() !== "",
+      ).length;
+      if (entryCount === 0 && notes.trim() === "") {
+        try {
+          window.localStorage.removeItem(DRAFT_KEY);
+        } catch {
+          /* noop */
+        }
+        return;
+      }
+      try {
+        const payload: DraftPayload = {
+          entries,
+          notes,
+          savedAt: Date.now(),
+        };
+        window.localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+      } catch {
+        // quota cheia / private mode — ignora silenciosamente. Lojista
+        // perde a feature de auto-save mas o form continua funcionando.
+      }
+    }, DRAFT_DEBOUNCE_MS);
+    return () => {
+      if (draftDebounceRef.current) clearTimeout(draftDebounceRef.current);
+    };
+  }, [entries, notes]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -158,6 +256,14 @@ export function PhysicalInventoryForm({ items }: PhysicalInventoryFormProps) {
         setEntries({});
         setNotes("");
         setConfirmOpen(false);
+        // Bloco G UX (2026-05-29) — limpa rascunho após registrar com sucesso.
+        if (typeof window !== "undefined") {
+          try {
+            window.localStorage.removeItem(DRAFT_KEY);
+          } catch {
+            /* noop */
+          }
+        }
       } else {
         toast.error(result.error);
       }

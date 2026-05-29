@@ -4,6 +4,7 @@
  * Mostra capital empatado em produto sem venda há 60/90/180 dias.
  * Métrica #1 pra lojista de joalheria decidir liquidação.
  */
+import { TicketPercentIcon } from "lucide-react";
 import Link from "next/link";
 
 import { loadStockAging } from "@/actions/stock/load-aging";
@@ -81,6 +82,9 @@ export default async function EstoqueParadoPage() {
                 <th className="text-right">Capital parado</th>
                 <th className="text-right">Última venda</th>
                 <th className="text-left">Faixa</th>
+                <th className="text-center" style={{ width: 160 }}>
+                  Ações
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -124,6 +128,23 @@ export default async function EstoqueParadoPage() {
                     >
                       {COHORT_LABEL[r.cohort]}
                     </span>
+                  </td>
+                  <td>
+                    {/* Bloco G UX (2026-05-29) — antes a tela mostrava
+                        capital parado e zero CTA. Lojista via R$ X parado
+                        e fechava. Agora ações inline pra agir: criar
+                        promoção pra liquidar OU repor (se for parado por
+                        falta de movimentação, não por excesso). */}
+                    <div className="flex items-center justify-center gap-1">
+                      <Link
+                        href={`/admin/promocoes/cupons?produto=${r.productId}`}
+                        prefetch={false}
+                        className="b3-btn b3-btn--sm"
+                        title={`Criar código de desconto pra liquidar ${r.productName}`}
+                      >
+                        <TicketPercentIcon size={12} aria-hidden /> Promo
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}

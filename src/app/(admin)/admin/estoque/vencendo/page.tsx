@@ -4,6 +4,7 @@
  * Lotes vencendo em 60 dias (perfumaria/cosmético). FEFO ordenado.
  * Vencidos no topo destacados em vermelho.
  */
+import { TicketPercentIcon } from "lucide-react";
 import Link from "next/link";
 
 import { loadExpiringBatches } from "@/actions/stock/load-expiring";
@@ -83,9 +84,12 @@ export default async function EstoqueVencendoPage() {
                 <th className="text-left">Produto</th>
                 <th className="text-left">Lote</th>
                 <th className="text-left">Vencimento</th>
-                <th className="text-right">Qty</th>
+                <th className="text-right">Quantidade</th>
                 <th className="text-right">Valor</th>
                 <th className="text-left">Situação</th>
+                <th className="text-center" style={{ width: 140 }}>
+                  Ações
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -127,6 +131,21 @@ export default async function EstoqueVencendoPage() {
                         Vence em {r.daysToExpiry}d
                       </span>
                     )}
+                  </td>
+                  <td>
+                    {/* Bloco G UX (2026-05-29) — antes mostrava lote
+                        vencendo e ZERO CTA. Agora link rápido pra criar
+                        promoção e liquidar antes da perda total. */}
+                    <div className="flex items-center justify-center">
+                      <Link
+                        href={`/admin/promocoes/cupons?produto=${r.productId}`}
+                        prefetch={false}
+                        className="b3-btn b3-btn--sm"
+                        title={`Criar código de desconto pra liquidar ${r.productName} antes do vencimento`}
+                      >
+                        <TicketPercentIcon size={12} aria-hidden /> Promo
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}

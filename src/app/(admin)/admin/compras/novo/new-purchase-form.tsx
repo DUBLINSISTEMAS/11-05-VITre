@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2Icon, SaveIcon, ScanBarcodeIcon, XIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -64,6 +64,7 @@ interface NewPurchaseFormProps {
 
 export function NewPurchaseForm({ suppliers }: NewPurchaseFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
   const [supplierId, setSupplierId] = useState<string>("");
@@ -96,6 +97,36 @@ export function NewPurchaseForm({ suppliers }: NewPurchaseFormProps) {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [searchQ]);
+
+  // Bloco G UX (2026-05-29) — quando lojista vem da tela de estoque pelo
+  // link "Comprar mais" (ShoppingCartIcon na linha do snapshot), URL traz
+  // `?productId=X`. Pré-popula o form adicionando linha automaticamente,
+  // limpando o param da URL pra não duplicar em refresh. Executa 1 vez.
+  const prepopulatedRef = useRef(false);
+  useEffect(() => {
+    if (prepopulatedRef.current) return;
+    const productId = searchParams.get("productId");
+    if (!productId) return;
+    prepopulatedRef.current = true;
+    startSearch(async () => {
+      const results = await searchProductsForPdv("", { ids: [productId] });
+      const hit = results[0];
+      if (!hit) {
+        toast.error(
+          "Produto não encontrado. Pode estar arquivado ou inativo.",
+        );
+      } else {
+        addLine(hit, null);
+        toast.success(`"${hit.name}" adicionado à compra.`);
+      }
+      // Limpa o param sem reload — refresh não duplica o item.
+      const next = new URLSearchParams(searchParams.toString());
+      next.delete("productId");
+      const qs = next.toString();
+      router.replace(qs ? `/admin/compras/novo?${qs}` : "/admin/compras/novo");
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function addLine(
     product: PdvProductHit,
