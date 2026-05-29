@@ -88,7 +88,7 @@ export function DateRangePill({ periodo }: DateRangePillProps) {
         <span className="b3-daterange-pill-text">{formatRange(periodo)}</span>
         <ChevronDownIcon size={13} aria-hidden className="opacity-60" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" sideOffset={6} className="min-w-44">
+      <DropdownMenuContent align="end" sideOffset={6} className="min-w-48">
         {PRESETS.map((p) => (
           <DropdownMenuItem
             key={p.value}
@@ -105,6 +105,13 @@ export function DateRangePill({ periodo }: DateRangePillProps) {
             <span>{p.label}</span>
           </DropdownMenuItem>
         ))}
+        {/* Bloco E3 UX (2026-05-29): explicita o escopo do controle.
+            Antes lojista trocava pra 90 dias e estranhava o Hero não
+            mudar (Hero usa janela fixa ontem + semana). */}
+        <p className="text-ink-4 mt-1 border-t border-line/60 px-2 py-1.5 text-[10.5px] leading-snug">
+          Afeta os KPIs e o gráfico de receita. Lucro de ontem e da
+          semana usa janela fixa.
+        </p>
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -34,6 +34,12 @@ export interface RevenuePoint {
   label: string;
   /** Valor em centavos. */
   value: number;
+  /**
+   * Bloco E3 UX (2026-05-29) — true quando o ponto é o dia atual (ainda
+   * em curso). Renderiza com opacidade reduzida + nota explicativa, pra
+   * lojista não comparar barra parcial com dias fechados.
+   */
+  isPartial?: boolean;
 }
 
 export interface RevenueAnalyticsChartProps {
@@ -52,6 +58,7 @@ export function RevenueAnalyticsChart({
         label: d.label,
         // Recharts calcula escala em unidade humana (eixo Y em "5k", "10k"…)
         value: d.value / 100,
+        isPartial: d.isPartial ?? false,
       })),
     [data],
   );
@@ -60,6 +67,8 @@ export function RevenueAnalyticsChart({
     () => data.reduce((acc, d) => acc + d.value, 0),
     [data],
   );
+
+  const hasPartial = data.some((d) => d.isPartial);
 
   // Pra séries longas (>14 pontos) deixamos Recharts decidir os ticks pra
   // não sobrepor. Em até 14, mostra todos.
@@ -137,6 +146,12 @@ export function RevenueAnalyticsChart({
           </ResponsiveContainer>
         )}
       </div>
+      {hasPartial && totalCents > 0 ? (
+        <p className="text-ink-4 px-4 pb-3 text-[11px]">
+          A última barra é o dia em curso — ainda contando até o
+          fechamento. Não compare diretamente com os dias anteriores.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -198,9 +213,10 @@ interface CapsuleBarProps {
   width?: number;
   height?: number;
   fill?: string;
+  payload?: { isPartial?: boolean };
 }
 
-function CapsuleBar({ x, y, width, height, fill }: CapsuleBarProps) {
+function CapsuleBar({ x, y, width, height, fill, payload }: CapsuleBarProps) {
   if (
     x === undefined ||
     y === undefined ||
@@ -213,6 +229,10 @@ function CapsuleBar({ x, y, width, height, fill }: CapsuleBarProps) {
   }
 
   const radius = Math.min(width / 2, height / 2);
+  // Bloco E3 UX (2026-05-29) — barra do dia em curso fica translúcida
+  // pra sinalizar "ainda contando". Pareado com a nota textual abaixo
+  // do chart.
+  const isPartial = payload?.isPartial ?? false;
 
   const path = `
     M ${x} ${y + radius}
@@ -222,5 +242,11 @@ function CapsuleBar({ x, y, width, height, fill }: CapsuleBarProps) {
     Z
   `;
 
-  return <path d={path} fill={fill ?? "var(--brand)"} />;
+  return (
+    <path
+      d={path}
+      fill={fill ?? "var(--brand)"}
+      fillOpacity={isPartial ? 0.45 : 1}
+    />
+  );
 }

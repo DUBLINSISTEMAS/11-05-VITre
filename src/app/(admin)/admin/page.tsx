@@ -26,17 +26,8 @@ import {
   RevenueAnalyticsChart,
   type RevenuePoint,
 } from "@/components/admin/dashboard/revenue-analytics-chart";
-import {
-  type IncomePoint,
-  TotalIncomeChart,
-} from "@/components/admin/dashboard/total-income-chart";
 import { CashSessionStatus } from "@/components/admin/pdv/cash-session-status";
-import {
-  bannerTable,
-  expenseTable,
-  orderTable,
-  productTable,
-} from "@/db/schema";
+import { bannerTable, orderTable, productTable } from "@/db/schema";
 import { requireSession } from "@/lib/auth-server";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
@@ -49,24 +40,11 @@ const periodoSchema = z
   .catch("30")
   .transform((v) => Number(v) as 7 | 30 | 90);
 
-const MONTH_PT = [
-  "Jan",
-  "Fev",
-  "Mar",
-  "Abr",
-  "Mai",
-  "Jun",
-  "Jul",
-  "Ago",
-  "Set",
-  "Out",
-  "Nov",
-  "Dez",
-] as const;
-
 /** Preenche série temporal contínua: mapeia cada dia do período pra um ponto,
  *  com label "dd/mm" e valor (zero quando não houve venda). Mantém continuidade
- *  temporal sem mentir — barra zero some, label do dia continua. */
+ *  temporal sem mentir — barra zero some, label do dia continua.
+ *  Bloco E3 UX (2026-05-29): último ponto marcado isPartial pra UI mostrar
+ *  que o dia atual ainda está em curso. */
 function fillDailySeries(
   rowsByDay: Map<string, number>,
   days: number,
@@ -82,6 +60,7 @@ function fillDailySeries(
     result.push({
       label: `${dd}/${mm}`,
       value: rowsByDay.get(isoDay) ?? 0,
+      isPartial: i === 0, // hoje é parcial (dia em curso)
     });
   }
   return result;
@@ -103,11 +82,6 @@ export default async function AdminHomePage({
 
   const now = new Date();
   const periodStart = new Date(now.getTime() - periodo * 86400000);
-  const incomeSeriesStart = new Date(
-    now.getFullYear(),
-    now.getMonth() - 7,
-    1,
-  );
 
   const {
     revenueSeriesRows,
@@ -115,8 +89,6 @@ export default async function AdminHomePage({
     productCount,
     bannerCount,
     totalOrderCount,
-    incomeRows,
-    expenseRows,
   } = await withTenant(store.id, session.user.id, async (tx) => {
     // Hero de Lucro Líquido (F.2.1) calcula em transações próprias via
     // loadDashboardLucro (Promise.all top-level). Não duplica trabalho aqui.
@@ -170,33 +142,9 @@ export default async function AdminHomePage({
       .orderBy(desc(orderTable.createdAt))
       .limit(6);
 
-    // === Receita por mês (últimos 8 meses) — pro TotalIncomeChart ===
-    const incomeRows = await tx
-      .select({
-        month: sql<string>`to_char(date_trunc('month', ${orderTable.createdAt}), 'YYYY-MM')`,
-        sum: sql<number>`coalesce(sum(${orderTable.totalInCents}), 0)::int`,
-      })
-      .from(orderTable)
-      .where(
-        sql`${orderTable.storeId} = ${store.id}
-            and ${orderTable.status} in ('confirmed','fulfilled')
-            and ${orderTable.createdAt} >= ${incomeSeriesStart}`,
-      )
-      .groupBy(sql`date_trunc('month', ${orderTable.createdAt})`);
-
-    // === Despesa por mês (últimos 8 meses, paidAt) ===
-    const expenseRows = await tx
-      .select({
-        month: sql<string>`to_char(date_trunc('month', ${expenseTable.paidAt}), 'YYYY-MM')`,
-        sum: sql<number>`coalesce(sum(${expenseTable.amountInCents}), 0)::int`,
-      })
-      .from(expenseTable)
-      .where(
-        sql`${expenseTable.storeId} = ${store.id}
-            and ${expenseTable.paidAt} is not null
-            and ${expenseTable.paidAt} >= ${incomeSeriesStart}`,
-      )
-      .groupBy(sql`date_trunc('month', ${expenseTable.paidAt})`);
+    // Bloco E3 UX (2026-05-29) — queries de Receita vs Despesa por mês
+    // (8m) removidas junto com o TotalIncomeChart. Lojista que quer
+    // visão mensal vai pra /admin/relatorios/resultado.
 
     // === Sinais de onboarding ===
     const productCountRow = await tx
@@ -225,8 +173,6 @@ export default async function AdminHomePage({
       productCount,
       bannerCount,
       totalOrderCount,
-      incomeRows,
-      expenseRows,
     };
   });
 
@@ -315,23 +261,6 @@ export default async function AdminHomePage({
   );
   const revenueSeries: RevenuePoint[] = fillDailySeries(revenueByDay, periodo);
 
-  // === INCOME CHART (8 meses retroativos) ===
-  const incomeMap = new Map(
-    incomeRows.map((r) => [r.month, Number(r.sum)]),
-  );
-  const expenseMap = new Map(
-    expenseRows.map((r) => [r.month, Number(r.sum)]),
-  );
-  const incomeChartData: IncomePoint[] = Array.from({ length: 8 }).map((_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - (7 - i), 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    return {
-      label: MONTH_PT[d.getMonth()]!,
-      profit: incomeMap.get(key) ?? 0,
-      loss: expenseMap.get(key) ?? 0,
-    };
-  });
-
   // === RECENT ORDERS ===
   const recentRows: RecentOrderRow[] = recentOrders.map((o) => ({
     id: o.id,
@@ -383,8 +312,24 @@ export default async function AdminHomePage({
           de balcão é o caixa. Estado aberto: mostra duração + esperado
           + venda count + "Gerenciar caixa". Estado fechado: CTA "Abrir
           caixa" com OpenCashDialog inline. Sem isso, lojista entrava
-          no admin e ia adivinhando se já tinha aberto ou não. */}
-      <CashSessionStatus active={activeCashSession} />
+          no admin e ia adivinhando se já tinha aberto ou não.
+          Adapter inline: CashSessionStatus espera o shape achatado
+          {id, openedAt, openingAmountInCents, expectedInCents, saleCount},
+          loadActiveCashSession devolve {session: CashSession, expected, ...}. */}
+      <CashSessionStatus
+        active={
+          activeCashSession
+            ? {
+                id: activeCashSession.session.id,
+                openedAt: activeCashSession.session.openedAt,
+                openingAmountInCents:
+                  activeCashSession.session.openingAmountInCents,
+                expectedInCents: activeCashSession.expectedInCents,
+                saleCount: activeCashSession.saleCount,
+              }
+            : null
+        }
+      />
 
       {/* KPIs Secundários — Bloco F.2.5. Linha tabular densa de 4
           indicadores (Vendas · Faturamento · Clientes novos · Devoluções)
@@ -420,11 +365,11 @@ export default async function AdminHomePage({
         />
       </div>
 
-      {/* 2 gráficos: 60/40 */}
-      <div className="b3-charts-grid">
-        <RevenueAnalyticsChart data={revenueSeries} periodLabel={periodLabel} />
-        <TotalIncomeChart data={incomeChartData} />
-      </div>
+      {/* Bloco E3 UX (2026-05-29) — TotalIncomeChart (8m receita vs
+          despesa) removido: bonito mas sem ação. Mesma análise existe
+          em /admin/relatorios/resultado. Revenue chart ocupa largura
+          inteira agora — comparação de dia-a-dia fica mais legível. */}
+      <RevenueAnalyticsChart data={revenueSeries} periodLabel={periodLabel} />
 
       {/* Tabela de vendas recentes */}
       <RecentOrdersTable orders={recentRows} />
