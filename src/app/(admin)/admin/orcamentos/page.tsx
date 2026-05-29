@@ -14,11 +14,14 @@
  * inline. Imprimir continua via /admin/pedidos/[id]/imprimir.
  */
 import { and, count, eq, ilike, inArray, lte, or, sql } from "drizzle-orm";
-import { FileTextIcon } from "lucide-react";
+import { FileTextIcon, PlusIcon } from "lucide-react";
+import Link from "next/link";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import { loadQuoteSheetList } from "@/actions/quote-sheet/load-list";
 import { PrintPageButton } from "@/components/admin/print/print-page-button";
+import { QuoteSheetsList } from "@/components/admin/quote-sheets-list";
 import {
   QuotesTable,
   type QuoteTableRow,
@@ -117,6 +120,10 @@ export default async function OrcamentosPage({
 
   const offset = (page - 1) * PAGE_SIZE;
 
+  // Fichas de balcão (texto livre — distintas do quote PDV) carregadas em
+  // paralelo. Bloco aparece acima da lista do PDV, com CTA própria no header.
+  const quoteSheetsResultPromise = loadQuoteSheetList({ pageSize: 20 });
+
   const { quotes, total, tabCounts } = await withTenant(
     store.id,
     session.user.id,
@@ -203,6 +210,8 @@ export default async function OrcamentosPage({
   const rangeStart = total === 0 ? 0 : offset + 1;
   const rangeEnd = Math.min(offset + PAGE_SIZE, total);
 
+  const quoteSheetsResult = await quoteSheetsResultPromise;
+
   return (
     <div className="b3-main-card">
       <header className="flex flex-wrap items-end justify-between gap-3 border-b border-line px-6 py-4">
@@ -212,13 +221,53 @@ export default async function OrcamentosPage({
             Orçamentos
           </h1>
           <p className="text-ink-4 mt-0.5 text-[12.5px]">
-            Propostas em aberto. Crie pelo PDV → &quot;Salvar como orçamento&quot;.
+            Ficha de balcão (texto livre) ou orçamento itemizado salvo pelo PDV.
           </p>
         </div>
-        <PrintPageButton />
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/orcamentos/ficha/novo"
+            className="b3-btn b3-btn--sm inline-flex items-center gap-1.5"
+          >
+            <PlusIcon className="size-3.5" aria-hidden />
+            Nova ficha
+          </Link>
+          <PrintPageButton />
+        </div>
       </header>
 
-      {/* Toolbar com abas de validade + busca */}
+      {/* Fichas de balcão — texto livre, joia/serviço. Bloco vem PRIMEIRO
+          porque é o fluxo dia-a-dia do ICP joalheiro. Quando não existem
+          fichas, mostra estado vazio orientando a CTA do header. */}
+      <section className="border-line border-b p-4 sm:p-6">
+        <div className="mb-3 flex items-end justify-between gap-3">
+          <div>
+            <h2 className="text-ink-1 text-[13.5px] font-semibold">
+              Fichas de balcão
+            </h2>
+            <p className="text-ink-4 mt-0.5 text-[12px]">
+              Talão tipo joia/serviço — descrição livre, assinaturas no papel.
+            </p>
+          </div>
+          <span className="text-ink-4 mono text-[11.5px]">
+            {quoteSheetsResult.total} total
+          </span>
+        </div>
+        <QuoteSheetsList rows={quoteSheetsResult.rows} />
+      </section>
+
+      {/* Orçamento PDV — itemizado, vindo do "Salvar como orçamento" do PDV.
+          Toolbar com abas de validade + busca opera só sobre esta seção. */}
+      <div className="border-line border-b px-4 pt-5 sm:px-6">
+        <h2 className="text-ink-1 text-[13.5px] font-semibold">
+          Orçamentos do PDV
+        </h2>
+        <p className="text-ink-4 mt-0.5 mb-3 text-[12px]">
+          Itemizados — saem do PDV via &quot;Salvar como orçamento&quot;. Validade
+          configurada por orçamento.
+        </p>
+      </div>
+
       <Suspense fallback={<div className="b3-toolbar h-14" />}>
         <OrcamentosToolbar
           tabCounts={tabCounts}

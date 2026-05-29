@@ -267,6 +267,13 @@
       "when": 1779820927580,
       "tag": "0037_product_archived_deleted",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1779907327580,
+      "tag": "0038_quote_sheet",
+      "breakpoints": true
     }
   ]
 }
