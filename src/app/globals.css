@@ -381,6 +381,22 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
+  /* Onda M1 (2026-05-29) — fix "tudo verde, texto invisivel ao selecionar".
+     Sem ::selection definido, o browser usa accent-color do OS. Em Windows
+     com tema escuro+verde (config do founder Anderson) a selecao ficava
+     green-on-green tornando texto ilegivel. Define selecao com tom suave
+     que mantem contraste em texto claro E escuro. text-shadow=none impede
+     que decoracao do tema do OS sobre-renderize. */
+  ::selection {
+    background-color: var(--mangos-yellow-soft, #FFF2C7);
+    color: var(--ink-1, #0A0A0A);
+    text-shadow: none;
+  }
+  ::-moz-selection {
+    background-color: var(--mangos-yellow-soft, #FFF2C7);
+    color: var(--ink-1, #0A0A0A);
+    text-shadow: none;
+  }
   /*
    * Sensação de "app nativo" sem desabilitar zoom (WCAG 1.4.4/2.5.4
    * mantido — `maximumScale` continua omitido no viewport).

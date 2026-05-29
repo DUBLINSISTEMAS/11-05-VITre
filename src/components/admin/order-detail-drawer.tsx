@@ -154,12 +154,18 @@ export function OrderDetailDrawer({ orderId, onOpenChange }: OrderDetailDrawerPr
   // refetch do detalhe pra o drawer refletir o novo estado.
   const [reloadKey, setReloadKey] = useState(0);
 
-  // Fix 2026-05-29 — loading travado em orçamento PDV. Antes usava
-  // useTransition + async function; o pending state se perdia ao combinar
-  // com setStates síncronos fora da transition (reset de data/error). Agora
-  // gerencia isLoading manualmente com cleanup via cancelled flag pra
-  // descartar respostas obsoletas se o orderId mudar antes da action
-  // resolver (clicar rápido em duas vendas seguidas).
+  // Onda M2 (2026-05-29) — loading com TIMEOUT defensivo.
+  //
+  // Histórico do bug:
+  //   - Fix 1 (L1): trocou useTransition por useState manual + cleanup.
+  //     Founder reportou que ainda travava em orcamento PDV.
+  //   - Fix 2 (M2): paralelizou loadOrderDetail (6 queries -> 3 round-trips)
+  //     reduzindo latencia. Mas se a action travar de vez (RLS, deadlock,
+  //     network), a UI nunca sai do estado "Carregando".
+  //
+  // Defesa: timeout de 15s + telemetria de timing. Quando ocorrer, founder
+  // ve "tempo esgotado" em vez de spinner eterno + temos log com duracao
+  // pra triangular causa.
   useEffect(() => {
     if (!orderId) {
       setData(null);
@@ -172,25 +178,64 @@ export function OrderDetailDrawer({ orderId, onOpenChange }: OrderDetailDrawerPr
     setError(null);
     setIsLoading(true);
 
+    const startedAt = performance.now();
+    const TIMEOUT_MS = 15_000;
+    const timeoutId = window.setTimeout(() => {
+      if (cancelled) return;
+      cancelled = true;
+      setIsLoading(false);
+      const elapsed = Math.round(performance.now() - startedAt);
+      logger.error("admin.order.detail_load_timeout", {
+        orderId,
+        elapsedMs: elapsed,
+      });
+      setError(
+        `O detalhe demorou demais pra carregar (${elapsed}ms). Verifique sua conexão e tente novamente.`,
+      );
+    }, TIMEOUT_MS);
+
     loadOrderDetail(orderId)
       .then((res) => {
+        window.clearTimeout(timeoutId);
         if (cancelled) return;
         setIsLoading(false);
+        const elapsed = Math.round(performance.now() - startedAt);
         if (!res.ok) {
+          logger.error("admin.order.detail_load_failed", {
+            orderId,
+            elapsedMs: elapsed,
+            error: res.error,
+          });
           setError(res.error);
           return;
+        }
+        // Log de timing tambem em sucesso pra detectar lentidao silenciosa
+        // (caso founder reporte "demora muito" em vez de "trava de vez").
+        if (elapsed > 2000) {
+          logger.warn("admin.order.detail_load_slow", { orderId, elapsedMs: elapsed });
         }
         setData(res.order);
       })
       .catch((err) => {
+        window.clearTimeout(timeoutId);
         if (cancelled) return;
         setIsLoading(false);
-        logger.error("admin.order.detail_load_failed", { err, orderId });
-        setError("Não foi possível carregar a venda. Tente novamente.");
+        const elapsed = Math.round(performance.now() - startedAt);
+        logger.error("admin.order.detail_load_exception", {
+          err,
+          orderId,
+          elapsedMs: elapsed,
+        });
+        setError(
+          err instanceof Error
+            ? `Falha ao carregar: ${err.message}`
+            : "Não foi possível carregar a venda. Tente novamente.",
+        );
       });
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timeoutId);
     };
   }, [orderId, reloadKey]);
 

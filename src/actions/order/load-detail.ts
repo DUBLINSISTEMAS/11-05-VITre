@@ -119,6 +119,13 @@ export async function loadOrderDetail(
   const store = await getCurrentStore(session.user.id);
   if (!store) return { ok: false, error: "Loja não encontrada." };
 
+  // Onda M2 (2026-05-29) — paralelizado. Antes eram 6 queries series
+  // (order + items + returnedQuantities + payments + linkedCustomer +
+  // returns) somando ~6 round-trips. Em rede mediana isso dava ~600-800ms
+  // e o Suspense React 19 podia abortar silenciosamente o load do drawer
+  // (founder reportou loading travado em orcamento PDV). Agora: 1 query
+  // base (order) + 4 queries dependentes em Promise.all + 1 condicional
+  // pra linkedCustomer. Total: 1 + max(4 paralelas) + 1 = 3 round-trips.
   const result = await withTenant(store.id, session.user.id, async (tx) => {
     const order = await tx.query.orderTable.findFirst({
       where: and(
@@ -144,63 +151,86 @@ export async function loadOrderDetail(
     });
     if (!order) return null;
 
-    const items = await tx
-      .select({
-        id: orderItemTable.id,
-        productNameSnapshot: orderItemTable.productNameSnapshot,
-        variantNameSnapshot: orderItemTable.variantNameSnapshot,
-        imageUrlSnapshot: orderItemTable.imageUrlSnapshot,
-        priceInCentsSnapshot: orderItemTable.priceInCentsSnapshot,
-        quantity: orderItemTable.quantity,
-      })
-      .from(orderItemTable)
-      .where(eq(orderItemTable.orderId, orderId));
+    // 4 queries paralelas — todas dependem so de orderId + storeId,
+    // ja resolvidos. Promise.all aproveita o pool de conexoes do withTenant.
+    const [items, returnedQuantities, payments, returns] = await Promise.all([
+      tx
+        .select({
+          id: orderItemTable.id,
+          productNameSnapshot: orderItemTable.productNameSnapshot,
+          variantNameSnapshot: orderItemTable.variantNameSnapshot,
+          imageUrlSnapshot: orderItemTable.imageUrlSnapshot,
+          priceInCentsSnapshot: orderItemTable.priceInCentsSnapshot,
+          quantity: orderItemTable.quantity,
+        })
+        .from(orderItemTable)
+        .where(eq(orderItemTable.orderId, orderId)),
 
-    // Sprint 2.1 — acumulado de quantidade já devolvida por order_item,
-    // somando devoluções parciais + full anteriores. UI usa pra calcular
-    // saldo disponível e bloquear inputs além do permitido.
-    const returnedQuantities = await tx
-      .select({
-        orderItemId: orderReturnItemTable.orderItemId,
-        totalReturned: sql<number>`coalesce(sum(${orderReturnItemTable.quantityReturned}), 0)::int`,
-      })
-      .from(orderReturnItemTable)
-      .innerJoin(
-        orderReturnTable,
-        eq(orderReturnTable.id, orderReturnItemTable.orderReturnId),
-      )
-      .where(
-        and(
-          eq(orderReturnTable.orderId, orderId),
-          eq(orderReturnTable.storeId, store.id),
-        ),
-      )
-      .groupBy(orderReturnItemTable.orderItemId);
+      // Sprint 2.1 — acumulado de quantidade ja devolvida por order_item.
+      tx
+        .select({
+          orderItemId: orderReturnItemTable.orderItemId,
+          totalReturned: sql<number>`coalesce(sum(${orderReturnItemTable.quantityReturned}), 0)::int`,
+        })
+        .from(orderReturnItemTable)
+        .innerJoin(
+          orderReturnTable,
+          eq(orderReturnTable.id, orderReturnItemTable.orderReturnId),
+        )
+        .where(
+          and(
+            eq(orderReturnTable.orderId, orderId),
+            eq(orderReturnTable.storeId, store.id),
+          ),
+        )
+        .groupBy(orderReturnItemTable.orderItemId),
+
+      // Onda 1.3 — multi-pagamento real. Ordenado por createdAt ASC.
+      tx
+        .select({
+          id: orderPaymentTable.id,
+          method: orderPaymentTable.method,
+          amountInCents: orderPaymentTable.amountInCents,
+          cashReceivedInCents: orderPaymentTable.cashReceivedInCents,
+          installments: orderPaymentTable.installments,
+          notes: orderPaymentTable.notes,
+        })
+        .from(orderPaymentTable)
+        .where(
+          and(
+            eq(orderPaymentTable.orderId, orderId),
+            eq(orderPaymentTable.storeId, store.id),
+          ),
+        )
+        .orderBy(asc(orderPaymentTable.createdAt)),
+
+      // Pre-Sprint-6 C — carrega devolucoes (geralmente 0 ou 1).
+      tx
+        .select({
+          id: orderReturnTable.id,
+          returnType: orderReturnTable.returnType,
+          refundedInCents: orderReturnTable.refundedInCents,
+          reason: orderReturnTable.reason,
+          createdAt: orderReturnTable.createdAt,
+        })
+        .from(orderReturnTable)
+        .where(
+          and(
+            eq(orderReturnTable.orderId, orderId),
+            eq(orderReturnTable.storeId, store.id),
+          ),
+        )
+        .orderBy(desc(orderReturnTable.createdAt)),
+    ]);
 
     const returnedByItem = new Map<string, number>(
       returnedQuantities.map((r) => [r.orderItemId, r.totalReturned]),
     );
 
-    // Onda 1.3 — multi-pagamento real. Ordenado por createdAt ASC pra
-    // preservar a ordem em que o lojista digitou (cash, depois pix etc.).
-    const payments = await tx
-      .select({
-        id: orderPaymentTable.id,
-        method: orderPaymentTable.method,
-        amountInCents: orderPaymentTable.amountInCents,
-        cashReceivedInCents: orderPaymentTable.cashReceivedInCents,
-        installments: orderPaymentTable.installments,
-        notes: orderPaymentTable.notes,
-      })
-      .from(orderPaymentTable)
-      .where(
-        and(
-          eq(orderPaymentTable.orderId, orderId),
-          eq(orderPaymentTable.storeId, store.id),
-        ),
-      )
-      .orderBy(asc(orderPaymentTable.createdAt));
-
+    // linkedCustomer fica fora do Promise.all porque depende de
+    // order.customerId (so resolvido). Round-trip extra so paga quando
+    // o pedido tem cliente cadastrado vinculado (orcamento PDV avulso
+    // nao tem — pula direto).
     let linkedCustomer: OrderDetailLinkedCustomer | null = null;
     if (order.customerId) {
       const c = await tx.query.customerTable.findFirst({
@@ -212,24 +242,6 @@ export async function loadOrderDetail(
       });
       if (c) linkedCustomer = c;
     }
-
-    // Pre-Sprint-6 C — carrega devoluções (geralmente 0 ou 1).
-    const returns = await tx
-      .select({
-        id: orderReturnTable.id,
-        returnType: orderReturnTable.returnType,
-        refundedInCents: orderReturnTable.refundedInCents,
-        reason: orderReturnTable.reason,
-        createdAt: orderReturnTable.createdAt,
-      })
-      .from(orderReturnTable)
-      .where(
-        and(
-          eq(orderReturnTable.orderId, orderId),
-          eq(orderReturnTable.storeId, store.id),
-        ),
-      )
-      .orderBy(desc(orderReturnTable.createdAt));
 
     const itemsWithReturned: OrderDetailItem[] = items.map((it) => ({
       ...it,
