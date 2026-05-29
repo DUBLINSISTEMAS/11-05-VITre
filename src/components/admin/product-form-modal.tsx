@@ -63,33 +63,49 @@ export function ProductFormModal({
   const [data, setData] = useState<ProductFormDrawerData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [isLoading, startLoad] = useTransition();
+  const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, startDelete] = useTransition();
   const [isSaving, setIsSaving] = useState(false);
   const submitRef = useRef<HTMLButtonElement | null>(null);
 
+  // Fix 2026-05-29 — mesmo bug do OrderDetailDrawer: useTransition +
+  // async + setStates fora da transition perdia o pending state. Modal
+  // de produto ficava em "Carregando..." sem fim ao clicar Editar/Novo.
+  // Substituido por useState manual + cleanup com cancelled flag pra
+  // descartar resposta obsoleta se o target mudar antes da action resolver.
   useEffect(() => {
     if (target === null) {
       setData(null);
       setError(null);
+      setIsLoading(false);
       return;
     }
+    let cancelled = false;
     setData(null);
     setError(null);
-    startLoad(async () => {
-      try {
-        const productId = target === "new" ? null : target;
-        const res = await loadProductFormData(productId);
+    setIsLoading(true);
+
+    const productId = target === "new" ? null : target;
+    loadProductFormData(productId)
+      .then((res) => {
+        if (cancelled) return;
+        setIsLoading(false);
         if (!res.ok) {
           setError(res.message);
           return;
         }
         setData(res.data);
-      } catch (err) {
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setIsLoading(false);
         logger.error("admin.product.modal_load_failed", { err, target });
         setError("Não foi possível carregar o produto.");
-      }
-    });
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [target]);
 
   const handleDelete = () => {
