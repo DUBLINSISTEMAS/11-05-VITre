@@ -16,6 +16,7 @@
  *   - cores neutras (sem brand) — economia de tinta
  */
 import { and, asc, eq } from "drizzle-orm";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { PrintStoreHeader } from "@/components/admin/print/print-store-header";
@@ -28,6 +29,10 @@ import { withTenant } from "@/lib/tenant";
 
 import { type PrintFormat, PrintFormatToggle } from "./format-toggle";
 import { PrintTrigger } from "./print-trigger";
+
+// Override do title default pra que o browser não imprima o subtítulo de
+// marketing no cabeçalho do papel.
+export const metadata: Metadata = { title: "Imprimir documento" };
 
 const PAYMENT_LABELS: Record<string, string> = {
   cash: "Dinheiro",
@@ -487,14 +492,20 @@ export default async function ImprimirPedidoPage({
           </section>
         ) : null}
 
-        {/* Rodapé */}
-        <footer className="mt-8 border-t border-black/20 pt-3 text-[11px] text-black/50">
+        {/* Rodapé — sem vitre.site/<slug> (founder pediu remoção).
+            "Mangos Pay" minúsculo do lado direito como assinatura. */}
+        <footer className="mt-8 border-t border-black/10 pt-3">
           {order.status === "quote" ? (
-            <p className="mb-1 font-medium text-black/70">
+            <p className="mb-2 text-[12px] font-bold text-black/80">
               Este documento é apenas orçamento. Não tem valor fiscal.
             </p>
           ) : null}
-          Mangos Pay · {store.name} · vitre.site/{store.slug}
+          <div className="flex items-baseline justify-between gap-2 text-[10px] text-black/40">
+            <span>
+              #{order.shortCode} · {store.name}
+            </span>
+            <span className="font-mono">Mangos Pay</span>
+          </div>
         </footer>
       </article>
     </>

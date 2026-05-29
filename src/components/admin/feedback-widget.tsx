@@ -112,6 +112,9 @@ export function FeedbackWidget({
           "fixed bottom-5 right-5 z-40 size-12 items-center justify-center rounded-full",
           "border-0 outline-none transition-transform duration-200 hover:scale-105",
           "focus-visible:ring-2 focus-visible:ring-mangos-yellow/60 focus-visible:ring-offset-2",
+          // Esconde no print — sem isso, o botão amarelo aparece em
+          // cima da ficha/orçamento impresso (founder reportou 2026-05-29).
+          "print:hidden",
         )}
         style={{
           background: "var(--mangos-yellow)",

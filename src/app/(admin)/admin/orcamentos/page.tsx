@@ -20,7 +20,6 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import { loadQuoteSheetList } from "@/actions/quote-sheet/load-list";
-import { PrintPageButton } from "@/components/admin/print/print-page-button";
 import { QuoteSheetsList } from "@/components/admin/quote-sheets-list";
 import {
   QuotesTable,
@@ -232,7 +231,9 @@ export default async function OrcamentosPage({
             <PlusIcon className="size-3.5" aria-hidden />
             Nova ficha
           </Link>
-          <PrintPageButton />
+          {/* Botão "Imprimir página" removido 2026-05-29: imprimia a UI do
+              admin (toolbar + listagem), não o orçamento. Imprimir orçamento
+              real é via row click -> "Imprimir" do drawer. */}
         </div>
       </header>
 

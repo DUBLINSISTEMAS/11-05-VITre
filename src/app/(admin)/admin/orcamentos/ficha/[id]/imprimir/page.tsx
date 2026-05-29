@@ -13,6 +13,7 @@
  *
  * Auto-print no mount; troca de formato força re-disparo.
  */
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { loadQuoteSheetDetail } from "@/actions/quote-sheet/load-detail";
@@ -25,6 +26,11 @@ import { AutoPrintBar } from "./auto-print";
 import { type PrintFormat, PrintFormatToggle } from "./format-toggle";
 
 export const dynamic = "force-dynamic";
+
+// Override do title default ("Mangos Pay — Loja online com checkout
+// WhatsApp") pra que o browser não imprima o subtítulo de marketing no
+// cabeçalho do papel. Template do root layout vira "Imprimir ficha · Mangos Pay".
+export const metadata: Metadata = { title: "Imprimir ficha" };
 
 interface ImprimirFichaPageProps {
   params: Promise<{ id: string }>;
@@ -173,14 +179,14 @@ export default async function ImprimirFichaPage({
           {q.noticeText ? (
             <>
               <div className="my-2 border-t border-dashed border-black/40" />
-              <p className="whitespace-pre-wrap text-[9.5px] leading-snug text-black/70">
+              <p className="whitespace-pre-wrap text-[10px] font-bold leading-snug text-black">
                 {q.noticeText}
               </p>
             </>
           ) : null}
 
           <p className="mt-3 text-center text-[8.5px] text-black/40">
-            Mangos Pay · vitre.site/{store.slug}
+            Mangos Pay
           </p>
         </article>
       </>
@@ -325,24 +331,24 @@ export default async function ImprimirFichaPage({
           </div>
         </section>
 
-        {/* Aviso configurável */}
+        {/* Aviso configurável — em negrito pra dar destaque (regra de
+            joalheria: o cliente PRECISA ver o aviso de prazo/responsabilidade) */}
         {q.noticeText ? (
           <section className="mt-8 break-inside-avoid border-t border-black/15 pt-3">
-            <p className="whitespace-pre-wrap text-[11.5px] leading-snug text-black/70">
+            <p className="whitespace-pre-wrap text-[12px] font-bold leading-snug text-black/80">
               {q.noticeText}
             </p>
           </section>
         ) : null}
 
-        {/* Rodapé — Mangos discreto + ID da ficha */}
+        {/* Rodapé — só ID + nome da loja. Sem vitre.site (founder pediu
+            remoção). "Mangos Pay" minúsculo do lado direito como assinatura. */}
         <footer className="mt-8 border-t border-black/10 pt-2 text-[10px] text-black/40">
           <div className="flex items-baseline justify-between gap-2">
             <span>
               Ficha #{q.shortCode} · {store.name}
             </span>
-            <span className="font-mono">
-              Mangos Pay · vitre.site/{store.slug}
-            </span>
+            <span className="font-mono">Mangos Pay</span>
           </div>
         </footer>
       </article>
