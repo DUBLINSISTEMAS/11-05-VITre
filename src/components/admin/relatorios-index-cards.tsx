@@ -12,7 +12,6 @@ import {
   AlertTriangleIcon,
   CalculatorIcon,
   ChevronRightIcon,
-  ClockIcon,
   HandCoinsIcon,
   LineChartIcon,
   type LucideIcon,
@@ -68,7 +67,8 @@ const REPORTS: ReportCard[] = [
     label: "Margem por produto",
     href: "/admin/relatorios/margem",
     icon: CalculatorIcon,
-    description: "Lucro absoluto e % de cada produto vendido.",
+    description:
+      "Visão complementar ao Resultado: lucro absoluto e % linha-a-linha por SKU.",
   },
   {
     k: "estoque-baixo",
@@ -94,14 +94,12 @@ const REPORTS: ReportCard[] = [
     description:
       "Total vendido + ticket médio + comissão devida no período. Por sellerId.",
   },
-  {
-    k: "dre",
-    label: "DRE simplificado",
-    href: "/admin/relatorios/dre",
-    icon: ClockIcon,
-    description:
-      "Receita líquida − CMV − despesas operacionais = lucro operacional.",
-  },
+  // Faxina 2026-05-28: "DRE simplificado" removido do índice. Quem precisa do
+  // breakdown técnico (receita bruta − descontos − devoluções − CMV − despesas)
+  // acessa via link "DRE detalhada" dentro da tela Resultado, que é o caminho
+  // canônico. Manter como card autônomo criava sobreposição: 2 lugares
+  // respondendo "quanto sobrou?" com nomes diferentes. Rota /admin/relatorios/dre
+  // segue viva por URL.
 ];
 
 export function RelatoriosIndexCards() {

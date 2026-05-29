@@ -33,11 +33,7 @@ import {
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
-import {
-  checkRateLimit,
-  RateLimitError,
-  rateLimits,
-} from "@/lib/rate-limit";
+import { checkRateLimit, RateLimitError, rateLimits } from "@/lib/rate-limit";
 import { safeUserMessage } from "@/lib/safe-error";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
@@ -163,7 +159,9 @@ export async function recordReceivablePayment(
         if (data.amountInCents > remainingBefore) {
           return {
             ok: false,
-            error: `Valor maior que o saldo restante (R$ ${(remainingBefore / 100)
+            error: `Valor maior que o saldo restante (R$ ${(
+              remainingBefore / 100
+            )
               .toFixed(2)
               .replace(".", ",")}).`,
             fieldErrors: { amountInCents: "Acima do saldo" },
@@ -237,7 +235,6 @@ export async function recordReceivablePayment(
 
         revalidatePath("/admin/financeiro/receber");
         revalidatePath("/admin/clientes");
-        revalidatePath(`/admin/clientes/${receivable.customerId}`);
         revalidatePath("/admin");
         revalidatePath("/admin/pdv/caixa");
 
@@ -265,7 +262,10 @@ export async function recordReceivablePayment(
     logger.error("receivable.record_payment_failed", { err: e });
     return {
       ok: false,
-      error: safeUserMessage(e, "Falha ao registrar pagamento. Tente novamente."),
+      error: safeUserMessage(
+        e,
+        "Falha ao registrar pagamento. Tente novamente.",
+      ),
     };
   }
 }

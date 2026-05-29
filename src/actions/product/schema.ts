@@ -25,10 +25,7 @@ export const reorderProductImagesSchema = z.object({
 const optionalTrimmedString = (max: number, fieldLabel: string) =>
   z
     .union([
-      z
-        .string()
-        .trim()
-        .max(max, `${fieldLabel} muito longo (máx ${max}).`),
+      z.string().trim().max(max, `${fieldLabel} muito longo (máx ${max}).`),
       z.null(),
     ])
     .optional()
@@ -215,13 +212,10 @@ export const variantInputSchema = z
      * seleciona essa variação no PDP, galeria scrolla pra essa imagem.
      * NULL = usa primeira imagem do produto (padrão).
      */
-    featuredImageId: z
-      .union([z.string().uuid(), z.null()])
-      .default(null),
+    featuredImageId: z.union([z.string().uuid(), z.null()]).default(null),
   })
   .refine(
-    (v) =>
-      v.axis !== "color" || (v.colorHex !== null && v.colorHex.length > 0),
+    (v) => v.axis !== "color" || (v.colorHex !== null && v.colorHex.length > 0),
     {
       message: "Informe a cor (ex: #1E3FE6).",
       path: ["colorHex"],
@@ -252,10 +246,7 @@ const productFormFieldsSchema = z.object({
    * passam o campo.
    */
   kind: productKindSchema.default("finished_good"),
-  description: z
-    .string()
-    .trim()
-    .max(2000, "Descrição muito longa (máx 2000)."),
+  description: z.string().trim().max(2000, "Descrição muito longa (máx 2000)."),
   basePriceInCents: z
     .number()
     .int()
@@ -320,11 +311,11 @@ const productFormFieldsSchema = z.object({
   isFeatured: z.boolean(),
   /**
    * ADR-0030 (Frente B) — Publicado na loja online?
-   * Default true em fixtures antigas via `.default(true)` no input schema.
+   * Default false: cadastro interno primeiro; vitrine online é decisão explícita.
    * isActive=true && isPublishedToStorefront=false → produto existe pra
    * estoque/PDV/relatórios mas NÃO aparece no storefront público.
    */
-  isPublishedToStorefront: z.boolean().default(true),
+  isPublishedToStorefront: z.boolean().default(false),
   // Meta-fields canvas-v1 (PDP). Todos opcionais; "" → null no transform.
   composition: optionalTrimmedString(120, "Composição"),
   modeling: optionalTrimmedString(120, "Modelagem"),
@@ -414,9 +405,7 @@ const productFormFieldsSchema = z.object({
 const PROMO_LESS_THAN_BASE = (v: {
   basePriceInCents: number;
   promoPriceInCents: number | null;
-}) =>
-  v.promoPriceInCents === null ||
-  v.promoPriceInCents < v.basePriceInCents;
+}) => v.promoPriceInCents === null || v.promoPriceInCents < v.basePriceInCents;
 const PROMO_LESS_THAN_BASE_MSG: { message: string; path: string[] } = {
   message: "Preço promocional precisa ser menor que o preço normal.",
   path: ["promoPriceInCents"],
@@ -528,10 +517,7 @@ export const bulkToggleActiveSchema = z.object({
   productIds: z
     .array(z.string().uuid())
     .min(1, "Selecione pelo menos um produto.")
-    .max(
-      BULK_PRODUCTS_MAX,
-      `Máximo ${BULK_PRODUCTS_MAX} produtos por vez.`,
-    ),
+    .max(BULK_PRODUCTS_MAX, `Máximo ${BULK_PRODUCTS_MAX} produtos por vez.`),
   isActive: z.boolean(),
 });
 export type BulkToggleActiveInput = z.infer<typeof bulkToggleActiveSchema>;
@@ -540,10 +526,7 @@ export const bulkDeleteProductsSchema = z.object({
   productIds: z
     .array(z.string().uuid())
     .min(1, "Selecione pelo menos um produto.")
-    .max(
-      BULK_PRODUCTS_MAX,
-      `Máximo ${BULK_PRODUCTS_MAX} produtos por vez.`,
-    ),
+    .max(BULK_PRODUCTS_MAX, `Máximo ${BULK_PRODUCTS_MAX} produtos por vez.`),
 });
 export type BulkDeleteProductsInput = z.infer<typeof bulkDeleteProductsSchema>;
 
@@ -581,10 +564,7 @@ export const updateProductCostBatchSchema = z.object({
   rows: z
     .array(productCostBatchRowSchema)
     .min(1, "Nenhuma alteração pra salvar.")
-    .max(
-      BULK_PRODUCTS_MAX,
-      `Máximo ${BULK_PRODUCTS_MAX} produtos por vez.`,
-    ),
+    .max(BULK_PRODUCTS_MAX, `Máximo ${BULK_PRODUCTS_MAX} produtos por vez.`),
 });
 export type UpdateProductCostBatchInput = z.infer<
   typeof updateProductCostBatchSchema

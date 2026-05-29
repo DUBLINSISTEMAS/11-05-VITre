@@ -61,15 +61,15 @@ export function ReceivablesList({ rows: initial }: ReceivablesListProps) {
   if (initial.length === 0) {
     return (
       <div className="border-line flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-12">
-        <div className="flex size-12 items-center justify-center rounded-full bg-ok-wash text-ok">
+        <div className="bg-ok-wash text-ok flex size-12 items-center justify-center rounded-full">
           <CheckCircle2Icon className="size-6" />
         </div>
-        <h2 className="text-lg font-semibold text-ink-1">
+        <h2 className="text-ink-1 text-lg font-semibold">
           Nenhum fiado pendente
         </h2>
         <p className="text-ink-4 max-w-sm text-sm">
-          Bom trabalho. Fiados novos aparecem aqui automaticamente quando
-          você lança uma venda como fiado no PDV.
+          Bom trabalho. Fiados novos aparecem aqui automaticamente quando você
+          lança uma venda como fiado no PDV.
         </p>
       </div>
     );
@@ -79,14 +79,15 @@ export function ReceivablesList({ rows: initial }: ReceivablesListProps) {
     <>
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="b3-card b3-card-pad">
-          <div className="text-ink-4 text-[11px] font-bold uppercase tracking-[0.06em]">
+          <div className="text-ink-4 text-[11px] font-bold tracking-[0.06em] uppercase">
             Pendente
           </div>
           <div className="mono text-ink-1 mt-1 text-[22px] font-bold tabular-nums">
             {formatBRL(localPendingSum)}
           </div>
           <div className="text-ink-4 mt-1 text-[12px]">
-            {initial.length} {initial.length === 1 ? "lançamento" : "lançamentos"}
+            {initial.length}{" "}
+            {initial.length === 1 ? "lançamento" : "lançamentos"}
           </div>
         </div>
         <div
@@ -97,7 +98,7 @@ export function ReceivablesList({ rows: initial }: ReceivablesListProps) {
         >
           <div
             className={cn(
-              "text-[11px] font-bold uppercase tracking-[0.06em]",
+              "text-[11px] font-bold tracking-[0.06em] uppercase",
               localOverdueSum > 0 ? "text-danger" : "text-ink-4",
             )}
           >
@@ -117,7 +118,7 @@ export function ReceivablesList({ rows: initial }: ReceivablesListProps) {
           </div>
         </div>
         <div className="b3-card b3-card-pad">
-          <div className="text-ink-4 text-[11px] font-bold uppercase tracking-[0.06em]">
+          <div className="text-ink-4 text-[11px] font-bold tracking-[0.06em] uppercase">
             Vincendos
           </div>
           <div className="mono text-ink-1 mt-1 text-[22px] font-bold tabular-nums">
@@ -164,7 +165,7 @@ export function ReceivablesList({ rows: initial }: ReceivablesListProps) {
                   </td>
                   <td>
                     <Link
-                      href={`/admin/clientes/${r.customerId}`}
+                      href={`/admin/clientes?customer=${r.customerId}`}
                       className="text-ink-1 hover:text-brand text-[13px]"
                       prefetch
                     >

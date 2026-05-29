@@ -26,11 +26,7 @@ import { z } from "zod";
 import { customerTable, receivableTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
-import {
-  checkRateLimit,
-  RateLimitError,
-  rateLimits,
-} from "@/lib/rate-limit";
+import { checkRateLimit, RateLimitError, rateLimits } from "@/lib/rate-limit";
 import { safeUserMessage } from "@/lib/safe-error";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
@@ -44,18 +40,15 @@ const inputSchema = z.object({
     .max(99_999_999, "Valor acima do máximo"),
   /** Data de vencimento opcional (ISO ou Date). NULL = sem vencimento. */
   dueDate: z
-    .preprocess(
-      (v) => {
-        if (v === null || v === undefined || v === "") return null;
-        if (v instanceof Date) return v;
-        if (typeof v === "string") {
-          const d = new Date(v);
-          return Number.isNaN(d.getTime()) ? null : d;
-        }
-        return v;
-      },
-      z.date().nullable(),
-    )
+    .preprocess((v) => {
+      if (v === null || v === undefined || v === "") return null;
+      if (v instanceof Date) return v;
+      if (typeof v === "string") {
+        const d = new Date(v);
+        return Number.isNaN(d.getTime()) ? null : d;
+      }
+      return v;
+    }, z.date().nullable())
     .default(null),
   notes: z
     .preprocess(
@@ -136,7 +129,6 @@ export async function createStandaloneReceivable(
 
         revalidatePath("/admin/financeiro/receber");
         revalidatePath("/admin/clientes");
-        revalidatePath(`/admin/clientes/${parsed.data.customerId}`);
         revalidatePath("/admin");
 
         logger.info("receivable.standalone_created", {

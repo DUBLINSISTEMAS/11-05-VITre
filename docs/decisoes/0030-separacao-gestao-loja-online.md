@@ -41,7 +41,7 @@ loja online é uma **camada de visibilidade extra** sobre o cadastro.
 - **DB**: migration `0028_product_storefront_visibility.sql` — ADD COLUMN
   com default true (backfill implícito pra produtos existentes).
 - **Schema Drizzle**: `productTable.isPublishedToStorefront`.
-- **Zod**: `productFormFieldsSchema.isPublishedToStorefront: z.boolean().default(true)`.
+- **Zod**: `productFormFieldsSchema.isPublishedToStorefront: z.boolean().default(false)`.
 - **Form**: novo toggle no card "Status" do `product-form.tsx`, abaixo do
   `isActive` em criação. Copy: "Publicado na loja online — Se desligado, o
   produto fica no estoque e pode ser vendido no PDV, mas não aparece na

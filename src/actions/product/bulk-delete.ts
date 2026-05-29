@@ -4,19 +4,11 @@ import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { headers } from "next/headers";
 
-import { productImageTable, productTable } from "@/db/schema";
+import { productTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
-import {
-  checkRateLimit,
-  RateLimitError,
-  rateLimits,
-} from "@/lib/rate-limit";
+import { checkRateLimit, RateLimitError, rateLimits } from "@/lib/rate-limit";
 import { getCurrentStore } from "@/lib/store-context";
-import {
-  deleteFromStorage,
-  extractStoragePath,
-} from "@/lib/supabase/storage";
 import { withTenant } from "@/lib/tenant";
 
 import {
@@ -25,17 +17,15 @@ import {
 } from "./schema";
 
 export type BulkDeleteProductsResult =
-  | { ok: true; deleted: number }
+  | { ok: true; archived: number }
   | { ok: false; error: string };
 
 /**
- * Hard-delete N produtos em uma transação. Mesma estratégia do delete único:
- *  1. Coleta URLs de imagens dos produtos selecionados.
- *  2. DELETE produtos. Cascade leva product_image + product_variant.
- *  3. Remove imagens do Storage (best-effort).
+ * Arquiva produtos em massa sem apagar linhas do banco.
  *
- * Idempotência: se o lojista clicar duplo no botão, segunda chamada deleta
- * 0 produtos (já não existem) e retorna ok com `deleted=0`.
+ * O schema atual ainda não tem `archivedAt`; por isso arquivar equivale a
+ * pausar venda, remover da vitrine pública e tirar destaque. O histórico
+ * operacional continua íntegro.
  */
 export async function bulkDeleteProducts(
   input: BulkDeleteProductsInput,
@@ -68,23 +58,17 @@ export async function bulkDeleteProducts(
 
   const { productIds } = parsed.data;
 
-  type DeleteResult = { deleted: number; images: Array<{ url: string }> };
-
-  let result: DeleteResult;
+  let archived = 0;
   try {
-    result = await withTenant(store.id, userId, async (tx) => {
-      const images = await tx
-        .select({ url: productImageTable.url })
-        .from(productImageTable)
-        .where(
-          and(
-            eq(productImageTable.storeId, store.id),
-            inArray(productImageTable.productId, productIds),
-          ),
-        );
-
-      const deleted = await tx
-        .delete(productTable)
+    archived = await withTenant(store.id, userId, async (tx) => {
+      const rows = await tx
+        .update(productTable)
+        .set({
+          isActive: false,
+          isPublishedToStorefront: false,
+          isFeatured: false,
+          updatedAt: new Date(),
+        })
         .where(
           and(
             eq(productTable.storeId, store.id),
@@ -93,28 +77,20 @@ export async function bulkDeleteProducts(
         )
         .returning({ id: productTable.id });
 
-      return { deleted: deleted.length, images };
+      return rows.length;
     });
   } catch (e) {
-    logger.error("product.bulk_delete_failed", {
+    logger.error("product.bulk_archive_failed", {
       err: e,
       storeId: store.id,
       count: productIds.length,
     });
-    return { ok: false, error: "Falha ao excluir produtos." };
+    return { ok: false, error: "Falha ao arquivar produtos." };
   }
 
-  // Storage cleanup (best-effort)
-  await Promise.all(
-    result.images.map(async ({ url }) => {
-      const path = extractStoragePath("productImages", url);
-      if (!path) return;
-      await deleteFromStorage({ bucket: "productImages", path });
-    }),
-  );
-
   revalidatePath("/admin/produtos");
+  revalidatePath("/admin/estoque");
   revalidateTag(`store-${store.slug}`);
 
-  return { ok: true, deleted: result.deleted };
+  return { ok: true, archived };
 }

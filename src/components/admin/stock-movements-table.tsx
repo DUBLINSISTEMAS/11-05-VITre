@@ -15,11 +15,7 @@
 // - Coluna "Notas / Referência" sumariza ref de pedido (Pedido <slug8>) ou notas.
 // - Row clicável → /admin/produtos/<id> com a11y kit.
 
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  MinusIcon,
-} from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, MinusIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import type { StockMovementRow } from "@/actions/stock/types";
@@ -65,22 +61,25 @@ export function StockMovementsTable({ movements }: StockMovementsTableProps) {
         {movements.map((m) => (
           <tr
             key={m.id}
-            onClick={() => router.push(`/admin/produtos/${m.productId}`)}
+            onClick={() => router.push(`/admin/produtos?edit=${m.productId}`)}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
-                router.push(`/admin/produtos/${m.productId}`);
+                router.push(`/admin/produtos?edit=${m.productId}`);
               }
             }}
             tabIndex={0}
             role="button"
             aria-label={`Abrir produto ${m.productName}`}
-            className="cursor-pointer outline-none focus-visible:bg-bg-app"
+            className="focus-visible:bg-bg-app cursor-pointer outline-none"
           >
             <td style={{ paddingLeft: 20, fontWeight: 600 }}>
               {m.productName}
               {m.variantName ? (
-                <span className="text-ink-4 font-normal"> · {m.variantName}</span>
+                <span className="text-ink-4 font-normal">
+                  {" "}
+                  · {m.variantName}
+                </span>
               ) : null}
             </td>
             <td>
@@ -100,7 +99,11 @@ export function StockMovementsTable({ movements }: StockMovementsTableProps) {
             </td>
             <td
               className="mono"
-              style={{ fontSize: 11.5, color: "var(--ink-4)", paddingRight: 20 }}
+              style={{
+                fontSize: 11.5,
+                color: "var(--ink-4)",
+                paddingRight: 20,
+              }}
             >
               {formatRelativeDate(m.createdAt)}
             </td>

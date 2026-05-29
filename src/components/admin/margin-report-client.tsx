@@ -8,7 +8,10 @@ import { InfoIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import type { MarginReportRow } from "@/actions/reports/types";
+import type {
+  MarginReportRow,
+  MarginReportTotals,
+} from "@/actions/reports/types";
 import {
   type ReportColumn,
   ReportLayout,
@@ -31,14 +34,7 @@ function formatPct(n: number | null): string {
 interface MarginReportClientProps {
   storeInfo: ReportStoreInfo;
   rows: MarginReportRow[];
-  totals: {
-    totalRevenueInCents: number;
-    totalCostInCents: number;
-    totalMarginInCents: number;
-    overallMarginPercent: number | null;
-    productsWithCost: number;
-    productsTotal: number;
-  };
+  totals: MarginReportTotals;
   period: string;
   filters: Record<string, string | undefined>;
   /** Sprint 4.8 — operador no rodapé. */
@@ -146,8 +142,8 @@ export function MarginReportClient({
             r.marginInCents === null
               ? "text-ink-4"
               : r.marginInCents < 0
-              ? "text-danger"
-              : "text-ink-1 font-medium"
+                ? "text-danger"
+                : "text-ink-1 font-medium"
           }`}
         >
           {r.marginInCents === null ? "—" : formatBRL(r.marginInCents)}
@@ -167,8 +163,8 @@ export function MarginReportClient({
             r.marginPercent === null
               ? "text-ink-4"
               : r.marginPercent < 0
-              ? "text-danger"
-              : "text-ink-1 font-medium"
+                ? "text-danger"
+                : "text-ink-1 font-medium"
           }`}
         >
           {formatPct(r.marginPercent)}
@@ -189,8 +185,19 @@ export function MarginReportClient({
       value: formatBRL(totals.totalCostInCents),
     },
     {
-      label: "Margem",
+      label: "Margem bruta",
       value: `${formatBRL(totals.totalMarginInCents)} (${formatPct(totals.overallMarginPercent)})`,
+    },
+    {
+      label: "Taxa cartão",
+      value: `-${formatBRL(totals.paymentFeesInCents)}`,
+    },
+    {
+      label: "Lucro líquido",
+      value:
+        totals.netProfitInCents === null
+          ? "—"
+          : `${formatBRL(totals.netProfitInCents)} (${formatPct(totals.netProfitPercent)})`,
       emphasis: true,
     },
   ];
@@ -207,13 +214,13 @@ export function MarginReportClient({
         <Link
           href="/admin/relatorios"
           prefetch
-          className="text-ink-4 hover:text-ink-1 text-[11px] uppercase tracking-wide"
+          className="text-ink-4 hover:text-ink-1 text-[11px] tracking-wide uppercase"
         >
           ← Relatórios
         </Link>
         <div className="ml-auto flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1">
-            <span className="text-ink-4 text-[11px] uppercase tracking-wide">
+            <span className="text-ink-4 text-[11px] tracking-wide uppercase">
               Período
             </span>
             <div className="flex">
@@ -224,7 +231,7 @@ export function MarginReportClient({
                   onClick={() => updateParam("periodo", p.value)}
                   className={`border-line border px-2 py-1 text-[11px] tabular-nums first:rounded-l-md last:rounded-r-md ${
                     currentPeriodo === p.value
-                      ? "bg-brand text-white border-brand"
+                      ? "bg-brand border-brand text-white"
                       : "bg-bg-card text-ink-2 hover:bg-bg-app"
                   }`}
                 >
@@ -240,14 +247,13 @@ export function MarginReportClient({
         <div className="bg-warn-wash text-warn mb-4 flex items-start gap-2 rounded-md px-3 py-2 text-[11.5px] print:hidden">
           <InfoIcon size={14} className="mt-0.5 shrink-0" />
           <div>
-            Apenas <strong>{totals.productsWithCost} de {totals.productsTotal}</strong>{" "}
+            Apenas{" "}
+            <strong>
+              {totals.productsWithCost} de {totals.productsTotal}
+            </strong>{" "}
             produtos vendidos têm custo cadastrado ({coverage}% de cobertura).
             Margem global e linhas com travessão indicam falta de custo —{" "}
-            <Link
-              href="/admin/produtos/custos"
-              prefetch
-              className="underline"
-            >
+            <Link href="/admin/produtos/custos" prefetch className="underline">
               cadastrar custos em massa
             </Link>
             .
@@ -269,8 +275,9 @@ export function MarginReportClient({
           // Sprint 4.5 — critério de custeio na cara do contador.
           "Custo unitário fixado no momento da venda — snapshot histórico, não FIFO ou custo médio. Mudança de custo no cadastro do produto NÃO altera vendas passadas.",
           coverage < 100
-            ? `Cobertura de custo: ${coverage}% — margem global considera apenas linhas com custo cadastrado.`
+            ? `Cobertura de custo: ${coverage}% — lucro líquido fica oculto porque há custo faltando.`
             : null,
+          "Lucro líquido desconta taxa real de cartão configurada na loja; outras despesas aparecem na DRE.",
         ]
           .filter(Boolean)
           .join(" · ")}

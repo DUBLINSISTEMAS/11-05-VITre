@@ -8,11 +8,7 @@ import { customerTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getConstraintName, isUniqueViolation } from "@/lib/db-errors";
 import { logger } from "@/lib/logger";
-import {
-  checkRateLimit,
-  RateLimitError,
-  rateLimits,
-} from "@/lib/rate-limit";
+import { checkRateLimit, RateLimitError, rateLimits } from "@/lib/rate-limit";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
@@ -110,7 +106,6 @@ export async function updateCustomer(
     }
 
     revalidatePath("/admin/clientes");
-    revalidatePath(`/admin/clientes/${data.id}`);
 
     return { ok: true };
   } catch (e) {

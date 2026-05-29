@@ -2,11 +2,11 @@
 
 // Toolbar flutuante de bulk actions (canvas-v1 admin Lote 3). Aparece
 // quando ≥1 produto selecionado na ProductsTable. Ativar / Pausar /
-// Excluir, com AlertDialog destrutivo no Excluir.
+// Arquivar, com AlertDialog destrutivo no Arquivar.
 //
 // Layout: barra sticky no fundo do card de listagem (não fixed na viewport
 // — fica contida no scroll do main pra não atrapalhar quem rola pra cima).
-import { EyeIcon, EyeOffIcon, Trash2Icon, XIcon } from "lucide-react";
+import { ArchiveIcon, EyeIcon, EyeOffIcon, XIcon } from "lucide-react";
 import { useTransition } from "react";
 import { toast } from "sonner";
 
@@ -73,8 +73,10 @@ export function BulkActionsToolbar({
         toast.error(result.error);
         return;
       }
-      const noun = result.deleted === 1 ? "produto" : "produtos";
-      toast.success(`${result.deleted} ${noun} excluído${result.deleted === 1 ? "" : "s"}.`);
+      const noun = result.archived === 1 ? "produto" : "produtos";
+      toast.success(
+        `${result.archived} ${noun} arquivado${result.archived === 1 ? "" : "s"}.`,
+      );
       onMutated();
     });
   };
@@ -82,7 +84,7 @@ export function BulkActionsToolbar({
   if (count === 0) return null;
 
   return (
-    <div className="bg-ink-1 text-white sticky bottom-4 z-20 mx-auto flex w-fit items-center gap-2 rounded-xl px-3 py-2 shadow-lg">
+    <div className="bg-ink-1 sticky bottom-4 z-20 mx-auto flex w-fit items-center gap-2 rounded-xl px-3 py-2 text-white shadow-lg">
       <button
         type="button"
         onClick={onClear}
@@ -94,7 +96,7 @@ export function BulkActionsToolbar({
       <span className="font-mono text-[12.5px] font-medium tabular-nums">
         {count} selecionado{count === 1 ? "" : "s"}
       </span>
-      <span aria-hidden className="bg-white/20 mx-1 h-5 w-px" />
+      <span aria-hidden className="mx-1 h-5 w-px bg-white/20" />
 
       <Button
         type="button"
@@ -102,7 +104,7 @@ export function BulkActionsToolbar({
         variant="ghost"
         disabled={isPending}
         onClick={() => handleToggle(true)}
-        className="text-white hover:bg-white/15 hover:text-white h-8"
+        className="h-8 text-white hover:bg-white/15 hover:text-white"
       >
         <EyeIcon className="size-3.5" /> Publicar
       </Button>
@@ -112,7 +114,7 @@ export function BulkActionsToolbar({
         variant="ghost"
         disabled={isPending}
         onClick={() => handleToggle(false)}
-        className="text-white hover:bg-white/15 hover:text-white h-8"
+        className="h-8 text-white hover:bg-white/15 hover:text-white"
       >
         <EyeOffIcon className="size-3.5" /> Pausar
       </Button>
@@ -126,18 +128,18 @@ export function BulkActionsToolbar({
             disabled={isPending}
             className="text-danger-wash hover:bg-danger/15 hover:text-danger-wash h-8"
           >
-            <Trash2Icon className="size-3.5" /> Excluir
+            <ArchiveIcon className="size-3.5" /> Arquivar
           </Button>
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Excluir {count} produto{count === 1 ? "" : "s"}?
+              Arquivar {count} produto{count === 1 ? "" : "s"}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita. As imagens dos produtos
-              também serão removidas. Vendas antigas com esses produtos
-              continuam preservadas (snapshots).
+              Os produtos saem do PDV, dos filtros ativos e da loja online.
+              Fotos, variantes, estoque e histórico de vendas continuam
+              preservados.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -146,7 +148,7 @@ export function BulkActionsToolbar({
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Excluir
+              Arquivar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -13,7 +13,7 @@
  * Expirados. Drawer global continua sendo o de venda — click abre
  * inline. Imprimir continua via /admin/pedidos/[id]/imprimir.
  */
-import { and, count, eq, ilike, lte, or, sql } from "drizzle-orm";
+import { and, count, eq, ilike, inArray, lte, or, sql } from "drizzle-orm";
 import { FileTextIcon } from "lucide-react";
 import { Suspense } from "react";
 import { z } from "zod";
@@ -169,7 +169,7 @@ export default async function OrcamentosPage({
             qty: sql<number>`coalesce(sum(${orderItemTable.quantity}), 0)::int`,
           })
           .from(orderItemTable)
-          .where(sql`${orderItemTable.orderId} = any(${orderIds})`)
+          .where(inArray(orderItemTable.orderId, orderIds))
           .groupBy(orderItemTable.orderId);
         for (const r of itemRows) {
           itemQtyByOrderId.set(r.orderId, Number(r.qty));

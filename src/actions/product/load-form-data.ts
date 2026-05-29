@@ -58,7 +58,11 @@ export interface ProductFormDrawerData {
 
 export type LoadProductFormDataResult =
   | { ok: true; data: ProductFormDrawerData }
-  | { ok: false; code: "unauthenticated" | "no_store" | "not_found" | "error"; message: string };
+  | {
+      ok: false;
+      code: "unauthenticated" | "no_store" | "not_found" | "error";
+      message: string;
+    };
 
 export async function loadProductFormData(
   productId: string | null,
@@ -256,7 +260,7 @@ function emptyInitialData(): ProductFormInitialData {
     cashDiscountOverrideBps: null,
     isActive: true,
     isFeatured: false,
-    isPublishedToStorefront: true,
+    isPublishedToStorefront: false,
     composition: null,
     modeling: null,
     lining: null,

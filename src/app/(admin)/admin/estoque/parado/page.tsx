@@ -88,7 +88,7 @@ export default async function EstoqueParadoPage() {
                 <tr key={r.productId}>
                   <td>
                     <Link
-                      href={`/admin/produtos/${r.productId}`}
+                      href={`/admin/produtos?edit=${r.productId}`}
                       className="text-ink-1 text-sm hover:underline"
                     >
                       {r.productName}

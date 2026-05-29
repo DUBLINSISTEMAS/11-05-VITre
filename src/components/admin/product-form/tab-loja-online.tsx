@@ -8,11 +8,7 @@
 // Avançado). Razão: ambos afetam TODOS os canais (PDV, WhatsApp, vitrine),
 // não só a loja online. Aqui agora ficam SOMENTE campos exclusivos da
 // vitrine pública (publicação + meta editorial).
-import type {
-  Control,
-  FieldErrors,
-  UseFormRegister,
-} from "react-hook-form";
+import type { Control, FieldErrors, UseFormRegister } from "react-hook-form";
 import { Controller } from "react-hook-form";
 
 import type { ProductFormValues } from "@/actions/product/schema";
@@ -60,8 +56,8 @@ export function TabLojaOnline({
               render={({ field }) => (
                 <ToggleRow
                   id="product-active"
-                  label="Visível na loja"
-                  description="Desligado = rascunho, só você vê."
+                  label="Ativo para venda"
+                  description="Desligado = pausado em todos os canais (PDV, WhatsApp e loja online)."
                   checked={field.value}
                   onCheckedChange={field.onChange}
                   disabled={isPending}
@@ -78,7 +74,7 @@ export function TabLojaOnline({
                 id="product-published-storefront"
                 label="Publicado na loja online"
                 description="Se desligado, fica no estoque/PDV mas não aparece na vitrine pública."
-                checked={field.value ?? true}
+                checked={field.value ?? false}
                 onCheckedChange={field.onChange}
                 disabled={isPending}
               />

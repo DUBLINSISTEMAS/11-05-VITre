@@ -137,16 +137,17 @@ export async function loadDreSimple(
       .groupBy(expenseTable.category);
 
     // 5) S2.4 — TAXA REAL da maquininha. Lojista vende R$ 1000 no cartão
-    //    12x, Stone fica com ~12%. order.surcharge é o que cliente PAGOU,
-    //    a taxa real é o que o adquirente cobra DO LOJISTA. CALCULA cá:
+    //    12x, Stone fica com ~12%.
     //
-    //      debit          → amount × store.debit_bps / 10000
-    //      credit 1x      → amount × store.credit_1x_bps / 10000
-    //      credit 2-6x    → amount × store.credit_2to6x_bps / 10000
-    //      credit 7-12x   → amount × store.credit_7to12x_bps / 10000
+    //    Fonte de verdade: order_payment.card_fee_snapshot_in_cents,
+    //    gravado no momento do INSERT do pagamento (PDV + confirmPayment)
+    //    via lib/pricing/net-profit.ts::computeCardFeeSnapshot. Snapshot
+    //    fixo, não recalcula se lojista mudar taxa depois — histórico
+    //    permanece honesto.
     //
-    //    Vira linha 'card_fees' no operatingExpensesByCategory pra
-    //    integrar ao operationalProfit.
+    //    Fallback (snapshot NULL = pagamentos legados pré-SQL 82):
+    //    recalcula usando taxa ATUAL da loja. Após backfill ou troca de
+    //    DB no deploy, snapshot cobre 100%.
     const [storeFees] = await tx
       .select({
         debit: storeTable.cardRealFeeBpsDebit,
@@ -160,17 +161,19 @@ export async function loadDreSimple(
     const [cardFeesAgg] = await tx
       .select({
         feeInCents: sql<number>`coalesce(sum(
-          case
-            when ${orderPaymentTable.method} = 'debit'
-              then ${orderPaymentTable.amountInCents} * ${storeFees?.debit ?? 199} / 10000
-            when ${orderPaymentTable.method} = 'credit' and coalesce(${orderPaymentTable.installments}, 1) = 1
-              then ${orderPaymentTable.amountInCents} * ${storeFees?.c1 ?? 350} / 10000
-            when ${orderPaymentTable.method} = 'credit' and coalesce(${orderPaymentTable.installments}, 1) between 2 and 6
-              then ${orderPaymentTable.amountInCents} * ${storeFees?.c2to6 ?? 599} / 10000
-            when ${orderPaymentTable.method} = 'credit' and coalesce(${orderPaymentTable.installments}, 1) between 7 and 12
-              then ${orderPaymentTable.amountInCents} * ${storeFees?.c7to12 ?? 1199} / 10000
-            else 0
-          end
+          coalesce(${orderPaymentTable.cardFeeSnapshotInCents},
+            case
+              when ${orderPaymentTable.method} = 'debit'
+                then ${orderPaymentTable.amountInCents} * ${storeFees?.debit ?? 199} / 10000
+              when ${orderPaymentTable.method} = 'credit' and coalesce(${orderPaymentTable.installments}, 1) = 1
+                then ${orderPaymentTable.amountInCents} * ${storeFees?.c1 ?? 350} / 10000
+              when ${orderPaymentTable.method} = 'credit' and coalesce(${orderPaymentTable.installments}, 1) between 2 and 6
+                then ${orderPaymentTable.amountInCents} * ${storeFees?.c2to6 ?? 599} / 10000
+              when ${orderPaymentTable.method} = 'credit' and coalesce(${orderPaymentTable.installments}, 1) between 7 and 12
+                then ${orderPaymentTable.amountInCents} * ${storeFees?.c7to12 ?? 1199} / 10000
+              else 0
+            end
+          )
         ), 0)::int`,
       })
       .from(orderPaymentTable)

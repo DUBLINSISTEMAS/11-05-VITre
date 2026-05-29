@@ -42,7 +42,7 @@ export default async function ConfiguracoesPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+      <div className="max-w-4xl">
         {/* Coluna principal: forms */}
         <div className="space-y-4">
           <StoreConfigForm
@@ -73,12 +73,6 @@ export default async function ConfiguracoesPage() {
             initialRequireOpenCashSession={store.requireOpenCashSession}
           />
         </div>
-
-        {/* Coluna lateral: Plano + Zona de perigo */}
-        <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
-          <PlanCard />
-          <DangerZoneCard />
-        </aside>
       </div>
     </div>
   );
@@ -108,10 +102,7 @@ function PlanCard() {
 function DangerZoneCard() {
   return (
     <div className="b3-card b3-card-pad">
-      <h3
-        className="text-[16px] font-bold"
-        style={{ color: "var(--danger)" }}
-      >
+      <h3 className="text-[16px] font-bold" style={{ color: "var(--danger)" }}>
         Zona de perigo
       </h3>
       <p className="text-ink-3 mt-2 text-[13px] leading-relaxed">

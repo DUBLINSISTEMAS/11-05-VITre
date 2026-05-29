@@ -13,11 +13,7 @@ import {
 import { auth } from "@/lib/auth";
 import { getConstraintName, isUniqueViolation } from "@/lib/db-errors";
 import { logger } from "@/lib/logger";
-import {
-  checkRateLimit,
-  RateLimitError,
-  rateLimits,
-} from "@/lib/rate-limit";
+import { checkRateLimit, RateLimitError, rateLimits } from "@/lib/rate-limit";
 import { generateSlug } from "@/lib/slug";
 import { generateUniqueProductSlug } from "@/lib/slug-uniqueness";
 import { getCurrentStore } from "@/lib/store-context";
@@ -169,9 +165,7 @@ export async function updateProduct(
       // ---------------------------------------------------------------
       const trackStockChanged = existing.trackStock !== data.trackStock;
       const productStockCacheOverride: { stockQuantity?: number | null } =
-        trackStockChanged
-          ? { stockQuantity: data.trackStock ? 0 : null }
-          : {};
+        trackStockChanged ? { stockQuantity: data.trackStock ? 0 : null } : {};
 
       // Delta a registrar via movement:
       //   false→true: tudo digitado vira saldo inicial (movement 'initial')
@@ -244,7 +238,8 @@ export async function updateProduct(
           internalCode: data.internalCode,
           defaultCommissionBps: data.defaultCommissionBps,
           ncm: data.ncm,
-          weightGrams: data.weightGrams === null ? null : String(data.weightGrams),
+          weightGrams:
+            data.weightGrams === null ? null : String(data.weightGrams),
           updatedAt: new Date(),
         })
         .where(
@@ -321,7 +316,8 @@ export async function updateProduct(
         // Escrevemos `stockQuantity` no UPDATE só na transição de tracking.
         // Race-safe contra vendas concorrentes que descontaram o cache
         // entre o load do form e este UPDATE.
-        const currentVariantStockRaw = dbVariantById.get(v.id!)?.stockQuantity ?? null;
+        const currentVariantStockRaw =
+          dbVariantById.get(v.id!)?.stockQuantity ?? null;
         const wasTracking = currentVariantStockRaw !== null;
         const willTrack = v.stockQuantity !== null;
         const currentVariantStock = currentVariantStockRaw ?? 0;
@@ -402,15 +398,17 @@ export async function updateProduct(
         const movements = createdVariants.flatMap((variant, index) => {
           const initial = incomingNew[index]?.stockQuantity ?? 0;
           if (initial <= 0) return [];
-          return [{
-            storeId: store.id,
-            productId: data.productId,
-            variantId: variant.id,
-            movementType: "initial" as const,
-            quantityDelta: initial,
-            notes: "Saldo inicial cadastrado na variante.",
-            createdBy: userId,
-          }];
+          return [
+            {
+              storeId: store.id,
+              productId: data.productId,
+              variantId: variant.id,
+              movementType: "initial" as const,
+              quantityDelta: initial,
+              notes: "Saldo inicial cadastrado na variante.",
+              createdBy: userId,
+            },
+          ];
         });
 
         if (movements.length > 0) {
@@ -451,7 +449,6 @@ export async function updateProduct(
   // acabou de mudar). Sintoma reportado pelo founder: "edito estoque, volta
   // zerado".
   revalidatePath("/admin/produtos");
-  revalidatePath(`/admin/produtos/${data.productId}`);
   revalidatePath("/admin/estoque");
   revalidateTag(`store-${store.slug}`);
 

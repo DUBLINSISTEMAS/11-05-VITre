@@ -38,22 +38,17 @@ import {
 import { extractClientContext, recordAuditEvent } from "@/lib/audit";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
-import {
-  checkRateLimit,
-  RateLimitError,
-  rateLimits,
-} from "@/lib/rate-limit";
+import { checkRateLimit, RateLimitError, rateLimits } from "@/lib/rate-limit";
 import { safeUserMessage } from "@/lib/safe-error";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
 const inputSchema = z.object({
   paymentId: z.string().uuid(),
-  reason: z
-    .preprocess(
-      (v) => (typeof v === "string" && v.trim() === "" ? null : v),
-      z.string().trim().min(3, "Informe o motivo do estorno.").max(500),
-    ),
+  reason: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? null : v),
+    z.string().trim().min(3, "Informe o motivo do estorno.").max(500),
+  ),
 });
 export type ReverseReceivablePaymentInput = z.input<typeof inputSchema>;
 
@@ -190,15 +185,14 @@ export async function reverseReceivablePayment(
             paid: sql<number>`coalesce(sum(${receivablePaymentTable.amountInCents}), 0)::int`,
           })
           .from(receivablePaymentTable)
-          .where(eq(receivablePaymentTable.receivableId, original.receivableId));
+          .where(
+            eq(receivablePaymentTable.receivableId, original.receivableId),
+          );
         const paidSum = sumRow?.paid ?? 0;
 
         let reopenedReceivable = false;
         if (receivable) {
-          if (
-            receivable.paidAt &&
-            paidSum < receivable.amountInCents
-          ) {
+          if (receivable.paidAt && paidSum < receivable.amountInCents) {
             // Estorno desfez a quitação — reabre.
             await tx
               .update(receivableTable)
@@ -228,10 +222,11 @@ export async function reverseReceivablePayment(
               cashSessionId: activeCash.id,
               type: "other_out",
               amountInCents: original.amountInCents,
-              reason: `Estorno fiado #${original.id.slice(0, 8)} — ${data.reason}`.slice(
-                0,
-                500,
-              ),
+              reason:
+                `Estorno fiado #${original.id.slice(0, 8)} — ${data.reason}`.slice(
+                  0,
+                  500,
+                ),
               createdByUserId: userId,
             })
             .returning({ id: cashAdjustmentTable.id });
@@ -241,9 +236,6 @@ export async function reverseReceivablePayment(
         revalidatePath("/admin/financeiro/receber");
         revalidatePath("/admin");
         revalidatePath("/admin/pdv/caixa");
-        if (receivable?.customerId) {
-          revalidatePath(`/admin/clientes/${receivable.customerId}`);
-        }
 
         logger.info("receivable.payment_reversed", {
           storeId: store.id,
@@ -286,7 +278,10 @@ export async function reverseReceivablePayment(
     logger.error("receivable.reverse_payment_failed", { err: e });
     return {
       ok: false,
-      error: safeUserMessage(e, "Falha ao estornar pagamento. Tente novamente."),
+      error: safeUserMessage(
+        e,
+        "Falha ao estornar pagamento. Tente novamente.",
+      ),
     };
   }
 }

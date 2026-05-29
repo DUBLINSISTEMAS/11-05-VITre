@@ -82,7 +82,7 @@ export default async function SuportePage() {
           <TourCard
             step="1"
             title="Cadastre seus produtos"
-            description="Comece em /admin/produtos. Cada produto pode ter fotos, preço promo, variantes e filtros de loja."
+            description="Comece em /admin/produtos. Cada produto pode ter fotos, preço, custo, estoque e variantes."
           />
           <TourCard
             step="2"
@@ -114,7 +114,9 @@ export default async function SuportePage() {
 
       {/* FAQ links */}
       <div className="b3-card b3-card-pad">
-        <h3 className="text-ink-1 text-[16px] font-bold">Perguntas frequentes</h3>
+        <h3 className="text-ink-1 text-[16px] font-bold">
+          Perguntas frequentes
+        </h3>
         <ul className="mt-3 space-y-2 text-[13px]">
           {FAQ_ITEMS.map((item, i) => (
             <li key={i} className="text-ink-2 flex items-start gap-2">
@@ -199,7 +201,8 @@ function ChannelCard({
       <div
         className="grid h-10 w-10 place-items-center rounded-full"
         style={{
-          background: tone === "ok" ? "rgba(34,197,94,0.12)" : "var(--brand-wash)",
+          background:
+            tone === "ok" ? "rgba(34,197,94,0.12)" : "var(--brand-wash)",
           color: tone === "ok" ? "var(--ok)" : "var(--brand)",
         }}
       >
@@ -241,7 +244,7 @@ function TourCard({
           {step}
         </div>
         <div className="min-w-0 flex-1">
-          <h4 className="text-ink-1 text-[13px] font-semibold leading-tight">
+          <h4 className="text-ink-1 text-[13px] leading-tight font-semibold">
             {title}
           </h4>
           <p className="text-ink-3 mt-1 text-[12px] leading-relaxed">

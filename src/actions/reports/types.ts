@@ -125,6 +125,24 @@ export interface MarginReportRow {
   itemsTotal: number;
 }
 
+export interface MarginReportTotals {
+  totalRevenueInCents: number;
+  totalCostInCents: number;
+  totalMarginInCents: number;
+  /** Taxas reais de cartão no período, calculadas a partir de order_payment. */
+  paymentFeesInCents: number;
+  /**
+   * Lucro líquido = margem - taxas de cartão. NULL quando há produto sem
+   * custo completo, porque a margem bruta já é parcial.
+   */
+  netProfitInCents: number | null;
+  netProfitPercent: number | null;
+  /** Margem % global (apenas linhas com custo 100% cadastrado). */
+  overallMarginPercent: number | null;
+  productsWithCost: number;
+  productsTotal: number;
+}
+
 /** Agregado pra DRE simplificado. */
 export interface DreSimpleSummary {
   /** Receita bruta = SUM(item.price_snapshot * qty) das vendas no período. */
@@ -195,7 +213,11 @@ export type SalesReport = {
   totalSales: number;
   totalRevenueInCents: number;
   averageTicketInCents: number;
-  byChannel: { channel: "whatsapp" | "balcao"; count: number; revenueInCents: number }[];
+  byChannel: {
+    channel: "whatsapp" | "balcao";
+    count: number;
+    revenueInCents: number;
+  }[];
   byPaymentMethod: {
     method: string | null;
     count: number;
@@ -230,7 +252,10 @@ export type CustomersReport = {
 
 export type LeadsReport = {
   totalLeads: number;
-  byStatus: { status: "new" | "contacted" | "converted" | "lost"; count: number }[];
+  byStatus: {
+    status: "new" | "contacted" | "converted" | "lost";
+    count: number;
+  }[];
   conversionRate: number; // 0..1
 };
 

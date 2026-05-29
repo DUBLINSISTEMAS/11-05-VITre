@@ -47,7 +47,7 @@ export function LojaOnlineSnapshot({ data }: LojaOnlineSnapshotProps) {
 
         {data.produtosSemFoto > 0 ? (
           <SnapshotItem
-            href="/admin/produtos?missing=image"
+            href="/admin/produtos?tipo=publico&semFoto=1"
             icon={<CameraOffIcon size={14} aria-hidden />}
             label={
               data.produtosSemFoto === 1
@@ -59,7 +59,7 @@ export function LojaOnlineSnapshot({ data }: LojaOnlineSnapshotProps) {
         ) : null}
 
         <SnapshotItem
-          href="/admin/produtos?published=true"
+          href="/admin/produtos?tipo=publico"
           icon={<PackageIcon size={14} aria-hidden />}
           label={
             data.produtosPublicados === 0

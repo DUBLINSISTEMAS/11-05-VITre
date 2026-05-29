@@ -1,6 +1,13 @@
 "use client";
 
-import { CheckCircle2Icon, ClockIcon, MessageSquareTextIcon, SearchIcon, TrashIcon, XCircleIcon } from "lucide-react";
+import {
+  CheckCircle2Icon,
+  ClockIcon,
+  MessageSquareTextIcon,
+  SearchIcon,
+  TrashIcon,
+  XCircleIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -8,6 +15,16 @@ import { toast } from "sonner";
 
 import type { LeadRow, LeadStats } from "@/actions/lead/types";
 import { deleteLead, updateLead } from "@/actions/lead/update";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const STATUS_LABEL: Record<LeadRow["status"], string> = {
   new: "Novo",
@@ -47,6 +64,7 @@ export function LeadsList({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [q, setQ] = useState(filters.q ?? "");
+  const [leadToDelete, setLeadToDelete] = useState<LeadRow | null>(null);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   function applyParams(patch: Record<string, string | null>) {
@@ -70,11 +88,14 @@ export function LeadsList({
   }
 
   function handleDelete(lead: LeadRow) {
-    if (!confirm("Excluir este recado do site?")) return;
     startTransition(async () => {
       const res = await deleteLead({ id: lead.id });
-      if (res.ok) toast.success("Recado do site excluído.");
-      else toast.error(res.error);
+      if (res.ok) {
+        toast.success("Recado do site excluído.");
+        setLeadToDelete(null);
+      } else {
+        toast.error(res.error);
+      }
     });
   }
 
@@ -105,7 +126,8 @@ export function LeadsList({
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") applyParams({ q: q.trim() || null, page: "1" });
+              if (e.key === "Enter")
+                applyParams({ q: q.trim() || null, page: "1" });
             }}
           />
         </div>
@@ -141,7 +163,7 @@ export function LeadsList({
             <div className="bg-brand-wash text-brand flex size-12 items-center justify-center rounded-full">
               <MessageSquareTextIcon className="size-6" />
             </div>
-            <h2 className="text-lg font-semibold text-ink-1">
+            <h2 className="text-ink-1 text-lg font-semibold">
               Ainda sem recados
             </h2>
             <p className="text-ink-4 max-w-sm text-sm">
@@ -172,7 +194,7 @@ export function LeadsList({
                   <td>
                     {lead.productId ? (
                       <Link
-                        href={`/admin/produtos/${lead.productId}`}
+                        href={`/admin/produtos?edit=${lead.productId}`}
                         className="text-ink-1 hover:text-brand text-[13px]"
                       >
                         {lead.productName ?? "(produto removido)"}
@@ -187,7 +209,7 @@ export function LeadsList({
                   <td>
                     {lead.customerId && lead.customerDisplayName ? (
                       <Link
-                        href={`/admin/clientes/${lead.customerId}`}
+                        href={`/admin/clientes?customer=${lead.customerId}`}
                         className="text-ink-1 hover:text-brand text-[13px]"
                       >
                         {lead.customerDisplayName}
@@ -238,7 +260,7 @@ export function LeadsList({
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleDelete(lead)}
+                        onClick={() => setLeadToDelete(lead)}
                         className="b3-btn b3-btn--sm"
                         disabled={isPending}
                         title="Excluir"
@@ -280,6 +302,34 @@ export function LeadsList({
           </div>
         </div>
       )}
+
+      <AlertDialog
+        open={leadToDelete !== null}
+        onOpenChange={(open) => !open && setLeadToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir recado do site?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O histórico deste contato sai da fila de atendimento. Produto,
+              cliente e vendas vinculadas não são alterados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isPending || leadToDelete === null}
+              onClick={(event) => {
+                event.preventDefault();
+                if (leadToDelete) handleDelete(leadToDelete);
+              }}
+              className="bg-danger hover:bg-danger/90 text-white"
+            >
+              {isPending ? "Excluindo..." : "Excluir recado"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

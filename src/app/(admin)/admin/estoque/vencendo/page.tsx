@@ -34,8 +34,8 @@ export default async function EstoqueVencendoPage() {
             {data.kpi.expiredCount}
           </p>
           <p className="text-ink-4 mt-1 text-[11px]">
-            Capital: {formatBRL(data.kpi.expiredValueInCents)} — descarte
-            ou doação
+            Capital: {formatBRL(data.kpi.expiredValueInCents)} — descarte ou
+            doação
           </p>
         </div>
         <div className="b3-card p-4">
@@ -63,9 +63,7 @@ export default async function EstoqueVencendoPage() {
       {/* Tabela */}
       {data.rows.length === 0 ? (
         <div className="b3-card p-8 text-center">
-          <p className="text-ink-3 text-sm">
-            Nenhum lote vencendo em 60 dias.
-          </p>
+          <p className="text-ink-3 text-sm">Nenhum lote vencendo em 60 dias.</p>
           <p className="text-ink-4 mt-1 text-xs">
             Pra rastrear validade, marque a categoria como
             &quot;tracks_batch&quot; e cadastre o lote+validade na compra.
@@ -89,7 +87,7 @@ export default async function EstoqueVencendoPage() {
                 <tr key={r.purchaseItemId}>
                   <td>
                     <Link
-                      href={`/admin/produtos/${r.productId}`}
+                      href={`/admin/produtos?edit=${r.productId}`}
                       className="text-ink-1 text-sm hover:underline"
                     >
                       {r.productName}

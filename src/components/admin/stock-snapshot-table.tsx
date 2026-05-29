@@ -75,8 +75,10 @@ function SortHeader({
   const searchParams = useSearchParams();
   const [currentCol, currentDir] = parseSort(currentSort);
   const isActive = currentCol === column;
-  const nextDir: "asc" | "desc" = isActive && currentDir === "asc" ? "desc" : "asc";
-  const nextSort: StockSnapshotSort = `${column}-${nextDir}` as StockSnapshotSort;
+  const nextDir: "asc" | "desc" =
+    isActive && currentDir === "asc" ? "desc" : "asc";
+  const nextSort: StockSnapshotSort =
+    `${column}-${nextDir}` as StockSnapshotSort;
 
   const usp = new URLSearchParams(searchParams.toString());
   usp.delete("page");
@@ -106,7 +108,7 @@ function SortHeader({
         replace
         scroll={false}
         className={cn(
-          "hocus:bg-bg-app flex w-full items-center gap-1 px-3 py-2 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "hocus:bg-bg-app focus-visible:ring-ring flex w-full items-center gap-1 px-3 py-2 transition-colors outline-none focus-visible:ring-2",
           align === "right" && "justify-end",
         )}
       >
@@ -172,7 +174,7 @@ export function StockSnapshotTable({
       </thead>
       <tbody>
         {rows.map((r) => {
-          const editHref = `/admin/produtos/${r.productId}`;
+          const editHref = `/admin/produtos?edit=${r.productId}`;
           const variantsLabel =
             r.variantCount > 0
               ? `${r.variantCount} variante${r.variantCount > 1 ? "s" : ""}`
@@ -190,7 +192,7 @@ export function StockSnapshotTable({
               tabIndex={0}
               role="button"
               aria-label={`Abrir produto ${r.productName}`}
-              className="cursor-pointer outline-none focus-visible:bg-bg-app"
+              className="focus-visible:bg-bg-app cursor-pointer outline-none"
             >
               <td style={{ paddingLeft: 20 }}>
                 <span
@@ -208,7 +210,7 @@ export function StockSnapshotTable({
                   ) : (
                     <span
                       aria-hidden
-                      className="mono text-[11px] font-bold text-brand"
+                      className="mono text-brand text-[11px] font-bold"
                       style={{ color: "var(--brand)" }}
                     >
                       {r.productName.trim() ? (
@@ -291,9 +293,7 @@ function ValorCell({ row }: { row: StockSnapshotRow }) {
   const qty = row.stockQuantity ?? 0;
   if (qty <= 0) return <span className="text-ink-4">—</span>;
   const saleValue = qty * row.basePriceInCents;
-  const costValue = row.costPriceInCents
-    ? qty * row.costPriceInCents
-    : null;
+  const costValue = row.costPriceInCents ? qty * row.costPriceInCents : null;
   return (
     <span
       className="tabular-nums"
@@ -322,7 +322,9 @@ function SaldoCell({
   }
   const q = stockQuantity ?? 0;
   return (
-    <span className={cn("tabular-nums", q === 0 && "text-danger font-semibold")}>
+    <span
+      className={cn("tabular-nums", q === 0 && "text-danger font-semibold")}
+    >
       {q}
       {unit !== "un" ? (
         <span className="text-ink-4 ml-1 text-[11px]">{unit}</span>
@@ -343,13 +345,9 @@ function DiffCell({ row }: { row: StockSnapshotRow }) {
   const stock = row.stockQuantity ?? 0;
   const diff = stock - row.minStockQuantity;
   const color =
-    diff < 0
-      ? "var(--danger)"
-      : diff === 0
-        ? "var(--warn)"
-        : "var(--ok)";
+    diff < 0 ? "var(--danger)" : diff === 0 ? "var(--warn)" : "var(--ok)";
   return (
-    <span className="tabular-nums font-medium" style={{ color }}>
+    <span className="font-medium tabular-nums" style={{ color }}>
       {diff > 0 ? "+" : ""}
       {diff}
     </span>
@@ -371,10 +369,7 @@ function StatusPill({ row }: { row: StockSnapshotRow }) {
   if (q === 0) {
     return <span className="b3-pill b3-pill--danger">Zerado</span>;
   }
-  if (
-    row.minStockQuantity !== null &&
-    q <= row.minStockQuantity
-  ) {
+  if (row.minStockQuantity !== null && q <= row.minStockQuantity) {
     return <span className="b3-pill b3-pill--gold">Repor</span>;
   }
   return <span className="b3-pill b3-pill--ok">OK</span>;

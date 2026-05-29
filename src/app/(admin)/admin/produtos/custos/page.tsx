@@ -22,7 +22,7 @@ import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
 export const metadata = {
-  title: "Custo & Margem — Mangos Pay",
+  title: "Preencher custos — Mangos Pay",
 };
 
 export default async function ProdutosCustosPage() {
@@ -89,11 +89,12 @@ export default async function ProdutosCustosPage() {
         <div>
           <h1 className="b3-page-title flex items-center gap-2">
             <CalculatorIcon className="size-5 text-ink-3" aria-hidden />
-            Custo &amp; margem
+            Preencher custos
           </h1>
           <p className="b3-page-sub">
             Preencha o custo e a comissão de vários produtos de uma vez.
             Use Tab pra pular pra próxima linha. Salva automaticamente.
+            Alimenta o lucro líquido no Resultado.
           </p>
         </div>
         <div className="flex items-center gap-4 text-[12px] tabular-nums">

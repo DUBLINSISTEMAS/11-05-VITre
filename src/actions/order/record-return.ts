@@ -58,11 +58,7 @@ import {
   restockOrderItemsPartial,
 } from "@/lib/order/restock";
 import { formatBRL } from "@/lib/pricing";
-import {
-  checkRateLimit,
-  RateLimitError,
-  rateLimits,
-} from "@/lib/rate-limit";
+import { checkRateLimit, RateLimitError, rateLimits } from "@/lib/rate-limit";
 import { safeUserMessage } from "@/lib/safe-error";
 import { getCurrentStore } from "@/lib/store-context";
 import { type Tx, withTenant } from "@/lib/tenant";
@@ -90,8 +86,7 @@ const inputSchema = z
   })
   .refine(
     (v) =>
-      v.returnType === "full" ||
-      (Array.isArray(v.items) && v.items.length > 0),
+      v.returnType === "full" || (Array.isArray(v.items) && v.items.length > 0),
     {
       message: "Devolução parcial exige ao menos um item.",
       path: ["items"],
@@ -490,9 +485,7 @@ export async function recordOrderReturn(
         let cashAdjustmentId: string | null = null;
         if (activeCash && cashRefundInCents > 0) {
           const adjReasonPrefix =
-            data.returnType === "full"
-              ? "Devolução"
-              : "Devolução parcial";
+            data.returnType === "full" ? "Devolução" : "Devolução parcial";
           // Se a venda foi mista, anota no motivo que parte saiu fora do
           // caixa pra forensia ser fácil ("ué, esses R$30 que faltam?").
           const fracionalSuffix =
@@ -535,9 +528,6 @@ export async function recordOrderReturn(
         revalidatePath("/admin/produtos");
         revalidatePath("/admin");
         revalidatePath("/admin/pdv/caixa");
-        if (order.customerId) {
-          revalidatePath(`/admin/clientes/${order.customerId}`);
-        }
 
         logger.info("order.return_recorded", {
           storeId: store.id,

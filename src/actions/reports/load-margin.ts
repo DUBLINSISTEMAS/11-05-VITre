@@ -22,15 +22,17 @@ import { headers } from "next/headers";
 import { COUNTABLE_STATUSES } from "@/actions/order/constants";
 import {
   orderItemTable,
+  orderPaymentTable,
   orderReturnItemTable,
   orderTable,
+  storeTable,
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
 import { resolveReportRange } from "./range";
-import type { MarginReportRow } from "./types";
+import type { MarginReportRow, MarginReportTotals } from "./types";
 
 export interface LoadMarginInput {
   filters: Record<string, string | undefined>;
@@ -39,15 +41,7 @@ export interface LoadMarginInput {
 export interface LoadMarginOutput {
   range: { start: Date; end: Date; periodLabel: string };
   rows: MarginReportRow[];
-  totals: {
-    totalRevenueInCents: number;
-    totalCostInCents: number;
-    totalMarginInCents: number;
-    /** Margem % global (apenas linhas com custo 100% cadastrado). */
-    overallMarginPercent: number | null;
-    productsWithCost: number;
-    productsTotal: number;
-  };
+  totals: MarginReportTotals;
 }
 
 export async function loadMarginReport(
@@ -115,6 +109,41 @@ export async function loadMarginReport(
       .innerJoin(orderTable, eq(orderTable.id, orderItemTable.orderId))
       .where(baseCond)
       .groupBy(orderItemTable.productId, orderItemTable.productNameSnapshot);
+
+    const [storeFees] = await tx
+      .select({
+        debit: storeTable.cardRealFeeBpsDebit,
+        c1: storeTable.cardRealFeeBpsCredit1x,
+        c2to6: storeTable.cardRealFeeBpsCredit2xTo6x,
+        c7to12: storeTable.cardRealFeeBpsCredit7xTo12x,
+      })
+      .from(storeTable)
+      .where(eq(storeTable.id, store.id));
+
+    // Taxa real cartão: prefere snapshot gravado no INSERT do pagamento
+    // (PDV + confirmPayment via computeCardFeeSnapshot). Fallback pra
+    // pagamentos legados sem snapshot (NULL) usa taxa atual da loja.
+    const [paymentFeesAgg] = await tx
+      .select({
+        feeInCents: sql<number>`coalesce(sum(
+          coalesce(${orderPaymentTable.cardFeeSnapshotInCents},
+            case
+              when ${orderPaymentTable.method} = 'debit'
+                then ${orderPaymentTable.amountInCents} * ${storeFees?.debit ?? 199} / 10000
+              when ${orderPaymentTable.method} = 'credit' and coalesce(${orderPaymentTable.installments}, 1) = 1
+                then ${orderPaymentTable.amountInCents} * ${storeFees?.c1 ?? 350} / 10000
+              when ${orderPaymentTable.method} = 'credit' and coalesce(${orderPaymentTable.installments}, 1) between 2 and 6
+                then ${orderPaymentTable.amountInCents} * ${storeFees?.c2to6 ?? 599} / 10000
+              when ${orderPaymentTable.method} = 'credit' and coalesce(${orderPaymentTable.installments}, 1) between 7 and 12
+                then ${orderPaymentTable.amountInCents} * ${storeFees?.c7to12 ?? 1199} / 10000
+              else 0
+            end
+          )
+        ), 0)::int`,
+      })
+      .from(orderPaymentTable)
+      .innerJoin(orderTable, eq(orderTable.id, orderPaymentTable.orderId))
+      .where(baseCond);
 
     const keyOf = (p: string | null, n: string) => `${p ?? "null"}|${n}`;
     const returnsByKey = new Map<
@@ -209,6 +238,13 @@ export async function loadMarginReport(
     );
     const overallMarginPercent =
       revenueWithCost === 0 ? null : (totalMargin / revenueWithCost) * 100;
+    const paymentFees = paymentFeesAgg?.feeInCents ?? 0;
+    const hasFullCostCoverage = productsWithCost === rows.length;
+    const netProfit = hasFullCostCoverage ? totalMargin - paymentFees : null;
+    const netProfitPercent =
+      netProfit === null || totalRevenue === 0
+        ? null
+        : (netProfit / totalRevenue) * 100;
 
     return {
       range,
@@ -217,6 +253,9 @@ export async function loadMarginReport(
         totalRevenueInCents: totalRevenue,
         totalCostInCents: totalCost,
         totalMarginInCents: totalMargin,
+        paymentFeesInCents: paymentFees,
+        netProfitInCents: netProfit,
+        netProfitPercent,
         overallMarginPercent,
         productsWithCost,
         productsTotal: rows.length,

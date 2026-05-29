@@ -79,7 +79,7 @@ export function CustomerLinkSection({
     return (
       <section className="b3-card space-y-3 p-4">
         <header className="flex items-center justify-between gap-2">
-          <h3 className="text-[13.5px] font-semibold tracking-tight text-ink-1">
+          <h3 className="text-ink-1 text-[13.5px] font-semibold tracking-tight">
             Cliente cadastrado
           </h3>
           <Button
@@ -99,15 +99,15 @@ export function CustomerLinkSection({
           </Button>
         </header>
         <Link
-          href={`/admin/clientes/${linkedCustomer.id}`}
+          href={`/admin/clientes?customer=${linkedCustomer.id}`}
           prefetch
-          className="hocus:bg-bg-app group flex items-center gap-3 rounded-lg border border-line bg-surface p-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50"
+          className="hocus:bg-bg-app group border-line bg-surface focus-visible:ring-ring/50 flex items-center gap-3 rounded-lg border p-3 transition-colors outline-none focus-visible:ring-2"
         >
           <div className="bg-brand-wash text-brand flex size-9 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold">
             {linkedCustomer.name.slice(0, 2).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium leading-tight text-ink-1">
+            <p className="text-ink-1 truncate text-sm leading-tight font-medium">
               {linkedCustomer.name}
             </p>
             <p className="text-ink-4 font-mono text-[11.5px] leading-tight">
@@ -211,18 +211,20 @@ function UnlinkedSection({
   return (
     <section className="b3-card space-y-3 p-4">
       <header className="space-y-0.5">
-        <h3 className="text-[13.5px] font-semibold tracking-tight text-ink-1">
+        <h3 className="text-ink-1 text-[13.5px] font-semibold tracking-tight">
           Cliente cadastrado
         </h3>
         <p className="text-ink-4 text-xs leading-relaxed">
-          Vincule a um cliente do seu cadastro pra ter histórico unificado.
-          Os dados deste pedido (<span className="font-medium">{snapshotName}</span>{" "}
+          Vincule a um cliente do seu cadastro pra ter histórico unificado. Os
+          dados deste pedido (
+          <span className="font-medium">{snapshotName}</span>{" "}
           {snapshotPhone ? (
             <>
-              {" "}/ <span className="font-mono">{snapshotPhone}</span>
+              {" "}
+              / <span className="font-mono">{snapshotPhone}</span>
             </>
-          ) : null}) ficam
-          preservados independente do vínculo.
+          ) : null}
+          ) ficam preservados independente do vínculo.
         </p>
       </header>
 
@@ -230,7 +232,7 @@ function UnlinkedSection({
         <div className="relative">
           <SearchIcon
             aria-hidden
-            className="text-ink-4 pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
+            className="text-ink-4 pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
           />
           <Input
             type="search"
@@ -243,12 +245,12 @@ function UnlinkedSection({
             disabled={busy}
           />
           {isSearching ? (
-            <Loader2Icon className="text-ink-4 absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin" />
+            <Loader2Icon className="text-ink-4 absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin" />
           ) : null}
         </div>
 
         {showResults ? (
-          <div className="bg-popover absolute left-0 right-0 top-full z-30 mt-1 max-h-64 overflow-y-auto rounded-lg border border-line shadow-md">
+          <div className="bg-popover border-line absolute top-full right-0 left-0 z-30 mt-1 max-h-64 overflow-y-auto rounded-lg border shadow-md">
             {hits.length === 0 ? (
               <div className="text-ink-4 flex flex-col items-center gap-1 px-3 py-4 text-center text-xs">
                 <UsersIcon className="size-5 opacity-50" />
@@ -263,7 +265,7 @@ function UnlinkedSection({
                       onClick={() => handleLink(h.id)}
                       disabled={busy}
                       className={cn(
-                        "hocus:bg-bg-app flex w-full items-center gap-2.5 px-3 py-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
+                        "hocus:bg-bg-app focus-visible:ring-ring/50 flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors outline-none focus-visible:ring-2",
                         busy && "opacity-50",
                       )}
                     >
@@ -271,14 +273,14 @@ function UnlinkedSection({
                         {h.name.slice(0, 2).toUpperCase()}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] font-medium leading-tight text-ink-1">
+                        <p className="text-ink-1 truncate text-[13px] leading-tight font-medium">
                           {h.name}
                         </p>
                         <p className="text-ink-4 font-mono text-[11px] leading-tight">
                           {h.phone}
                         </p>
                       </div>
-                      <CheckIcon className="text-ink-5 size-4 shrink-0 transition-colors group-hover:text-ink-1" />
+                      <CheckIcon className="text-ink-5 group-hover:text-ink-1 size-4 shrink-0 transition-colors" />
                     </button>
                   </li>
                 ))}

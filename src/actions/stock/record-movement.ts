@@ -11,11 +11,7 @@ import {
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
-import {
-  checkRateLimit,
-  RateLimitError,
-  rateLimits,
-} from "@/lib/rate-limit";
+import { checkRateLimit, RateLimitError, rateLimits } from "@/lib/rate-limit";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
 
@@ -154,7 +150,6 @@ export async function recordStockMovement(
 
     revalidatePath("/admin/estoque");
     revalidatePath("/admin/produtos");
-    revalidatePath(`/admin/produtos/${data.productId}`);
     revalidateTag(`store-${store.slug}`);
 
     return { ok: true, movementId };

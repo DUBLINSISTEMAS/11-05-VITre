@@ -12,7 +12,7 @@
 //    acima esconde.
 //  - default (legacy): mostra tudo num só lugar — preservado pra callers
 //    que ainda não migraram pra split.
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type {
   Control,
   FieldErrors,
@@ -72,14 +72,23 @@ export function TabPrecoCusto({
   const showEssential = !onlyAdvanced;
   const showAdvanced = !hideAdvanced;
 
+  const handleCostComponentsTotalChange = useCallback(
+    (totalInCents: number) => {
+      setValue("costPriceInCents", totalInCents, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    },
+    [setValue],
+  );
+
   // Rehidratação dos componentes de custo ao reabrir produto existente.
   // Editor mantém estado interno a partir de `initial` — então renderizamos
   // só DEPOIS de carregar pra garantir hidratação correta.
   const isExistingProduct = productId !== "new" && showEssential;
   const [costComponents, setCostComponents] = useState<CostComponentRow[]>([]);
-  const [costComponentsLoaded, setCostComponentsLoaded] = useState(
-    !isExistingProduct,
-  );
+  const [costComponentsLoaded, setCostComponentsLoaded] =
+    useState(!isExistingProduct);
 
   useEffect(() => {
     if (!isExistingProduct) return;
@@ -165,7 +174,7 @@ export function TabPrecoCusto({
           {/* Simulador rápido — handoff Passo 10. Calcula preço de venda
               a partir do custo + markup/margem-alvo. Só ativo quando o
               custo está preenchido. */}
-          <div className="mt-4 border-t border-line/60 pt-4">
+          <div className="border-line/60 mt-4 border-t pt-4">
             <MarginQuickSimulator
               costPriceInCents={costPriceInCents}
               setValue={setValue}
@@ -187,6 +196,7 @@ export function TabPrecoCusto({
             <CostComponentsEditor
               productId={productId}
               initial={costComponents}
+              onTotalChange={handleCostComponentsTotalChange}
             />
           ) : (
             <p className="text-ink-4 text-xs">Carregando custo…</p>
@@ -235,11 +245,13 @@ export function TabPrecoCusto({
                         <SelectItem value="default">
                           Usar o padrão da loja
                         </SelectItem>
-                        {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
-                          <SelectItem key={n} value={String(n)}>
-                            {n}×
-                          </SelectItem>
-                        ))}
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map(
+                          (n) => (
+                            <SelectItem key={n} value={String(n)}>
+                              {n}×
+                            </SelectItem>
+                          ),
+                        )}
                       </SelectContent>
                     </Select>
                   )}
@@ -254,7 +266,7 @@ export function TabPrecoCusto({
                 ) : null}
               </div>
 
-              <div className="space-y-1.5 border-t border-line pt-3">
+              <div className="border-line space-y-1.5 border-t pt-3">
                 <Label htmlFor="product-cash-discount-override">
                   Desconto à vista (sobrescreve a loja)
                 </Label>
@@ -265,8 +277,7 @@ export function TabPrecoCusto({
                     const v = field.value;
                     const mode =
                       v === null ? "default" : v === 0 ? "off" : "custom";
-                    const bpsValue =
-                      typeof v === "number" && v > 0 ? v : 0;
+                    const bpsValue = typeof v === "number" && v > 0 ? v : 0;
                     return (
                       <div className="space-y-2">
                         <Select
@@ -274,8 +285,7 @@ export function TabPrecoCusto({
                           onValueChange={(next) => {
                             if (next === "default") field.onChange(null);
                             else if (next === "off") field.onChange(0);
-                            else
-                              field.onChange(bpsValue > 0 ? bpsValue : 500);
+                            else field.onChange(bpsValue > 0 ? bpsValue : 500);
                           }}
                           disabled={isPending}
                         >
@@ -310,9 +320,10 @@ export function TabPrecoCusto({
                               value={
                                 bpsValue === 0
                                   ? ""
-                                  : String(
-                                      Math.round(bpsValue) / 100,
-                                    ).replace(".", ",")
+                                  : String(Math.round(bpsValue) / 100).replace(
+                                      ".",
+                                      ",",
+                                    )
                               }
                               onChange={(e) => {
                                 const raw = e.target.value
@@ -419,7 +430,7 @@ export function TabPrecoCusto({
             title="Comissão de vendedor"
             description="Se você paga comissão pro vendedor neste produto, preencha o %."
           >
-            <div className="space-y-1.5 max-w-[260px]">
+            <div className="max-w-[260px] space-y-1.5">
               <Label htmlFor="product-commission">Comissão padrão (%)</Label>
               <Controller
                 control={control}
@@ -481,7 +492,9 @@ export function TabPrecoCusto({
                   inputMode="numeric"
                 />
                 {errors.ncm?.message ? (
-                  <p className="text-destructive text-xs">{errors.ncm.message}</p>
+                  <p className="text-destructive text-xs">
+                    {errors.ncm.message}
+                  </p>
                 ) : null}
               </div>
               {/* S2.7 (2026-05-26) — peso em gramas pra reprecificação por

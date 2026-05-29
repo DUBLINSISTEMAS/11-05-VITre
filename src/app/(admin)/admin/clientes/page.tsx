@@ -1,9 +1,21 @@
-import { and, asc, count, desc, eq, gte, ilike, inArray, isNull, or, type SQL,sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  isNull,
+  or,
+  type SQL,
+  sql,
+} from "drizzle-orm";
 import { SearchXIcon, UsersIcon } from "lucide-react";
 import { Suspense } from "react";
 import { z } from "zod";
 
-import { BulkWhatsappStubButton } from "@/components/admin/bulk-whatsapp-stub-button";
 import { CustomerCreateButton } from "@/components/admin/customer-create-button";
 import {
   type CustomersKpis,
@@ -51,16 +63,20 @@ interface ClientesPageProps {
  *   status. Quando ADR futuro introduzir soft-delete, abrir como Onda separada
  *   (memory `handoff-vs-schema-respect-data-model`).
  */
-export default async function ClientesPage({ searchParams }: ClientesPageProps) {
+export default async function ClientesPage({
+  searchParams,
+}: ClientesPageProps) {
   const session = await requireSession();
   const store = await getCurrentStore(session.user.id);
   if (!store) {
     throw new Error("UNREACHABLE: clientes page sem loja");
   }
 
-  const { q: rawQ, page, type: typeFilter } = clientesSearchSchema.parse(
-    await searchParams,
-  );
+  const {
+    q: rawQ,
+    page,
+    type: typeFilter,
+  } = clientesSearchSchema.parse(await searchParams);
   const q = rawQ.trim();
 
   const conditions: SQL[] = [eq(customerTable.storeId, store.id)];
@@ -255,11 +271,15 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
 
       const kpis: CustomersKpis = {
         totalCustomers: Number(totalCustomersRow?.value ?? 0),
-        creditOutstandingInCents: Math.max(0, Number(creditAgg?.outstanding ?? 0)),
+        creditOutstandingInCents: Math.max(
+          0,
+          Number(creditAgg?.outstanding ?? 0),
+        ),
         customersWithDebt: Number(creditAgg?.debtors ?? 0),
-        ticketAverageInCents: ticketAgg?.avg !== null && ticketAgg?.avg !== undefined
-          ? Number(ticketAgg.avg)
-          : null,
+        ticketAverageInCents:
+          ticketAgg?.avg !== null && ticketAgg?.avg !== undefined
+            ? Number(ticketAgg.avg)
+            : null,
         newThisMonth: Number(newAgg?.value ?? 0),
       };
 
@@ -277,7 +297,8 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
 
   const rangeStart = total === 0 ? 0 : offset + 1;
   const rangeEnd = Math.min(offset + PAGE_SIZE, total);
-  const rangeLabel = total === 0 ? "0 de 0" : `${rangeStart} – ${rangeEnd} de ${total}`;
+  const rangeLabel =
+    total === 0 ? "0 de 0" : `${rangeStart} – ${rangeEnd} de ${total}`;
 
   const buildHref = (nextPage: number) => {
     const usp = new URLSearchParams();
@@ -308,7 +329,6 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <PrintPageButton label="Imprimir lista" />
-          <BulkWhatsappStubButton />
           <CustomerCreateButton />
         </div>
       </div>
@@ -325,9 +345,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
               o link só frustrava. Volta quando houver vídeo. */}
 
           {/* Toolbar: busca + ordenar/filtros + counter */}
-          <Suspense
-            fallback={<div className="bg-bg-app h-14 animate-pulse" />}
-          >
+          <Suspense fallback={<div className="bg-bg-app h-14 animate-pulse" />}>
             <CustomersToolbar rangeLabel={rangeLabel} />
           </Suspense>
 
@@ -336,8 +354,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
           ) : (
             <CustomersTable
               customers={customers.map((c) => {
-                const orderAgg =
-                  perCustomerAgg.orderAggByCustomer.get(c.id);
+                const orderAgg = perCustomerAgg.orderAggByCustomer.get(c.id);
                 return {
                   ...c,
                   // PP8 — agregações por-customer pra colunas Último pedido /
@@ -352,7 +369,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
           )}
 
           {customers.length > 0 ? (
-            <div className="border-t border-line p-3">
+            <div className="border-line border-t p-3">
               <Pagination
                 currentPage={page}
                 totalPages={totalPages}
@@ -372,10 +389,12 @@ function EmptyState() {
       <div className="bg-brand-wash text-brand flex size-12 items-center justify-center rounded-full">
         <UsersIcon className="size-6" />
       </div>
-      <h2 className="text-lg font-semibold text-ink-1">Cadastre seu primeiro cliente</h2>
+      <h2 className="text-ink-1 text-lg font-semibold">
+        Cadastre seu primeiro cliente
+      </h2>
       <p className="text-ink-4 max-w-sm text-sm">
-        Telefone é a chave. Vai ser útil pra venda balcão, follow-up no
-        WhatsApp e histórico de compras.
+        Telefone é a chave. Vai ser útil pra venda balcão, follow-up no WhatsApp
+        e histórico de compras.
       </p>
       <CustomerCreateButton />
     </div>
@@ -388,7 +407,9 @@ function NoResults() {
       <div className="bg-bg-app text-ink-4 flex size-12 items-center justify-center rounded-full">
         <SearchXIcon className="size-6" />
       </div>
-      <h2 className="text-lg font-semibold text-ink-1">Nenhum cliente encontrado</h2>
+      <h2 className="text-ink-1 text-lg font-semibold">
+        Nenhum cliente encontrado
+      </h2>
       <p className="text-ink-4 max-w-sm text-sm">
         Confira nome ou telefone, ou limpe a busca.
       </p>

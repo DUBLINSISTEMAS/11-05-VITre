@@ -89,10 +89,33 @@ test("admin: remove controles fake e links quebrados visíveis", () => {
   assert.doesNotMatch(orders, /type="checkbox"[\s\S]{0,220}disabled/);
 });
 
+test("product archive: exclusão do admin não apaga produto nem imagens", () => {
+  const single = src("src/actions/product/delete.ts");
+  const bulk = src("src/actions/product/bulk-delete.ts");
+  const drawer = src("src/components/admin/product-form-drawer.tsx");
+  const toolbar = src("src/components/admin/bulk-actions-toolbar.tsx");
+
+  assert.match(single, /\.update\(productTable\)/);
+  assert.match(single, /isActive:\s*false/);
+  assert.match(single, /isPublishedToStorefront:\s*false/);
+  assert.doesNotMatch(single, /\.delete\(productTable\)/);
+  assert.doesNotMatch(single, /deleteFromStorage/);
+
+  assert.match(bulk, /\.update\(productTable\)/);
+  assert.doesNotMatch(bulk, /\.delete\(productTable\)/);
+  assert.doesNotMatch(bulk, /deleteFromStorage/);
+
+  assert.match(drawer, /Arquivar produto/);
+  assert.match(toolbar, /Arquivar/);
+});
+
 test("pdv: venda concluída permanece no PDV e oferece impressão explícita", () => {
   const pdv = src("src/components/admin/pdv/pdv-shell.tsx");
 
-  assert.doesNotMatch(pdv, /router\.push\(`\/admin\/pdv\/recibo\/\$\{result\.publicToken\}`\)/);
+  assert.doesNotMatch(
+    pdv,
+    /router\.push\(`\/admin\/pdv\/recibo\/\$\{result\.publicToken\}`\)/,
+  );
   assert.match(pdv, /lastSale/);
   // Redesign 2026-05-21 encurtou o label do botão pra "Imprimir" pra
   // caber na coluna 380px. A intenção (oferecer impressão) é preservada.
@@ -182,6 +205,20 @@ test("reports/load-sales|top|margin|dre fazem JOIN com orderReturnItemTable", ()
       `${file} deve agregar order_return_item.quantity_returned`,
     );
   }
+});
+
+test("reports/margem expõe lucro líquido descontando taxa real do cartão", () => {
+  const loadMargin = src("src/actions/reports/load-margin.ts");
+  const types = src("src/actions/reports/types.ts");
+  const ui = src("src/components/admin/margin-report-client.tsx");
+
+  assert.match(loadMargin, /orderPaymentTable/);
+  assert.match(loadMargin, /cardRealFeeBpsDebit/);
+  assert.match(loadMargin, /paymentFeesInCents/);
+  assert.match(loadMargin, /netProfitInCents/);
+  assert.match(types, /interface MarginReportTotals/);
+  assert.match(ui, /Lucro líquido/);
+  assert.match(ui, /Taxa cartão/);
 });
 
 test("DRE expõe returnedRevenueInCents + returnedCogsInCents", () => {
@@ -445,16 +482,8 @@ test("Sprint 4.6: recibo PDV aceita ?fmt=a4|thermal", () => {
     /rawFmt === "a4"\s*\?\s*"a4"\s*:\s*"thermal"/,
     "fmt deve fazer default em 'thermal' (preserva impressora térmica)",
   );
-  assert.match(
-    r,
-    /\?fmt=thermal/,
-    "UI deve oferecer toggle pra thermal",
-  );
-  assert.match(
-    r,
-    /\?fmt=a4/,
-    "UI deve oferecer toggle pra a4",
-  );
+  assert.match(r, /\?fmt=thermal/, "UI deve oferecer toggle pra thermal");
+  assert.match(r, /\?fmt=a4/, "UI deve oferecer toggle pra a4");
 });
 
 test("Sprint 4.7: Z de caixa tem linha de assinatura + rodapé universal", () => {
@@ -536,9 +565,7 @@ test("Sprint 5.1: checkout aceita cupom via validateCouponForPublic + UI", () =>
 
 test("Sprint 5.2: /contato + action submitContactMessage + link no footer", () => {
   // Rota
-  const page = src(
-    "src/app/(storefront)/[storeSlug]/contato/page.tsx",
-  );
+  const page = src("src/app/(storefront)/[storeSlug]/contato/page.tsx");
   assert.match(page, /ContactForm/);
   assert.match(page, /Fale conosco/);
 

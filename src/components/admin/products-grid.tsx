@@ -8,7 +8,7 @@
 //
 // Card: foto quadrada 1:1 fullbleed em cima · meta abaixo (marca implícita
 // via categoryName, nome, preço grande, badge de estoque/status).
-// Click no card navega pra /admin/produtos/[id] (mesma href da tabela).
+// Click no card abre o workspace de edição via ?edit=, mesmo padrão da tabela.
 
 import { PackageIcon } from "lucide-react";
 import Image from "next/image";
@@ -33,7 +33,7 @@ function getInitials(name: string): string {
 
 export function ProductsGrid({ products }: ProductsGridProps) {
   return (
-    <div className="grid gap-3 p-4 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))] sm:gap-4 sm:p-5">
+    <div className="grid [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))] gap-3 p-4 sm:gap-4 sm:p-5">
       {products.map((p) => {
         const isDraft = !p.name.trim() || p.slug.startsWith("draft-");
         const onPromoNow = hasActivePromo(p);
@@ -41,17 +41,17 @@ export function ProductsGrid({ products }: ProductsGridProps) {
         return (
           <Link
             key={p.id}
-            href={`/admin/produtos/${p.id}`}
+            href={`/admin/produtos?edit=${p.id}`}
             prefetch
             className={cn(
-              "group block overflow-hidden rounded-[10px] border border-line bg-surface transition-shadow",
+              "group border-line bg-surface block overflow-hidden rounded-[10px] border transition-shadow",
               "hover:border-mangos-green-700/40 hover:shadow-md",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mangos-yellow/45",
+              "focus-visible:ring-mangos-yellow/45 focus-visible:ring-2 focus-visible:outline-none",
             )}
             aria-label={`Editar ${p.name || "rascunho"}`}
           >
             <div
-              className="bg-bg-app relative w-full overflow-hidden border-b border-line"
+              className="bg-bg-app border-line relative w-full overflow-hidden border-b"
               style={{ aspectRatio: "1 / 1" }}
             >
               {p.cover ? (
@@ -69,7 +69,7 @@ export function ProductsGrid({ products }: ProductsGridProps) {
                   ) : (
                     <span
                       aria-hidden
-                      className="text-[26px] font-bold uppercase tracking-tight text-brand"
+                      className="text-brand text-[26px] font-bold tracking-tight uppercase"
                       style={{ color: "var(--brand)" }}
                     >
                       {getInitials(p.name)}
@@ -78,30 +78,30 @@ export function ProductsGrid({ products }: ProductsGridProps) {
                 </div>
               )}
               {!p.isActive && !isDraft ? (
-                <span className="b3-pill b3-pill--gold absolute right-2 top-2">
+                <span className="b3-pill b3-pill--gold absolute top-2 right-2">
                   Pausado
                 </span>
               ) : null}
               {isOutOfStock ? (
-                <span className="b3-pill b3-pill--danger absolute right-2 top-2">
+                <span className="b3-pill b3-pill--danger absolute top-2 right-2">
                   Sem estoque
                 </span>
               ) : null}
             </div>
             <div className="space-y-1 p-3">
               {p.categoryName ? (
-                <p className="text-ink-4 text-[11px] uppercase tracking-[0.04em]">
+                <p className="text-ink-4 text-[11px] tracking-[0.04em] uppercase">
                   {p.categoryName}
                 </p>
               ) : null}
               <p
                 className={cn(
-                  "text-ink-1 text-[13px] font-medium leading-snug",
+                  "text-ink-1 text-[13px] leading-snug font-medium",
                   "line-clamp-2 min-h-[34px]",
                 )}
               >
                 {isDraft ? (
-                  <span className="italic text-ink-4">Rascunho sem nome</span>
+                  <span className="text-ink-4 italic">Rascunho sem nome</span>
                 ) : (
                   p.name
                 )}

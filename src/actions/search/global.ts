@@ -11,11 +11,7 @@ import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { z } from "zod";
 
-import {
-  customerTable,
-  orderTable,
-  productTable,
-} from "@/db/schema";
+import { customerTable, orderTable, productTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getCurrentStore } from "@/lib/store-context";
 import { withTenant } from "@/lib/tenant";
@@ -125,7 +121,7 @@ export async function globalSearch(input: unknown): Promise<SearchHit[]> {
         id: p.id,
         label: p.name,
         sublabel: `Produto · ${p.slug}`,
-        href: `/admin/produtos/${p.id}`,
+        href: `/admin/produtos?edit=${p.id}`,
       });
     }
     for (const c of customers) {
@@ -134,7 +130,7 @@ export async function globalSearch(input: unknown): Promise<SearchHit[]> {
         id: c.id,
         label: c.name,
         sublabel: `Cliente · ${c.phone ?? "sem telefone"}`,
-        href: `/admin/clientes?focus=${c.id}`,
+        href: `/admin/clientes?customer=${c.id}`,
       });
     }
     for (const o of orders) {
@@ -145,9 +141,9 @@ export async function globalSearch(input: unknown): Promise<SearchHit[]> {
       hits.push({
         kind: "order",
         id: o.id,
-        label: `Pedido ${o.publicToken}`,
+        label: `Venda ${o.publicToken}`,
         sublabel: `${o.customerName ?? "sem cliente"} · ${o.channel} · ${valor}`,
-        href: `/admin/pedidos?focus=${o.id}`,
+        href: `/admin/pedidos?detail=${o.id}`,
       });
     }
     return hits;

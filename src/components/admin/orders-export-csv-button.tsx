@@ -26,7 +26,7 @@ export function OrdersExportCsvButton() {
       const result = await exportOrdersCsv({
         q: params.get("q") ?? undefined,
         channel:
-          (params.get("channel") as "balcao" | "whatsapp" | null) ?? undefined,
+          (params.get("canal") as "balcao" | "whatsapp" | null) ?? undefined,
         status:
           (params.get("status") as
             | "quote"
@@ -38,8 +38,8 @@ export function OrdersExportCsvButton() {
             | "returned"
             | null) ?? undefined,
         fiado: (params.get("fiado") as "pendente" | null) ?? undefined,
-        from: params.get("from") ?? undefined,
-        to: params.get("to") ?? undefined,
+        from: params.get("de") ?? undefined,
+        to: params.get("ate") ?? undefined,
       });
 
       if (!result.ok) {

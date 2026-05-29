@@ -53,7 +53,13 @@ const PAGE_SIZE = 20;
 // nas duas pontas (não aparecem em "Sem estoque" porque o filtro exigia
 // trackStock=true, e não tinham aba dedicada). Lojista que cadastrou 50
 // SKUs sem ligar o switch perdia controle silenciosamente.
-const STATUS_VALUES = ["active", "inactive", "draft", "no-stock", "no-tracking"] as const;
+const STATUS_VALUES = [
+  "active",
+  "inactive",
+  "draft",
+  "no-stock",
+  "no-tracking",
+] as const;
 type StatusFilter = (typeof STATUS_VALUES)[number];
 
 // R5 Semana 4 da ressignificação (2026-05-28) — filtro TIPO URL-driven.
@@ -85,6 +91,7 @@ const produtosSearchSchema = z.object({
   status: enumOrNull(STATUS_VALUES),
   tipo: enumOrNull(TIPO_VALUES),
   promo: boolFlagSchema,
+  semFoto: boolFlagSchema,
   page: pageNumberSchema,
   // Passo 9 — toggle table↔grid (default omite param).
   view: z.enum(VIEW_VALUES).catch("table"),
@@ -95,7 +102,9 @@ interface ProdutosPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default async function ProdutosPage({ searchParams }: ProdutosPageProps) {
+export default async function ProdutosPage({
+  searchParams,
+}: ProdutosPageProps) {
   const session = await requireSession();
   const store = await getCurrentStore(session.user.id);
   if (!store) {
@@ -108,6 +117,7 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
     status: statusFilter,
     tipo: tipoFilter,
     promo: onlyPromo,
+    semFoto: onlyNoPhoto,
     page,
     view,
     sort,
@@ -199,6 +209,18 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
     return [];
   };
 
+  const noPhotoConditions = (): SQL[] =>
+    onlyNoPhoto
+      ? [
+          sql`not exists (
+            select 1
+            from product_image
+            where product_image.product_id = ${productTable.id}
+              and product_image.store_id = ${productTable.storeId}
+          )`,
+        ]
+      : [];
+
   // Lista respeita ou ?promo=1 ou ?status=X (mutex). Quando ?promo=1, ignora
   // statusFilter (UI já garante mas backend é defensivo). ?tipo= combina com
   // ambos (eixo ortogonal — sempre AND).
@@ -208,11 +230,13 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
         ...promoConditions(),
         ...NOT_DRAFT,
         ...tipoConditions(tipoFilter),
+        ...noPhotoConditions(),
       ]
     : [
         ...baseConditions,
         ...statusConditions(statusFilter),
         ...tipoConditions(tipoFilter),
+        ...noPhotoConditions(),
       ];
   const whereClause = and(...listConditions);
 
@@ -328,21 +352,11 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
       promo: 0,
     };
 
-    // total da listagem corrente: deriva do bucket relevante da aba.
-    // Evita uma segunda query agregada com whereClause completo.
-    const total = onlyPromo
-      ? agg.promo
-      : statusFilter === "active"
-        ? agg.active
-        : statusFilter === "inactive"
-          ? agg.inactive
-          : statusFilter === "draft"
-            ? agg.draft
-            : statusFilter === "no-stock"
-              ? agg.noStock
-              : statusFilter === "no-tracking"
-                ? agg.noTracking
-                : agg.all;
+    const [totalRow] = await tx
+      .select({ value: sql<number>`count(*)::int` })
+      .from(productTable)
+      .where(whereClause);
+    const total = Number(totalRow?.value ?? 0);
 
     const categories = await tx.query.categoryTable.findMany({
       where: eq(categoryTable.storeId, store.id),
@@ -423,14 +437,21 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
   const categoriesById = new Map(categories.map((c) => [c.id, c.name]));
 
   const hasFilters =
-    q !== "" || !!categoryId || statusFilter !== null || onlyPromo;
+    q !== "" ||
+    !!categoryId ||
+    statusFilter !== null ||
+    tipoFilter !== null ||
+    onlyPromo ||
+    onlyNoPhoto;
 
   const buildHref = (nextPage: number) => {
     const usp = new URLSearchParams();
     if (q) usp.set("q", q);
     if (categoryId) usp.set("categoryId", categoryId);
     if (statusFilter && !onlyPromo) usp.set("status", statusFilter);
+    if (tipoFilter) usp.set("tipo", tipoFilter);
     if (onlyPromo) usp.set("promo", "1");
+    if (onlyNoPhoto) usp.set("semFoto", "1");
     if (nextPage > 1) usp.set("page", String(nextPage));
     const qs = usp.toString();
     return qs ? `?${qs}` : "?";
@@ -449,7 +470,9 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
     trackStock: p.trackStock,
     stockQuantity: p.stockQuantity,
     cover: coversByProduct.get(p.id) ?? null,
-    categoryName: p.categoryId ? categoriesById.get(p.categoryId) ?? null : null,
+    categoryName: p.categoryId
+      ? (categoriesById.get(p.categoryId) ?? null)
+      : null,
     variantCount: variantCountByProduct.get(p.id) ?? 0,
     // PP7 (handoff 2026-05-25) — SKU + custo pra colunas novas.
     sku: p.internalCode,
@@ -461,9 +484,7 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
   const rangeStart = total === 0 ? 0 : offset + 1;
   const rangeEnd = Math.min(offset + products.length, total);
   const rangeLabel =
-    total === 0
-      ? "0 de 0"
-      : `${rangeStart} – ${rangeEnd} de ${total}`;
+    total === 0 ? "0 de 0" : `${rangeStart} – ${rangeEnd} de ${total}`;
 
   return (
     <div className="b3-page">
@@ -519,7 +540,7 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
           {/* Toggle table/grid — bate o handoff (lojista visual de
               joia/roupa/perfumaria prefere grid). Posicionado entre o
               toolbar e o conteúdo, alinhado à direita. */}
-          <div className="flex items-center justify-end border-t border-line px-4 py-2">
+          <div className="border-line flex items-center justify-end border-t px-4 py-2">
             <Suspense fallback={<div className="h-8" />}>
               <ProductsViewToggle current={view} />
             </Suspense>
@@ -534,7 +555,7 @@ export default async function ProdutosPage({ searchParams }: ProdutosPageProps) 
           )}
 
           {totalPages > 1 ? (
-            <div className="border-t border-line p-3">
+            <div className="border-line border-t p-3">
               <Pagination
                 currentPage={page}
                 totalPages={totalPages}
@@ -554,10 +575,10 @@ function EmptyState() {
       <div className="bg-brand-wash text-brand flex size-12 items-center justify-center rounded-full">
         <PackageIcon className="size-6" />
       </div>
-      <h2 className="text-lg font-semibold text-ink-1">Comece sua vitrine</h2>
+      <h2 className="text-ink-1 text-lg font-semibold">Comece seu cadastro</h2>
       <p className="text-ink-4 max-w-sm text-sm">
-        Cadastre seu primeiro produto. Depois você pode publicar quando
-        quiser que apareça pros seus clientes.
+        Cadastre seu primeiro produto com preço, custo e estoque. Se fizer
+        sentido, marque para aparecer na loja online.
       </p>
       <ProductCreateButton size="lg" className="mt-2">
         <PlusIcon size={14} /> Cadastrar primeiro produto
@@ -572,7 +593,7 @@ function NoResults({ onlyPromo }: { onlyPromo: boolean }) {
       <div className="bg-bg-app text-ink-4 flex size-12 items-center justify-center rounded-full">
         <SearchXIcon className="size-6" />
       </div>
-      <h2 className="text-lg font-semibold text-ink-1">
+      <h2 className="text-ink-1 text-lg font-semibold">
         {onlyPromo ? "Nenhum produto em promoção agora" : "Nada por aqui"}
       </h2>
       <p className="text-ink-4 max-w-sm text-sm">
