@@ -2,13 +2,17 @@ import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { loadActiveCashSession } from "@/actions/cash-session/load";
-import { loadProdutosBombando } from "@/actions/dashboard/load-bombando";
 import { loadDashboardKpis } from "@/actions/dashboard/load-kpis";
 import { loadDashboardSinais } from "@/actions/dashboard/load-sinais";
 import { loadDashboardLucro } from "@/actions/reports/load-dashboard-lucro";
 import { DateRangePill } from "@/components/admin/dashboard/date-range-pill";
 import { HeroLucro } from "@/components/admin/dashboard/hero-lucro";
-import { KpisSecundarios } from "@/components/admin/dashboard/kpis-secundarios";
+// Onda M4 (2026-05-29) — KpisSecundarios e ProdutosBombando removidos do
+// dashboard. KpisSecundarios duplicava info do HeroLucro (lucrou ontem +
+// semana ja cobre faturamento). ProdutosBombando era info nao-acionavel
+// ("essa peca ta bombando" — lojista nao pode fazer nada de imediato).
+// Lista densa de vendas + sinais urgentes em "Pegando fogo" cobrem o que
+// importa pra triagem do dia. Founder reportou dashboard inflado L6.
 import { LojaOnlineSnapshot } from "@/components/admin/dashboard/loja-online-snapshot";
 import { NewSaleButton } from "@/components/admin/dashboard/new-sale-button";
 import {
@@ -17,7 +21,6 @@ import {
   OnboardingProgressStrip,
 } from "@/components/admin/dashboard/onboarding-checklist";
 import { PegandoFogo } from "@/components/admin/dashboard/pegando-fogo";
-import { ProdutosBombando } from "@/components/admin/dashboard/produtos-bombando";
 import {
   type RecentOrderRow,
   RecentOrdersTable,
@@ -181,11 +184,13 @@ export default async function AdminHomePage({
   // sem efeito DeprecationWarning (cliente pg diferente por transação).
   // Bloco E2 UX (2026-05-29) — caixa entra aqui pra render no topo do
   // dashboard (primeiro toque do dia do lojista de balcão).
-  const [lucroData, sinaisData, bombandoData, kpisData, activeCashSession] =
+  // Onda M4 (2026-05-29) — loadProdutosBombando removido junto com o
+  // componente que consumia. loadDashboardKpis ainda carrega porque
+  // LojaOnlineSnapshot consome o subset `lojaOnline`.
+  const [lucroData, sinaisData, kpisData, activeCashSession] =
     await Promise.all([
       loadDashboardLucro(),
       loadDashboardSinais(),
-      loadProdutosBombando(),
       loadDashboardKpis({ periodoDays: periodo }),
       loadActiveCashSession(),
     ]);
@@ -331,39 +336,16 @@ export default async function AdminHomePage({
         }
       />
 
-      {/* KPIs Secundários — Bloco F.2.5. Linha tabular densa de 4
-          indicadores (Vendas · Faturamento · Clientes novos · Devoluções)
-          pra janela do ?periodo. Substitui os 4 MetricCards individuais
-          do WIP anterior — densificação por subtração. */}
-      {kpisData ? (
-        <KpisSecundarios kpis={kpisData.kpis} periodoLabel={periodLabelShort(periodo)} />
-      ) : null}
-
-      {/* Grid 2-col (desktop) com sinais + produtos bombando.
-          Bloco F.2.2 e F.2.3 lado a lado economizam scroll e equilibram
-          peso visual (defensivo + ofensivo). Mobile empilha em coluna. */}
-      <div className="b3-insight-grid">
-        {/* Pegando fogo agora — Bloco F.2.2.
-            Sinais DELTA do dia (não fila acumulada). 4 categorias curadas:
-            caixa esquecido · WhatsApp pendente · fiado vencido · estoque
-            novo em mínimo. Vazio = "Tudo em dia 🤝". */}
-        <PegandoFogo
-          items={sinaisData.items}
-          allClear={sinaisData.allClear}
-          checkedAt={sinaisData.checkedAt}
-          failedChecks={sinaisData.failedChecks}
-        />
-
-        {/* Produtos que tão bombando — Bloco F.2.3.
-            Critério: aceleração 30%+ vs média móvel 28d (surpresa positiva,
-            não top de sempre). Fallback Top 3 lucro absoluto quando loja
-            jovem sem histórico ou sem candidato acelerando. Esconde
-            completamente se sem nenhum candidato. */}
-        <ProdutosBombando
-          items={bombandoData.items}
-          fallback={bombandoData.fallback}
-        />
-      </div>
+      {/* Pegando fogo agora — Bloco F.2.2.
+          Sinais DELTA do dia (não fila acumulada). Vazio = "Tudo em dia".
+          Onda M4 (2026-05-29) — promovido a largura inteira porque a coluna
+          ProdutosBombando foi cortada. Sinal urgente merece destaque. */}
+      <PegandoFogo
+        items={sinaisData.items}
+        allClear={sinaisData.allClear}
+        checkedAt={sinaisData.checkedAt}
+        failedChecks={sinaisData.failedChecks}
+      />
 
       {/* Bloco E3 UX (2026-05-29) — TotalIncomeChart (8m receita vs
           despesa) removido: bonito mas sem ação. Mesma análise existe
@@ -384,7 +366,3 @@ export default async function AdminHomePage({
   );
 }
 
-/** "7d" / "30d" / "90d" — usado no aria-label da linha de KPIs. */
-function periodLabelShort(periodo: number): string {
-  return `últimos ${periodo} dias`;
-}

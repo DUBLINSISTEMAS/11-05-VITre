@@ -61,7 +61,7 @@ const READS_AND_HELPERS_ALLOWLIST: ReadonlyArray<string> = [
   // Bloco F.2 da ressignificação (dashboard cérebro de gestão) — todos reads
   "load-dashboard-lucro.ts", // F.2.1: agrega DRE de ontem + semana via loadDreSimple
   "load-sinais.ts", // F.2.2: 4 checks de "pegando fogo agora" (caixa, fiado, etc)
-  "load-bombando.ts", // F.2.3: produtos com aceleração 30%+ vs média móvel 28d
+  // "load-bombando.ts" removida em Onda M4 (2026-05-29) — ProdutosBombando deletado.
   "load-kpis.ts", // F.2.4 + F.2.5: KPIs tabulares + mini-snapshot loja online
   "global.ts", // search/global.ts — busca admin cmd+K
   "filter-options.ts", // Sprint 4.2 — read pra dropdowns de categoria/marca
