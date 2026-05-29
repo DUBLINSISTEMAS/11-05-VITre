@@ -143,6 +143,13 @@ const checks = [
   // pausado vs arquivado vs soft-deleted. Substitui workaround
   // isActive/Published/Featured=false documentado em delete.ts:21-25.
   { id: "84",  desc: "product.archived_at + deleted_at columns (Onda 2 2026-05-28)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='product' AND column_name IN ('archived_at','deleted_at') HAVING count(*) = 2" },
+  // Bloco H (2026-05-29) — purchase: frete + desconto + impostos +
+  // installments_count. NF do fornecedor estava incompleta no schema.
+  { id: "85a", desc: "purchase agregados (frete/desconto/impostos/parcelas)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='purchase' AND column_name IN ('freight_in_cents','discount_in_cents','taxes_in_cents','installments_count') HAVING count(*) = 4" },
+  // expense ganha purchase_id pra trackear origem (parcela de compra).
+  { id: "85b", desc: "expense.purchase_id FK opcional", q: "SELECT 1 FROM information_schema.columns WHERE table_name='expense' AND column_name='purchase_id'" },
+  // CHECKs de positividade dos agregados.
+  { id: "85c", desc: "purchase agregados CHECKs nonneg + installments range", q: "SELECT 1 FROM pg_constraint WHERE conname IN ('purchase_freight_nonneg','purchase_discount_nonneg','purchase_taxes_nonneg','purchase_installments_range') HAVING count(*) = 4" },
 ];
 
 const url = process.env.DIRECT_URL;

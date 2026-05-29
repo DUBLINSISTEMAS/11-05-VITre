@@ -35,6 +35,7 @@ import { headers } from "next/headers";
 import {
   cashAdjustmentTable,
   cashSessionTable,
+  expenseTable,
   productTable,
   productVariantTable,
   purchaseItemTable,
@@ -304,11 +305,48 @@ export async function createPurchase(
           }
         }
 
-        // Total da compra
-        const totalInCents = data.items.reduce(
+        // Total da compra (Bloco H 2026-05-29):
+        //   subtotal = SUM(items.qty * unitCost)
+        //   total = subtotal + frete + impostos − desconto
+        // Validações:
+        //   - desconto não pode exceder subtotal + frete + impostos
+        //   - se parcelado (installments preenchido), SUM(parcelas) === total
+        const subtotalInCents = data.items.reduce(
           (acc, it) => acc + it.quantity * it.unitCostInCents,
           0,
         );
+        const grossWithExtrasInCents =
+          subtotalInCents + data.freightInCents + data.taxesInCents;
+        if (data.discountInCents > grossWithExtrasInCents) {
+          return {
+            ok: false,
+            error: `Desconto (${data.discountInCents}) maior que subtotal + frete + impostos (${grossWithExtrasInCents}).`,
+            fieldErrors: {
+              discountInCents: "Acima do total bruto da compra.",
+            },
+          };
+        }
+        const totalInCents = grossWithExtrasInCents - data.discountInCents;
+
+        const installmentsCount =
+          data.installments.length > 0 ? data.installments.length : 1;
+
+        if (data.installments.length > 0) {
+          const installmentsSum = data.installments.reduce(
+            (acc, p) => acc + p.amountInCents,
+            0,
+          );
+          if (installmentsSum !== totalInCents) {
+            return {
+              ok: false,
+              error: `Soma das parcelas (${installmentsSum}) não bate com o total calculado (${totalInCents}).`,
+              fieldErrors: {
+                installments:
+                  "Soma das parcelas precisa bater com o total da compra.",
+              },
+            };
+          }
+        }
 
         // Auto-attach a sessão de caixa ATIVA pra registrar pay_supplier
         // quando paidNow=true. Sem sessão aberta, o cash_adjustment NÃO é
@@ -335,6 +373,11 @@ export async function createPurchase(
               supplierId: data.supplierId,
               invoiceNumber: data.invoiceNumber,
               totalInCents,
+              // Bloco H: snapshotam os agregados da NF.
+              freightInCents: data.freightInCents,
+              discountInCents: data.discountInCents,
+              taxesInCents: data.taxesInCents,
+              installmentsCount,
               paidAt: data.paidNow ? new Date() : null,
               paymentMethod: data.paymentMethod,
               notes: data.notes,
@@ -572,6 +615,50 @@ export async function createPurchase(
               createdByUserId: ctx.session.user.id,
             });
           }
+
+          // Bloco H (2026-05-29) — gera contas a pagar (`expense`) derivadas.
+          //   - Sem installments: 1 expense (total inteiro)
+          //   - Com installments: N expenses, cada uma com due_date própria
+          //   - paidNow=true: paid_at = now() em TODAS (cenário "paguei
+          //     tudo no cartão único" ou "à vista no dinheiro"); senão NULL
+          //   - supplier_id + purchase_id vinculados pra navegação reversa
+          //   - category "supplies" (default razoável; lojista pode mudar
+          //     editando no /admin/financeiro/pagar depois)
+          const shortRef = row.id.slice(0, 8);
+          const purchaseLabel = data.invoiceNumber
+            ? `Compra NF ${data.invoiceNumber}`
+            : `Compra #${shortRef}`;
+          const nowDate = new Date().toISOString().slice(0, 10);
+          const paidAtIso = data.paidNow ? nowDate : null;
+
+          if (data.installments.length === 0) {
+            await innerTx.insert(expenseTable).values({
+              storeId: ctx.store.id,
+              createdBy: ctx.session.user.id,
+              category: "supplies",
+              amountInCents: totalInCents,
+              paidAt: paidAtIso,
+              dueDate: paidAtIso, // sem parcelas: due = paid pra ser válido
+              supplierId: data.supplierId,
+              purchaseId: row.id,
+              recurring: false,
+              notes: purchaseLabel,
+            });
+          } else {
+            const installmentRows = data.installments.map((p, idx) => ({
+              storeId: ctx.store.id,
+              createdBy: ctx.session.user.id,
+              category: "supplies" as const,
+              amountInCents: p.amountInCents,
+              paidAt: paidAtIso,
+              dueDate: p.dueDate,
+              supplierId: data.supplierId,
+              purchaseId: row.id,
+              recurring: false,
+              notes: `${purchaseLabel} · parcela ${idx + 1}/${data.installments.length}`,
+            }));
+            await innerTx.insert(expenseTable).values(installmentRows);
+          }
         });
 
         if (!purchaseId) {
@@ -582,6 +669,8 @@ export async function createPurchase(
         revalidatePath("/admin/produtos");
         revalidatePath("/admin/estoque");
         revalidatePath("/admin/pdv/caixa");
+        // Bloco H — expenses derivadas afetam /financeiro/pagar.
+        revalidatePath("/admin/financeiro/pagar");
 
         logger.info("purchase.created", {
           storeId: ctx.store.id,

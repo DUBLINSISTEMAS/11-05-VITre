@@ -50,6 +50,27 @@ export const purchaseItemInputSchema = z.object({
 });
 export type PurchaseItemInput = z.input<typeof purchaseItemInputSchema>;
 
+/**
+ * Bloco H (2026-05-29) — uma parcela da compra. Quando lojista marca
+ * cartão 3×, vira 3 destes (e o action insere 3 rows em `expense`).
+ * `dueDate` é string `YYYY-MM-DD` (formato date do Postgres via Drizzle).
+ * Soma das `amountInCents` deve bater com o totalInCents calculado da
+ * compra (validado na action — Zod só checa shape).
+ */
+export const purchaseInstallmentInputSchema = z.object({
+  dueDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Data de vencimento inválida"),
+  amountInCents: z
+    .number()
+    .int()
+    .positive("Valor da parcela deve ser maior que zero")
+    .max(999_999_999, "Valor da parcela acima do máximo"),
+});
+export type PurchaseInstallmentInput = z.input<
+  typeof purchaseInstallmentInputSchema
+>;
+
 export const createPurchaseSchema = z.object({
   supplierId: z.string().uuid().nullable().default(null),
   invoiceNumber: z
@@ -76,6 +97,44 @@ export const createPurchaseSchema = z.object({
       z.string().trim().max(500).nullable(),
     )
     .default(null),
+  /**
+   * Bloco H (2026-05-29) — agregados da NF do fornecedor. Frete +
+   * impostos somam ao total; desconto subtrai. Default 0 mantém compat
+   * com callers antigos (form sem header expandido + fixtures).
+   */
+  freightInCents: z
+    .number()
+    .int()
+    .nonnegative("Frete não pode ser negativo")
+    .max(99_999_999, "Frete acima do máximo")
+    .default(0),
+  discountInCents: z
+    .number()
+    .int()
+    .nonnegative("Desconto não pode ser negativo")
+    .max(99_999_999, "Desconto acima do máximo")
+    .default(0),
+  taxesInCents: z
+    .number()
+    .int()
+    .nonnegative("Impostos não podem ser negativos")
+    .max(99_999_999, "Impostos acima do máximo")
+    .default(0),
+  /**
+   * Bloco H (2026-05-29) — parcelas geradas como `expense`. Quando
+   * vazio (default), comportamento legacy:
+   *   - paidNow=true  → 1 expense com paid_at=now()
+   *   - paidNow=false → 1 expense com due_date=null (compra "a pagar"
+   *                     sem vencimento — comportamento prévio do form)
+   * Quando preenchido (cartão parcelado), gera N expenses com due_dates
+   * espaçadas e paid_at=null (ou paid_at=now() em todas se paidNow=true,
+   * cenário "pago integralmente no cartão único"). App-layer valida que
+   * SUM(installments.amount) === totalCalculado.
+   */
+  installments: z
+    .array(purchaseInstallmentInputSchema)
+    .max(24, "Máximo 24 parcelas")
+    .default([]),
   items: z
     .array(purchaseItemInputSchema)
     .min(1, "Adicione pelo menos um item")
