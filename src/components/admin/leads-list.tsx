@@ -43,6 +43,7 @@ const SOURCE_LABEL: Record<LeadRow["source"], string> = {
   pdp_button: "PDP",
   list_button: "Listagem",
   cart_button: "Sacola",
+  contact_form: "Contato",
   other: "Outro",
 };
 

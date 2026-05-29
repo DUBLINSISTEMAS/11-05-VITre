@@ -65,8 +65,14 @@ export default async function EstoqueVencendoPage() {
         <div className="b3-card p-8 text-center">
           <p className="text-ink-3 text-sm">Nenhum lote vencendo em 60 dias.</p>
           <p className="text-ink-4 mt-1 text-xs">
-            Pra rastrear validade, marque a categoria como
-            &quot;tracks_batch&quot; e cadastre o lote+validade na compra.
+            Esta tela mostra lotes vencendo de produtos comprados via{" "}
+            <a href="/admin/compras" className="font-medium underline">
+              Compras
+            </a>{" "}
+            que tenham lote e validade. Faz sentido pra perfumaria, cosmético,
+            alimento — categorias com prazo. Marque a categoria como
+            &ldquo;rastrear lote&rdquo; no cadastro pra os campos aparecerem
+            na próxima compra.
           </p>
         </div>
       ) : (

@@ -17,7 +17,7 @@ import Link from "next/link";
 import { formatBRL, hasActivePromo } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
-import type { ProductTableRow } from "./products-table";
+import { type ProductTableRow, TypePill } from "./products-table";
 
 export interface ProductsGridProps {
   products: ReadonlyArray<ProductTableRow>;
@@ -86,6 +86,19 @@ export function ProductsGrid({ products }: ProductsGridProps) {
                 <span className="b3-pill b3-pill--danger absolute top-2 right-2">
                   Sem estoque
                 </span>
+              ) : null}
+              {/* Onda 3 (2026-05-28): pill com universo (Produto público /
+                  interno / Item de gestão / Serviço) no canto superior
+                  esquerdo. Antes do fix o grid escondia esse dado, então
+                  Item de gestão se misturava visualmente com produto
+                  comum. */}
+              {!isDraft ? (
+                <div className="absolute top-2 left-2">
+                  <TypePill
+                    kind={p.kind}
+                    isPublishedToStorefront={p.isPublishedToStorefront}
+                  />
+                </div>
               ) : null}
             </div>
             <div className="space-y-1 p-3">

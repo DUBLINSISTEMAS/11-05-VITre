@@ -431,7 +431,7 @@ function StatusPill({
  * O combo "publicado" sai da coluna STATUS pra cá — é informação de
  * canal/escopo, não de operação.
  */
-function TypePill({
+export function TypePill({
   kind,
   isPublishedToStorefront,
 }: {

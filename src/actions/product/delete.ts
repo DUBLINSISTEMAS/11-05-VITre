@@ -18,8 +18,12 @@ export type DeleteProductResult = { ok: true } | { ok: false; error: string };
 /**
  * Arquiva produto sem destruir histórico.
  *
- * Enquanto o schema não tem `archivedAt/deletedAt`, arquivar significa:
- * isActive=false, isPublishedToStorefront=false e isFeatured=false.
+ * Onda 2 (2026-05-28): schema agora tem `archivedAt` (drizzle/0037).
+ * Arquivar significa: archivedAt=now() + isActive=false +
+ * isPublishedToStorefront=false + isFeatured=false. Compat completa com
+ * código antigo (queries que filtram isActive=true continuam funcionando).
+ * archivedAt é o sinal CANÔNICO pra futuras telas "Arquivados" diferenciarem
+ * "pausado pelo lojista" de "tirado de circulação".
  *
  * Imagens, variantes, movimentações e vendas antigas ficam preservadas para
  * relatório, auditoria e migração para o Supabase limpo.
@@ -69,6 +73,7 @@ export async function deleteProduct(
       await tx
         .update(productTable)
         .set({
+          archivedAt: new Date(),
           isActive: false,
           isPublishedToStorefront: false,
           isFeatured: false,

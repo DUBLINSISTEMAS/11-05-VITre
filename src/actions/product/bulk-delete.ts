@@ -23,9 +23,10 @@ export type BulkDeleteProductsResult =
 /**
  * Arquiva produtos em massa sem apagar linhas do banco.
  *
- * O schema atual ainda não tem `archivedAt`; por isso arquivar equivale a
- * pausar venda, remover da vitrine pública e tirar destaque. O histórico
- * operacional continua íntegro.
+ * Onda 2 (2026-05-28): schema agora tem `archivedAt` (drizzle/0037).
+ * Mesma semântica de delete.ts: archivedAt=now() + isActive/Published/
+ * Featured=false. archivedAt é o sinal canônico que distingue arquivado
+ * de pausado.
  */
 export async function bulkDeleteProducts(
   input: BulkDeleteProductsInput,
@@ -64,6 +65,7 @@ export async function bulkDeleteProducts(
       const rows = await tx
         .update(productTable)
         .set({
+          archivedAt: new Date(),
           isActive: false,
           isPublishedToStorefront: false,
           isFeatured: false,

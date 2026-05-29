@@ -91,7 +91,7 @@ Pedido→Venda · Coleção→Vitrine · Lead/Contato→Recado do site · Cupom�
 
 - **Controlar estoque** ON = produto físico que conta (desconta na venda, soma na compra; default true). OFF = serviço/encomenda/consignado.
 - **Estoque atual** = somatório de movimentações; não editável direto; corrige via "ajuste manual" com motivo.
-- **Mínimo** dispara "estoque baixo" + sino. **Máximo** alimenta "estoque parado".
+- **Mínimo** dispara "estoque baixo" + sino. **Máximo** é referência de cobertura/projeção (NÃO alimenta "estoque parado"). "Estoque parado" = produto com saldo > 0 que não vende há ≥60 dias (`loadStockAging`).
 - **Unidade**: un, kg, g, m, m², L, ml, par, dúzia (default un).
 
 ## Impressão e exportação (universal)

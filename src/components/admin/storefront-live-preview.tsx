@@ -120,9 +120,10 @@ export function StorefrontLivePreview({ storeSlug }: StorefrontLivePreviewProps)
         </div>
       </div>
       <footer className="border-line text-ink-4 border-t bg-bg-app px-3 py-2 text-[11.5px]">
-        Pra ver alterações novas, salve abaixo e clique{" "}
+        <strong className="text-ink-2 font-semibold">Pré-visualização</strong>{" "}
+        — não atualiza ao vivo. Salve abaixo e clique em{" "}
         <RefreshCwIcon size={11} className="inline align-[-1px]" aria-hidden />{" "}
-        recarregar.
+        recarregar pra ver as mudanças.
       </footer>
     </div>
   );

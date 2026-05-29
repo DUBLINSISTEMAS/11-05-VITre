@@ -118,6 +118,19 @@ export function TabPrecificacao({
     );
   }
 
+  // Onda 3 (2026-05-28): nota clara de "apenas leitura". Lojista que clica
+  // nesta aba esperando salvar custo/comissão vira pra cá e vê tabela densa
+  // sem CTA — sem essa nota, parece "tela morta".
+  const READ_ONLY_NOTE = (
+    <div className="b3-card flex items-start gap-2 rounded-lg border border-ink-4/15 bg-bg-app/40 p-3 text-[11.5px] leading-snug text-ink-3">
+      <AlertCircleIcon className="size-3.5 shrink-0 text-ink-4" aria-hidden />
+      <span>
+        Apenas leitura. Pra editar preço, custo ou comissão, volte na aba{" "}
+        <strong className="text-ink-2">Preço &amp; custo</strong>.
+      </span>
+    </div>
+  );
+
   if (costPriceInCents === null || costPriceInCents === undefined) {
     return (
       <EmptyState
@@ -130,6 +143,7 @@ export function TabPrecificacao({
 
   return (
     <div className="space-y-4">
+      {READ_ONLY_NOTE}
       {/* Resumo: preço × custo, comissão se aplicável */}
       <header className="b3-card overflow-hidden p-4">
         <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
