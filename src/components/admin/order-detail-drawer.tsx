@@ -483,11 +483,14 @@ function DrawerContent({
                 }}
               >
                 <div className="text-ink-3 mb-2 text-[12px]">
-                  Pagamento ainda não registrado.
+                  {order.status === "awaiting_whatsapp"
+                    ? "Cliente confirmou pelo WhatsApp e pagou fora. Confirme a venda e registre como ele pagou:"
+                    : "Pagamento ainda não registrado."}
                 </div>
                 <OrderConfirmPaymentDialog
                   orderId={order.id}
                   totalInCents={order.totalInCents}
+                  confirmStatusAfter={order.status === "awaiting_whatsapp"}
                 />
               </div>
             ) : null}

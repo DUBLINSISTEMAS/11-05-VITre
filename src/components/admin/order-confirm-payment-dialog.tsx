@@ -29,6 +29,7 @@ import { toast } from "sonner";
 
 import { PAYMENT_METHOD_VALUES } from "@/actions/order/balcao/schema";
 import { confirmOrderPayment } from "@/actions/order/confirm-payment";
+import { updateOrderStatus } from "@/actions/order/update-status";
 import { PriceInput } from "@/components/admin/price-input";
 import { Button } from "@/components/ui/button";
 import {
@@ -87,12 +88,21 @@ interface OrderConfirmPaymentDialogProps {
   totalInCents: number;
   /** Quando true, abre disabled — usado enquanto outra action roda. */
   disabled?: boolean;
+  /**
+   * Bloco B UX (2026-05-28) — quando true, após registrar pagamento
+   * o dialog também confirma o status pra 'confirmed' na mesma ação.
+   * Usado pra vendas WhatsApp em 'awaiting_whatsapp': lojista clica UM
+   * botão e fecha venda + pagamento de uma vez (antes eram 2 cliques
+   * em lugares diferentes do drawer, lojista esquecia o segundo).
+   */
+  confirmStatusAfter?: boolean;
 }
 
 export function OrderConfirmPaymentDialog({
   orderId,
   totalInCents,
   disabled,
+  confirmStatusAfter = false,
 }: OrderConfirmPaymentDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -165,9 +175,27 @@ export function OrderConfirmPaymentDialog({
         toast.error(result.error);
         return;
       }
-      toast.success("Pagamento registrado.");
+      // Bloco B UX — quando vem de awaiting_whatsapp, confirma status na
+      // mesma ação. Falha aqui é não-fatal: pagamento já gravou, lojista
+      // pode confirmar depois manualmente. Loga toast warning não-bloqueante.
+      if (confirmStatusAfter) {
+        const statusRes = await updateOrderStatus({
+          orderId,
+          nextStatus: "confirmed",
+        });
+        if (!statusRes.ok) {
+          toast.warning(
+            `Pagamento registrado, mas falhou confirmar status: ${statusRes.error}`,
+          );
+          setOpen(false);
+          router.refresh();
+          return;
+        }
+        toast.success("Venda confirmada e pagamento registrado.");
+      } else {
+        toast.success("Pagamento registrado.");
+      }
       setOpen(false);
-      // Drawer recarrega via revalidatePath; router.refresh() força.
       router.refresh();
     });
   };
@@ -183,7 +211,9 @@ export function OrderConfirmPaymentDialog({
           className="gap-1.5"
         >
           <WalletIcon className="h-3.5 w-3.5" aria-hidden />
-          Registrar pagamento
+          {confirmStatusAfter
+            ? "Confirmar venda e registrar pagamento"
+            : "Registrar pagamento"}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg">

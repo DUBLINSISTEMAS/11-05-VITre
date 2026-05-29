@@ -66,6 +66,7 @@ import {
   type PickerSelection,
   ProductPickerDialog,
 } from "@/components/admin/pdv/product-picker-dialog";
+import { OpenCashDialog } from "@/components/admin/pdv/open-cash-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -287,6 +288,7 @@ export function PdvShell() {
   // (sem banner pra evitar flash); null = caixa fechado (mostra banner);
   // object = caixa aberto (sem banner). Re-fetch ao montar é suficiente —
   // se lojista abre caixa em outra aba, recarregar o PDV pega.
+  const [openCashDialogOpen, setOpenCashDialogOpen] = useState(false);
   const [cashSessionStatus, setCashSessionStatus] = useState<
     "loading" | "open" | "closed"
   >("loading");
@@ -1052,10 +1054,11 @@ export function PdvShell() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col lg:h-[calc(100vh-2.5rem)]">
-      {/* Banner "Caixa fechado" — audit 2026-05-26. Renderiza quando
-          loadActiveCashSession retorna null. Sem este sinal, lojista podia
-          montar venda inteira e só ver erro no submit. CTA pra /admin/pdv/caixa
-          em nova rota (mantém PDV aberto pra não perder carrinho). */}
+      {/* Banner "Caixa fechado" — audit 2026-05-26 + Bloco B UX 2026-05-28.
+          Antes o CTA "Abrir caixa" abria /admin/pdv/caixa em NOVA ABA
+          (target=_blank). Lojista abria caixa lá, voltava pro modal — o
+          modal não detectava abertura, banner continuava amarelo.
+          Agora: dialog inline, banner some imediatamente após abrir. */}
       {cashSessionStatus === "closed" ? (
         <div
           role="status"
@@ -1074,16 +1077,25 @@ export function PdvShell() {
               Vendas registradas agora não entram no fluxo de caixa do dia.
             </p>
           </div>
-          <Link
-            href="/admin/pdv/caixa"
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            type="button"
+            onClick={() => setOpenCashDialogOpen(true)}
             className="b3-btn b3-btn--sm shrink-0"
           >
             Abrir caixa
-          </Link>
+          </button>
         </div>
       ) : null}
+
+      <OpenCashDialog
+        open={openCashDialogOpen}
+        onOpenChange={setOpenCashDialogOpen}
+        onSuccess={() => {
+          // Bloco B UX: atualiza state local em vez de router.refresh().
+          // Refresh derrubaria o modal NewSale + perderia o carrinho.
+          setCashSessionStatus("open");
+        }}
+      />
 
       {/* Layout 2-col (rebalance 2026-05-21 audit). Coluna ESQUERDA
           empilha Cliente + Search + Carrinho. Coluna DIREITA é o
@@ -1321,11 +1333,34 @@ export function PdvShell() {
                 !canSubmit && "cursor-not-allowed opacity-50",
               )}
             >
-              {isSubmitting
-                ? "Registrando…"
-                : cart.length === 0
-                  ? "Adicione produtos pra finalizar"
-                  : "Finalizar venda (F4)"}
+              {(() => {
+                // Bloco B UX (2026-05-28) — label dinâmica diz O QUE FALTA.
+                // Antes ficava "Adicione produtos pra finalizar" mesmo com
+                // carrinho cheio mas faltando cliente/pagamento. Lojista
+                // clicava clicava sem feedback claro.
+                if (isSubmitting) return "Registrando…";
+                if (cart.length === 0) return "Adicione produtos pra finalizar";
+                if (!hasIdentifiedCustomer) return "Identifique o cliente";
+                if (hasCreditAmount && !customerId)
+                  return "Selecione cliente cadastrado pra fiado";
+                if (discountInCents > subtotalInCents)
+                  return "Desconto maior que o subtotal";
+                if (!isFullyOnCredit && paymentLines.length === 0)
+                  return "Adicione uma forma de pagamento";
+                if (!isFullyOnCredit && !paymentLinesAllValid)
+                  return "Confira a forma de pagamento";
+                if (
+                  paymentsSumInCents + creditAmountInCents !==
+                  totalInCents
+                ) {
+                  const diff =
+                    totalInCents - paymentsSumInCents - creditAmountInCents;
+                  return diff > 0
+                    ? `Falta R$ ${(diff / 100).toFixed(2)}`
+                    : `Reduza R$ ${(Math.abs(diff) / 100).toFixed(2)}`;
+                }
+                return "Finalizar venda (F4)";
+              })()}
             </button>
 
             {/* Salvar como orçamento + Lançar como fiado — lado a lado */}

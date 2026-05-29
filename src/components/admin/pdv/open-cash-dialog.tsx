@@ -28,6 +28,12 @@ import { Label } from "@/components/ui/label";
 interface OpenCashDialogProps {
   open: boolean;
   onOpenChange: (next: boolean) => void;
+  /**
+   * Bloco B UX (2026-05-28) — quando passado, NÃO chama router.refresh()
+   * (que recarregaria a página e fecharia modais com state local — ex:
+   * PDV com carrinho aberto). Caller atualiza state local no lugar.
+   */
+  onSuccess?: () => void;
 }
 
 /** "12,34" → 1234. "" → 0. Inválido → null. */
@@ -39,7 +45,11 @@ function inputToCents(value: string): number | null {
   return Math.round(num * 100);
 }
 
-export function OpenCashDialog({ open, onOpenChange }: OpenCashDialogProps) {
+export function OpenCashDialog({
+  open,
+  onOpenChange,
+  onSuccess,
+}: OpenCashDialogProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [amount, setAmount] = useState("");
@@ -65,7 +75,11 @@ export function OpenCashDialog({ open, onOpenChange }: OpenCashDialogProps) {
       toast.success("Caixa aberto.");
       onOpenChange(false);
       setAmount("");
-      router.refresh();
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        router.refresh();
+      }
     });
   };
 

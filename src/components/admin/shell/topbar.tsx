@@ -3,13 +3,16 @@
 // Topbar desktop do admin — redesign Finexy-style 2026-05-27.
 //
 // Layout:
-// - LEFT:  logo round (favicon Mangos) + wordmark compacto
-// - CENTER: search trigger largo (Cmd+K) com kbd à direita
+// - LEFT/CENTER: search trigger largo (Cmd+K) com kbd à direita
 // - RIGHT: sino (notifications) + help (?) + avatar pill
 //
 // Decisões de migração:
 // - Breadcrumb removido daqui — o título da página (h1.b3-page-title) e a
 //   sidebar plana já indicam onde o usuário está. Reduz ruído visual.
+// - 2026-05-28: marca "Mangos Pay" REMOVIDA do topbar — duplicava o logo
+//   da sidebar (que abre /admin igual). Sidebar é o lar canônico da marca
+//   do SaaS; topbar fica busca + ações de conta. O avatar pill à direita
+//   já mostra a marca da LOJA do lojista.
 // - CTAs "Ver loja" e "Nova venda" descem pro header da dashboard (próximo
 //   ao DateRangePill) ou ficam disponíveis via avatar pill + F2 global.
 // - Background TRANSPARENTE preservado — flutua sobre o cinza do .b3-main
@@ -72,20 +75,6 @@ export function TopBar({
 
   return (
     <header className="b3-top hidden lg:flex" data-admin-chrome="topbar">
-      {/* LEFT — logo round + wordmark */}
-      <Link
-        href="/admin"
-        prefetch
-        className="b3-topbar-brand"
-        aria-label="Mangos Pay — Início"
-      >
-        <span className="b3-topbar-brand-icon" aria-hidden>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logos/favicon.svg" alt="" className="h-5 w-5" />
-        </span>
-        <span className="b3-topbar-brand-word">Mangos Pay</span>
-      </Link>
-
       {/* CENTER — search bar largo, click abre command palette */}
       <button
         type="button"
