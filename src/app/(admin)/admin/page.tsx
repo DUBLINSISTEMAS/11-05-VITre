@@ -1,6 +1,7 @@
 import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
+import { loadActiveCashSession } from "@/actions/cash-session/load";
 import { loadProdutosBombando } from "@/actions/dashboard/load-bombando";
 import { loadDashboardKpis } from "@/actions/dashboard/load-kpis";
 import { loadDashboardSinais } from "@/actions/dashboard/load-sinais";
@@ -29,6 +30,7 @@ import {
   type IncomePoint,
   TotalIncomeChart,
 } from "@/components/admin/dashboard/total-income-chart";
+import { CashSessionStatus } from "@/components/admin/pdv/cash-session-status";
 import {
   bannerTable,
   expenseTable,
@@ -228,15 +230,19 @@ export default async function AdminHomePage({
     };
   });
 
-  // Hero + Sinais + Bombando + KPIs/LojaOnline — em paralelo top-level.
+  // Hero + Sinais + Bombando + KPIs/LojaOnline + Caixa — paralelo top-level.
   // Cada chamada abre sua própria transação RLS-aware, então Promise.all
   // sem efeito DeprecationWarning (cliente pg diferente por transação).
-  const [lucroData, sinaisData, bombandoData, kpisData] = await Promise.all([
-    loadDashboardLucro(),
-    loadDashboardSinais(),
-    loadProdutosBombando(),
-    loadDashboardKpis({ periodoDays: periodo }),
-  ]);
+  // Bloco E2 UX (2026-05-29) — caixa entra aqui pra render no topo do
+  // dashboard (primeiro toque do dia do lojista de balcão).
+  const [lucroData, sinaisData, bombandoData, kpisData, activeCashSession] =
+    await Promise.all([
+      loadDashboardLucro(),
+      loadDashboardSinais(),
+      loadProdutosBombando(),
+      loadDashboardKpis({ periodoDays: periodo }),
+      loadActiveCashSession(),
+    ]);
 
   // === Onboarding state ===
   // Bloco E1 UX (2026-05-29): trocado OR por AND. Antes a loja que
@@ -372,6 +378,13 @@ export default async function AdminHomePage({
           thisWeek={lucroData.thisWeek}
         />
       ) : null}
+
+      {/* Bloco E2 UX (2026-05-29) — primeiro toque do dia do lojista
+          de balcão é o caixa. Estado aberto: mostra duração + esperado
+          + venda count + "Gerenciar caixa". Estado fechado: CTA "Abrir
+          caixa" com OpenCashDialog inline. Sem isso, lojista entrava
+          no admin e ia adivinhando se já tinha aberto ou não. */}
+      <CashSessionStatus active={activeCashSession} />
 
       {/* KPIs Secundários — Bloco F.2.5. Linha tabular densa de 4
           indicadores (Vendas · Faturamento · Clientes novos · Devoluções)

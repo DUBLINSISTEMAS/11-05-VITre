@@ -38,6 +38,7 @@ import { headers } from "next/headers";
 
 import {
   cashSessionTable,
+  leadTable,
   orderTable,
   productTable,
   receivableTable,
@@ -51,7 +52,8 @@ export type SinalType =
   | "whatsapp_pendente"
   | "fiado_atrasado"
   | "estoque_critico_novo"
-  | "orcamento_vencendo";
+  | "orcamento_vencendo"
+  | "recados_novos";
 
 export interface DashboardSinal {
   type: SinalType;
@@ -218,6 +220,29 @@ export async function loadDashboardSinais(): Promise<LoadDashboardSinaisOutput> 
       failedChecks.push("estoque_critico_novo");
     }
 
+    // ---- Bloco E2 UX (2026-05-29): RECADOS novos sem contato.
+    //       Lead.status='new' criados nas últimas 24h. Lojista BR
+    //       responde WhatsApp antes do café — esse sinal merece estar
+    //       no painel de urgência (Pegando fogo), não no rodapé.
+    //       Antes vivia em LojaOnlineSnapshot, escondido depois de
+    //       2 charts + tabela.
+    let recadosNovos = 0;
+    try {
+      const [recadosAgg] = await tx
+        .select({ count: sql<number>`count(*)::int` })
+        .from(leadTable)
+        .where(
+          and(
+            eq(leadTable.storeId, store.id),
+            eq(leadTable.status, "new"),
+            gte(leadTable.createdAt, oneDayAgo),
+          ),
+        );
+      recadosNovos = recadosAgg?.count ?? 0;
+    } catch {
+      failedChecks.push("recados_novos");
+    }
+
     // ---- 5) ORÇAMENTOS expirando nas próximas 48h (DELTA — Semana 5).
     //         Pega só status=quote com validade definida caindo agora.
     //         Joalheiro precisa ligar pro cliente ANTES de expirar.
@@ -268,6 +293,20 @@ export async function loadDashboardSinais(): Promise<LoadDashboardSinaisOutput> 
         href: "/admin/pedidos?channel=whatsapp&status=awaiting_whatsapp",
         severity: "high",
         count: whatsappCount,
+      });
+    }
+
+    if (recadosNovos > 0) {
+      items.push({
+        type: "recados_novos",
+        title:
+          recadosNovos === 1
+            ? "1 recado novo no site sem contato"
+            : `${recadosNovos} recados novos no site sem contato`,
+        subtitle: "Recebidos nas últimas 24h pela loja online.",
+        href: "/admin/contatos?status=new",
+        severity: "high",
+        count: recadosNovos,
       });
     }
 

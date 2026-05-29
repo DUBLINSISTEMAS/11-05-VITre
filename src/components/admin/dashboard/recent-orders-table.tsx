@@ -11,14 +11,9 @@
 
 "use client";
 
-import {
-  ArrowUpDownIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
-  SearchIcon,
-} from "lucide-react";
+import { ArrowRightIcon, ChevronRightIcon } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import type { ORDER_STATUS_VALUES } from "@/actions/order/schema";
 import {
@@ -26,12 +21,6 @@ import {
   type OpenOrderDetailEventDetail,
 } from "@/components/admin/order-detail-events";
 import { OrderStatusBadge } from "@/components/admin/order-status-badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { formatBRL } from "@/lib/pricing";
 
 function handleRowClick(
@@ -74,14 +63,6 @@ export interface RecentOrdersTableProps {
   orders: ReadonlyArray<RecentOrderRow>;
 }
 
-type SortKey = "recent" | "highest" | "lowest";
-
-const SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
-  { value: "recent", label: "Mais recentes" },
-  { value: "highest", label: "Maior valor" },
-  { value: "lowest", label: "Menor valor" },
-];
-
 const GRID_COLS =
   "grid-cols-[28px_100px_minmax(0,100px)_minmax(0,1.4fr)_minmax(0,1fr)_120px_80px_minmax(0,110px)_20px]";
 
@@ -92,35 +73,16 @@ function shortDate(d: Date): string {
 }
 
 export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
-  const [query, setQuery] = useState("");
-  const [sortBy, setSortBy] = useState<SortKey>("recent");
+  // Bloco E2 UX (2026-05-29) — busca + sort client-side em 6 linhas
+  // eram teatro: buscar "Maria" e não achar não significava nada (Maria
+  // podia estar na venda #7+ que nunca veio do server). Removidos.
+  // Lojista que precisa filtrar de verdade clica em "Ver todas →".
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    let arr = orders.slice();
-    if (q.length > 0) {
-      arr = arr.filter(
-        (o) =>
-          o.shortCode.toLowerCase().includes(q) ||
-          o.customerName.toLowerCase().includes(q) ||
-          o.categoryLabel.toLowerCase().includes(q),
-      );
-    }
-    switch (sortBy) {
-      case "highest":
-        arr.sort((a, b) => b.totalInCents - a.totalInCents);
-        break;
-      case "lowest":
-        arr.sort((a, b) => a.totalInCents - b.totalInCents);
-        break;
-      case "recent":
-      default:
-        arr.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-        break;
-    }
-    return arr;
-  }, [orders, query, sortBy]);
+  // Mais recente primeiro — server já ordena, mas defensivo.
+  const visible = [...orders].sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+  );
 
   const allChecked =
     visible.length > 0 && visible.every((o) => selected.has(o.id));
@@ -140,48 +102,24 @@ export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
     });
   };
 
-  const sortLabel = SORT_OPTIONS.find((s) => s.value === sortBy)!.label;
-
   return (
     <div className="b3-card overflow-hidden">
       <div className="b3-recent-orders-hd">
         <h2 className="b3-recent-orders-title">Vendas recentes</h2>
         <div className="b3-recent-orders-actions">
-          <label className="b3-recent-orders-search">
-            <SearchIcon size={13} aria-hidden />
-            <input
-              type="search"
-              placeholder="Buscar"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              aria-label="Buscar vendas"
-            />
-          </label>
-          {/* Sort some em mobile — lojista vai pro /admin/pedidos cheio
-              quando precisa de ordenação custom. */}
-          <DropdownMenu>
-            <DropdownMenuTrigger className="b3-recent-orders-sort">
-              <ArrowUpDownIcon size={13} aria-hidden />
-              <span className="b3-recent-orders-sort-label">{sortLabel}</span>
-              <ChevronDownIcon size={13} aria-hidden className="opacity-60" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" sideOffset={6}>
-              {SORT_OPTIONS.map((o) => (
-                <DropdownMenuItem
-                  key={o.value}
-                  onSelect={() => setSortBy(o.value)}
-                >
-                  {o.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Link
+            href="/admin/pedidos"
+            prefetch
+            className="text-mangos-green-800 hover:text-mangos-green-900 inline-flex items-center gap-1 text-[12.5px] font-semibold"
+          >
+            Ver todas <ArrowRightIcon size={13} aria-hidden />
+          </Link>
         </div>
       </div>
 
       {visible.length === 0 ? (
         <div className="text-ink-4 px-4 py-8 text-center text-sm">
-          {query ? "Nenhuma venda encontrada." : "Nenhuma venda ainda."}
+          Nenhuma venda ainda.
         </div>
       ) : (
         <>

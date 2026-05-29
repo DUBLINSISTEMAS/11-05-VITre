@@ -45,6 +45,7 @@ const SINAL_TYPE_LABEL: Record<SinalType, string> = {
   fiado_atrasado: "fiados",
   estoque_critico_novo: "estoque",
   orcamento_vencendo: "orçamentos",
+  recados_novos: "recados",
 };
 
 function formatCheckedAt(d: Date): string {

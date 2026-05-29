@@ -15,7 +15,6 @@
 import {
   CameraOffIcon,
   ExternalLinkIcon,
-  MessageCircleIcon,
   PackageIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -32,18 +31,10 @@ export function LojaOnlineSnapshot({ data }: LojaOnlineSnapshotProps) {
       <h2 className="b3-loja-online-title">Loja online</h2>
 
       <ul className="b3-loja-online-list">
-        <SnapshotItem
-          href="/admin/contatos"
-          icon={<MessageCircleIcon size={14} aria-hidden />}
-          label={
-            data.recadosPendentes === 0
-              ? "Sem recados aguardando"
-              : data.recadosPendentes === 1
-                ? "1 recado aguardando contato"
-                : `${data.recadosPendentes} recados aguardando contato`
-          }
-          highlight={data.recadosPendentes > 0}
-        />
+        {/* Bloco E2 UX (2026-05-29) — "Recados aguardando" MOVIDO daqui
+            pra Pegando fogo (sinal de urgência). Antes ficava no rodapé,
+            depois de 2 charts + tabela. Lojista BR responde WhatsApp
+            antes do café — o item merecia destaque no triagem do dia. */}
 
         {data.produtosSemFoto > 0 ? (
           <SnapshotItem
