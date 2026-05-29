@@ -83,7 +83,11 @@ export async function loadFinanceiroOverview(): Promise<FinanceiroOverview> {
   const endIso = end.toISOString().slice(0, 10);
 
   return withTenant(store.id, session.user.id, async (tx) => {
-    // 1. Recebido este mes = SUM(receivable_payment.amount) onde paid_at no mes
+    // 1. Recebido este mes = SUM(receivable_payment.amount) onde created_at
+    //    no mes. `receivable_payment` NAO tem coluna `paid_at` — cada linha
+    //    e o ato de receber em si, marcado pelo createdAt do insert (Sprint
+    //    4B append-only). Quem tem paid_at e o `receivable` agregador
+    //    (derivado quando SUM(payments) >= amount).
     const [recebidoRow] = await tx
       .select({
         total: sql<number>`coalesce(sum(${receivablePaymentTable.amountInCents}), 0)::int`,
@@ -92,8 +96,8 @@ export async function loadFinanceiroOverview(): Promise<FinanceiroOverview> {
       .where(
         and(
           eq(receivablePaymentTable.storeId, store.id),
-          gte(receivablePaymentTable.paidAt, start),
-          lte(receivablePaymentTable.paidAt, end),
+          gte(receivablePaymentTable.createdAt, start),
+          lte(receivablePaymentTable.createdAt, end),
         ),
       );
 
