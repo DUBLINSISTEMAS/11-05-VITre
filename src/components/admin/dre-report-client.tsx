@@ -203,7 +203,7 @@ export function DreReportClient({
                   className={`border-line border px-2 py-1 text-[11px] tabular-nums first:rounded-l-md last:rounded-r-md ${
                     currentPeriodo === p.value
                       ? "bg-brand text-white border-brand"
-                      : "bg-bg-card text-ink-2 hover:bg-bg-app"
+                      : "bg-surface text-ink-2 hover:bg-bg-app"
                   }`}
                 >
                   {p.label}

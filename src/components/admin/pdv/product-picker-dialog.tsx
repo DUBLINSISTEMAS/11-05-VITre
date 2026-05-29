@@ -286,7 +286,7 @@ export function ProductPickerDialog({
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Buscar produto por nome ou código"
-                className="border-line focus:border-brand h-9 w-full rounded-md border bg-bg-card pl-9 pr-9 text-[13px] outline-none transition"
+                className="border-line focus:border-brand h-9 w-full rounded-md border bg-surface pl-9 pr-9 text-[13px] outline-none transition"
               />
               {q ? (
                 <button
@@ -432,7 +432,7 @@ function CategoryChip({
         "shrink-0 rounded-full border px-3 py-1 text-[12px] transition",
         active
           ? "border-brand bg-brand text-white"
-          : "border-line bg-bg-card text-ink-2 hover:bg-bg-app",
+          : "border-line bg-surface text-ink-2 hover:bg-bg-app",
       )}
     >
       {label}
@@ -481,7 +481,7 @@ function ProductCard({
   return (
     <div
       className={cn(
-        "border-line group flex flex-col overflow-hidden rounded-lg border bg-bg-card transition",
+        "border-line group flex flex-col overflow-hidden rounded-lg border bg-surface transition",
         isSelected && "border-brand bg-brand-wash",
         isExpanded && hasVariants && "border-brand",
         isOutOfStock && "opacity-50",

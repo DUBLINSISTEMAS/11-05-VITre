@@ -282,7 +282,7 @@ export function ReceivablePaymentDialog({
           onClose(didChange);
       }}
     >
-      <div className="bg-bg-card border-line w-full max-w-lg overflow-hidden rounded-xl border shadow-xl">
+      <div className="bg-surface border-line w-full max-w-lg overflow-hidden rounded-xl border shadow-xl">
         {/* Header */}
         <div className="border-line flex items-start justify-between gap-4 border-b px-5 py-4">
           <div>

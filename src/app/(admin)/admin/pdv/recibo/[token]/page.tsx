@@ -211,7 +211,7 @@ export default async function ReciboBalcaoPage({
             <Link
               href={`/admin/pdv/recibo/${token}?fmt=thermal`}
               className={`px-3 py-1.5 ${
-                !isA4 ? "bg-brand text-white" : "bg-bg-card text-ink-2 hover:bg-bg-app"
+                !isA4 ? "bg-brand text-white" : "bg-surface text-ink-2 hover:bg-bg-app"
               }`}
               aria-pressed={!isA4}
               title="Layout 80mm para impressora térmica"
@@ -221,7 +221,7 @@ export default async function ReciboBalcaoPage({
             <Link
               href={`/admin/pdv/recibo/${token}?fmt=a4`}
               className={`border-l border-line px-3 py-1.5 ${
-                isA4 ? "bg-brand text-white" : "bg-bg-card text-ink-2 hover:bg-bg-app"
+                isA4 ? "bg-brand text-white" : "bg-surface text-ink-2 hover:bg-bg-app"
               }`}
               aria-pressed={isA4}
               title="Layout A4 para impressora jato/laser"

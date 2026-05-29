@@ -245,7 +245,7 @@ export function SalesReportClient({
                   className={`border-line border px-2 py-1 text-[11px] tabular-nums first:rounded-l-md last:rounded-r-md ${
                     currentPeriodo === p.value
                       ? "bg-brand text-white border-brand"
-                      : "bg-bg-card text-ink-2 hover:bg-bg-app"
+                      : "bg-surface text-ink-2 hover:bg-bg-app"
                   }`}
                 >
                   {p.label}
@@ -260,7 +260,7 @@ export function SalesReportClient({
             <select
               value={currentMethod}
               onChange={(e) => updateParam("paymentMethod", e.target.value)}
-              className="border-line h-7 rounded-md border bg-bg-card px-2 text-[12px]"
+              className="border-line h-7 rounded-md border bg-surface px-2 text-[12px]"
             >
               {METHOD_FILTERS.map((m) => (
                 <option key={m.value} value={m.value}>
@@ -285,7 +285,7 @@ export function SalesReportClient({
                     e.target.value === "all" ? null : e.target.value,
                   )
                 }
-                className="border-line h-7 rounded-md border bg-bg-card px-2 text-[12px]"
+                className="border-line h-7 rounded-md border bg-surface px-2 text-[12px]"
               >
                 <option value="all">Todas</option>
                 {filterOptions.categories.map((c) => (
@@ -310,7 +310,7 @@ export function SalesReportClient({
                     e.target.value === "all" ? null : e.target.value,
                   )
                 }
-                className="border-line h-7 rounded-md border bg-bg-card px-2 text-[12px]"
+                className="border-line h-7 rounded-md border bg-surface px-2 text-[12px]"
               >
                 <option value="all">Todas</option>
                 {filterOptions.brands.map((b) => (
@@ -331,7 +331,7 @@ export function SalesReportClient({
             className={`border-line h-7 rounded-md border px-2 text-[12px] ${
               groupByDay
                 ? "bg-brand text-white border-brand"
-                : "bg-bg-card text-ink-2 hover:bg-bg-app"
+                : "bg-surface text-ink-2 hover:bg-bg-app"
             }`}
             aria-pressed={groupByDay}
             title="Agrupa as linhas por data com subtotal por dia"

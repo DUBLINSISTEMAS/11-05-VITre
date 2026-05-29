@@ -119,7 +119,7 @@ export function StandaloneReceivableDialog({
         if (e.target === e.currentTarget && !submitting) onClose(didCreate);
       }}
     >
-      <div className="bg-bg-card border-line w-full max-w-lg overflow-hidden rounded-xl border shadow-xl">
+      <div className="bg-surface border-line w-full max-w-lg overflow-hidden rounded-xl border shadow-xl">
         <div className="border-line flex items-start justify-between gap-4 border-b px-5 py-4">
           <div>
             <h3
@@ -193,7 +193,7 @@ export function StandaloneReceivableDialog({
                   autoFocus
                 />
                 {searchOpen && hits.length > 0 ? (
-                  <div className="border-line absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-md border bg-bg-card shadow-lg">
+                  <div className="border-line absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-md border bg-surface shadow-lg">
                     {hits.map((h) => (
                       <button
                         key={h.id}

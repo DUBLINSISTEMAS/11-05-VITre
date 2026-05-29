@@ -261,7 +261,7 @@ export function OrdersToolbar({
         >
           <FilterIcon size={13} /> Filtros
         </summary>
-        <div className="absolute right-0 top-9 z-10 w-72 rounded-lg border border-line bg-bg-card p-3 shadow-lg">
+        <div className="absolute right-0 top-9 z-10 w-72 rounded-lg border border-line bg-surface p-3 shadow-lg">
           <p className="text-eyebrow mb-2">Período personalizado</p>
           <div className="grid grid-cols-2 gap-2 text-[12.5px]">
             <label className="flex flex-col gap-1">

@@ -552,7 +552,7 @@ function ConfirmDialog({
         if (e.target === e.currentTarget && !submitting) onCancel();
       }}
     >
-      <div className="bg-bg-card border-line w-full max-w-md rounded-xl border p-5 shadow-xl">
+      <div className="bg-surface border-line w-full max-w-md rounded-xl border p-5 shadow-xl">
         <div className="flex items-start gap-3">
           <div className="bg-brand-wash text-brand mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full">
             <CheckIcon size={18} />

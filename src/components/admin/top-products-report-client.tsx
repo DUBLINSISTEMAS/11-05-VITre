@@ -154,7 +154,7 @@ export function TopProductsReportClient({
                   className={`border-line border px-2 py-1 text-[11px] tabular-nums first:rounded-l-md last:rounded-r-md ${
                     currentPeriodo === p.value
                       ? "bg-brand text-white border-brand"
-                      : "bg-bg-card text-ink-2 hover:bg-bg-app"
+                      : "bg-surface text-ink-2 hover:bg-bg-app"
                   }`}
                 >
                   {p.label}
@@ -173,7 +173,7 @@ export function TopProductsReportClient({
                 className={`border-line rounded-l-md border px-2 py-1 text-[11px] ${
                   orderBy === "revenue"
                     ? "bg-brand text-white border-brand"
-                    : "bg-bg-card text-ink-2 hover:bg-bg-app"
+                    : "bg-surface text-ink-2 hover:bg-bg-app"
                 }`}
               >
                 Faturamento
@@ -184,7 +184,7 @@ export function TopProductsReportClient({
                 className={`border-line rounded-r-md border border-l-0 px-2 py-1 text-[11px] ${
                   orderBy === "quantity"
                     ? "bg-brand text-white border-brand"
-                    : "bg-bg-card text-ink-2 hover:bg-bg-app"
+                    : "bg-surface text-ink-2 hover:bg-bg-app"
                 }`}
               >
                 Quantidade
