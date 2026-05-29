@@ -65,22 +65,21 @@ export const ADMIN_NAV_HOME: AdminNavItem = {
   exact: true,
 };
 
-// Onda L1 (2026-05-29) — sidebar minimalista. Founder reportou
-// "feio, sem logica, polui o dia-a-dia" no estado anterior (4 grupos,
-// ~25 itens, vocabulario inconsistente). Regra "funciona ou esconde"
-// aplicada com forca: cada item exposto ENTREGA fluxo ponta-a-ponta.
+// Sidebar minimalista — Onda L1 (limpeza estrutural) -> L4 (estoque
+// consolidado) -> L5 (Loja online opt-in) -> L6 (cleanup final). Founder
+// rejeitou o estado pre-L1 ("feio, sem logica, polui o dia-a-dia") com
+// 4 grupos e 25 itens. Regra "funciona ou esconde" aplicada com forca.
 //
-// Escondidos da nav (rotas seguem vivas por URL pra deep-link e fallback):
-//   /admin/contatos          — Recados do site (feature morta, removida da UI)
-//   /admin/produtos/custos   — duplicava /admin/produtos (custo ja vive la)
-//   /admin/estoque/parado    — tab interna de /admin/estoque (planejado)
-//   /admin/estoque/vencendo  — tab interna de /admin/estoque (planejado)
-//   /admin/clientes/grupos   — tab interna de /admin/clientes (planejado)
-//   /admin/equipe            — RBAC nao chegou (storeMembership pendente)
-//   /admin/assinatura        — Stripe nao integrado
+// Estrutura final: Inicio + 4 grupos (Operacao / Cadastros / Gestao /
+// Loja online opt-in). 16 itens visiveis (era 25). Grupo "loja-config"
+// renderiza como <details> fechado quando a loja nao tem produto
+// publicado (ver SidebarContent).
 //
-// Estrutura: Inicio + 4 grupos (Operacao, Cadastros, Gestao, Loja online).
-// Total: 17 itens visiveis vs 25 anteriores.
+// Rotas mortas (Onda L1): /admin/contatos, /admin/produtos/custos —
+// arquivos deletados, links externos redirecionam pra equivalentes.
+// Rotas vivas mas fora do menu: /admin/estoque/{parado,vencendo} viraram
+// tabs internas L4 (redirect server-side preserva links); /admin/clientes/grupos
+// vira tab interna na proxima onda.
 export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
   {
     k: "operacao",

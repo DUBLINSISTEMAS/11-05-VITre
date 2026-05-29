@@ -1,16 +1,13 @@
-// LojaOnlineSnapshot — Bloco F.2.4 da ressignificação (2026-05-28).
+// LojaOnlineSnapshot — Bloco F.2.4 (2026-05-28), gate L6 (2026-05-29).
 //
-// Linha COMPACTA no rodapé do dashboard mostrando estado da loja online
-// pra responder a pergunta-mãe #7: "Como tá indo a loja online?".
+// Linha COMPACTA no rodapé do dashboard mostrando estado da loja online.
+// Cada item linkável pra rota de resolução.
 //
-// Conselho 2026-05-28: lojista NÃO QUER analytics genérico (visitas,
-// conversão — fora do escopo F sem Plausible). Quer saber o ACIONÁVEL:
-//   1. Tem recado WhatsApp aguardando contato? (urgente)
-//   2. Tem produto publicado que não tem foto? (vergonhoso)
-//   3. Quantos produtos estão na vitrine? (saúde do catálogo)
-//   4. Qual o endereço da minha loja? (acessar rápido)
-//
-// Layout horizontal denso. Cada item linkável pra rota de resolução.
+// Onda L6 (2026-05-29) — gate de visibilidade: quando a loja NAO tem
+// produto publicado, esconde o bloco inteiro. Lojista que so vende
+// balcao+WhatsApp nao precisa ver "Nenhum produto publicado" perpetuo
+// poluindo o dashboard. Mesma logica do opt-in da sidebar L5.
+// Volta a aparecer assim que o primeiro produto for publicado.
 
 import {
   CameraOffIcon,
@@ -26,6 +23,12 @@ interface LojaOnlineSnapshotProps {
 }
 
 export function LojaOnlineSnapshot({ data }: LojaOnlineSnapshotProps) {
+  // Gate L6 — esconde quando nao ha storefront ativo (zero publicados,
+  // zero sem foto). Bloco sumir e melhor que mostrar mensagem perpetua.
+  if (data.produtosPublicados === 0 && data.produtosSemFoto === 0) {
+    return null;
+  }
+
   return (
     <section className="b3-loja-online" aria-label="Loja online">
       <h2 className="b3-loja-online-title">Loja online</h2>

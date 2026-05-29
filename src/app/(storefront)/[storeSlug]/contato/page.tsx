@@ -1,8 +1,9 @@
 /**
  * Página /[storeSlug]/contato — Sprint 5.2 (2026-05-22).
  *
- * Formulário público de contato (recado). Lojista vê os recados em
- * /admin/contatos. Mesma tabela `lead` com source='contact_form'.
+ * Formulário público de contato (recado). Grava na tabela `lead` com
+ * source='contact_form'. Painel admin removido em Onda L1 (2026-05-29) —
+ * dados ficam preservados na tabela mas nao ha UI admin que consuma.
  * Anti-spoofing: storeSlug resolvido server-side via getStoreBySlug.
  */
 import { Building2, MessageCircle } from "lucide-react";

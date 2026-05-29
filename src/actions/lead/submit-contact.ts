@@ -4,8 +4,9 @@
  * submitContactMessage — Sprint 5.2 (2026-05-22).
  *
  * Formulário público de contato no storefront (/[storeSlug]/contato).
- * Aqui o cliente preenche nome + telefone + mensagem livre e o lojista
- * vê em /admin/contatos.
+ * Cliente preenche nome + telefone + mensagem livre e grava na tabela
+ * `lead`. Painel admin removido em Onda L1 (2026-05-29) — dados ficam
+ * preservados na tabela mas nao ha UI que consuma.
  *
  * Anon-callable (anti-spoofing por storeSlug resolvido server-side
  * via getStoreBySlug, rate limit por IP).
