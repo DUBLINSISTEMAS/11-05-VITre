@@ -483,9 +483,14 @@ function EmptyState() {
       <h2 className="text-lg font-semibold text-ink-1">
         Sem vendas por enquanto
       </h2>
-      <p className="text-ink-4 max-w-sm text-sm">
-        Quando algum cliente fechar uma compra pelo WhatsApp na sua vitrine,
-        a venda aparece aqui com o código curto.
+      <p className="text-ink-4 max-w-md text-sm">
+        Use o botão{" "}
+        <strong className="text-ink-2">Nova venda</strong> acima (ou{" "}
+        <kbd className="b3-newsale-kbd inline-block px-1.5 py-0.5 text-[10px]">
+          F2
+        </kbd>
+        ) pra registrar uma venda no balcão agora — ou aguarde algum cliente
+        finalizar pela loja online / WhatsApp. As duas aparecem aqui.
       </p>
     </div>
   );

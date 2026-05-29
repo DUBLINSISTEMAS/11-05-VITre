@@ -260,43 +260,86 @@ export function ResultadoClient({
         </button>
       </div>
 
-      {/* Hero card de LUCRO LÍQUIDO --------------------------------- */}
-      <article
-        className="b3-card relative overflow-hidden p-6 sm:p-8"
-        aria-label="Lucro líquido do período"
-      >
-        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
-          <div>
-            <p className="text-ink-4 text-[11px] font-bold uppercase tracking-[0.08em]">
-              Lucro líquido — {period}
-            </p>
-            <p
-              className={
-                "mt-1 text-[40px] font-bold leading-none tabular-nums tracking-tight sm:text-[56px]" +
-                (current.operationalProfitInCents < 0 ? " text-rose-600" : "")
-              }
+      {/* Bloco D UX (2026-05-28) — sem vendas no período: hero gigante de
+          "R$ 0,00" assustava sem orientar. Agora escondemos a equação
+          detalhada e mostramos próximo passo claro. */}
+      {current.totalOrderCount === 0 ? (
+        <article
+          className="b3-card relative overflow-hidden p-6 sm:p-8"
+          aria-label="Sem vendas no período"
+        >
+          <p className="text-ink-4 text-[11px] font-bold uppercase tracking-[0.08em]">
+            Resultado — {period}
+          </p>
+          <h2 className="text-ink-1 mt-2 text-[24px] font-semibold leading-tight sm:text-[28px]">
+            Nenhuma venda nesse período ainda.
+          </h2>
+          <p className="text-ink-3 mt-2 max-w-xl text-[13px] leading-snug">
+            O Resultado aparece aqui automaticamente assim que você fecha a
+            primeira venda. Já descontamos tudo (custo dos produtos, taxa
+            real do cartão, comissão de vendedora e despesas operacionais)
+            pra você ver o lucro líquido REAL.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              href="/admin/pedidos"
+              className="b3-btn b3-btn--cta"
+              prefetch
             >
-              {formatBRL(current.operationalProfitInCents)}
-            </p>
-            <p className="text-ink-3 mt-2 text-[13px]">
-              É o que sobrou pra você esse período. Já descontei TUDO: custo
-              dos produtos, taxa real do cartão e despesas operacionais.
-            </p>
+              Abrir Vendas
+            </Link>
+            <Link
+              href="/admin/financeiro/pagar"
+              className="b3-btn"
+              prefetch
+            >
+              Cadastrar despesa fixa
+            </Link>
           </div>
+        </article>
+      ) : (
+        <article
+          className="b3-card relative overflow-hidden p-6 sm:p-8"
+          aria-label="Lucro líquido do período"
+        >
+          <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+            <div>
+              <p className="text-ink-4 text-[11px] font-bold uppercase tracking-[0.08em]">
+                Lucro líquido — {period}
+              </p>
+              <p
+                className={
+                  "mt-1 text-[40px] font-bold leading-none tabular-nums tracking-tight sm:text-[56px]" +
+                  (current.operationalProfitInCents < 0
+                    ? " text-rose-600"
+                    : "")
+                }
+              >
+                {formatBRL(current.operationalProfitInCents)}
+              </p>
+              <p className="text-ink-3 mt-2 text-[13px]">
+                É o que sobrou pra você esse período. Já descontei TUDO:
+                custo dos produtos, taxa real do cartão e despesas
+                operacionais.
+              </p>
+            </div>
 
-          {/* Delta vs período de comparação selecionado */}
-          {previous !== null ? (
-            <DeltaPill
-              currentInCents={current.operationalProfitInCents}
-              previousInCents={previous.operationalProfitInCents}
-              previousLabel={
-                compareMode === "yoy" ? "vs mesmo período ano passado" : "vs período anterior"
-              }
-              previousPct={profitDelta}
-            />
-          ) : null}
-        </div>
-      </article>
+            {/* Delta vs período de comparação selecionado */}
+            {previous !== null ? (
+              <DeltaPill
+                currentInCents={current.operationalProfitInCents}
+                previousInCents={previous.operationalProfitInCents}
+                previousLabel={
+                  compareMode === "yoy"
+                    ? "vs mesmo período ano passado"
+                    : "vs período anterior"
+                }
+                previousPct={profitDelta}
+              />
+            ) : null}
+          </div>
+        </article>
+      )}
 
       {/* Aviso CMV cobertura -------------------------------------- */}
       {current.cogsCoveragePercent < 100 ? (
@@ -315,7 +358,11 @@ export function ResultadoClient({
         </div>
       ) : null}
 
-      {/* Equação visual: como cheguei nesse número ---------------- */}
+      {/* Equação visual: como cheguei nesse número ----------------
+          Bloco D UX (2026-05-28): só renderiza quando há vendas. Loja
+          zerada veria todas as linhas em R$ 0,00, o que confunde. O hero
+          acima já conta a história "ainda sem vendas, comece aqui". */}
+      {current.totalOrderCount > 0 ? (
       <section
         className="b3-card overflow-hidden"
         aria-label="Detalhamento do cálculo"
@@ -428,6 +475,7 @@ export function ResultadoClient({
           />
         </ul>
       </section>
+      ) : null}
 
       {/* Rodapé universal pra impressão ----------------------------- */}
       <footer className="text-ink-4 text-[10.5px] print:mt-4">

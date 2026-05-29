@@ -137,52 +137,11 @@ function BasicoSubCard({
 }: TabIdentidadeProps) {
   return (
     <SubCard title="Básico">
-      {/* Tipo de produto vem PRIMEIRO — decisão conceitual que define o
-          que o resto do form vai precisar (raw_material esconde abas de
-          preço/catálogo público, ver R3). Helper text inline troca por
-          opção pra explicar sem manual. */}
-      <div className="space-y-1.5">
-        <Label htmlFor="product-kind" required>
-          Tipo de produto
-        </Label>
-        <Controller
-          control={control}
-          name="kind"
-          render={({ field }) => {
-            const current = KIND_OPTIONS.find((o) => o.value === field.value);
-            return (
-              <>
-                <Select
-                  value={field.value}
-                  onValueChange={(v) => field.onChange(v)}
-                  disabled={isPending}
-                >
-                  <SelectTrigger
-                    id="product-kind"
-                    aria-invalid={!!errors.kind}
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {KIND_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {current ? (
-                  <p className="text-ink-4 text-xs">{current.helper}</p>
-                ) : null}
-              </>
-            );
-          }}
-        />
-        {errors.kind?.message ? (
-          <p className="text-destructive text-xs">{errors.kind.message}</p>
-        ) : null}
-      </div>
-
+      {/* Bloco D UX (2026-05-28) — antes "Tipo" vinha PRIMEIRO, antes do
+          nome. Joalheiro recém-chegado parava 30s pensando entre
+          matéria-prima/produto/serviço sem ter ainda nem o nome do
+          produto na cabeça. Agora: Nome > Descrição > Tipo (com label
+          "avançado" pra sinalizar que 95% deixa default). */}
       <div className="space-y-1.5">
         <Label htmlFor="product-name" required>
           Nome
@@ -213,6 +172,54 @@ function BasicoSubCard({
           <p className="text-destructive text-xs">
             {errors.description.message}
           </p>
+        ) : null}
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="product-kind">
+          Tipo de produto{" "}
+          <span className="text-ink-4 font-normal text-[11px]">(avançado)</span>
+        </Label>
+        <Controller
+          control={control}
+          name="kind"
+          render={({ field }) => {
+            const current = KIND_OPTIONS.find((o) => o.value === field.value);
+            return (
+              <>
+                <Select
+                  value={field.value}
+                  onValueChange={(v) => field.onChange(v)}
+                  disabled={isPending}
+                >
+                  <SelectTrigger
+                    id="product-kind"
+                    aria-invalid={!!errors.kind}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {KIND_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {current ? (
+                  <p className="text-ink-4 text-xs">{current.helper}</p>
+                ) : (
+                  <p className="text-ink-4 text-xs">
+                    Default: produto pra venda. Mude só se for matéria-prima
+                    (ouro 18k, mostruário) ou serviço.
+                  </p>
+                )}
+              </>
+            );
+          }}
+        />
+        {errors.kind?.message ? (
+          <p className="text-destructive text-xs">{errors.kind.message}</p>
         ) : null}
       </div>
     </SubCard>
