@@ -134,6 +134,11 @@ const checks = [
   { id: "82d", desc: "order_payment.card_fee_snapshot_in_cents + settlement_date columns", q: "SELECT 1 FROM information_schema.columns WHERE table_name='order_payment' AND column_name IN ('card_fee_snapshot_in_cents','settlement_date') HAVING count(*) = 2" },
   { id: "82e", desc: "order_item.commission_snapshot_in_cents column", q: "SELECT 1 FROM information_schema.columns WHERE table_name='order_item' AND column_name='commission_snapshot_in_cents'" },
   { id: "82f", desc: "receivable_payment late_fee_applied + interest_applied columns", q: "SELECT 1 FROM information_schema.columns WHERE table_name='receivable_payment' AND column_name IN ('late_fee_applied_in_cents','interest_applied_in_cents') HAVING count(*) = 2" },
+  // SQL 83 (2026-05-28) — product_cost_component (faxina): tabela de componentes
+  // de custo do produto (matérias-primas, frete, mão-de-obra). Coberta também
+  // por drizzle/0035 (idempotente — IF NOT EXISTS no SQL bruto, drizzle gera
+  // CREATE TABLE puro). Sentinela aqui valida prod.
+  { id: "83",  desc: "product_cost_component table com RLS forced (2026-05-28)", q: "SELECT 1 FROM pg_class WHERE relname='product_cost_component' AND relrowsecurity=true" },
 ];
 
 const url = process.env.DIRECT_URL;

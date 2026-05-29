@@ -239,6 +239,27 @@
       "when": 1779388927580,
       "tag": "0033_order_item_discount",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1779475327580,
+      "tag": "0034_email_verified_grandfathering",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1779648127580,
+      "tag": "0035_product_cost_component",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1779734527580,
+      "tag": "0036_reconcile_supabase_sql",
+      "breakpoints": true
     }
   ]
 }
