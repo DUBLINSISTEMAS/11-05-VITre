@@ -577,6 +577,15 @@ export default async function ProdutosPage({
               // tabula pro proximo. Recupera fluxo da /admin/produtos/custos
               // (deletada em L1) sem duplicar tela.
               inlineEditCost={statusFilter === "no-cost"}
+              // Onda R6 (2026-05-29) — sobra dupla (a vista + 6x credito).
+              // Mostra so quando loja aceita cartao E permite ate 6x. Caso
+              // contrario passa null e SobraCell renderiza 1 linha (regua
+              // funciona-ou-esconde). Taxa real da maquineta em bps.
+              creditFee6xBps={
+                store.acceptsCard && store.cardMaxInstallments >= 6
+                  ? store.cardRealFeeBpsCredit2xTo6x
+                  : null
+              }
             />
           )}
 

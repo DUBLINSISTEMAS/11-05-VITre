@@ -92,6 +92,13 @@ export interface ProductsTableProps {
    * `?status=no-cost` esta ativo.
    */
   inlineEditCost?: boolean;
+  /**
+   * Onda R6 (2026-05-29) — taxa real maquineta em 6x credito (bps).
+   * Quando number, SobraCell renderiza linha extra "R$ X em 6×". Quando
+   * null, mostra so a sobra a vista (regua funciona-ou-esconde: loja
+   * que nao aceita cartao OU max < 6 nao deve ver simulacao 6x).
+   */
+  creditFee6xBps?: number | null;
 }
 
 function getInitials(name: string): string {
@@ -105,6 +112,7 @@ function getInitials(name: string): string {
 export function ProductsTable({
   products,
   inlineEditCost = false,
+  creditFee6xBps = null,
 }: ProductsTableProps) {
   const router = useRouter();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -301,6 +309,7 @@ export function ProductsTable({
                         ? localCosts.get(p.id) ?? null
                         : p.costPriceInCents
                     }
+                    creditFee6xBps={creditFee6xBps}
                   />
                 </td>
                 <td>
@@ -393,13 +402,21 @@ function StockCell({
 }
 
 /**
- * Coluna SOBRA — Onda L3 (2026-05-29). Refatora a MarginCell antiga
- * (que mostrava porcentagem). Founder pediu valor absoluto: lojista
- * pequeno BR entende "essa peca da R$ 12,00" melhor que "margem 35%".
+ * Coluna SOBRA — Onda L3 (2026-05-29), evoluida em Onda R6 (2026-05-29).
  *
- * Calcula `preco − custo` (sem taxa cartao porque cartao varia por
- * canal/parcela; a simulacao detalhada vive no card "Sobra por venda"
- * dentro do drawer). Cor semaforica:
+ * Refatora a MarginCell antiga (que mostrava porcentagem). Founder pediu
+ * valor absoluto: lojista pequeno BR entende "essa peca da R$ 12,00"
+ * melhor que "margem 35%".
+ *
+ * R6 — duas linhas quando loja aceita 6x credito:
+ *   Linha 1 (destaque) -> sobra a vista (preco − custo), cor semaforica
+ *   Linha 2 (sutil)     -> sobra em 6x (preco − custo − taxa6x),
+ *                          cor semaforica, fonte menor, hide em mobile
+ *
+ * Quando `creditFee6xBps == null` (loja sem cartao OU max < 6),
+ * renderiza so a linha 1 — regua "funciona ou esconde".
+ *
+ * Cor semaforica:
  *   prejuizo (sobra < 0) -> vermelho
  *   apertado (margem < 10%) -> amarelo
  *   confortavel (>= 10%) -> verde
@@ -410,10 +427,12 @@ function SobraCell({
   basePriceInCents,
   promoPriceInCents,
   costPriceInCents,
+  creditFee6xBps = null,
 }: {
   basePriceInCents: number;
   promoPriceInCents: number | null;
   costPriceInCents?: number | null;
+  creditFee6xBps?: number | null;
 }) {
   if (typeof costPriceInCents !== "number" || costPriceInCents < 0) {
     return (
@@ -429,19 +448,42 @@ function SobraCell({
   if (price <= 0) {
     return <span className="text-ink-4">—</span>;
   }
-  const sobra = price - costPriceInCents;
-  const marginPct = (sobra / price) * 100;
-  const color =
-    sobra < 0
-      ? "var(--danger)"
-      : marginPct < 10
-        ? "var(--warn)"
-        : "var(--ok)";
+  const sobraVista = price - costPriceInCents;
+  const colorVista = toneOf(sobraVista, (sobraVista / price) * 100);
+
+  if (creditFee6xBps == null) {
+    return (
+      <span className="tabular-nums" style={{ color: colorVista }}>
+        {formatBRL(sobraVista)}
+      </span>
+    );
+  }
+
+  const fee6x = Math.round((price * creditFee6xBps) / 10000);
+  const sobra6x = sobraVista - fee6x;
+  const color6x = toneOf(sobra6x, (sobra6x / price) * 100);
+  const feePct = (creditFee6xBps / 100).toFixed(2).replace(".", ",");
+
   return (
-    <span className="tabular-nums" style={{ color }}>
-      {formatBRL(sobra)}
+    <span className="inline-flex flex-col items-end leading-tight">
+      <span className="tabular-nums" style={{ color: colorVista }}>
+        {formatBRL(sobraVista)}
+      </span>
+      <span
+        className="tabular-nums hidden text-[10.5px] font-normal sm:inline"
+        style={{ color: color6x, opacity: 0.85 }}
+        title={`Em 6× crédito: taxa real da maquininha ${feePct}% deduzida do preço.`}
+      >
+        {formatBRL(sobra6x)} <span className="text-ink-4">em 6×</span>
+      </span>
     </span>
   );
+}
+
+function toneOf(value: number, marginPct: number): string {
+  if (value < 0) return "var(--danger)";
+  if (marginPct < 10) return "var(--warn)";
+  return "var(--ok)";
 }
 
 /**

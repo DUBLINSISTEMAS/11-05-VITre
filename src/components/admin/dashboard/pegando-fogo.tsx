@@ -45,7 +45,8 @@ const SINAL_TYPE_LABEL: Record<SinalType, string> = {
   fiado_atrasado: "fiados",
   estoque_critico_novo: "estoque",
   orcamento_vencendo: "orçamentos",
-  recados_novos: "recados",
+  // Onda L1 (2026-05-29) — `recados_novos` removido junto com a feature
+  // de Recados do site. Mantemos o label apenas pros tipos vivos.
 };
 
 function formatCheckedAt(d: Date): string {

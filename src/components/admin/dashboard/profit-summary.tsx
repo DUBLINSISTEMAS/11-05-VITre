@@ -50,6 +50,24 @@ function deltaPct(current: number, previous: number): number | null {
   return ((current - previous) / Math.abs(previous)) * 100;
 }
 
+/**
+ * Lucro real do periodo. `DreSimpleSummary` ja expoe
+ * `operationalProfitInCents` (= grossProfit - despesas - comissao). Esse
+ * eh o numero canonico do DRE, mesmo do /admin/relatorios/resultado.
+ */
+function profitOf(s: DreSimpleSummary): number {
+  return s.operationalProfitInCents;
+}
+
+/**
+ * Margem operacional derivada. `null` quando receita zero (sem venda)
+ * pra evitar divisao por zero. UI renderiza "— margem" nesse caso.
+ */
+function marginPctOf(s: DreSimpleSummary): number | null {
+  if (s.netRevenueInCents <= 0) return null;
+  return (s.operationalProfitInCents / s.netRevenueInCents) * 100;
+}
+
 export function ProfitSummary({ primary, secondary }: ProfitSummaryProps) {
   const hasAnyData =
     primary.current.totalOrderCount > 0 ||
@@ -71,10 +89,12 @@ export function ProfitSummary({ primary, secondary }: ProfitSummaryProps) {
 }
 
 function PrimaryBlock({ window }: { window: DashboardLucroWindow }) {
-  const profit = window.current.netProfitInCents;
-  const margin = window.current.netMarginPct;
+  const profit = profitOf(window.current);
+  const margin = marginPctOf(window.current);
   const orderCount = window.current.totalOrderCount;
-  const delta = deltaPct(profit, window.previous.netProfitInCents);
+  const delta = window.previous
+    ? deltaPct(profit, profitOf(window.previous))
+    : null;
   const tone = profitTone(profit, margin);
 
   if (orderCount === 0) {
@@ -152,10 +172,12 @@ function PrimaryBlock({ window }: { window: DashboardLucroWindow }) {
 }
 
 function SecondaryBlock({ window }: { window: DashboardLucroWindow }) {
-  const profit = window.current.netProfitInCents;
+  const profit = profitOf(window.current);
   const orderCount = window.current.totalOrderCount;
-  const delta = deltaPct(profit, window.previous.netProfitInCents);
-  const tone = profitTone(profit, window.current.netMarginPct);
+  const delta = window.previous
+    ? deltaPct(profit, profitOf(window.previous))
+    : null;
+  const tone = profitTone(profit, marginPctOf(window.current));
 
   return (
     <div className="mt-3 flex flex-wrap items-baseline justify-between gap-2 border-t border-line pt-3">
