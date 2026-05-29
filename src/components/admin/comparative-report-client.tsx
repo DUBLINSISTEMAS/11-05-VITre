@@ -18,10 +18,8 @@ import { useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import type { ComparativeBucket } from "@/actions/reports/load-comparative-report";
-import type {
-  DreSimpleSummary,
-  ReportStoreInfo,
-} from "@/actions/reports/types";
+import type { DreSimpleSummary } from "@/actions/reports/types";
+import type { ReportStoreInfo } from "@/components/admin/report/report-layout";
 import { Button } from "@/components/ui/button";
 import { Money, profitTone } from "@/components/ui/money";
 import { downloadCsv, escapeCsvCell } from "@/lib/csv";
