@@ -32,6 +32,10 @@ interface PurchaseLineUI {
   // pra não vender vencido. Joalheria/roupa deixa em branco.
   batchNumber: string;
   expiresAtInput: string; // "YYYY-MM-DD" do <input type=date>
+  // Bloco H UX (2026-05-29) — custo atual do produto pra mostrar "anterior
+  // R$X → R$Y (+Z%)" debaixo do input. NULL quando produto sem custo
+  // cadastrado.
+  lastCostInCents: number | null;
 }
 
 const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
@@ -73,6 +77,20 @@ export function NewPurchaseForm({ suppliers }: NewPurchaseFormProps) {
   const [lines, setLines] = useState<PurchaseLineUI[]>([]);
   const [paidNow, setPaidNow] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pix");
+
+  // Bloco H UX (2026-05-29) — agregados da NF.
+  const [freightInputBRL, setFreightInputBRL] = useState("");
+  const [discountInputBRL, setDiscountInputBRL] = useState("");
+  const [taxesInputBRL, setTaxesInputBRL] = useState("");
+  // Parcelado: 1 = à vista. > 1 = N parcelas com firstDueDate + intervalo.
+  const [installmentsCount, setInstallmentsCount] = useState(1);
+  // Default firstDueDate = hoje + 30 dias (formatado YYYY-MM-DD).
+  const [firstDueDateInput, setFirstDueDateInput] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d.toISOString().slice(0, 10);
+  });
+  const [installmentIntervalDays, setInstallmentIntervalDays] = useState(30);
 
   // Busca de produto
   const [searchQ, setSearchQ] = useState("");
@@ -132,6 +150,11 @@ export function NewPurchaseForm({ suppliers }: NewPurchaseFormProps) {
     product: PdvProductHit,
     variant: PdvProductVariantHit | null,
   ) {
+    // Bloco H UX (2026-05-29) — usa o costPriceInCents atual da loja como
+    // sugestão visual ("anterior R$ X") pra lojista ver delta. Não pré-
+    // popula o input pq custo da nota mudou na maioria dos casos.
+    // Atualmente PdvProductHit não traz costPriceInCents — extensão futura
+    // do hit. Por enquanto fica null e a UI esconde o badge.
     setLines((prev) => [
       ...prev,
       {
@@ -141,10 +164,10 @@ export function NewPurchaseForm({ suppliers }: NewPurchaseFormProps) {
         variantId: variant?.id ?? null,
         variantName: variant?.name ?? null,
         quantity: 1,
-        // Sugere o custo atual do produto, se houver
         unitCostInputBRL: "",
         batchNumber: "",
         expiresAtInput: "",
+        lastCostInCents: null,
       },
     ]);
     setSearchQ("");
@@ -163,15 +186,48 @@ export function NewPurchaseForm({ suppliers }: NewPurchaseFormProps) {
     setLines((prev) => prev.filter((l) => l.uiId !== uiId));
   }
 
-  // Cálculo do total live
-  const totalInCents = lines.reduce((acc, l) => {
+  // Bloco H UX (2026-05-29) — total = subtotal + frete + impostos − desconto.
+  const subtotalInCents = lines.reduce((acc, l) => {
     const unit = parseBRLToCents(l.unitCostInputBRL) ?? 0;
     return acc + unit * l.quantity;
   }, 0);
+  const freightInCents = parseBRLToCents(freightInputBRL) ?? 0;
+  const taxesInCents = parseBRLToCents(taxesInputBRL) ?? 0;
+  const discountInCents = parseBRLToCents(discountInputBRL) ?? 0;
+  const totalInCents = Math.max(
+    0,
+    subtotalInCents + freightInCents + taxesInCents - discountInCents,
+  );
+  const discountOverflow =
+    discountInCents > subtotalInCents + freightInCents + taxesInCents;
+
+  // Bloco H UX (2026-05-29) — gera parcelas dinamicamente a partir do
+  // installmentsCount + firstDueDate + intervalo. Distribui em centavos:
+  // primeira parcela absorve a sobra (totalInCents - (N-1) * floor).
+  const installmentsPreview: Array<{ dueDate: string; amountInCents: number }> =
+    (() => {
+      if (installmentsCount <= 1) return [];
+      const base = new Date(firstDueDateInput);
+      if (Number.isNaN(base.getTime())) return [];
+      const perInstallment = Math.floor(totalInCents / installmentsCount);
+      const remainder = totalInCents - perInstallment * installmentsCount;
+      const out: Array<{ dueDate: string; amountInCents: number }> = [];
+      for (let i = 0; i < installmentsCount; i++) {
+        const d = new Date(base);
+        d.setDate(d.getDate() + i * installmentIntervalDays);
+        out.push({
+          dueDate: d.toISOString().slice(0, 10),
+          amountInCents: i === 0 ? perInstallment + remainder : perInstallment,
+        });
+      }
+      return out;
+    })();
 
   const canSubmit =
     !isPending &&
     lines.length > 0 &&
+    !discountOverflow &&
+    totalInCents > 0 &&
     lines.every(
       (l) =>
         l.quantity > 0 &&
@@ -207,6 +263,11 @@ export function NewPurchaseForm({ suppliers }: NewPurchaseFormProps) {
         paymentMethod: paidNow ? paymentMethod : null,
         paidNow,
         notes: notes.trim() || null,
+        // Bloco H UX (2026-05-29) — agregados da NF + parcelado.
+        freightInCents,
+        discountInCents,
+        taxesInCents,
+        installments: installmentsPreview,
         items: lines.map((l) => ({
           productId: l.productId,
           variantId: l.variantId,
@@ -296,9 +357,81 @@ export function NewPurchaseForm({ suppliers }: NewPurchaseFormProps) {
               maxLength={500}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Ex: chegou com frete, divergência de quantidade, etc"
+              placeholder="Ex: chegou com divergência de quantidade, etc"
               disabled={isPending}
             />
+          </div>
+
+          {/* Bloco H UX (2026-05-29) — agregados da NF. Antes lojista
+              era forçado a embutir frete no custo unitário; agora os 3
+              campos do header carregam tudo separado. */}
+          <div className="border-t border-line/60 pt-3">
+            <div className="text-ink-4 text-[11px] font-bold uppercase tracking-[0.06em] mb-2">
+              Frete, desconto e impostos (da NF)
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-1">
+                <label className="text-ink-2 block text-[12.5px] font-medium">
+                  Frete
+                </label>
+                <div className="flex items-center gap-1">
+                  <span className="text-ink-4 text-[11px]">R$</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={freightInputBRL}
+                    onChange={(e) => setFreightInputBRL(e.target.value)}
+                    placeholder="0,00"
+                    className="b3-input mono w-full"
+                    disabled={isPending}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-ink-2 block text-[12.5px] font-medium">
+                  Desconto
+                </label>
+                <div className="flex items-center gap-1">
+                  <span className="text-ink-4 text-[11px]">R$</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={discountInputBRL}
+                    onChange={(e) => setDiscountInputBRL(e.target.value)}
+                    placeholder="0,00"
+                    className="b3-input mono w-full"
+                    disabled={isPending}
+                  />
+                </div>
+                {discountOverflow ? (
+                  <p className="text-destructive text-[11px]">
+                    Desconto maior que subtotal + frete + impostos.
+                  </p>
+                ) : null}
+              </div>
+              <div className="space-y-1">
+                <label className="text-ink-2 block text-[12.5px] font-medium">
+                  Impostos
+                </label>
+                <div className="flex items-center gap-1">
+                  <span className="text-ink-4 text-[11px]">R$</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={taxesInputBRL}
+                    onChange={(e) => setTaxesInputBRL(e.target.value)}
+                    placeholder="0,00"
+                    className="b3-input mono w-full"
+                    disabled={isPending}
+                  />
+                </div>
+              </div>
+            </div>
+            <p className="text-ink-4 mt-2 text-[10.5px] leading-snug">
+              Frete e impostos somam ao total. Desconto subtrai. Custo
+              unitário dos itens fica &ldquo;limpo&rdquo; — sem precisar
+              ratear no Excel.
+            </p>
           </div>
         </section>
 
@@ -497,21 +630,139 @@ export function NewPurchaseForm({ suppliers }: NewPurchaseFormProps) {
         </section>
       </div>
 
-      {/* Coluna direita: total + pagamento + submit */}
+      {/* Coluna direita: resumo + pagamento + submit */}
       <aside className="b3-card flex h-fit flex-col gap-4 p-[18px] lg:sticky lg:top-4">
         <div className="text-ink-4 text-[11px] font-bold uppercase tracking-[0.06em]">
           Resumo
         </div>
 
-        <div className="flex items-baseline justify-between">
-          <span className="text-ink-3 text-[14px]">Total</span>
+        {/* Bloco H UX (2026-05-29) — breakdown honesto. Antes era só
+            "Total" sem mostrar como chegou nele. */}
+        <div className="space-y-1 text-[12.5px]">
+          <div className="text-ink-3 flex justify-between">
+            <span>Subtotal dos itens</span>
+            <span className="mono tabular-nums">
+              {formatBRL(subtotalInCents)}
+            </span>
+          </div>
+          {freightInCents > 0 ? (
+            <div className="text-ink-3 flex justify-between">
+              <span>+ Frete</span>
+              <span className="mono tabular-nums">
+                {formatBRL(freightInCents)}
+              </span>
+            </div>
+          ) : null}
+          {taxesInCents > 0 ? (
+            <div className="text-ink-3 flex justify-between">
+              <span>+ Impostos</span>
+              <span className="mono tabular-nums">
+                {formatBRL(taxesInCents)}
+              </span>
+            </div>
+          ) : null}
+          {discountInCents > 0 ? (
+            <div className="text-ink-3 flex justify-between">
+              <span>− Desconto</span>
+              <span className="mono tabular-nums">
+                {formatBRL(discountInCents)}
+              </span>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="border-line flex items-baseline justify-between border-t pt-3">
+          <span className="text-ink-3 text-[14px] font-semibold">Total</span>
           <span className="mono text-ink-1 text-[24px] font-bold tabular-nums">
             {formatBRL(totalInCents)}
           </span>
         </div>
 
         <div className="text-ink-4 text-[12px]">
-          {lines.length} {lines.length === 1 ? "item" : "items"}
+          {lines.length} {lines.length === 1 ? "item" : "itens"}
+        </div>
+
+        {/* Bloco H UX (2026-05-29) — parcelado: dropdown 1/2/3/6/12×,
+            data inicial, intervalo em dias. Lojista com cartão parcelado
+            tem N contas a pagar reais com vencimento separado. Quando
+            parcelas = 1, comportamento legacy (à vista ou a pagar
+            sem data). */}
+        <div className="border-line border-t pt-3 space-y-2">
+          <label className="text-ink-2 block text-[12.5px] font-medium">
+            Parcelamento
+          </label>
+          <select
+            className="b3-input w-full"
+            value={installmentsCount}
+            onChange={(e) => setInstallmentsCount(Number(e.target.value))}
+            disabled={isPending}
+          >
+            <option value={1}>À vista (1×)</option>
+            <option value={2}>2 parcelas</option>
+            <option value={3}>3 parcelas</option>
+            <option value={4}>4 parcelas</option>
+            <option value={6}>6 parcelas</option>
+            <option value={12}>12 parcelas</option>
+          </select>
+          {installmentsCount > 1 ? (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-ink-3 block text-[11px]">
+                    1ª parcela vence
+                  </label>
+                  <input
+                    type="date"
+                    value={firstDueDateInput}
+                    onChange={(e) => setFirstDueDateInput(e.target.value)}
+                    className="b3-input mono w-full text-[12px]"
+                    disabled={isPending}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-ink-3 block text-[11px]">
+                    Intervalo (dias)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={120}
+                    value={installmentIntervalDays}
+                    onChange={(e) =>
+                      setInstallmentIntervalDays(
+                        Math.max(1, Math.min(120, Number(e.target.value) || 30)),
+                      )
+                    }
+                    className="b3-input mono w-full text-[12px]"
+                    disabled={isPending}
+                  />
+                </div>
+              </div>
+              {installmentsPreview.length > 0 ? (
+                <div className="bg-bg-app rounded-md p-2 text-[11px]">
+                  <p className="text-ink-4 mb-1">Resumo das parcelas:</p>
+                  <ul className="text-ink-2 space-y-0.5">
+                    {installmentsPreview.map((p, i) => (
+                      <li
+                        key={p.dueDate + i}
+                        className="flex justify-between tabular-nums"
+                      >
+                        <span>
+                          {i + 1}/{installmentsCount} ·{" "}
+                          {new Date(p.dueDate).toLocaleDateString("pt-BR", {
+                            timeZone: "UTC",
+                          })}
+                        </span>
+                        <span className="mono font-medium">
+                          {formatBRL(p.amountInCents)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </>
+          ) : null}
         </div>
 
         <div className="border-line border-t pt-3 space-y-2">
@@ -523,7 +774,11 @@ export function NewPurchaseForm({ suppliers }: NewPurchaseFormProps) {
               className="b3-checkbox-box"
               disabled={isPending}
             />
-            <span>Pagar agora</span>
+            <span>
+              {installmentsCount > 1
+                ? "Já paguei integralmente"
+                : "Pagar agora"}
+            </span>
           </label>
           <p className="text-ink-4 text-[11px]">
             Marca como pago no momento da criação. Se houver caixa aberto,
