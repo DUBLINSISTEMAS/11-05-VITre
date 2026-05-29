@@ -20,4 +20,11 @@ export const OPEN_PRODUCT_FORM_EVENT = "admin:open-product-form";
 export interface OpenProductFormEventDetail {
   /** UUID do produto pra editar. `null` = abrir form vazio (novo). */
   productId: string | null;
+  /**
+   * Bloco F.1 (2026-05-29) — aba inicial. Quando setada, o ProductForm
+   * abre direto naquela aba (em vez do default "basico"). Usado pelo
+   * card de /admin/produtos/custos pra abrir direto em "Preço & custo"
+   * via CTA "Preencher custo".
+   */
+  initialTab?: "basico" | "imagens" | "preco" | "precificacao" | "estoque" | "variantes" | "loja";
 }

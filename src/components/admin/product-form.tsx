@@ -145,6 +145,12 @@ interface ProductFormProps {
    * mostra todos os campos (fallback conservador).
    */
   storeNiche?: "roupa_feminina" | "joia" | "semijoia" | "perfumaria" | "outro";
+  /**
+   * Bloco F.1 (2026-05-29) — aba ativa inicial. Default "basico". Usado
+   * pelo CTA "Preencher custo" do /admin/produtos/custos pra abrir o
+   * drawer direto na aba "Preço & custo" (initialTab="preco").
+   */
+  initialTab?: TabKey;
   /** Lista de categorias da loja, pra popular o Select. Pode ser vazia. */
   categories: CategoryOption[];
   /**
@@ -257,6 +263,7 @@ export function ProductForm({
   submitRef,
   storeFees,
   onSubmittingChange,
+  initialTab,
 }: ProductFormProps) {
   // Onda 2.3 — campos "Composição/Modelagem/Forro/Lavagem" só fazem
   // sentido pra roupa. Pra joia, semijoia, perfumaria, outro: escondemos.
@@ -336,7 +343,7 @@ export function ProductForm({
   const [submitMode, setSubmitMode] = useState<"save" | "saveAndContinue">(
     "save",
   );
-  const [activeTab, setActiveTab] = useState<TabKey>("basico");
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab ?? "basico");
 
   // Bloco A UX (2026-05-28) — propaga estado de salvamento pro drawer host
   // mostrar spinner no botão Salvar do footer.

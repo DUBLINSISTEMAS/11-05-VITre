@@ -92,12 +92,12 @@ export default async function ProdutosCustosPage({ searchParams }: SearchParams)
       <header>
         <h1 className="b3-page-title flex items-center gap-2">
           <CalculatorIcon className="size-5 text-ink-3" aria-hidden />
-          Preencher custos
+          Custos e sobra por produto
         </h1>
         <p className="b3-page-sub">
-          Por produto: custo, comissão, materiais e lucro líquido REAL por
-          método de pagamento. Cadastra rápido com &ldquo;Novo produto&rdquo;
-          ou edita o cadastro completo no menu (⋮) de cada card.
+          Quanto sobra em cada peça vendida, descontando custo, taxa do
+          cartão e comissão. Cards sem custo aparecem primeiro — clica em
+          &ldquo;Preencher custo&rdquo; pra cadastrar materiais e ver o lucro real.
         </p>
       </header>
 

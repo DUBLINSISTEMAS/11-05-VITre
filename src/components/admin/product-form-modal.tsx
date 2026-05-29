@@ -53,12 +53,26 @@ interface ProductFormModalProps {
   onOpenChange: (open: boolean) => void;
   /** Slug da loja — usado pelo botão "Ver loja". */
   storeSlug: string;
+  /**
+   * Bloco F.1 (2026-05-29) — aba inicial do form. Passada pelo listener
+   * a partir do `initialTab` do CustomEvent. Usado pelo CTA "Preencher
+   * custo" dos cards de /admin/produtos/custos.
+   */
+  initialTab?:
+    | "basico"
+    | "imagens"
+    | "preco"
+    | "precificacao"
+    | "estoque"
+    | "variantes"
+    | "loja";
 }
 
 export function ProductFormModal({
   target,
   onOpenChange,
   storeSlug,
+  initialTab,
 }: ProductFormModalProps) {
   const [data, setData] = useState<ProductFormDrawerData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -255,6 +269,7 @@ export function ProductFormModal({
                   key={data.initialData.productId}
                   embedded
                   submitRef={submitRef}
+                  initialTab={initialTab}
                   initialData={data.initialData}
                   categories={data.categories}
                   brands={data.brands}
@@ -404,6 +419,12 @@ export function ProductFormModalListener({
   const editFromUrl = searchParams.get("edit");
 
   const [target, setTarget] = useState<string | "new" | null>(editFromUrl);
+  // Bloco F.1 (2026-05-29) — aba inicial vinda do CustomEvent (não
+  // persistida na URL: estado efêmero, reseta ao fechar). Quando o
+  // listener escuta abrir com initialTab="preco", propaga pro modal.
+  const [initialTab, setInitialTab] = useState<
+    OpenProductFormEventDetail["initialTab"] | undefined
+  >(undefined);
 
   // Sync com URL — navegação ou link externo que vem com ?edit= mantém
   // o modal alinhado.
@@ -418,6 +439,7 @@ export function ProductFormModalListener({
       const id = ce.detail?.productId ?? null;
       const next = id ?? "new";
       setTarget(next);
+      setInitialTab(ce.detail?.initialTab);
       const params = new URLSearchParams(searchParams.toString());
       params.set("edit", next);
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
@@ -430,6 +452,7 @@ export function ProductFormModalListener({
     (open: boolean) => {
       if (!open) {
         setTarget(null);
+        setInitialTab(undefined);
         const params = new URLSearchParams(searchParams.toString());
         params.delete("edit");
         const qs = params.toString();
@@ -447,6 +470,7 @@ export function ProductFormModalListener({
       target={target}
       onOpenChange={handleOpenChange}
       storeSlug={storeSlug}
+      initialTab={initialTab}
     />
   );
 }
