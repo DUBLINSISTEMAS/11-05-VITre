@@ -6,7 +6,10 @@ import { loadDashboardKpis } from "@/actions/dashboard/load-kpis";
 import { loadDashboardSinais } from "@/actions/dashboard/load-sinais";
 import { loadDashboardLucro } from "@/actions/reports/load-dashboard-lucro";
 import { DateRangePill } from "@/components/admin/dashboard/date-range-pill";
-import { HeroLucro } from "@/components/admin/dashboard/hero-lucro";
+// Onda R4 (2026-05-29) — HeroLucro splash deletado. ProfitSummary
+// Stripe-style: 1 numero principal modesto + delta + breakdown denso.
+// Founder pediu sistema-minimalista, nao SaaS-EUA.
+import { ProfitSummary } from "@/components/admin/dashboard/profit-summary";
 // Onda M4 (2026-05-29) — KpisSecundarios e ProdutosBombando removidos do
 // dashboard. KpisSecundarios duplicava info do HeroLucro (lucrou ontem +
 // semana ja cobre faturamento). ProdutosBombando era info nao-acionavel
@@ -302,14 +305,13 @@ export default async function AdminHomePage({
           checklist anterior. */}
       <OnboardingProgressStrip steps={onboardingSteps} />
 
-      {/* Hero de Lucro Líquido — Bloco F.2.1 da ressignificação.
-          DOIS números úteis: lucrou ontem (vs mesmo dia da semana passada)
-          e essa semana (vs mesma janela 7d atrás). Honestidade explícita
-          via cobertura CMV. */}
+      {/* Onda R4 — ProfitSummary. 1 numero principal (essa semana, mais
+          estavel que dia) + delta + breakdown denso inline. Ontem fica
+          como SecondaryBlock menor. Eliminado splash do HeroLucro. */}
       {lucroData ? (
-        <HeroLucro
-          yesterday={lucroData.yesterday}
-          thisWeek={lucroData.thisWeek}
+        <ProfitSummary
+          primary={lucroData.thisWeek}
+          secondary={lucroData.yesterday}
         />
       ) : null}
 
