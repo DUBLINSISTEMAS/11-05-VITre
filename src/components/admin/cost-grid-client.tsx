@@ -34,6 +34,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { logger } from "@/lib/logger";
 import { formatBRL as formatBRLPricing } from "@/lib/pricing";
+import {
+  calculateNetProfit,
+  DEFAULT_STORE_FEES,
+} from "@/lib/pricing/net-profit";
 
 interface CostGridRow {
   id: string;
@@ -113,6 +117,33 @@ function calcMarginPct(
 ): number | null {
   if (cost === null || price === 0) return null;
   return ((price - cost) / price) * 100;
+}
+
+/**
+ * Onda 2 (2026-05-28) — calcula LUCRO LÍQUIDO REAL pra a coluna nova
+ * do grid. Cenário "à vista" (paymentMethod=cash, installments=1, taxBps=0):
+ * descontamos custo + comissão da vendedora, mas NÃO taxa de cartão. É a
+ * visão MAIS OTIMISTA pra UI de planejamento — quando lojista olha esta
+ * tela, ele quer saber "se eu cadastrar custo R$ X com comissão Y%, vou
+ * sobrar quanto?". Cartão entra no Resultado, não aqui (workbench de
+ * cadastro).
+ */
+function calcNetProfitCashInCents(
+  cost: number | null,
+  commissionBps: number | null,
+  price: number,
+): number | null {
+  if (cost === null) return null;
+  const result = calculateNetProfit({
+    revenueInCents: price,
+    costInCents: cost,
+    paymentMethod: "cash",
+    installments: 1,
+    commissionBps: commissionBps ?? 0,
+    taxBps: 0,
+    storeFees: DEFAULT_STORE_FEES,
+  });
+  return result.netProfitInCents;
 }
 
 export function CostGridClient({ initialRows }: CostGridClientProps) {
@@ -370,7 +401,13 @@ export function CostGridClient({ initialRows }: CostGridClientProps) {
               <th className="py-2 px-2 font-medium text-right">Venda</th>
               <th className="py-2 px-2 font-medium text-right">Custo</th>
               <th className="py-2 px-2 font-medium text-right">Comissão %</th>
-              <th className="py-2 px-2 font-medium text-right">Margem</th>
+              <th
+                className="py-2 px-2 font-medium text-right"
+                title="Lucro líquido à vista: preço − custo − comissão. Não desconta taxa de cartão."
+              >
+                Lucro líq.
+              </th>
+              <th className="py-2 px-2 font-medium text-right">Margem%</th>
               <th className="py-2 pl-2 font-medium text-center w-12">•</th>
             </tr>
           </thead>
@@ -394,6 +431,20 @@ export function CostGridClient({ initialRows }: CostGridClientProps) {
                     : margin < 20
                       ? "text-amber-700 dark:text-amber-300"
                       : "text-emerald-700 dark:text-emerald-300";
+
+              const netProfitCash = calcNetProfitCashInCents(
+                state.costPriceInCents,
+                state.defaultCommissionBps,
+                row.basePriceInCents,
+              );
+              const netProfitStr =
+                netProfitCash === null ? "—" : formatBRL(netProfitCash);
+              const netProfitTone =
+                netProfitCash === null
+                  ? "text-ink-4"
+                  : netProfitCash < 0
+                    ? "text-destructive"
+                    : "text-ink-1 font-semibold";
 
               const StatusIcon =
                 state.status === "saving"
@@ -486,7 +537,12 @@ export function CostGridClient({ initialRows }: CostGridClientProps) {
                     />
                   </td>
                   <td
-                    className={`py-1.5 px-2 text-right align-middle font-medium ${marginTone}`}
+                    className={`py-1.5 px-2 text-right align-middle ${netProfitTone}`}
+                  >
+                    {netProfitStr}
+                  </td>
+                  <td
+                    className={`py-1.5 px-2 text-right align-middle ${marginTone}`}
                   >
                     {marginStr}
                   </td>
@@ -513,7 +569,8 @@ export function CostGridClient({ initialRows }: CostGridClientProps) {
       <p className="text-ink-4 text-[11px] leading-tight">
         Dica: Tab pula pra próxima célula. Salva automaticamente 2,5s após
         parar de digitar. Use &ldquo;Salvar tudo&rdquo; pra forçar sync
-        imediato.
+        imediato. Lucro líquido aqui é à vista (não desconta cartão); o
+        número completo aparece em Resultado.
       </p>
     </div>
   );

@@ -86,12 +86,18 @@ export async function loadDreSimple(
       .where(orderCond);
 
     // 2) Agregados em order_item (JOIN com order pro mesmo filtro).
+    //    Onda 2 (2026-05-28): inclui sellerCommission — soma dos snapshots
+    //    de comissão da venda (já é total da linha, não unitário). NULL
+    //    quando produto não tem default_commission_bps cadastrado.
+    //    NOTA: comissão de devolução NÃO é estornada (convenção BR:
+    //    lojista pagou a vendedora; cliente devolveu; comissão fica).
     const [itemAgg] = await tx
       .select({
         grossRevenue: sql<number>`coalesce(sum(${orderItemTable.priceInCentsSnapshot} * ${orderItemTable.quantity}), 0)::int`,
         cogs: sql<number>`coalesce(sum(${orderItemTable.unitCostSnapshotInCents} * ${orderItemTable.quantity}) filter (where ${orderItemTable.unitCostSnapshotInCents} is not null), 0)::int`,
         totalItems: sql<number>`count(*)::int`,
         itemsWithCost: sql<number>`count(*) filter (where ${orderItemTable.unitCostSnapshotInCents} is not null)::int`,
+        sellerCommission: sql<number>`coalesce(sum(${orderItemTable.commissionSnapshotInCents}) filter (where ${orderItemTable.commissionSnapshotInCents} is not null), 0)::int`,
       })
       .from(orderItemTable)
       .innerJoin(orderTable, eq(orderTable.id, orderItemTable.orderId))
@@ -225,6 +231,8 @@ export async function loadDreSimple(
     const coverage =
       totalItems === 0 ? 100 : Math.round((itemsWithCost / totalItems) * 100);
 
+    const sellerCommission = itemAgg?.sellerCommission ?? 0;
+
     return {
       range,
       summary: {
@@ -241,7 +249,9 @@ export async function loadDreSimple(
         totalOrderCount: orderAgg?.count ?? 0,
         operatingExpensesInCents,
         operatingExpensesByCategory,
-        operationalProfitInCents: grossProfit - operatingExpensesInCents,
+        sellerCommissionInCents: sellerCommission,
+        operationalProfitInCents:
+          grossProfit - operatingExpensesInCents - sellerCommission,
       },
     };
   });

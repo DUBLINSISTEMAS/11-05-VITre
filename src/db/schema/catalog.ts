@@ -281,6 +281,18 @@ export const productTable = pgTable(
     modeling: text("modeling"),       // ex: "Evasê midi"
     lining: text("lining"),           // ex: "Não possui"
     washing: text("washing"),         // ex: "À mão"
+    /**
+     * Onda 2 da ressignificação (SQL 84 / drizzle 0037, 2026-05-28).
+     * NULL = ativo. NOT NULL = arquivado (some das listas padrão, preserva
+     * histórico). App-layer força isActive=false e isPublishedToStorefront=false
+     * ao arquivar. Distingue de `isActive=false` (pausa temporária).
+     */
+    archivedAt: timestamp("archived_at"),
+    /**
+     * Soft-delete (cadastro errado/duplicata). Some até de "arquivados".
+     * Reservado pra cleanup; UI normal não expõe.
+     */
+    deletedAt: timestamp("deleted_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },

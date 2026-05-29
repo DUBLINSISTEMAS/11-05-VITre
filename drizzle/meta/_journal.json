@@ -260,6 +260,13 @@
       "when": 1779734527580,
       "tag": "0036_reconcile_supabase_sql",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1779820927580,
+      "tag": "0037_product_archived_deleted",
+      "breakpoints": true
     }
   ]
 }

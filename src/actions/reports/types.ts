@@ -202,7 +202,18 @@ export interface DreSimpleSummary {
     amountInCents: number;
   }>;
   /**
-   * S2.3 — lucro OPERACIONAL = lucro bruto - despesas operacionais.
+   * Onda 2 (2026-05-28) — comissão de vendedoras devida no período.
+   * Vem de SUM(order_item.commission_snapshot_in_cents). Snapshot fixo
+   * (mesmo se lojista mudar % depois). NULL não acontece — sempre 0+.
+   *
+   * NÃO é somada em operatingExpensesInCents (que vem de `expense`):
+   * comissão tem cálculo automático no INSERT da venda, despesa é
+   * lançamento manual. Linha própria no waterfall.
+   */
+  sellerCommissionInCents: number;
+  /**
+   * S2.3 — lucro OPERACIONAL = lucro bruto - despesas operacionais
+   *                            - comissão de vendedoras.
    * Destaque do DRE substitui "lucro bruto". Se = grossProfit (sem
    * despesa cadastrada), UI mostra warning "cadastre despesas".
    */

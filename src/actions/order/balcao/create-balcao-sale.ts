@@ -273,6 +273,10 @@ export async function createBalcaoSale(
             // têm dado. Sem isso, unit_cost_snapshot_in_cents fica NULL
             // e relatórios não computam CMV.
             costPriceInCents: true,
+            // Onda 2 (2026-05-28): snapshot da comissão da vendedora na
+            // venda. Sem isso, DRE/Resultado/Lucro Líquido subestimam
+            // por SEMPRE ignorar comissão paga.
+            defaultCommissionBps: true,
           },
         });
 
@@ -328,6 +332,14 @@ export async function createBalcaoSale(
            * cadastrado, margem fica "desconhecida" no relatório.
            */
           unitCostSnapshotInCents: number | null;
+          /**
+           * Onda 2 (2026-05-28) — snapshot da comissão da vendedora desta
+           * LINHA inteira em centavos (price × qty − discount × commission_bps
+           * / 10000). NULL quando produto não tem default_commission_bps
+           * cadastrado ou comissão = 0. Fica fixo no DB mesmo se lojista
+           * ajustar % depois. Consumido pelo DRE como dedução.
+           */
+          commissionSnapshotInCents: number | null;
         }> = [];
         let subtotalInCents = 0;
 
@@ -393,6 +405,16 @@ export async function createBalcaoSale(
           // S2.6 — coalesce(variant.cost, product.cost) no snapshot.
           const unitCostSnapshotInCents =
             variant?.costPriceInCents ?? product.costPriceInCents ?? null;
+          // Onda 2 — comissão da vendedora pra esta linha (price × qty − discount
+          // × bps / 10000). Mesma fórmula que load-sellers.ts:65-69 usa
+          // retroativo, mas aqui congelada no INSERT pra histórico imune
+          // a ajuste futuro de %.
+          const lineNetInCents = lineGross - rawItemDiscount;
+          const commissionBps = product.defaultCommissionBps ?? 0;
+          const commissionSnapshotInCents =
+            commissionBps > 0 && lineNetInCents > 0
+              ? Math.round((lineNetInCents * commissionBps) / 10000)
+              : null;
           computedItems.push({
             productId: it.productId,
             variantId: it.variantId,
@@ -402,6 +424,7 @@ export async function createBalcaoSale(
             quantity: it.quantity,
             itemDiscountInCents,
             unitCostSnapshotInCents,
+            commissionSnapshotInCents,
           });
         }
 
@@ -591,6 +614,7 @@ export async function createBalcaoSale(
                       quantity: ci.quantity,
                       discountInCents: ci.itemDiscountInCents,
                       unitCostSnapshotInCents: ci.unitCostSnapshotInCents,
+                      commissionSnapshotInCents: ci.commissionSnapshotInCents,
                     })),
                   );
                 }
@@ -805,6 +829,7 @@ export async function createBalcaoSale(
                       quantity: ci.quantity,
                       discountInCents: ci.itemDiscountInCents,
                       unitCostSnapshotInCents: ci.unitCostSnapshotInCents,
+                      commissionSnapshotInCents: ci.commissionSnapshotInCents,
                     })),
                   );
                 }
@@ -1119,6 +1144,12 @@ export async function createBalcaoSale(
                   customerName: customerSnapshotName,
                   customerPhone: customerSnapshotPhone,
                   customerId: data.customerId,
+                  // Onda 2 (2026-05-28) — branches quote e fiado já plantavam
+                  // sellerId; sale branch estava esquecido. Sem isto, comissão
+                  // calculada pelo snapshot de orderItem ficava órfã de
+                  // vendedor. Default = lojista logado quando UI não envia
+                  // sellerId (loja solo).
+                  sellerId: data.sellerId ?? userId,
                   customerNotes: data.notes,
                   totalInCents,
                   status: "confirmed",

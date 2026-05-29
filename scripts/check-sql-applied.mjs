@@ -139,6 +139,10 @@ const checks = [
   // por drizzle/0035 (idempotente — IF NOT EXISTS no SQL bruto, drizzle gera
   // CREATE TABLE puro). Sentinela aqui valida prod.
   { id: "83",  desc: "product_cost_component table com RLS forced (2026-05-28)", q: "SELECT 1 FROM pg_class WHERE relname='product_cost_component' AND relrowsecurity=true" },
+  // Onda 2 (2026-05-28) — product.archived_at + deleted_at pra distinguir
+  // pausado vs arquivado vs soft-deleted. Substitui workaround
+  // isActive/Published/Featured=false documentado em delete.ts:21-25.
+  { id: "84",  desc: "product.archived_at + deleted_at columns (Onda 2 2026-05-28)", q: "SELECT 1 FROM information_schema.columns WHERE table_name='product' AND column_name IN ('archived_at','deleted_at') HAVING count(*) = 2" },
 ];
 
 const url = process.env.DIRECT_URL;

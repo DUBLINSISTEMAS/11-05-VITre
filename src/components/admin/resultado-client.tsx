@@ -146,6 +146,11 @@ export function ResultadoClient({
       ["(-) Custo dos produtos (CMV)", -current.cogsInCents],
       ["(=) Lucro bruto", current.grossProfitInCents],
       ["(-) Taxa real cartão", -summaryNumbers.cardFeesInCents],
+      ...(current.sellerCommissionInCents > 0
+        ? ([
+            ["(-) Comissão de vendedoras", -current.sellerCommissionInCents],
+          ] as [string, number][])
+        : []),
       ...summaryNumbers.nonCardExpenses.map(
         (e): [string, number] => [
           `(-) ${EXPENSE_CATEGORY_LABELS[e.category] ?? e.category}`,
@@ -379,6 +384,18 @@ export function ResultadoClient({
               inCents={-summaryNumbers.cardFeesInCents}
               sign="negative"
               note="calculada por bandeira × parcelas"
+            />
+          ) : null}
+          {/* Onda 2 (2026-05-28) — comissão de vendedoras vem de
+              order_item.commission_snapshot_in_cents (snapshot por linha,
+              fixa mesmo se lojista mudar % depois). Só aparece quando
+              algum produto tem default_commission_bps cadastrado. */}
+          {current.sellerCommissionInCents > 0 ? (
+            <EquationRow
+              label="Comissão de vendedoras"
+              inCents={-current.sellerCommissionInCents}
+              sign="negative"
+              note="snapshot na venda — % do produto"
             />
           ) : null}
           {summaryNumbers.nonCardExpenses.map((e) => (
