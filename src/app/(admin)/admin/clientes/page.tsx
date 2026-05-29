@@ -17,6 +17,7 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import { CustomerCreateButton } from "@/components/admin/customer-create-button";
+import { CustomerImportButton } from "@/components/admin/customer-import-dialog";
 import {
   type CustomersKpis,
   CustomersKpiStrip,
@@ -391,6 +392,7 @@ export default async function ClientesPage({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <PrintPageButton label="Imprimir lista" />
+          <CustomerImportButton />
           <CustomerCreateButton />
         </div>
       </div>
