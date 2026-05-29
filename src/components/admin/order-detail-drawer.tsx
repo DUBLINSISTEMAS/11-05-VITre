@@ -34,6 +34,11 @@ import {
 import Image from "next/image";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
+// useTransition é mantido só pra OrderNotesEditor (save inline com pending
+// previsível). O useTransition do drawer principal foi removido: ver
+// useEffect abaixo — combinava setState fora da transition + async server
+// action e perdia o pending state intermitente em React 19, causando
+// "loading travado" reportado pelo founder em 2026-05-29.
 
 import {
   loadOrderDetail,
@@ -144,32 +149,49 @@ interface OrderDetailDrawerProps {
 export function OrderDetailDrawer({ orderId, onOpenChange }: OrderDetailDrawerProps) {
   const [data, setData] = useState<OrderDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, startLoad] = useTransition();
+  const [isLoading, setIsLoading] = useState(false);
   // Incrementado quando o CustomerLinkSection muda o vínculo — força
   // refetch do detalhe pra o drawer refletir o novo estado.
   const [reloadKey, setReloadKey] = useState(0);
 
+  // Fix 2026-05-29 — loading travado em orçamento PDV. Antes usava
+  // useTransition + async function; o pending state se perdia ao combinar
+  // com setStates síncronos fora da transition (reset de data/error). Agora
+  // gerencia isLoading manualmente com cleanup via cancelled flag pra
+  // descartar respostas obsoletas se o orderId mudar antes da action
+  // resolver (clicar rápido em duas vendas seguidas).
   useEffect(() => {
     if (!orderId) {
       setData(null);
       setError(null);
+      setIsLoading(false);
       return;
     }
+    let cancelled = false;
     setData(null);
     setError(null);
-    startLoad(async () => {
-      try {
-        const res = await loadOrderDetail(orderId);
+    setIsLoading(true);
+
+    loadOrderDetail(orderId)
+      .then((res) => {
+        if (cancelled) return;
+        setIsLoading(false);
         if (!res.ok) {
           setError(res.error);
           return;
         }
         setData(res.order);
-      } catch (err) {
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setIsLoading(false);
         logger.error("admin.order.detail_load_failed", { err, orderId });
         setError("Não foi possível carregar a venda. Tente novamente.");
-      }
-    });
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [orderId, reloadKey]);
 
   return (
