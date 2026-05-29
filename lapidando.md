@@ -146,25 +146,26 @@ Layout impressão: header padrão (logo loja, CNPJ, data de geração, operador)
 
 ---
 
-## Ordem de execução proposta
+## Ordem de execução
 
-**Hoje (sem precisar resetar):**
-- ✅ Criar este doc — feito
-- **R3** Lucro por venda inline — entrega valor imediato, valida `calculateNetProfit`
-- **R5** Despesas UX — destrava a queixa "não consigo lançar"
-- **R4** Dashboard limpo — testa diretriz minimalista
+**Sessão 1 (FECHADA — 4 commits):**
+- ✅ `lapidando.md` criado
+- ✅ **R3** Lucro real por venda inline + drawer + `<Money>` component
+- ✅ **R5** Despesas UX (dialogs host global em qualquer tab) + KPIs Stripe-style
+- ✅ **R4** Dashboard limpo (`ProfitSummary` substitui HeroLucro splash)
 
-**Próxima sessão (R3+R5+R4 validados):**
-- **R6** Coluna SOBRA dupla — extensão natural de R3
-- **Relatórios** — Lucro + Despesas + Comparativo
+**Sessão 2 (próxima):**
+- **R6** Coluna SOBRA dupla na /admin/produtos (à vista + 6× crédito)
+- **Relatórios A4** — Lucro + Despesas + Comparativo
 
-**Depois disso (decisão tua):**
+**Sessão 3 (decisão tua):**
 - **R1** Migrations unificadas → pré-requisito do reset
-- **Reset do banco** com confirmações
-- **R8** Separar product/inventory_item — quando schema estiver limpo
+- **Reset do banco** com confirmações item a item
+- **R8** Separar product/inventory_item — schema novo limpo
 
-**Por fim:**
+**Sessão 4:**
 - **R2** Refatorar PDV em componentes — complexidade alta, vale separar do resto
+- **R12** Mobile + Print audit sistêmicos
 
 ---
 
@@ -199,8 +200,13 @@ Em código: nomes em EN coerentes (`sale`, `saleLine`, `customer`, `payment`). S
 
 ## Eu preciso de você
 
-**Pra começar HOJE com R3+R5+R4 (sem reset)**: só seu OK.
+**R3+R5+R4 entregues** (sessão 1, 4 commits). Pode testar:
+
+- `/admin/pedidos` — coluna **Lucro** com cor semafórica + pill global de cobertura CMV
+- Drawer de venda — linha **Lucro líquido (margem%)** destacada no Resumo financeiro
+- `/admin/financeiro` — CTA "Lançar despesa" funciona em **qualquer tab** (R5 fix), KPIs Stripe-style (sem splash)
+- `/admin` (dashboard) — **ProfitSummary** novo: 1 número modesto + breakdown denso + delta + linha "Ontem" secundária
+
+**Pra próxima sessão**: R6 + Relatórios A4 ou pulamos pra R1 + Reset.
 
 **Pra reset do banco**: confirmação item a item da seção acima.
-
-**Pra ordem**: se as 3 primeiras R's (R3, R5, R4) tão na sequência certa.
